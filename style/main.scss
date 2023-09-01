@@ -1,0 +1,152 @@
+$body-bg-color-dark: #242424;
+$select-color-dark: #8BE9FD;
+$select-color-hover-dark: #8BE9FDCC;
+$interactable-bg-color-dark: #444444;
+$interactable-hover-color-dark: #444444;
+$border-color-dark: #FFFFFF80;
+
+* {
+    font-family: sans-serif;
+}
+
+body {
+    margin: 0px;
+    background: $body-bg-color-dark;
+}
+
+#HomeGrid {
+    display: flex;
+}
+
+.treeview {
+    height: 90vh;
+    min-width: 320px;
+    padding-inline-start: 8px;
+    padding-inline-end: 8px;
+    border-right: 1px solid $border-color-dark;
+    padding: 12px;
+
+    div {
+        color: white;
+        font-size: 24px;
+        padding: 8px;
+        border-radius: 0.6em;
+    }
+
+    span {
+        padding: 0px;
+        display: flex;
+        flex-wrap: wrap;
+        align-content: center;
+
+        &:last-child {
+            padding-left: 0.5em;
+            margin: 0px;
+            width: 100%;
+        }
+    }
+    
+    .row {
+        display: flex;
+        margin: 4px;
+        white-space: nowrap;
+        padding-left: 0.5em;
+        cursor: default;
+    }
+
+    .selectable {
+        &:hover {
+            color: white;
+            background: $interactable-hover-color-dark;
+        }
+    }
+
+    .selected {
+        color: black;
+        background: $select-color-dark;
+
+        &:hover {
+            color: black;
+            background: $select-color-hover-dark;
+        }
+    }
+
+    .caret {
+        cursor: pointer;
+        user-select: none; /* Prevent text selection */
+        min-width: 24px;
+        padding: 0px;
+    }
+
+    .caret::before {
+        font-size: 1.9rem;
+        margin-right: 6px;
+        translateY: 2px;
+    }
+
+    .caret-down::before {
+        transform: rotate(90deg);
+    }
+
+    .nested {
+        display: none;
+    }
+
+    .active {
+        display: block;
+    }
+
+    .indent {
+        width: 40px;
+    }
+}
+
+ul {
+    padding-left: 0px;
+    margin: 0px;
+}
+
+li {
+    display: block;
+}
+
+#InfoBox {
+    padding: 24px;
+    font-size: 36px;
+    color: white;
+    white-space: nowrap;
+
+    p {
+        padding: 0px;
+        margin: 0px;
+    }
+
+    .rowbox {
+        display: flex;
+        align-items: center;
+        background: $interactable-bg-color-dark;
+
+        border-radius: 16px;
+        margin: 8px;
+    }
+
+    .title {
+        font-size: 0.75em;
+        padding: 0.5em;
+        padding-left: 1em;
+    }
+
+    .info {
+        display: flex;
+        justify-content: center;
+        min-width: 3.2em;
+        min-height: 2em;
+        padding: 0.75em;
+        flex-flow: wrap;
+        align-content: center;
+    }
+
+    .longtime {
+        width: 320px;
+    }
+}
