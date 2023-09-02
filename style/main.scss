@@ -13,6 +13,13 @@ body {
     margin: 0px;
     background: $body-bg-color-dark;
 }
+button {
+    background: #666666;
+
+    &:hover {
+        background: #555555;
+    }
+}
 
 #HomeGrid {
     display: flex;
@@ -26,9 +33,23 @@ body {
     border-right: 1px solid $border-color-dark;
     padding: 12px;
 
+    .new-counter {
+        border: none;
+        border-radius: 0.5em;
+        padding: 0.2em;
+        margin: 0.3em 0.5em;
+        font-size: 1.5rem;
+        height: 1.8em;
+    }
+
+    li {
+        width: 100%;
+        display: grid;
+    }
+
     div {
         color: white;
-        font-size: 24px;
+        font-size: 1.5rem;
         padding: 2px;
         border-radius: 0.6em;
     }
@@ -44,7 +65,7 @@ body {
         cursor: default;
         display: flex;
         margin: 2px;
-        min-height: 1.5em;
+        min-height: 1.6em;
     }
 
     .row-body {
@@ -58,11 +79,6 @@ body {
             height: 2.25rem;
             border-radius: 1rem;
             border: 0px;
-            background: #666666;
-
-            &:hover {
-                background: #555555;
-            }
         }
     }
 
@@ -87,20 +103,17 @@ body {
     }
 
     .caret {
-        cursor: pointer;
-        user-select: none; /* Prevent text selection */
-        min-width: 24px;
-        padding: 2px;
-        padding-left: 8px;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
+        padding: .5em;
+        padding-left: .75em;
     }
 
     .caret::before {
-        font-size: 1.9rem;
-        margin-right: 6px;
-        translateY: 2px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        user-select: none; /* Prevent text selection */
     }
 
     .caret-down::before {
@@ -109,6 +122,9 @@ body {
 
     .nested {
         display: none;
+        .caret {
+            padding-left: 0em;
+        }
     }
 
     .active {

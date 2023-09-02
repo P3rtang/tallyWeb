@@ -123,11 +123,7 @@ impl std::ops::Deref for ArcCountable {
     }
 }
 
-impl IntoNode<ArcCountable> for ArcCountable {
-    fn into_node(self, cx: Scope, depth: usize) -> TreeViewNode<ArcCountable> {
-        return TreeViewNode::new(cx, self.clone(), depth);
-    }
-
+impl TreeViewNodeItem<ArcCountable> for ArcCountable {
     fn into_view(self, cx: Scope) -> View {
         let node_children = expect_context::<SignalNodeChildren<ArcCountable>>(cx);
         let selection = expect_context::<RwSignal<Selection<ArcCountable>>>(cx);
@@ -148,14 +144,8 @@ impl IntoNode<ArcCountable> for ArcCountable {
 
         let click_new_phase = move |e: MouseEvent| {
             e.stop_propagation();
-            item().new_phase();
-            get_node().children.set(
-                item()
-                    .get_children()
-                    .into_iter()
-                    .map(|c| c.into_node(cx, get_node().depth + 1))
-                    .collect(),
-            )
+            let phase = item().new_phase();
+            get_node().insert_child(cx, phase)
         };
 
         let div_class = move || {
@@ -335,14 +325,16 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     let list = CounterList::new(&[counter1, counter2, counter3, counter4]);
     let state = create_rw_signal(cx, list);
     provide_context(cx, state);
-    let treeview = TreeView::new(cx, state.get_untracked().list);
 
-    let selection = expect_context::<RwSignal<Selection<ArcCountable>>>(cx);
+    let selection = Selection::<ArcCountable>::new();
+    let selection_signal = create_rw_signal(cx, selection.clone());
+    provide_context(cx, selection_signal);
+
     timer(cx);
 
     window_event_listener(ev::keypress, {
         move |ev| match ev.code().as_str() {
-            "Equal" => selection.with(|list| {
+            "Equal" => selection_signal.with(|list| {
                 list.0.iter().filter(|(_, b)| **b).for_each(|(node, _)| {
                     let state = expect_context::<RwSignal<CounterList>>(cx);
                     let item_s = create_rw_signal(cx, node.0.clone());
@@ -370,18 +362,25 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
         }
     });
 
+    let (list_signal, set_list) = create_slice(
+        cx,
+        state,
+        move |list| list.list.clone(),
+        move |list, new| list.new_counter(new),
+    );
+
+    let on_click = move |_| {
+        let name = format!("Counter {}", list_signal().len() + 1);
+        set_list(name)
+    };
+
     view! { cx,
         <div id="HomeGrid">
-            <CounterTreeView treeview=treeview/>
+            <TreeView start_nodes=list_signal after=move |cx| {
+                view! {cx, <button on:click=on_click class="new-counter">New Counter</button> }
+            }/>
             <InfoBox/>
         </div>
-    }
-}
-
-#[component]
-fn CounterTreeView(cx: Scope, treeview: TreeView<ArcCountable>) -> impl IntoView {
-    view! { cx,
-        { treeview }
     }
 }
 
@@ -661,15 +660,10 @@ impl CounterList {
             is_paused: true,
         };
     }
-}
 
-impl IntoView for CounterList {
-    fn into_view(self, cx: Scope) -> View {
-        let view = view! { cx,
-            <ul>
-            </ul>
-        };
-        return view.into_view(cx);
+    fn new_counter(&mut self, name: impl ToString) {
+        self.list
+            .push(ArcCountable::new(Box::new(Counter::new(name))));
     }
 }
 

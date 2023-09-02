@@ -1,4 +1,5 @@
 #![allow(unused_braces)]
+#![allow(non_snake_case)]
 
 use core::fmt::Debug;
 use std::collections::HashMap;
@@ -7,61 +8,53 @@ use leptos::{ev::MouseEvent, *};
 
 pub type SignalNodeChildren<T> = RwSignal<HashMap<T, TreeViewNode<T>>>;
 
-pub trait IntoNode<T: IntoNode<T>>:
+/// TODO: wrap T in a smart pointer
+pub trait TreeViewNodeItem<T: TreeViewNodeItem<T>>:
     PartialEq + Eq + core::hash::Hash + Clone + 'static + std::ops::Deref + Debug
 {
-    fn into_node(self, cx: Scope, depth: usize) -> TreeViewNode<T>;
     fn into_view(self, cx: Scope) -> leptos::View;
     fn get_children(&self) -> Vec<T>;
 }
 
-#[derive(Debug, Clone)]
-pub struct TreeView<T>
+#[component]
+pub fn TreeView<T, F, A, IV>(cx: Scope, start_nodes: F, after: A) -> impl IntoView
 where
-    T: IntoNode<T>,
+    T: TreeViewNodeItem<T>,
+    F: Fn() -> Vec<T> + Copy + 'static,
+    A: Fn(Scope) -> IV + 'static,
+    IV: IntoView,
 {
-    nodes: Vec<T>,
-}
+    let item_node_map = HashMap::<T, TreeViewNode<T>>::new();
+    let item_node_signal = create_rw_signal(cx, item_node_map);
+    provide_context(cx, item_node_signal);
 
-impl<T> TreeView<T>
-where
-    T: IntoNode<T>,
-{
-    pub fn new(cx: Scope, first_node: Vec<T>) -> Self {
-        let selection = Selection::<T>::new();
-        let selection_signal = create_rw_signal(cx, selection.clone());
-        provide_context(cx, selection_signal);
+    let tree_nodes = move || start_nodes().iter().map(|c| {
+        TreeViewNode::new(cx, c.clone(), 0)
+    }).collect::<Vec<_>>();
 
-        let item_node_map = HashMap::<T, TreeViewNode<T>>::new();
-        let item_node_signal = create_rw_signal(cx, item_node_map);
-        provide_context(cx, item_node_signal);
-
-        first_node.iter().for_each(|i| {
-            i.clone().into_node(cx, 0);
-        });
-
-        return Self { nodes: first_node };
-    }
-}
-
-impl<T> IntoView for TreeView<T>
-where
-    T: IntoNode<T>,
-{
-    fn into_view(self, cx: leptos::Scope) -> leptos::View {
-        view! { cx,
-            <ul class="treeview">{
-                self.nodes.into_iter().map(|n| n.into_view(cx)).collect_view(cx)
-            }</ul>
+    view! { cx,
+        <ul class="treeview">
+        <For
+            each=tree_nodes
+            key=|c| c.id
+            view=move |cx, item| {
+                view! { cx, {
+                    item.row.clone().into_view(cx)
+                }}
+            }
+        />
+        {
         }
-        .into_view(cx)
+        <li>{ after(cx) }</li>
+        </ul>
     }
+    .into_view(cx)
 }
 
 #[derive(Debug, Clone)]
 pub struct TreeViewNode<T>
 where
-    T: IntoNode<T>,
+    T: TreeViewNodeItem<T>,
 {
     pub id: usize,
     pub row: T,
@@ -73,11 +66,10 @@ where
 
 impl<T> TreeViewNode<T>
 where
-    T: IntoNode<T>,
+    T: TreeViewNodeItem<T>,
 {
     pub fn new(cx: Scope, item: T, depth: usize) -> Self {
         let ptr = std::ptr::addr_of!(*item) as *const usize;
-        log!("{:?}", ptr as usize);
         let this = Self {
             id: ptr as usize,
             row: item.clone(),
@@ -95,17 +87,22 @@ where
         this.children.set(
             item.get_children()
                 .iter()
-                .map(|c| c.clone().into_node(cx, depth + 1))
+                .map(|c| TreeViewNode::new(cx, c.clone(), depth + 1))
                 .collect(),
         );
 
         return this;
     }
+
+    pub fn insert_child(&self, cx: Scope, item: T) {
+        self.children
+            .update(|children| children.push(TreeViewNode::new(cx, item, self.depth + 1)))
+    }
 }
 
 impl<T> std::hash::Hash for TreeViewNode<T>
 where
-    T: IntoNode<T>,
+    T: TreeViewNodeItem<T>,
 {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         std::ptr::hash(&self.row, state);
@@ -114,25 +111,25 @@ where
 
 impl<T> PartialEq for TreeViewNode<T>
 where
-    T: IntoNode<T>,
+    T: TreeViewNodeItem<T>,
 {
     fn eq(&self, other: &Self) -> bool {
         std::ptr::eq(&*self.row, &*other.row)
     }
 }
 
-impl<T> Eq for TreeViewNode<T> where T: IntoNode<T> {}
+impl<T> Eq for TreeViewNode<T> where T: TreeViewNodeItem<T> {}
 
 #[derive(Debug, Clone)]
 pub struct Selection<T>(pub HashMap<T, bool>)
 where
-    T: IntoNode<T>;
+    T: TreeViewNodeItem<T>;
 
 impl<T> Selection<T>
 where
-    T: IntoNode<T>,
+    T: TreeViewNodeItem<T>,
 {
-    fn new() -> Self {
+    pub fn new() -> Self {
         return Self(HashMap::new());
     }
     fn set_active(&mut self, node: T, is_active: bool) {
@@ -154,7 +151,7 @@ pub fn TreeViewRow<T, F>(
 ) -> impl IntoView
 where
     F: Fn() -> String + 'static,
-    T: IntoNode<T>,
+    T: TreeViewNodeItem<T>,
 {
     let node_children = expect_context::<SignalNodeChildren<T>>(cx);
     let selection = expect_context::<RwSignal<Selection<T>>>(cx);
@@ -207,7 +204,7 @@ where
     let depth_style = move || {
         let margin = format!(
             "{}em",
-            1.2 * node().map(|n| n.depth).unwrap_or_default() as f64
+            1.8 * node().map(|n| n.depth).unwrap_or_default() as f64
         );
         let style = format!("padding-left:{}", margin);
         style
