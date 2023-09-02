@@ -1,192 +1,236 @@
 #![allow(unused_braces)]
 
-use std::{cell::RefCell, rc::Rc, collections::HashMap, ptr};
 use core::fmt::Debug;
+use std::collections::HashMap;
 
-use leptos::{*};
+use leptos::{ev::MouseEvent, *};
 
-macro_rules! enclose {
-    ( ($( $x:ident ),*) $y:expr ) => {
-        {
-            $(let $x = $x.clone();)*
-            $y
-        }
-    };
-}
+pub type SignalNodeChildren<T> = RwSignal<HashMap<T, TreeViewNode<T>>>;
 
-pub trait IntoNode<T: IntoNode<T>>: Clone {
+pub trait IntoNode<T: IntoNode<T>>:
+    PartialEq + Eq + core::hash::Hash + Clone + 'static + std::ops::Deref + Debug
+{
     fn into_node(self, cx: Scope, depth: usize) -> TreeViewNode<T>;
     fn into_view(self, cx: Scope) -> leptos::View;
     fn get_children(&self) -> Vec<T>;
 }
 
 #[derive(Debug, Clone)]
-pub struct RcTreeViewNode<T: IntoNode<T>>(
-    Rc<RefCell<TreeViewNode<T>>>,
-    RwSignal<bool>,
-);
-
-impl<T: IntoNode<T>>  RcTreeViewNode<T> {
-    fn from_node(cx: Scope, value: TreeViewNode<T>) -> Self {
-        let show_signal = create_rw_signal(cx, false);
-        let this = Self(Rc::new(RefCell::new(value)), show_signal);
-        return this
-    }
-
-    pub fn item(&self) -> T {
-        return self.0.borrow_mut().row.clone()
-    }
+pub struct TreeView<T>
+where
+    T: IntoNode<T>,
+{
+    nodes: Vec<T>,
 }
 
-impl<T> IntoView for RcTreeViewNode<T>
-where T: IntoNode<T> + 'static {
-    fn into_view(self, cx: leptos::Scope) -> leptos::View {
-        let selection = expect_context::<RwSignal<Selection<T>>>(cx);
-        let clone = self.clone();
-
-        let div_class = enclose!((clone) move || {
-            let mut class = String::from("selectable row ");
-            if selection.with(|sel| sel.is_active(&clone)) {
-                class += "selected"
-            }
-
-            return class
-        });
-
-        let child_class = enclose!((clone) move || {
-            let mut class = String::from("nested ");
-            if clone.1.get() {
-                class += "active "
-            }
-            return class
-        });
-
-        let caret_class = enclose!((clone) move || {
-            if clone.1.get() {
-                "caret fas fa-caret-down"
-            } else {
-                "caret fas fa-caret-right"
-            }
-        });
-
-        let on_click = enclose!((clone) move |_| {
-            selection.update(|sel| sel.set_active(clone.clone(), !sel.is_active(&clone)));
-        });
-
-        let on_caret_click = enclose!((clone) move |_| {
-            clone.1.set(!clone.1.get())
-        });
-
-        let create_indent = enclose!((clone) move || {
-            (0..clone.0.borrow().depth).into_iter().map(|_| view! {cx, <span class="indent"/>}).collect_view(cx)
-        });
-
-        view! { cx,
-            <li>
-                <div class=div_class> {
-                        if clone.0.borrow().nodes.len() > 0 {
-                            view! { cx,
-                                { create_indent() }
-                                <span class=caret_class on:click=on_caret_click/>
-                            }.into_view(cx)
-                        } else {
-                            view! { cx, { create_indent() } }
-                        }
-                    }
-                    <span on:click=on_click >
-                        { enclose!((clone) move || clone.0.borrow_mut().clone().row.into_view(cx)) }
-                    </span>
-                </div>
-                <ul class=child_class>{ move || clone.0.borrow_mut().nodes.clone() }</ul>
-            </li>
-        }.into_view(cx)
-    }
-}
-
-impl<T> core::hash::Hash for RcTreeViewNode<T>
-where T: IntoNode<T> + 'static {
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        ptr::hash(&*self.0, state)
-    }
-}
-
-impl<T> PartialEq for RcTreeViewNode<T>
-where T: IntoNode<T> + 'static {
-    fn eq(&self, other: &Self) -> bool {
-        ptr::eq(&*self.0, &*other.0)
-    }
-}
-
-impl<T> Eq for RcTreeViewNode<T>
-where T: IntoNode<T> + 'static {}
-
-pub struct TreeView<T> where T: IntoNode<T> + 'static {
-    pub selection_signal: RwSignal<Selection<T>>,
-
-    nodes: Vec<RcTreeViewNode<T>>,
-}
-
-impl<T> TreeView<T> where T: IntoNode<T> {
-    pub fn new(cx: Scope) -> Self {
-        let selection = Selection(HashMap::new());
+impl<T> TreeView<T>
+where
+    T: IntoNode<T>,
+{
+    pub fn new(cx: Scope, first_node: Vec<T>) -> Self {
+        let selection = Selection::<T>::new();
         let selection_signal = create_rw_signal(cx, selection.clone());
         provide_context(cx, selection_signal);
-        return Self { selection_signal, nodes: Vec::new() }
-    }
 
-    pub fn set_node(&mut self, cx: Scope, nodes: Vec<TreeViewNode<T>>) {
-        let nodes = nodes.iter().map(|n| {
-            RcTreeViewNode::from_node(cx, n.clone())
-        }).collect::<Vec<_>>();
+        let item_node_map = HashMap::<T, TreeViewNode<T>>::new();
+        let item_node_signal = create_rw_signal(cx, item_node_map);
+        provide_context(cx, item_node_signal);
 
+        first_node.iter().for_each(|i| {
+            i.clone().into_node(cx, 0);
+        });
 
-        self.nodes = nodes
+        return Self { nodes: first_node };
     }
 }
 
-impl<T> IntoView for TreeView<T> where T: IntoNode<T> + 'static {
+impl<T> IntoView for TreeView<T>
+where
+    T: IntoNode<T>,
+{
     fn into_view(self, cx: leptos::Scope) -> leptos::View {
         view! { cx,
-            <ul class="treeview">
-            { self.nodes.into_iter().map(|rc_n| rc_n.into_view(cx)).collect_view(cx) }
-            </ul>
-        }.into_view(cx)
+            <ul class="treeview">{
+                self.nodes.into_iter().map(|n| n.into_view(cx)).collect_view(cx)
+            }</ul>
+        }
+        .into_view(cx)
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct TreeViewNode<T> where T: IntoNode<T> {
-    row: T,
-    nodes: Vec<RcTreeViewNode<T>>,
-    depth: usize,
+pub struct TreeViewNode<T>
+where
+    T: IntoNode<T>,
+{
+    pub id: usize,
+    pub row: T,
+    pub depth: usize,
+    pub is_expanded: bool,
+    pub update: Trigger,
+    pub children: RwSignal<Vec<TreeViewNode<T>>>,
 }
 
-impl<T> TreeViewNode<T> where T: IntoNode<T> + 'static {
-    pub fn new(cx: Scope, depth: usize, item: T) -> Self {
-        let nodes = item.get_children().into_iter().map(|c| {
-            RcTreeViewNode::from_node(cx, c.into_node(cx, depth + 1))
-        }).collect::<Vec<_>>();
-        return Self { row: item, nodes, depth }
+impl<T> TreeViewNode<T>
+where
+    T: IntoNode<T>,
+{
+    pub fn new(cx: Scope, item: T, depth: usize) -> Self {
+        let ptr = std::ptr::addr_of!(*item) as *const usize;
+        log!("{:?}", ptr as usize);
+        let this = Self {
+            id: ptr as usize,
+            row: item.clone(),
+            depth,
+            is_expanded: false,
+            update: create_trigger(cx),
+            children: create_rw_signal(cx, Vec::new()),
+        };
+
+        let item_node_signal = expect_context::<SignalNodeChildren<T>>(cx);
+        item_node_signal.update(|map| {
+            map.insert(item.clone(), this.clone());
+        });
+
+        this.children.set(
+            item.get_children()
+                .iter()
+                .map(|c| c.clone().into_node(cx, depth + 1))
+                .collect(),
+        );
+
+        return this;
     }
 }
 
+impl<T> std::hash::Hash for TreeViewNode<T>
+where
+    T: IntoNode<T>,
+{
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::ptr::hash(&self.row, state);
+    }
+}
+
+impl<T> PartialEq for TreeViewNode<T>
+where
+    T: IntoNode<T>,
+{
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(&*self.row, &*other.row)
+    }
+}
+
+impl<T> Eq for TreeViewNode<T> where T: IntoNode<T> {}
+
 #[derive(Debug, Clone)]
-pub struct Selection<T>(pub HashMap<RcTreeViewNode<T>, bool>)
-     where T: IntoNode<T> + 'static;
+pub struct Selection<T>(pub HashMap<T, bool>)
+where
+    T: IntoNode<T>;
 
 impl<T> Selection<T>
-where T: IntoNode<T> {
-    fn set_active(&mut self, node: RcTreeViewNode<T>, is_active: bool) {
+where
+    T: IntoNode<T>,
+{
+    fn new() -> Self {
+        return Self(HashMap::new());
+    }
+    fn set_active(&mut self, node: T, is_active: bool) {
         self.0.clear();
         self.0.insert(node, is_active);
     }
 
-    fn is_active(&self, node: &RcTreeViewNode<T>) -> bool {
-        return self.0.get(node).map(|b| *b).unwrap_or_default()
+    fn is_active(&self, node: &T) -> bool {
+        return self.0.get(node).map(|b| *b).unwrap_or_default();
     }
 }
 
 #[component]
-fn TreeViewRow(cx: Scope, class: String) -> impl IntoView {
+pub fn TreeViewRow<T, F>(
+    cx: Scope,
+    class: F,
+    children: Children,
+    item: TreeViewNode<T>,
+) -> impl IntoView
+where
+    F: Fn() -> String + 'static,
+    T: IntoNode<T>,
+{
+    let node_children = expect_context::<SignalNodeChildren<T>>(cx);
+    let selection = expect_context::<RwSignal<Selection<T>>>(cx);
+    let (get_item, _) = create_signal(cx, item.row);
 
+    let node = create_read_slice(cx, node_children, move |nodes| {
+        nodes.get(&get_item()).cloned()
+    });
+
+    let (is_expanded, set_expanded) = create_slice(
+        cx,
+        node_children,
+        move |nodes| {
+            nodes
+                .get(&get_item())
+                .map(|n| n.is_expanded)
+                .unwrap_or_default()
+        },
+        move |nodes, n| {
+            nodes.get_mut(&get_item()).map(|node| node.is_expanded = n);
+        },
+    );
+
+    let child_class = move || {
+        let mut class = String::from("nested ");
+        if is_expanded.get() {
+            class += "active "
+        }
+        return class;
+    };
+
+    let caret_class = move || {
+        if is_expanded.get() {
+            "caret fas fa-caret-down"
+        } else {
+            "caret fas fa-caret-right"
+        }
+    };
+
+    let on_click = move |_: MouseEvent| {
+        selection
+            .update(|sel| sel.set_active(get_item().clone(), !sel.is_active(&get_item().clone())));
+    };
+
+    let on_caret_click = move |e: MouseEvent| {
+        e.stop_propagation();
+        set_expanded.set(!is_expanded.get())
+    };
+
+    let depth_style = move || {
+        let margin = format!(
+            "{}em",
+            1.2 * node().map(|n| n.depth).unwrap_or_default() as f64
+        );
+        let style = format!("padding-left:{}", margin);
+        style
+    };
+
+    view! { cx,
+    <li>
+        <div style={ depth_style } class=class on:click=on_click>
+            <Show when= move || { get_item.get().get_children().len() > 0 }
+            fallback= move |_| {}
+            ><span class=caret_class on:click=on_caret_click/></Show>
+        { children(cx) }</div>
+        <ul class=child_class>
+        <For
+            each=item.children
+            key=|c| c.id
+            view=move |cx, item| {
+                view! { cx, {
+                    item.row.clone().into_view(cx)
+                }}
+            }
+        />
+        </ul>
+    </li>
+    }
 }

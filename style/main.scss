@@ -2,7 +2,7 @@ $body-bg-color-dark: #242424;
 $select-color-dark: #8BE9FD;
 $select-color-hover-dark: #8BE9FDCC;
 $interactable-bg-color-dark: #444444;
-$interactable-hover-color-dark: #444444;
+$interactable-hover-color-dark: #333333;
 $border-color-dark: #FFFFFF80;
 
 * {
@@ -29,29 +29,41 @@ body {
     div {
         color: white;
         font-size: 24px;
-        padding: 8px;
+        padding: 2px;
         border-radius: 0.6em;
     }
 
-    span {
+    & > span {
         padding: 0px;
         display: flex;
         flex-wrap: wrap;
         align-content: center;
-
-        &:last-child {
-            padding-left: 0.5em;
-            margin: 0px;
-            width: 100%;
-        }
     }
-    
+
     .row {
-        display: flex;
-        margin: 4px;
-        white-space: nowrap;
-        padding-left: 0.5em;
         cursor: default;
+        display: flex;
+        margin: 2px;
+        min-height: 1.5em;
+    }
+
+    .row-body {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        button {
+            font-size: 1.5rem;
+            width: 2.25rem;
+            height: 2.25rem;
+            border-radius: 1rem;
+            border: 0px;
+            background: #666666;
+
+            &:hover {
+                background: #555555;
+            }
+        }
     }
 
     .selectable {
@@ -62,8 +74,11 @@ body {
     }
 
     .selected {
-        color: black;
         background: $select-color-dark;
+
+        * { 
+            color: black;
+        }
 
         &:hover {
             color: black;
@@ -75,7 +90,11 @@ body {
         cursor: pointer;
         user-select: none; /* Prevent text selection */
         min-width: 24px;
-        padding: 0px;
+        padding: 2px;
+        padding-left: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
     }
 
     .caret::before {

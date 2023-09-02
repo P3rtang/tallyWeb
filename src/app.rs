@@ -1,16 +1,17 @@
 #![allow(unused_braces)]
 #![allow(non_snake_case)]
-use leptos::{*};
+use js_sys::Date;
+use leptos::{ev::MouseEvent, *};
 use leptos_meta::*;
 use leptos_router::*;
-use js_sys::Date;
 
 use std::{
+    cmp::PartialEq,
     sync::{Arc, Mutex},
     time::Duration,
 };
 
-use crate::treeview::{*};
+use crate::treeview::*;
 
 #[component]
 pub fn App(cx: Scope) -> impl IntoView {
@@ -20,7 +21,8 @@ pub fn App(cx: Scope) -> impl IntoView {
     view! { cx,
         // injects a stylesheet into the document <head>
         // id=leptos means cargo-leptos will hot-reload this stylesheet
-        <Stylesheet id="leptos" href="/pkg/tally_web.css"/>
+        <Stylesheet href="/pkg/tally_web.css"/>
+        <Stylesheet href="/stylers.css"/>
         <Script src="https://kit.fontawesome.com/7173474e94.js" crossorigin="anonymous"/>
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg"/>
 
@@ -61,45 +63,12 @@ fn NotFound(cx: Scope) -> impl IntoView {
     }
 }
 
-macro_rules! enclose {
-    ( ($( $x:ident ),*) $y:expr ) => {
-        {
-            $(let $x = $x.clone();)*
-            $y
-        }
-    };
-}
-
-#[derive(Debug)]
-pub struct ArcCountable(
-    Arc<Mutex<Box<dyn Countable>>>,
-    Option<RwSignal<i32>>,
-    Option<RwSignal<Duration>>,
-    Option<Memo<f64>>,
-);
+#[derive(Debug, Clone)]
+pub struct ArcCountable(Arc<Mutex<Box<dyn Countable>>>);
 
 impl ArcCountable {
     fn new(countable: Box<dyn Countable>) -> Self {
-        return Self(Arc::new(Mutex::new(countable)), None, None, None);
-    }
-
-    fn setup_signals(&mut self, cx: Scope) {
-        let count_signal = create_rw_signal(cx, self.value());
-        self.1 = Some(count_signal);
-
-        let time_signal = create_rw_signal(cx, self.duration());
-        self.2 = Some(time_signal);
-
-        let clone = self.clone();
-        let progress_signal = create_memo(
-            cx,
-            enclose!((clone) move |_| {
-                count_signal.with(|v| clone.progress(*v))
-            }),
-        );
-        self.3 = Some(progress_signal);
-
-        let _ = self.0.try_lock().map(|mut c| c.get_phases_mut().iter_mut().for_each(|p| p.setup_signals(cx)));
+        return Self(Arc::new(Mutex::new(countable)));
     }
 
     fn name(&self) -> String {
@@ -115,51 +84,160 @@ impl ArcCountable {
     }
 
     fn progress(&self, value: i32) -> f64 {
-        return 1.0 - (1.0 - 1.0_f64 / 8192.0).powi(value)
+        return 1.0 - (1.0 - 1.0_f64 / 8192.0).powi(value);
+    }
+
+    fn new_phase(&self) -> ArcCountable {
+        let n_phase = self
+            .0
+            .try_lock()
+            .map(|c| c.get_phases().len() + 1)
+            .unwrap_or(1);
+        let _ = self
+            .0
+            .try_lock()
+            .map(|mut c| c.new_phase(format!("Phase {n_phase}")));
+        self.get_children().last().cloned().unwrap()
+    }
+}
+
+impl PartialEq for ArcCountable {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(&*self.0, &*other.0)
+    }
+}
+
+impl Eq for ArcCountable {}
+
+impl core::hash::Hash for ArcCountable {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        std::ptr::hash(&*self.0, state)
+    }
+}
+
+impl std::ops::Deref for ArcCountable {
+    type Target = Mutex<Box<dyn Countable>>;
+
+    fn deref(&self) -> &Self::Target {
+        return &*self.0;
     }
 }
 
 impl IntoNode<ArcCountable> for ArcCountable {
     fn into_node(self, cx: Scope, depth: usize) -> TreeViewNode<ArcCountable> {
-        return TreeViewNode::new(
-            cx,
-            depth,
-            self.clone(),
-        )
+        return TreeViewNode::new(cx, self.clone(), depth);
     }
 
     fn into_view(self, cx: Scope) -> View {
-        view! { cx, 
-            {self.name()} 
-            <button/>
-        }.into_view(cx)
+        let node_children = expect_context::<SignalNodeChildren<ArcCountable>>(cx);
+        let selection = expect_context::<RwSignal<Selection<ArcCountable>>>(cx);
+
+        let item = create_rw_signal(cx, self.clone());
+        let get_node = create_read_slice(cx, node_children, move |node_signal| {
+            node_signal.get(&item.get()).cloned().unwrap()
+        });
+
+        let (sel_slice, _) = create_slice(
+            cx,
+            selection,
+            move |sel| sel.0.get(&item()).cloned().unwrap_or_default(),
+            move |sel, n| {
+                sel.0.insert(item(), n);
+            },
+        );
+
+        let click_new_phase = move |e: MouseEvent| {
+            e.stop_propagation();
+            item().new_phase();
+            get_node().children.set(
+                item()
+                    .get_children()
+                    .into_iter()
+                    .map(|c| c.into_node(cx, get_node().depth + 1))
+                    .collect(),
+            )
+        };
+
+        let div_class = move || {
+            let mut class = String::from("selectable row");
+            if sel_slice.get() {
+                class += " selected"
+            }
+
+            return class;
+        };
+
+        view! { cx,
+            <div>
+                <TreeViewRow item=get_node().clone() class=div_class>
+                <div class="row-body">
+                    <span> { self.name() } </span>
+                    <Show when= move || {
+                        item.get().0.try_lock().map(|c| c.has_children()).unwrap_or_default()
+                    }
+                    fallback= move |_| {}
+                    ><button on:click=click_new_phase>+</button>
+                    </Show>
+                </div>
+                </TreeViewRow>
+            </div>
+        }
+        .into_view(cx)
     }
 
     fn get_children(&self) -> Vec<ArcCountable> {
-            self.0.try_lock().map_or_else(|_| Vec::new(), |c| c.get_phases().into_iter().map(|p| p.clone()).collect())
-    }
-}
-
-impl Clone for ArcCountable {
-    fn clone(&self) -> Self {
-        Self(self.0.clone(), self.1, self.2, self.3)
+        self.0
+            .try_lock()
+            .map_or_else(
+                |_| Vec::new(),
+                |c| c.get_phases().into_iter().map(|p| p.clone()).collect(),
+            )
+            .clone()
     }
 }
 
 impl IntoView for ArcCountable {
-    fn into_view(mut self, cx: Scope) -> View {
-        if self.1.is_none() || self.2.is_none() || self.3.is_none() {
-            self.setup_signals(cx)
-        }
-        let get_value = self.1.unwrap();
-        let get_time = self.2.unwrap();
-        let get_progress = self.3.unwrap();
+    fn into_view(self, cx: Scope) -> View {
+        let state = expect_context::<RwSignal<CounterList>>(cx);
+        let item_s = create_rw_signal(cx, self.clone());
+
+        let (get_count, _) = create_slice(
+            cx,
+            state,
+            move |_| {
+                item_s
+                    .get()
+                    .0
+                    .try_lock()
+                    .map(|c| c.get_count())
+                    .unwrap_or_default()
+            },
+            move |_, count| {
+                let _ = item_s.get().0.try_lock().map(|mut c| c.set_count(count));
+            },
+        );
+
+        let (get_time, _) = create_slice(
+            cx,
+            state,
+            move |_| {
+                item_s
+                    .get()
+                    .0
+                    .try_lock()
+                    .map(|c| c.get_time())
+                    .unwrap_or_default()
+            },
+            move |_, time| {
+                let _ = item_s.get().0.try_lock().map(|mut c| c.set_time(time));
+            },
+        );
 
         view! { cx,
         <ul style="display:flex;align-items:center;flex-wrap:wrap">
             <li class="rowbox">
                 <p class="title">{ self.name() }</p>
-                <p class="info">{ move || get_value() }</p>
+                <p class="info">{ move || get_count() }</p>
             </li>
             <li class="rowbox">
                 <p class="title">Time</p>
@@ -168,9 +246,9 @@ impl IntoView for ArcCountable {
             <li class="rowbox">
                 <p class="title">Progress</p>
                 <Progressbar progress={
-                    move || get_progress()
+                    move || item_s.get().progress(get_count())
                 } class="info">{
-                    move || get_progress.with(|p| format!("{:.03}%", p * 100.0))
+                    move || get_count.with(|p| format!("{:.03}%", item_s.get().progress(*p) * 100.0))
                 }</Progressbar>
             </li>
         </ul>
@@ -200,22 +278,49 @@ fn timer(cx: Scope) {
             Duration::from_millis((1000 + now - old).into())
         } else {
             Duration::from_millis((now - old).into())
-        }
+        };
     };
 
     create_effect(cx, move |_| {
-        set_interval(move || {
-            let selection = expect_context::<RwSignal<Selection<ArcCountable>>>(cx);
-            selection.get().0
-                .into_iter()
-                .filter(|(_, b)| *b)
-                .for_each(|(c, _)| {
-                    let interval = calc_interval(Date::new_0().get_milliseconds(), time.0.get());
-                    time.1.set(Date::new_0().get_milliseconds());
-                    let _ = c.item().0.try_lock().map(|mut c| c.add_time(interval));
-                    c.item().2.map(|s| s.update(|t| *t += interval));
-                });
-        }, INTERVAL)
+        set_interval(
+            move || {
+                let state = expect_context::<RwSignal<CounterList>>(cx);
+                let selection = expect_context::<RwSignal<Selection<ArcCountable>>>(cx);
+                if state.get().is_paused {
+                    return;
+                }
+                selection
+                    .get()
+                    .0
+                    .into_iter()
+                    .filter(|(_, b)| *b)
+                    .for_each(|(c, _)| {
+                        let item_s = create_rw_signal(cx, c.clone());
+
+                        let (get_time, set_time) = create_slice(
+                            cx,
+                            state,
+                            move |_| {
+                                item_s
+                                    .get()
+                                    .0
+                                    .try_lock()
+                                    .map(|c| c.get_time())
+                                    .unwrap_or_default()
+                            },
+                            move |_, time| {
+                                let _ = item_s.get().0.try_lock().map(|mut c| c.set_time(time));
+                            },
+                        );
+
+                        let interval =
+                            calc_interval(Date::new_0().get_milliseconds(), time.0.get());
+                        time.1.set(Date::new_0().get_milliseconds());
+                        set_time.set(get_time() + interval);
+                    });
+            },
+            INTERVAL,
+        )
     });
 }
 
@@ -227,36 +332,40 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     let mut counter4 = Counter::new("Test 4");
     counter4.new_counter("sub counter".to_string());
 
-    let mut list = CounterList::new(&[counter1, counter2, counter3, counter4]);
-    list.setup_signals(cx);
-
-    let mut treeview = TreeView::new(cx);
-    treeview.set_node(cx, list.list.iter().map(|c| c.clone().into_node(cx, 0)).collect::<Vec<_>>());
-
-    create_effect(
-        cx,
-        move |_| treeview.selection_signal.with(|sel| sel.0.iter().for_each(|(c, _)| {
-            c.item().1.unwrap().set(c.item().value());
-            c.item().2.unwrap().set(c.item().duration());
-        })),
-    );
+    let list = CounterList::new(&[counter1, counter2, counter3, counter4]);
+    let state = create_rw_signal(cx, list);
+    provide_context(cx, state);
+    let treeview = TreeView::new(cx, state.get_untracked().list);
 
     let selection = expect_context::<RwSignal<Selection<ArcCountable>>>(cx);
     timer(cx);
 
     window_event_listener(ev::keypress, {
         move |ev| match ev.code().as_str() {
-            "Equal" => {
-                selection.with(|list| {
-                    list.0.iter().filter(|(_, b)| **b).for_each(|(node, _)| {
-                        let _ = node.item().0.try_lock().map(|mut c| {
-                            let prev_count = c.get_count();
-                            c.set_count(prev_count + 1);
-                            node.item().1.map(|s| s.set(prev_count + 1))
-                        });
-                    })
+            "Equal" => selection.with(|list| {
+                list.0.iter().filter(|(_, b)| **b).for_each(|(node, _)| {
+                    let state = expect_context::<RwSignal<CounterList>>(cx);
+                    let item_s = create_rw_signal(cx, node.0.clone());
+
+                    let (get_count, set_count) = create_slice(
+                        cx,
+                        state,
+                        move |_| {
+                            item_s
+                                .get()
+                                .try_lock()
+                                .map(|c| c.get_count())
+                                .unwrap_or_default()
+                        },
+                        move |_, count| {
+                            let _ = item_s.get().try_lock().map(|mut c| c.set_count(count));
+                        },
+                    );
+
+                    set_count(get_count() + 1);
                 })
-            }
+            }),
+            "KeyP" => state.update(|list| list.is_paused = !list.is_paused),
             _ => (),
         }
     });
@@ -272,7 +381,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
 #[component]
 fn CounterTreeView(cx: Scope, treeview: TreeView<ArcCountable>) -> impl IntoView {
     view! { cx,
-        { treeview.into_view(cx) }
+        { treeview }
     }
 }
 
@@ -299,7 +408,7 @@ fn InfoBox(cx: Scope) -> impl IntoView {
         <div id="InfoBox"> {
             move || selection.with(|list| {
                 list.0.iter().filter(|(_, b)| **b).map(|(rc_counter, _)| {
-                    let rc_counter_signal = create_rw_signal(cx, rc_counter.item().clone());
+                    let rc_counter_signal = create_rw_signal(cx, rc_counter.clone());
                     view! {cx, <InfoBoxRow counter=rc_counter_signal/> }
                 }).collect_view(cx)
             })
@@ -316,7 +425,7 @@ fn InfoBoxRow(cx: Scope, counter: RwSignal<ArcCountable>) -> impl IntoView {
     }
 }
 
-trait Countable: std::fmt::Debug + Send {
+pub trait Countable: std::fmt::Debug + Send {
     fn get_name(&self) -> String;
     fn get_count(&self) -> i32;
     fn set_count(&mut self, count: i32);
@@ -334,6 +443,8 @@ trait Countable: std::fmt::Debug + Send {
 
     fn get_phases(&self) -> Vec<&ArcCountable>;
     fn get_phases_mut(&mut self) -> Vec<&mut ArcCountable>;
+
+    fn has_children(&self) -> bool;
 }
 
 #[derive(Debug, Clone)]
@@ -370,19 +481,13 @@ impl Countable for Counter {
             - self.phase_list.last().map(|p| p.value()).unwrap_or(0);
         self.phase_list
             .last_mut()
-            .map(|p| {
-                p.1.map(|s| s.set(count - diff));
-                p.0.try_lock().map(|mut p| p.set_count(count - diff))
-            });
+            .map(|p| p.0.try_lock().map(|mut p| p.set_count(count - diff)));
     }
 
     fn add_count(&mut self, count: i32) {
-        self.phase_list
-            .last_mut()
-            .map(|p| {
-                p.1.map(|s| s.update(|c| *c += count));
-                let _ = p.0.try_lock().map(|mut p| p.add_count(count));
-            });
+        self.phase_list.last_mut().map(|p| {
+            let _ = p.0.try_lock().map(|mut p| p.add_count(count));
+        });
     }
 
     fn get_time(&self) -> Duration {
@@ -390,18 +495,25 @@ impl Countable for Counter {
     }
 
     fn set_time(&mut self, time: Duration) {
+        let diff = self
+            .phase_list
+            .iter()
+            .map(|p| p.duration())
+            .sum::<Duration>()
+            - self
+                .phase_list
+                .last()
+                .map(|p| p.duration())
+                .unwrap_or_default();
         self.phase_list
             .last_mut()
-            .map(|p| p.0.lock().map(|mut p| p.set_time(time)));
+            .map(|p| p.0.lock().map(|mut p| p.set_time(time - diff)));
     }
 
     fn add_time(&mut self, dur: Duration) {
-        self.phase_list
-            .last_mut()
-            .map(|p| {
-                p.2.map(|s| s.update(|time| *time += dur));
-                let _ = p.0.try_lock().map(|mut p| p.add_time(dur));
-            });
+        self.phase_list.last_mut().map(|p| {
+            let _ = p.0.try_lock().map(|mut p| p.add_time(dur));
+        });
     }
 
     fn get_progress(&self) -> f64 {
@@ -425,6 +537,16 @@ impl Countable for Counter {
         };
     }
 
+    fn new_phase(&mut self, name: String) {
+        self.phase_list
+            .push(ArcCountable::new(Box::new(Phase::new(name))))
+    }
+
+    fn new_counter(&mut self, name: String) {
+        self.phase_list
+            .push(ArcCountable::new(Box::new(Counter::new(name))))
+    }
+
     fn get_phases(&self) -> Vec<&ArcCountable> {
         self.phase_list.iter().collect()
     }
@@ -433,12 +555,8 @@ impl Countable for Counter {
         return self.phase_list.iter_mut().collect();
     }
 
-    fn new_counter(&mut self, name: String) {
-        self.phase_list.push(ArcCountable::new(Box::new(Counter::new(name))))
-    }
-
-    fn new_phase(&mut self, name: String) {
-        self.phase_list.push(ArcCountable::new(Box::new(Phase::new(name))))
+    fn has_children(&self) -> bool {
+        true
     }
 }
 
@@ -506,26 +624,31 @@ impl Countable for Phase {
         self.is_active = active
     }
 
+    fn new_phase(&mut self, _: String) {
+        return ();
+    }
+
+    fn new_counter(&mut self, _: String) {
+        return ();
+    }
+
     fn get_phases(&self) -> Vec<&ArcCountable> {
-        return vec![]
+        return vec![];
     }
 
     fn get_phases_mut(&mut self) -> Vec<&mut ArcCountable> {
         return vec![];
     }
 
-    fn new_counter(&mut self, _: String) {
-        return ()
-    }
-
-    fn new_phase(&mut self, _: String) {
-        return ()
+    fn has_children(&self) -> bool {
+        false
     }
 }
 
 #[derive(Debug, Clone)]
 struct CounterList {
     list: Vec<ArcCountable>,
+    is_paused: bool,
 }
 
 impl CounterList {
@@ -535,16 +658,8 @@ impl CounterList {
                 .into_iter()
                 .map(|c| ArcCountable::new(Box::new(c.clone())))
                 .collect(),
+            is_paused: true,
         };
-    }
-
-    fn setup_signals(&mut self, cx: Scope) {
-        self.list.iter_mut().for_each(|c| {
-            c.setup_signals(cx);
-            c.0.lock().unwrap().get_phases_mut().iter_mut().for_each(|p| {
-                p.setup_signals(cx);
-            })
-        })
     }
 }
 

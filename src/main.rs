@@ -27,7 +27,7 @@ cfg_if::cfg_if! {
                     .service(Files::new("/assets", site_root))
                     // serve the favicon from /favicon.ico
                     .service(favicon)
-                    // .service(css)
+                    .service(css)
                     .leptos_routes(
                         leptos_options.to_owned(),
                         routes.to_owned(),
@@ -52,9 +52,9 @@ cfg_if::cfg_if! {
             )).await?)
         }
 
-        #[actix_web::get("style.css")]
+        #[actix_web::get("/stylers.css")]
         async fn css() -> impl Responder {
-            actix_files::NamedFile::open_async("./tally_web.css").await
+            actix_files::NamedFile::open_async("target/stylers/main.css").await
         }
     } else {
         fn main() {
