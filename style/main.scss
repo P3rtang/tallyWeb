@@ -13,6 +13,7 @@ body {
     margin: 0px;
     background: $body-bg-color-dark;
 }
+
 button {
     background: #666666;
 
@@ -26,12 +27,31 @@ button {
 }
 
 .treeview {
-    height: 90vh;
-    min-width: 320px;
+    height: 96vh;
     padding-inline-start: 8px;
     padding-inline-end: 8px;
     border-right: 1px solid $border-color-dark;
     padding: 12px;
+    min-width: 22rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+
+    &::-webkit-scrollbar {
+        width: 7px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: rgba(155, 155, 155, 0.5);
+        border-radius: 20px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: $interactable-bg-color-dark;
+    }
+
+    &::-webkit-scrollbar-thumb:active {
+        background: $select-color-dark;
+    }
 
     .new-counter {
         border: none;
@@ -43,29 +63,35 @@ button {
     }
 
     li {
-        width: 100%;
         display: grid;
     }
 
     div {
         color: white;
-        font-size: 1.5rem;
-        padding: 2px;
+        font-size: 1.4rem;
+        padding: 0px;
         border-radius: 0.6em;
     }
 
+    ul {
+        padding: 0px;
+        margin: 0px;
+    }
+
     & > span {
+        margin: 0px;
         padding: 0px;
         display: flex;
-        flex-wrap: wrap;
-        align-content: center;
     }
 
     .row {
         cursor: default;
         display: flex;
-        margin: 2px;
-        min-height: 1.6em;
+        min-width: 10em;
+        padding: 0px;
+        margin-top: 2px;
+        margin-bottom: 2px;
+        min-height: 1.8em;
     }
 
     .row-body {
@@ -74,11 +100,16 @@ button {
         align-items: center;
         width: 100%;
         button {
-            font-size: 1.5rem;
-            width: 2.25rem;
-            height: 2.25rem;
-            border-radius: 1rem;
+            margin: 2px;
+            height: 36px;
+            width: 36px;
+            font-size: 1.4rem;
+            border-radius: 16px;
             border: 0px;
+            align-content: center;
+            align-items: center;
+            display: flex;
+            justify-content: center;
         }
     }
 

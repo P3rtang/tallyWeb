@@ -107,14 +107,6 @@ impl PartialEq for ArcCountable {
     }
 }
 
-impl Eq for ArcCountable {}
-
-impl core::hash::Hash for ArcCountable {
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        std::ptr::hash(&*self.0, state)
-    }
-}
-
 impl std::ops::Deref for ArcCountable {
     type Target = Mutex<Box<dyn Countable>>;
 
@@ -136,15 +128,16 @@ impl TreeViewNodeItem<ArcCountable> for ArcCountable {
         let (sel_slice, _) = create_slice(
             cx,
             selection,
-            move |sel| sel.0.get(&item()).cloned().unwrap_or_default(),
+            move |sel| sel.get(&item()),
             move |sel, n| {
-                sel.0.insert(item(), n);
+                sel.insert(item(), n);
             },
         );
 
         let click_new_phase = move |e: MouseEvent| {
             e.stop_propagation();
             let phase = item().new_phase();
+            get_node().set_expand(true);
             get_node().insert_child(cx, phase)
         };
 
@@ -159,7 +152,7 @@ impl TreeViewNodeItem<ArcCountable> for ArcCountable {
 
         view! { cx,
             <div>
-                <TreeViewRow item=get_node().clone() class=div_class>
+                <TreeViewRow node=get_node().clone() class=div_class selection=selection>
                 <div class="row-body">
                     <span> { self.name() } </span>
                     <Show when= move || {
@@ -293,13 +286,13 @@ fn timer(cx: Scope) {
                             move |_| {
                                 item_s
                                     .get()
-                                    .0
+                                    .into_inner()
                                     .try_lock()
                                     .map(|c| c.get_time())
                                     .unwrap_or_default()
                             },
                             move |_, time| {
-                                let _ = item_s.get().0.try_lock().map(|mut c| c.set_time(time));
+                                let _ = item_s.get().into_inner().try_lock().map(|mut c| c.set_time(time));
                             },
                         );
 
@@ -316,13 +309,7 @@ fn timer(cx: Scope) {
 
 #[component]
 pub fn HomePage(cx: Scope) -> impl IntoView {
-    let counter1 = Counter::new("Test 1");
-    let counter2 = Counter::new("Test 2");
-    let counter3 = Counter::new("Test 3");
-    let mut counter4 = Counter::new("Test 4");
-    counter4.new_counter("sub counter".to_string());
-
-    let list = CounterList::new(&[counter1, counter2, counter3, counter4]);
+    let list = CounterList::new(&[]);
     let state = create_rw_signal(cx, list);
     provide_context(cx, state);
 
@@ -337,7 +324,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
             "Equal" => selection_signal.with(|list| {
                 list.0.iter().filter(|(_, b)| **b).for_each(|(node, _)| {
                     let state = expect_context::<RwSignal<CounterList>>(cx);
-                    let item_s = create_rw_signal(cx, node.0.clone());
+                    let item_s = create_rw_signal(cx, node.clone().into_inner().clone());
 
                     let (get_count, set_count) = create_slice(
                         cx,
@@ -407,7 +394,7 @@ fn InfoBox(cx: Scope) -> impl IntoView {
         <div id="InfoBox"> {
             move || selection.with(|list| {
                 list.0.iter().filter(|(_, b)| **b).map(|(rc_counter, _)| {
-                    let rc_counter_signal = create_rw_signal(cx, rc_counter.clone());
+                    let rc_counter_signal = create_rw_signal(cx, rc_counter.clone().into_inner());
                     view! {cx, <InfoBoxRow counter=rc_counter_signal/> }
                 }).collect_view(cx)
             })
