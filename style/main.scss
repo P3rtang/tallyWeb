@@ -188,6 +188,7 @@ li {
     }
 
     .rowbox {
+        user-select: none;
         display: flex;
         align-items: center;
         background: $interactable-bg-color-dark;

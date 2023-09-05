@@ -1,5 +1,6 @@
 #![allow(unused_braces)]
 #![allow(non_snake_case)]
+
 use js_sys::Date;
 use leptos::{ev::MouseEvent, *};
 use leptos_meta::*;
@@ -118,21 +119,12 @@ impl std::ops::Deref for ArcCountable {
 impl TreeViewNodeItem<ArcCountable> for ArcCountable {
     fn into_view(self, cx: Scope) -> View {
         let node_children = expect_context::<SignalNodeChildren<ArcCountable>>(cx);
-        let selection = expect_context::<RwSignal<Selection<ArcCountable>>>(cx);
+        let selection = expect_context::<Selection<ArcCountable>>(cx);
 
         let item = create_rw_signal(cx, self.clone());
         let get_node = create_read_slice(cx, node_children, move |node_signal| {
             node_signal.get(&item.get()).cloned().unwrap()
         });
-
-        let (sel_slice, _) = create_slice(
-            cx,
-            selection,
-            move |sel| sel.get(&item()),
-            move |sel, n| {
-                sel.insert(item(), n);
-            },
-        );
 
         let click_new_phase = move |e: MouseEvent| {
             e.stop_propagation();
@@ -141,18 +133,9 @@ impl TreeViewNodeItem<ArcCountable> for ArcCountable {
             get_node().insert_child(cx, phase)
         };
 
-        let div_class = move || {
-            let mut class = String::from("selectable row");
-            if sel_slice.get() {
-                class += " selected"
-            }
-
-            return class;
-        };
-
         view! { cx,
             <div>
-                <TreeViewRow node=get_node().clone() class=div_class selection=selection>
+                <TreeViewRow node=get_node().clone() selection=selection>
                 <div class="row-body">
                     <span> { self.name() } </span>
                     <Show when= move || {
@@ -184,7 +167,7 @@ impl IntoView for ArcCountable {
         let state = expect_context::<RwSignal<CounterList>>(cx);
         let item_s = create_rw_signal(cx, self.clone());
 
-        let (get_count, _) = create_slice(
+        let (get_count, set_count) = create_slice(
             cx,
             state,
             move |_| {
@@ -216,9 +199,14 @@ impl IntoView for ArcCountable {
             },
         );
 
+        let on_count_click = move |e: MouseEvent| {
+            e.stop_propagation();
+            set_count(get_count() + 1)
+        };
+
         view! { cx,
         <ul style="display:flex;align-items:center;flex-wrap:wrap">
-            <li class="rowbox">
+            <li class="rowbox" on:click=on_count_click>
                 <p class="title">{ self.name() }</p>
                 <p class="info">{ move || get_count() }</p>
             </li>
@@ -267,40 +255,39 @@ fn timer(cx: Scope) {
     create_effect(cx, move |_| {
         set_interval(
             move || {
-                let state = expect_context::<RwSignal<CounterList>>(cx);
-                let selection = expect_context::<RwSignal<Selection<ArcCountable>>>(cx);
-                if state.get().is_paused {
-                    return;
+                if let Some(selection) = use_context::<Selection<ArcCountable>>(cx) {
+                    let state = expect_context::<RwSignal<CounterList>>(cx);
+                    if state.get().is_paused {
+                        return;
+                    }
+                    selection
+                        .get()
+                        .into_iter()
+                        .filter(|(_, b)| *b)
+                        .for_each(|(c, _)| {
+                            let item_s = create_rw_signal(cx, c.clone());
+
+                            let (get_time, set_time) = create_slice(
+                                cx,
+                                state,
+                                move |_| {
+                                    item_s
+                                        .get()
+                                        .try_lock()
+                                        .map(|c| c.get_time())
+                                        .unwrap_or_default()
+                                },
+                                move |_, time| {
+                                    let _ = item_s.get().try_lock().map(|mut c| c.set_time(time));
+                                },
+                            );
+
+                            let interval =
+                                calc_interval(Date::new_0().get_milliseconds(), time.0.get());
+                            time.1.set(Date::new_0().get_milliseconds());
+                            set_time.set(get_time() + interval);
+                        });
                 }
-                selection
-                    .get()
-                    .0
-                    .into_iter()
-                    .filter(|(_, b)| *b)
-                    .for_each(|(c, _)| {
-                        let item_s = create_rw_signal(cx, c.clone());
-
-                        let (get_time, set_time) = create_slice(
-                            cx,
-                            state,
-                            move |_| {
-                                item_s
-                                    .get()
-                                    .into_inner()
-                                    .try_lock()
-                                    .map(|c| c.get_time())
-                                    .unwrap_or_default()
-                            },
-                            move |_, time| {
-                                let _ = item_s.get().into_inner().try_lock().map(|mut c| c.set_time(time));
-                            },
-                        );
-
-                        let interval =
-                            calc_interval(Date::new_0().get_milliseconds(), time.0.get());
-                        time.1.set(Date::new_0().get_milliseconds());
-                        set_time.set(get_time() + interval);
-                    });
             },
             INTERVAL,
         )
@@ -313,39 +300,43 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     let state = create_rw_signal(cx, list);
     provide_context(cx, state);
 
-    let selection = Selection::<ArcCountable>::new();
-    let selection_signal = create_rw_signal(cx, selection.clone());
+    let selection: PointerMap<ArcCountable, bool> = PointerMap::new();
+    let selection_signal = create_rw_signal(cx, selection);
     provide_context(cx, selection_signal);
 
     timer(cx);
 
     window_event_listener(ev::keypress, {
-        move |ev| match ev.code().as_str() {
-            "Equal" => selection_signal.with(|list| {
-                list.0.iter().filter(|(_, b)| **b).for_each(|(node, _)| {
-                    let state = expect_context::<RwSignal<CounterList>>(cx);
-                    let item_s = create_rw_signal(cx, node.clone().into_inner().clone());
+        move |ev| {
+            if let Some(selection) = use_context::<Selection<ArcCountable>>(cx) {
+                match ev.code().as_str() {
+                    "Equal" => selection.with(|list| {
+                        list.into_iter().filter(|(_, b)| **b).for_each(|(node, _)| {
+                            let state = expect_context::<RwSignal<CounterList>>(cx);
+                            let item_s = create_rw_signal(cx, node.clone());
 
-                    let (get_count, set_count) = create_slice(
-                        cx,
-                        state,
-                        move |_| {
-                            item_s
-                                .get()
-                                .try_lock()
-                                .map(|c| c.get_count())
-                                .unwrap_or_default()
-                        },
-                        move |_, count| {
-                            let _ = item_s.get().try_lock().map(|mut c| c.set_count(count));
-                        },
-                    );
+                            let (get_count, set_count) = create_slice(
+                                cx,
+                                state,
+                                move |_| {
+                                    item_s
+                                        .get()
+                                        .try_lock()
+                                        .map(|c| c.get_count())
+                                        .unwrap_or_default()
+                                },
+                                move |_, count| {
+                                    let _ = item_s.get().try_lock().map(|mut c| c.set_count(count));
+                                },
+                            );
 
-                    set_count(get_count() + 1);
-                })
-            }),
-            "KeyP" => state.update(|list| list.is_paused = !list.is_paused),
-            _ => (),
+                            set_count(get_count() + 1);
+                        })
+                    }),
+                    "KeyP" => state.update(|list| list.is_paused = !list.is_paused),
+                    _ => (),
+                }
+            }
         }
     });
 
@@ -363,7 +354,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
 
     view! { cx,
         <div id="HomeGrid">
-            <TreeView start_nodes=list_signal after=move |cx| {
+            <TreeViewWidget start_nodes=list_signal after=move |cx| {
                 view! {cx, <button on:click=on_click class="new-counter">New Counter</button> }
             }/>
             <InfoBox/>
@@ -389,15 +380,14 @@ where
 
 #[component]
 fn InfoBox(cx: Scope) -> impl IntoView {
-    let selection = expect_context::<RwSignal<Selection<ArcCountable>>>(cx);
+    let selection = expect_context::<Selection<ArcCountable>>(cx);
     view! { cx,
         <div id="InfoBox"> {
             move || selection.with(|list| {
-                list.0.iter().filter(|(_, b)| **b).map(|(rc_counter, _)| {
-                    let rc_counter_signal = create_rw_signal(cx, rc_counter.clone().into_inner());
+                list.into_iter().filter(|(_, b)| **b).map(|(rc_counter, _)| {
+                    let rc_counter_signal = create_rw_signal(cx, rc_counter.clone());
                     view! {cx, <InfoBoxRow counter=rc_counter_signal/> }
-                }).collect_view(cx)
-            })
+                }).collect_view(cx)})
         } </div>
     }
 }

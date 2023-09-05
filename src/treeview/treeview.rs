@@ -3,40 +3,74 @@
 #![allow(dead_code)]
 
 use core::fmt::Debug;
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref};
 
 use leptos::{ev::MouseEvent, *};
 
-pub trait PointerMap<T, F> {
-    fn get(&self, key: &T) -> Option<&F>;
-    fn insert_wrapper(&mut self, key: T, value: F);
-}
+pub type SignalNodeChildren<T> = RwSignal<PointerMap<T, TreeViewNode<T>>>;
+pub type Selection<T> = RwSignal<PointerMap<T, bool>>;
 
-pub type SignalNodeChildren<T> = RwSignal<Box<dyn PointerMap<T, TreeViewNode<T>>>>;
+#[derive(Debug, Clone)]
+pub struct PointerMap<K, V>(HashMap<HashWrapper<K>, V>)
+where K: Deref + Clone;
 
-impl<T> PointerMap<T, TreeViewNode<T>> for HashMap<HashWrapper<T>, TreeViewNode<T>>
-where T: TreeViewNodeItem<T>
+impl<K, V> PointerMap<K, V>
+where K: Deref + Clone,
 {
-    fn get(&self, key: &T) -> Option<&TreeViewNode<T>> {
-        return self.get(&HashWrapper(key.clone()))
+    pub fn new() -> Self {
+        Self(HashMap::new())
     }
 
-    fn insert_wrapper(&mut self, key: T, value: TreeViewNode<T>) {
-        self.insert(HashWrapper(key), value);
+    pub fn get(&self, key: &K) -> Option<&V> {
+        return self.0.get(&HashWrapper(key.clone()))
+    }
+
+    pub fn insert(&mut self, key: K, value: V) {
+        self.0.insert(HashWrapper(key), value);
+    }
+
+    pub fn clear(&mut self) {
+        self.0.clear()
+    }
+}
+
+impl<'a, K, V> IntoIterator for &'a PointerMap<K, V>
+where K: Deref + Clone {
+    type Item = (&'a K, &'a V);
+
+    type IntoIter = std::vec::IntoIter<(&'a K, &'a V)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter().map(|(w, v)| (w.inner(), v)).collect::<Vec<_>>().into_iter()
+    }
+}
+
+impl<K, V> IntoIterator for PointerMap<K, V>
+where K: Deref + Clone
+{
+    type Item = (K, V);
+
+    type IntoIter = std::vec::IntoIter<(K, V)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter().map(|(w, v)| (w.into_inner(), v)).collect::<Vec<_>>().into_iter()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct HashWrapper<T>(T)
-where T: TreeViewNodeItem<T>;
+struct HashWrapper<T>(T)
+where T: Deref + Clone;
 
-impl<T: TreeViewNodeItem<T>> HashWrapper<T> {
+impl<T: Deref + Clone> HashWrapper<T> {
+    pub fn inner(&self) -> &T {
+        return &self.0
+    }
     pub fn into_inner(self) -> T {
         return self.0
     }
 }
 
-impl<T: TreeViewNodeItem<T>> PartialEq for HashWrapper<T> {
+impl<T: Deref + Clone> PartialEq for HashWrapper<T> {
     fn eq(&self, other: &Self) -> bool {
         let ptr = std::ptr::addr_of!(*self.0) as *const usize;
         let other_ptr = std::ptr::addr_of!(*other.0) as *const usize;
@@ -44,9 +78,9 @@ impl<T: TreeViewNodeItem<T>> PartialEq for HashWrapper<T> {
     }
 }
 
-impl<T: TreeViewNodeItem<T>> Eq for HashWrapper<T> {}
+impl<T: Deref + Clone> Eq for HashWrapper<T> {}
 
-impl<T: TreeViewNodeItem<T>> core::hash::Hash for HashWrapper<T> {
+impl<T: Deref + Clone> core::hash::Hash for HashWrapper<T> {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         let ptr = std::ptr::addr_of!(*self.0) as *const usize;
         ptr.hash(state)
@@ -62,7 +96,7 @@ pub trait TreeViewNodeItem<T: TreeViewNodeItem<T>>:
 }
 
 #[component]
-pub fn TreeView<T, F, A, IV>(
+pub fn TreeViewWidget<T, F, A, IV>(
     cx: Scope,
     start_nodes: F,
     after: A,
@@ -73,7 +107,7 @@ where
     A: Fn(Scope) -> IV + 'static,
     IV: IntoView,
 {
-    let item_node_map: Box<dyn PointerMap<T, TreeViewNode<T>>> = Box::new(HashMap::<HashWrapper<T>, TreeViewNode<T>>::new());
+    let item_node_map: PointerMap<T, TreeViewNode<T>> = PointerMap::new();
     let item_node_signal = create_rw_signal(cx, item_node_map);
     provide_context(cx, item_node_signal);
 
@@ -131,7 +165,7 @@ where
 
         let item_node_signal = expect_context::<SignalNodeChildren<T>>(cx);
         item_node_signal.update(|map| {
-            map.insert_wrapper(item.clone(), this.clone());
+            map.insert(item.clone(), this.clone());
         });
 
         this.children.set(
@@ -178,44 +212,16 @@ where
 
 impl<T> Eq for TreeViewNode<T> where T: TreeViewNodeItem<T> {}
 
-#[derive(Debug, Clone)]
-pub struct Selection<T>(pub HashMap<HashWrapper<T>, bool>)
-where
-    T: TreeViewNodeItem<T>;
-
-impl<T: TreeViewNodeItem<T>> Selection<T> {
-    pub fn new() -> Self {
-        return Self(HashMap::new());
-    }
-
-    pub fn insert(&mut self, node: T, is_active: bool) {
-        self.0.clear();
-        self.0.insert(HashWrapper(node), is_active);
-    }
-
-    pub fn get(&self, node: &T) -> bool {
-        return self.0.get(&HashWrapper(node.clone())).map(|b| *b).unwrap_or_default();
-    }
-}
-
-impl<T: TreeViewNodeItem<T>> Default for Selection<T> {
-    fn default() -> Self {
-        Self(HashMap::new())
-    }
-}
-
 #[component]
-pub fn TreeViewRow<T, F>(
+pub fn TreeViewRow<T>(
     cx: Scope,
-    class: F,
     children: Children,
     node: TreeViewNode<T>,
 
     #[prop(optional)]
-    selection: Option<RwSignal<Selection<T>>>,
+    selection: Option<Selection<T>>,
 ) -> impl IntoView
 where
-    F: Fn() -> String + 'static,
     T: TreeViewNodeItem<T>,
 {
     let (node, _) = create_signal(cx, node);
@@ -236,10 +242,22 @@ where
         }
     };
 
+
+    let div_class = move || {
+        let mut class = String::from("selectable row");
+        if selection.map(|sel| sel.get().get(&node().row).cloned()).flatten().unwrap_or_default() {
+            class += " selected"
+        }
+
+        return class;
+    };
+
     let on_click = move |_: MouseEvent| {
-        selection.map(|signal|
-            signal.update(|sel| sel.insert(node().row.clone(), !sel.get(&node().row.clone())))
-        );
+        selection.map(|sel| sel.update(|map| {
+            let current_value = map.get(&node().row).cloned().unwrap_or_default();
+            map.clear();
+            map.insert(node().row, !current_value)
+        }));
     };
 
     let on_caret_click = move |e: MouseEvent| {
@@ -255,7 +273,7 @@ where
 
     view! { cx,
     <li>
-        <div style={ depth_style } class=class on:click=on_click>
+        <div style={ depth_style } class=div_class on:click=on_click>
             <Show when= move || { node().row.get_children().len() > 0 }
             fallback= move |_| {}
             ><span class=caret_class on:click=on_caret_click/></Show>
