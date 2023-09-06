@@ -1,18 +1,49 @@
 #![allow(unused_braces)]
 #![allow(non_snake_case)]
+#![allow(elided_lifetimes_in_associated_constant)]
 
 use js_sys::Date;
 use leptos::{ev::MouseEvent, *};
 use leptos_meta::*;
 use leptos_router::*;
+use serde::{Deserialize, Serialize};
 
+use crate::treeview::*;
 use std::{
     cmp::PartialEq,
     sync::{Arc, Mutex},
     time::Duration,
 };
 
-use crate::treeview::*;
+#[server(GetCounters, "/api")]
+async fn get_counters(user_id: i32) -> Result<Vec<SerCounter>, ServerFnError> {
+    use backend;
+    let pool = backend::create_pool().await?;
+
+    let data = backend::get_counter_by_user_id(&pool, user_id).await?;
+    let counters: Vec<SerCounter> = data.into_iter().map(|db_c| db_c.into()).collect();
+
+    return Ok(counters);
+}
+
+#[server(GetPhaseById, "/api")]
+async fn get_phase_by_id(phase_id: i32) -> Result<Phase, ServerFnError> {
+    use backend;
+    let pool = backend::create_pool().await?;
+
+    let data = backend::get_phase_by_id(&pool, phase_id).await?;
+}
+
+cfg_if::cfg_if!(
+    if #[cfg(feature = "ssr")] {
+        use backend::DbCounter;
+        impl From<DbCounter> for SerCounter {
+            fn from(value: DbCounter) -> Self {
+                todo!()
+            }
+        }
+    }
+);
 
 #[component]
 pub fn App(cx: Scope) -> impl IntoView {
@@ -296,9 +327,25 @@ fn timer(cx: Scope) {
 
 #[component]
 pub fn HomePage(cx: Scope) -> impl IntoView {
+    let (user, _) = create_signal(cx, 0);
+
+    let data = create_resource(cx, user, |_| async move { get_counters(0).await });
+
     let list = CounterList::new(&[]);
     let state = create_rw_signal(cx, list);
     provide_context(cx, state);
+
+    create_effect(cx, move |_| {
+        data.loading().get();
+        let list = match data.read(cx).map(|d| d.ok()).flatten() {
+            None => CounterList::new(&[]),
+            Some(data_list) => data_list.into(),
+        };
+
+        state.set(list)
+    });
+
+    let state = expect_context::<RwSignal<CounterList>>(cx);
 
     let selection: PointerMap<ArcCountable, bool> = PointerMap::new();
     let selection_signal = create_rw_signal(cx, selection);
@@ -340,7 +387,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
         }
     });
 
-    let (list_signal, set_list) = create_slice(
+    let (list_signal, add_counter) = create_slice(
         cx,
         state,
         move |list| list.list.clone(),
@@ -349,7 +396,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
 
     let on_click = move |_| {
         let name = format!("Counter {}", list_signal().len() + 1);
-        set_list(name)
+        add_counter(name)
     };
 
     view! { cx,
@@ -423,8 +470,16 @@ pub trait Countable: std::fmt::Debug + Send {
     fn has_children(&self) -> bool;
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SerCounter {
+    id: i32,
+    name: String,
+    phase_list: Vec<Phase>,
+}
+
 #[derive(Debug, Clone)]
-struct Counter {
+pub struct Counter {
+    id: i32,
     name: String,
     phase_list: Vec<ArcCountable>,
 
@@ -433,13 +488,28 @@ struct Counter {
 
 #[allow(dead_code)]
 impl Counter {
-    fn new(name: impl ToString) -> Counter {
-        let phase = ArcCountable::new(Box::new(Phase::new("Phase 1")));
-        return Counter {
+    fn new(name: impl ToString) -> Result<Self, ()> {
+        let name_str = name.to_string();
+        let counter_id: i32 = -1;
+        let phase_id: i32 = -1;
+        // spawn_local(async move {
+        //     let counter_id = new_counter(0, name_str).await.map_err(|_| ()).expect("Could not create Counter");
+        //     let phase_id = new_phase(String::from("Phase 1")).await.expect("Could not create Phase");
+        //     insert_phase(counter_id, phase_id).await.expect("Could not assign phase to Counter");
+        // });
+
+        // if counter_id == -1 || phase_id == -1 {
+        //     return Err(())
+        // }
+
+        let phase = ArcCountable::new(Box::new(Phase::new(phase_id, "Phase 1")));
+
+        return Ok(Counter {
+            id: counter_id,
             name: name.to_string(),
             phase_list: vec![phase],
             is_active: false,
-        };
+        });
     }
 }
 
@@ -514,13 +584,24 @@ impl Countable for Counter {
     }
 
     fn new_phase(&mut self, name: String) {
+        let clone = self.clone();
+        let name_clone = name.clone();
+        let phase_id = -1;
+        // spawn_local(async move {
+        //     let phase_id = new_phase(name_clone).await.expect("Could not create Phase");
+        //     insert_phase(clone.id, phase_id).await.expect("Could not assign phase to Counter");
+        // });
+
+        // if phase_id == -1 {
+        //     return
+        // }
         self.phase_list
-            .push(ArcCountable::new(Box::new(Phase::new(name))))
+            .push(ArcCountable::new(Box::new(Phase::new(phase_id, name))))
     }
 
     fn new_counter(&mut self, name: String) {
         self.phase_list
-            .push(ArcCountable::new(Box::new(Counter::new(name))))
+            .push(ArcCountable::new(Box::new(Counter::new(name).unwrap())))
     }
 
     fn get_phases(&self) -> Vec<&ArcCountable> {
@@ -536,17 +617,19 @@ impl Countable for Counter {
     }
 }
 
-#[derive(Debug, Clone)]
-struct Phase {
-    name: String,
-    count: i32,
-    time: Duration,
-    is_active: bool,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Phase {
+    pub id: i32,
+    pub name: String,
+    pub count: i32,
+    pub time: Duration,
+    pub is_active: bool,
 }
 
 impl Phase {
-    fn new(name: impl ToString) -> Self {
+    fn new(id: i32, name: impl ToString) -> Self {
         return Phase {
+            id,
             name: name.to_string(),
             count: 0,
             time: Duration::ZERO,
@@ -569,7 +652,9 @@ impl Countable for Phase {
     }
 
     fn add_count(&mut self, count: i32) {
-        self.count += count
+        self.count += count;
+        let clone = self.clone();
+        // spawn_local(async { save_phase( clone.into()).await.unwrap() })
     }
 
     fn get_time(&self) -> Duration {
@@ -640,7 +725,30 @@ impl CounterList {
 
     fn new_counter(&mut self, name: impl ToString) {
         self.list
-            .push(ArcCountable::new(Box::new(Counter::new(name))));
+            .push(ArcCountable::new(Box::new(Counter::new(name).unwrap())));
+    }
+}
+
+impl From<Vec<SerCounter>> for CounterList {
+    fn from(value: Vec<SerCounter>) -> Self {
+        let list = value.into_iter().map(|sc| {
+            let phase_list: Vec<ArcCountable> = sc
+                .phase_list
+                .into_iter()
+                .map(|p| ArcCountable::new(Box::new(p)))
+                .collect();
+            let counter = Counter {
+                id: sc.id,
+                name: sc.name,
+                phase_list,
+                is_active: false,
+            };
+            ArcCountable::new(Box::new(counter))
+        }).collect();
+        return Self {
+            list,
+            is_paused: true,
+        };
     }
 }
 
