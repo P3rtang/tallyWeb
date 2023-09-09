@@ -1,17 +1,14 @@
 #![allow(unused_braces)]
 #![allow(non_snake_case)]
 #![allow(elided_lifetimes_in_associated_constant)]
-use gloo_storage::{LocalStorage, Storage};
+use gloo_storage::{SessionStorage, Storage};
 use js_sys::Date;
 use leptos::{ev::MouseEvent, *};
 use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    pages::{CreateAccount, LoginPage},
-    treeview::*,
-};
+use crate::{pages::*, treeview::*};
 use std::{
     any::Any,
     cmp::PartialEq,
@@ -91,7 +88,7 @@ pub async fn create_account(
     password_repeat: String,
 ) -> Result<SessionUser, ServerFnError> {
     if password != password_repeat {
-        return Err(backend::LoginError::WrongPassword.into());
+        return Err(backend::LoginError::InvalidPassword.into());
     }
 
     let pool = backend::create_pool().await?;
@@ -105,41 +102,55 @@ pub async fn create_account(
     return Ok(session_user);
 }
 
-#[server(GetCountersById, "/api")]
-async fn get_counters_by_user_id(user_id: i32) -> Result<Vec<SerCounter>, ServerFnError> {
+#[server(GetUserIdFromName, "/api")]
+async fn get_id_from_username(
+    cx: Scope,
+    username: String,
+    token: String,
+) -> Result<i32, ServerFnError> {
     let pool = backend::create_pool().await?;
 
-    let data = backend::get_counters_by_user_id(&pool, user_id).await?;
+    let id = match backend::auth::get_user(&pool, username, token, true).await {
+        Ok(id) => id.id,
+        Err(backend::AuthorizationError::Internal(err)) => return Err(err)?,
+        Err(_) => return Ok(-1),
+    };
+
+    return Ok(id);
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CounterResponse {
+    Counters(Vec<SerCounter>),
+    InvalidUsername,
+    InvalidToken,
+}
+
+#[server(GetCountersByUserName, "/api")]
+async fn get_counters_by_user_name(
+    cx: Scope,
+    username: String,
+    token: String,
+) -> Result<CounterResponse, ServerFnError> {
+    let pool = backend::create_pool().await?;
+
+    let user = match backend::auth::get_user(&pool, username, token, true).await {
+        Ok(user) => user,
+        Err(backend::AuthorizationError::Internal(err)) => Err(err)?,
+        Err(backend::AuthorizationError::UserNotFound) => {
+            return Ok(CounterResponse::InvalidUsername)
+        }
+        Err(_) => return Ok(CounterResponse::InvalidToken),
+    };
+
+    let data = user.get_counters(&pool).await?;
 
     let mut counters = Vec::new();
     for db_counter in data {
         counters.push(SerCounter::from_db(db_counter).await)
     }
 
-    return Ok(counters);
-}
-
-#[server(GetUserId, "/api")]
-async fn get_user_id(username: String, token: String) -> Result<Option<i32>, ServerFnError> {
-    let pool = backend::create_pool().await?;
-
-    let id = backend::get_id_from_username(&pool, username, token).await?;
-
-    return Ok(id);
-}
-
-#[server(GetCountersByUsername, "/api")]
-async fn get_counter_by_user_name(
-    username: String,
-    token: String,
-) -> Result<Vec<SerCounter>, ServerFnError> {
-    let pool = backend::create_pool().await?;
-
-    let id = backend::get_id_from_username(&pool, username, token)
-        .await?
-        .ok_or(backend::AuthorizationError::InvalidToken)?;
-
-    return get_counters_by_user_id(id).await;
+    return Ok(CounterResponse::Counters(counters));
 }
 
 #[server(GetPhaseById, "/api")]
@@ -156,22 +167,11 @@ async fn create_counter(
     token: String,
     name: String,
 ) -> Result<i32, ServerFnError> {
-    let pool = backend::create_pool().await.map_err(|err| {
-        log!("{:?}", err);
-        err
-    })?;
+    let pool = backend::create_pool().await?;
+    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    let counter_id = backend::create_counter(&pool, user.id, name).await?;
 
-    let user_id = get_user_id(username, token)
-        .await?
-        .ok_or(backend::AuthorizationError::InvalidToken)?;
-
-    let id = backend::create_counter(&pool, user_id, name)
-        .await
-        .map_err(|err| {
-            log!("{:?}", err);
-            err
-        })?;
-    return Ok(id);
+    return Ok(counter_id);
 }
 
 #[server(CreatePhase, "/api")]
@@ -239,7 +239,8 @@ pub fn App(cx: Scope) -> impl IntoView {
                 <Routes>
                     <Route path="" view=HomePage/>
                     <Route path="/login" view=LoginPage/>
-                    <Route path="/create_account" view=CreateAccount/>
+                    <Route path="/create-account" view=CreateAccount/>
+                    <Route path="/privacy-policy" view=PrivacyPolicy/>
                     <Route path="/*any" view=NotFound/>
                 </Routes>
             </main>
@@ -532,35 +533,32 @@ fn timer(cx: Scope) {
     });
 }
 
+#[cfg(not(ssr))]
 pub fn navigate(cx: Scope, page: &'static str) {
-    create_effect(cx, move |_| {
-        request_animation_frame(move || {
-            let navigate = leptos_router::use_navigate(cx);
-            let _ = navigate(page, Default::default());
-        });
-    })
+    request_animation_frame(move || {
+        let navigate = leptos_router::use_navigate(cx);
+        let _ = navigate(page, Default::default());
+    });
 }
 
-#[component]
+// #[component]
 pub fn HomePage(cx: Scope) -> impl IntoView {
     let session_user = expect_context::<RwSignal<SessionUser>>(cx);
+    create_effect(cx, move |_| {
+        session_user.update(|s| s.update());
+    });
     let data = create_local_resource(cx, session_user, move |user| async move {
-        if user.username == "" {
-            return Vec::new();
+        match get_counters_by_user_name(cx, user.username.clone(), user.token.clone()).await {
+            Ok(CounterResponse::Counters(counters)) => counters,
+            _ if !user.has_value() => Vec::new(),
+            _ => {
+                navigate(cx, "/login");
+                Vec::new()
+            }
         }
-        let counters = get_counter_by_user_name(user.username.clone(), user.token.clone())
-            .await
-            .unwrap_or_default();
-        counters
     });
 
-    create_effect(cx, move |_| {
-        if let Ok(user) = LocalStorage::get::<SessionUser>("user_session") && user.username != "" {
-            session_user.set(user);
-        } else {
-            navigate(cx, "/login");
-        };
-    });
+    create_effect(cx, move |_| {});
 
     let list = CounterList::new(&[]);
     let state = create_rw_signal(cx, list);
@@ -608,28 +606,34 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                             set_count(get_count() + 1);
                         })
                     }),
-                    "KeyP" => state.update(|list| list.toggle_paused()),
+                    "KeyP" => {
+                        let _ = state.try_update(|list| list.toggle_paused());
+                    }
                     _ => (),
                 }
             }
         }
     });
 
-    let user_id = expect_context::<RwSignal<SessionUser>>(cx);
-
     let on_click = move |_| {
+        let user = expect_context::<RwSignal<SessionUser>>(cx);
+        user.update_untracked(|s| s.update());
         create_local_resource(
             cx,
             || (),
-            move |_| async move {
+            async move |_| {
                 let name = format!("Counter {}", state.get_untracked().list.len() + 1);
                 let phase_name = String::from("Phase 1");
-                let counter_id = create_counter(user_id().username, user_id().token, name.clone())
-                    .await
-                    .map_err(|err| {
-                        log!("Count not create Counter, Got: {err}");
-                    })
-                    .unwrap();
+                let counter_id = create_counter(
+                    user.get_untracked().username,
+                    user.get_untracked().token,
+                    name.clone(),
+                )
+                .await
+                .map_err(|err| {
+                    log!("Count not create Counter, Got: {err}");
+                })
+                .unwrap();
                 let phase_id = create_phase(phase_name.clone())
                     .await
                     .map_err(|err| {
@@ -1072,4 +1076,20 @@ impl std::ops::Index<usize> for CounterList {
 pub struct SessionUser {
     username: String,
     token: String,
+}
+
+impl SessionUser {
+    pub fn has_value(&self) -> bool {
+        if self.username == "" || self.token.len() != 32 {
+            return false;
+        } else {
+            return true;
+        }
+    }
+    pub fn update(&mut self) {
+        if let Ok(user) = SessionStorage::get::<SessionUser>("user_session") {
+            self.username = user.username;
+            self.token = user.token;
+        }
+    }
 }

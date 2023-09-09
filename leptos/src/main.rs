@@ -1,4 +1,6 @@
 #![allow(unused_imports)]
+use actix_web::http::StatusCode;
+use actix_web::HttpRequest;
 use leptos::{leptos_dom::console_log, *};
 use tally_web::app::*;
 
@@ -21,6 +23,7 @@ cfg_if::cfg_if! {
 
                 App::new()
                     .route("/api/{tail:.*}", leptos_actix::handle_server_fns())
+                    .service(privacy_policy)
                     // serve JS/WASM/CSS from `pkg`
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
                     // serve other assets from the `assets` directory
@@ -55,6 +58,15 @@ cfg_if::cfg_if! {
         #[actix_web::get("/stylers.css")]
         async fn css() -> impl Responder {
             actix_files::NamedFile::open_async("../target/stylers/main.css").await
+        }
+
+        #[actix_web::get("/privacy-policy")]
+        async fn privacy_policy(
+            leptos_options: actix_web::web::Data<leptos::LeptosOptions>,
+        ) -> impl Responder {
+            let leptos_options = leptos_options.into_inner();
+            let site_root = &leptos_options.site_root;
+            actix_files::NamedFile::open_async(format!("{site_root}/tallyWeb-privacy-policy.html")).await
         }
     } else {
         fn main() {
