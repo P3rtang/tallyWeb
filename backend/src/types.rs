@@ -1,6 +1,8 @@
 use rand::Rng;
 use sqlx::{query, query_as, PgPool};
 
+use crate::AuthorizationError;
+
 pub struct DbCounter {
     pub id: i32,
     pub user_id: i32,
@@ -33,6 +35,11 @@ impl DbUser {
             r#"
             insert into auth_tokens (id, user_id)
             values ($1, $2)
+
+            ON CONFLICT (user_id) DO
+            update
+            set id = $1
+            
             returning *
             "#,
             format!("{:X}", token_id),
@@ -84,6 +91,21 @@ impl DbUser {
             return TokenStatus::Invalid;
         }
     }
+
+    pub async fn get_counters(&self, pool: &PgPool) -> Result<Vec<DbCounter>, AuthorizationError> {
+        let data = query_as!(
+            DbCounter,
+            r#"
+            select * from counters
+            where user_id = $1
+            "#,
+            self.id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        return Ok(data);
+    }
 }
 
 pub struct DbAuthToken {
@@ -92,6 +114,7 @@ pub struct DbAuthToken {
     pub expire_on: chrono::NaiveDateTime,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TokenStatus {
     Valid,
     Invalid,

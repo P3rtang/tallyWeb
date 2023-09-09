@@ -23,8 +23,10 @@ impl DatabaseError for SignupError {}
 
 #[derive(Debug, Error)]
 pub enum LoginError {
+    #[error("Account does not exist")]
+    InvalidUsername,
     #[error("User provide the wrong password")]
-    WrongPassword,
+    InvalidPassword,
     #[error("Internal Server error when logging in user")]
     Internal(#[from] sqlx::Error),
 }
@@ -70,21 +72,6 @@ pub async fn execute_multi_file(pool: &PgPool, _path: &str) -> Result<(), sqlx::
         sqlx::query(line).execute(pool).await?;
     }
     return Ok(());
-}
-
-pub async fn get_counters_by_user_id(
-    pool: &PgPool,
-    user_id: i32,
-) -> Result<Vec<DbCounter>, sqlx::error::Error> {
-    let counters = sqlx::query_as!(
-        DbCounter,
-        r#"SELECT * FROM counters WHERE user_id = $1"#,
-        user_id
-    )
-    .fetch_all(pool)
-    .await?;
-
-    return Ok(counters);
 }
 
 pub async fn get_counter_by_id(pool: &PgPool, id: i32) -> Result<DbCounter, sqlx::error::Error> {
@@ -203,31 +190,4 @@ pub async fn update_counter(pool: &PgPool, counter: DbCounter) -> Result<(), sql
     .await?;
 
     return Ok(());
-}
-
-pub async fn get_id_from_username(
-    pool: &PgPool,
-    username: String,
-    token: String,
-) -> Result<Option<i32>, sqlx::error::Error> {
-    struct Id {
-        id: i32,
-    }
-    let id = match sqlx::query_as!(
-        Id,
-        r#"
-        select (id) from users
-        where username = $1 AND token = $2
-        "#,
-        username,
-        token,
-    )
-    .fetch_one(pool)
-    .await
-    {
-        Ok(id) => Some(id.id),
-        Err(sqlx::Error::RowNotFound) => None,
-        Err(err) => return Err(err),
-    };
-    return Ok(id);
 }

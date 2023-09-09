@@ -62,14 +62,14 @@ pub async fn login_user(
     .await
     {
         Ok(user) => user,
-        Err(_) => return Err(LoginError::WrongPassword),
+        Err(_) => return Err(LoginError::InvalidUsername),
     };
 
     let parsed_hash = PasswordHash::new(&user.password).unwrap();
     // Trait objects for algorithms to support
     let algs: &[&dyn PasswordVerifier] = &[&Pbkdf2];
     if let Err(_err) = parsed_hash.verify_password(algs, password) {
-        return Err(LoginError::WrongPassword);
+        return Err(LoginError::InvalidPassword);
     };
 
     user.new_token(pool).await?;
@@ -81,8 +81,9 @@ pub async fn get_user(
     pool: &PgPool,
     username: String,
     token: String,
-) -> Result<DbUser, impl DatabaseError> {
-    let user = match query_as!(
+    do_regenerate_token: bool,
+) -> Result<DbUser, AuthorizationError> {
+    let mut user = match query_as!(
         DbUser,
         r#"
         select * from users
@@ -94,9 +95,7 @@ pub async fn get_user(
     .await
     {
         Ok(user) => user,
-        Err(sqlx::Error::Database(error)) if error.constraint() == Some("users_username_key") => {
-            return Err(AuthorizationError::UserNotFound)
-        }
+        Err(sqlx::Error::RowNotFound) => return Err(AuthorizationError::UserNotFound),
         Err(err) => Err(err)?,
     };
 
@@ -104,11 +103,17 @@ pub async fn get_user(
         return Err(AuthorizationError::InvalidToken);
     }
 
+    let status = user.token_status(pool).await;
+    if do_regenerate_token && (status == TokenStatus::Expired || status == TokenStatus::Invalid) {
+        user.new_token(pool).await?;
+    }
+
+    // recheck status after regeneration
     match user.token_status(pool).await {
         TokenStatus::Expired => return Err(AuthorizationError::ExpiredToken),
         // TODO: add logging for invalid token use, user might be suspicious
         TokenStatus::Invalid => return Err(AuthorizationError::InvalidToken),
-        TokenStatus::Valid => user.get_token(pool).await?,
+        TokenStatus::Valid => {}
     };
 
     return Ok(user);

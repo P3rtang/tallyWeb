@@ -1,26 +1,26 @@
 create table counters(
-    id          serial          NOT NULL,
+    id          serial          UNIQUE NOT NULL,
     user_id     integer         NOT NULL,
     name        varchar         NOT NULL,
     phases      integer[]       DEFAULT '{}' NOT NULL
 );
 
 create table phases(
-    id          serial          NOT NULL,
+    id          serial          UNIQUE NOT NULL,
     name        varchar         NOT NULL,
     count       integer         NOT NULL,
     time        bigint          NOT NULL
 );
 
 create table users(
-    id          serial          NOT NULL,
-    username    varchar         NOT NULL,
+    id          serial          UNIQUE NOT NULL,
+    username    varchar         UNIQUE NOT NULL,
     password    varchar         NOT NULL,
     token       varchar
 );
 
 create table auth_tokens(
-    id          varchar         NOT NULL,
-    user_id     integer         NOT NULL,
+    id          varchar         UNIQUE NOT NULL,
+    user_id     integer         UNIQUE NOT NULL,
     expire_on   timestamp       DEFAULT now() + interval '1' day NOT NULL
 )
