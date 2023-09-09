@@ -3,9 +3,16 @@ name = "backend"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["rlib"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 chrono = { version = "0.4.29", features = ["serde"] }
+dotenvy = "0.15.7"
+pbkdf2 = { version = "0.12.2", features = ["password-hash", "simple"] }
+rand = "0.8.5"
 serde = { version = "1.0.188", features = ["derive"] }
 sqlx = { version = "0.7.1", features = ["postgres", "chrono", "runtime-tokio-rustls", "macros"] }
+thiserror = "1.0.48"

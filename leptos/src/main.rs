@@ -1,5 +1,5 @@
 #![allow(unused_imports)]
-use leptos::{*, leptos_dom::console_log};
+use leptos::{leptos_dom::console_log, *};
 use tally_web::app::*;
 
 cfg_if::cfg_if! {
@@ -54,7 +54,7 @@ cfg_if::cfg_if! {
 
         #[actix_web::get("/stylers.css")]
         async fn css() -> impl Responder {
-            actix_files::NamedFile::open_async("target/stylers/main.css").await
+            actix_files::NamedFile::open_async("../target/stylers/main.css").await
         }
     } else {
         fn main() {

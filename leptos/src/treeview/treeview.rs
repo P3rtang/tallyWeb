@@ -280,7 +280,7 @@ where
         { children(cx) }</div>
         <ul class=child_class>
         <For
-            each=node().children
+            each=move || { node().children.get() }
             key=|c| c.id
             view=move |cx, item| {
                 view! { cx, {

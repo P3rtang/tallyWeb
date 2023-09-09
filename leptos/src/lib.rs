@@ -1,6 +1,8 @@
 #![feature(async_closure)]
+#![feature(let_chains)]
 
 pub mod app;
+mod pages;
 mod treeview;
 
 use cfg_if::cfg_if;
