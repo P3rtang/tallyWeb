@@ -1,4 +1,4 @@
-use gloo_storage::{LocalStorage, Storage};
+use gloo_storage::{SessionStorage, Storage};
 use leptos::*;
 use leptos_router::{ActionForm, A};
 
@@ -17,18 +17,12 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
     };
 
     create_effect(cx, move |_| {
-        let _ = LocalStorage::set(
-            "user_session",
-            &action
-                .value()
-                .get()
-                .map(|v| v.ok())
-                .flatten()
-                .unwrap_or_default(),
-        );
-
-        if action.value().get().is_some() && action.value().get().unwrap().is_ok() {
-            crate::app::navigate(cx, "/")
+        if let Some(login) = action.value().get().map(|v| v.ok()).flatten() {
+            if let Ok(_) = SessionStorage::set("user_session", login.clone()) {
+                if action.value().get().is_some() && action.value().get().unwrap().is_ok() {
+                    crate::app::navigate(cx, "/")
+                }
+            }
         }
     });
 
@@ -41,9 +35,15 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
             <input type="password" placeholder="Enter Password" name="password" required/>
 
             <button type="submit">Login</button>
-            <label style=show_err>Invalid Login Information</label>
+            <label style=show_err>{ move || {
+                if let Some(Err(err)) = action.value().get() {
+                    err.to_string().split_once(": ").map(|s| s.1.to_string()).unwrap_or_default()
+                } else {
+                    String::new()
+                }
+            }}</label>
         </div>
         </ActionForm>
-        <A href="/create_account">Create New Account</A>
+        <A href="/create-account">Create New Account</A>
     }
 }
