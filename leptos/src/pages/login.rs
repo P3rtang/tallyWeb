@@ -30,20 +30,34 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
         <ActionForm action=action>
         <div class="container">
             <label for="username"><b>Username</b></label>
-                <input type="text" placeholder="Enter Username" name="username" required/>
+                <input
+                    type="text"
+                    placeholder="Enter Username"
+                    name="username"
+                    id="username"
+                    autocomplete="username"
+                    required
+                />
             <label for="password"><b>Password</b></label>
-            <input type="password" placeholder="Enter Password" name="password" required/>
+            <input
+                type="password"
+                placeholder="Enter Password"
+                name="password"
+                id="password"
+                autocomplete="current-password"
+                required
+            />
 
             <button type="submit">Login</button>
-            <label style=show_err>{ move || {
-                if let Some(Err(err)) = action.value().get() {
-                    err.to_string().split_once(": ").map(|s| s.1.to_string()).unwrap_or_default()
-                } else {
-                    String::new()
-                }
-            }}</label>
         </div>
         </ActionForm>
+        <p style=show_err>{ move || {
+            if let Some(Err(err)) = action.value().get() {
+                err.to_string().split_once(": ").map(|s| s.1.to_string()).unwrap_or_default()
+            } else {
+                String::new()
+            }
+        }}</p>
         <A href="/create-account">Create New Account</A>
     }
 }
