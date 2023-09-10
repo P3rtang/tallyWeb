@@ -230,11 +230,16 @@ pub fn App(cx: Scope) -> impl IntoView {
         <Script src="https://kit.fontawesome.com/7173474e94.js" crossorigin="anonymous"/>
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg"/>
 
-        // sets the document title
         <Title text="TallyWeb"/>
 
-        // content for this welcome page
         <Router>
+            <nav>
+                <A href="/"><img src="favicon.svg" width=48 height=48 alt="Home" class="tooltip-parent"/>
+                    <span class="tooltip bottom">Home</span>
+                </A>
+                <A href="/login">Login</A>
+            </nav>
+
             <main>
                 <Routes>
                     <Route path="" view=HomePage/>
@@ -550,7 +555,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     let data = create_local_resource(cx, session_user, move |user| async move {
         match get_counters_by_user_name(cx, user.username.clone(), user.token.clone()).await {
             Ok(CounterResponse::Counters(counters)) => counters,
-            _ if !user.has_value() => Vec::new(),
+            _ if user.has_value() => Vec::new(),
             _ => {
                 navigate(cx, "/login");
                 Vec::new()
@@ -1080,6 +1085,7 @@ pub struct SessionUser {
 
 impl SessionUser {
     pub fn has_value(&self) -> bool {
+        // TODO: make this function check the backend for validity
         if self.username == "" || self.token.len() != 32 {
             return false;
         } else {
