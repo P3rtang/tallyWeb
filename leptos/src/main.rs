@@ -1,6 +1,4 @@
 #![allow(unused_imports)]
-use actix_web::http::StatusCode;
-use actix_web::HttpRequest;
 use leptos::{leptos_dom::console_log, *};
 use tally_web::app::*;
 
@@ -9,6 +7,8 @@ cfg_if::cfg_if! {
         use actix_files::Files;
         use actix_web::*;
         use leptos_actix::{generate_route_list, LeptosRoutes};
+        use actix_web::http::StatusCode;
+        use actix_web::HttpRequest;
 
         #[actix_web::main]
         async fn main() -> std::io::Result<()> {
