@@ -3,7 +3,7 @@ use leptos::*;
 use leptos_router::{ActionForm, FromFormData, A};
 use web_sys::SubmitEvent;
 
-use crate::app::CreateAccount;
+use crate::app::{navigate, CreateAccount};
 
 #[component]
 pub fn CreateAccount(cx: Scope) -> impl IntoView {
@@ -53,10 +53,8 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
 
     view! { cx,
         <ActionForm action=action on:submit=on_submit>
-            <div class="container">
+            <div class="container login-form">
                 <h1>Sign Up</h1>
-                <p>Please fill in this form to create an account.</p>
-                <hr/>
 
                 <label for="username"><b>Username</b></label>
                 <input type="text" placeholder="Enter Username" name="username" required/>
@@ -69,14 +67,16 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
 
                 // <p>By creating an account you agree to our <a href="#" style="color:dodgerblue">Terms & Privacy</a>.</p>
 
-                <div class="clearfix">
-                    <button type="button" class="cancelbtn">Cancel</button>
-                    <button type="submit" class="signupbtn">Sign Up</button>
+                <div class="clearfix action-buttons">
+                    <div class="action-buttons-el">
+                        <input type="checkbox" required></input>
+                        <A href="/privacy-policy" class="acceptTS"><b>Terms&Conditions</b></A>
+                    </div>
+                    <button type="button" on:click=move |_| { navigate(cx, "/login") }><i class="fa-solid fa-xmark"></i></button>
+                    <button type="submit" class="signupbtn"><i class="fa-solid fa-right-to-bracket"></i></button>
                 </div>
             </div>
-            <label style=show_err>{ move || { err_message() } }</label>
-            <input type="checkbox" required></input>
         </ActionForm>
-        <A href="/privacy-policy" class="acceptTS">Accept Terms & Service</A>
+        <label style=show_err>{ move || { err_message() } }</label>
     }
 }

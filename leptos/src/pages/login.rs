@@ -1,6 +1,9 @@
 use gloo_storage::{SessionStorage, Storage};
 use leptos::*;
 use leptos_router::{ActionForm, A};
+use web_sys::SubmitEvent;
+
+use crate::app::navigate;
 
 #[component]
 pub fn LoginPage(cx: Scope) -> impl IntoView {
@@ -19,16 +22,14 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
     create_effect(cx, move |_| {
         if let Some(login) = action.value().get().map(|v| v.ok()).flatten() {
             if let Ok(_) = SessionStorage::set("user_session", login.clone()) {
-                if action.value().get().is_some() && action.value().get().unwrap().is_ok() {
-                    crate::app::navigate(cx, "/")
-                }
+                crate::app::navigate(cx, "/")
             }
         }
     });
 
     view! { cx,
         <ActionForm action=action>
-        <div class="container">
+        <div class="container login-form">
             <label for="username"><b>Username</b></label>
                 <input
                     type="text"
@@ -48,16 +49,18 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
                 required
             />
 
-            <button type="submit">Login</button>
+            <div class="action-buttons">
+            <button type="button" on:click= move |_| navigate(cx, "/create-account")><i class="fa-solid fa-user-plus"></i></button>
+                <button type="submit"><i class="fa-solid fa-right-to-bracket"></i></button>
+            </div>
         </div>
         </ActionForm>
-        <p style=show_err>{ move || {
+        <p style=show_err class="error-box">{ move || {
             if let Some(Err(err)) = action.value().get() {
                 err.to_string().split_once(": ").map(|s| s.1.to_string()).unwrap_or_default()
             } else {
                 String::new()
             }
         }}</p>
-        <A href="/create-account">Create New Account</A>
     }
 }

@@ -2,8 +2,8 @@ $body-bg-color-dark: #242424;
 $nav-bg-color-dark: #303030;
 $select-color-dark: #8BE9FD;
 $select-color-hover-dark: #8BE9FDCC;
-$interactable-bg-color-dark: #444444;
-$interactable-hover-color-dark: #333333;
+$interactable-bg-color-dark: #666666;
+$interactable-hover-color-dark: #555555;
 $border-color-dark: #FFFFFF80;
 
 * {
@@ -169,7 +169,7 @@ button {
     .selectable {
         &:hover {
             color: white;
-            background: $interactable-hover-color-dark;
+            background: #333333;
         }
     }
 
@@ -269,4 +269,113 @@ li {
     .longtime {
         width: 320px;
     }
+}
+
+form {
+    height: 100%;
+    text-align: center;
+    text-align: -webkit-center;
+}
+
+.login-form {
+    display: flex;
+    flex-flow: column;
+    width: 25em;
+    height: 100%;
+    justify-content: center;
+
+    h1 {
+        color: #6272A4;
+    }
+
+    label {
+        display: block;
+        visibility: hidden;
+    }
+
+    input[type="text"], input[type="password"] {
+        height: 3em;
+        min-width: calc(100% - 16px);
+        border-radius: 3em;
+        border: none;
+        outline: none;
+        background: $interactable-hover-color-dark;
+        padding-left: 16px;
+    }
+
+    input:focus-visible {
+        background: $interactable-bg-color-dark;
+    }
+
+    .action-buttons {
+        display: flex;
+        justify-content: right;
+        margin-top: 16px;
+
+        > *:not(:first-child) {
+            margin-left: 16px;
+        }
+
+        .action-buttons-el {
+            display: flex;
+            align-items: center;
+            background: $interactable-bg-color-dark;
+            color: black;
+            height: 3.5rem;
+            border-radius: 3rem;
+            border: none;
+            font-size: 1.2rem;
+
+            a {
+                margin-right: 16px;
+                color: #8494B6;
+            }
+        }
+
+        input[type="checkbox"] {
+            appearance: none;
+            border: 2px solid white;
+            background: white;
+            height: 1.6rem;
+            width: 1.6rem;
+            font-size: 1.6em;
+            border-radius: 4px;
+            margin: 16px;
+        }
+
+        input[type="checkbox"]:checked {
+            background: #6272A4;
+        }
+
+        button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 3.5rem;
+            width: 3.5rem;
+            border-radius: 3em;
+            border: none;
+            font-size: 1.2rem;
+        }
+
+    }
+}
+
+.error-box {
+    position: fixed;
+    top: 52px;
+    right: 16px;
+    padding: 24px;
+    border: 2px solid red;
+    border-radius: 16px;
+    background: #444444;
+}
+
+
+.remove-underline {
+    text-decoration: none;
+}
+
+.page {
+    color: #AAAADD;
 }
