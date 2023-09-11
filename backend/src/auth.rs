@@ -13,10 +13,13 @@ pub async fn insert_user(
 ) -> Result<DbUser, SignupError> {
     // generate salt
     let salt = SaltString::generate(&mut OsRng);
+    let mut params = pbkdf2::Params::default();
+    params.rounds = 100_000;
 
     // Hash password to PHC string ($pbkdf2-sha256$...
     let hashed_password = Pbkdf2
-        .hash_password(password.as_bytes(), &salt)
+        .hash_password_customized(password.as_bytes(), None, None, params, &salt)
+        // .hash_password(password.as_bytes(), &salt)
         .unwrap()
         .to_string();
 
