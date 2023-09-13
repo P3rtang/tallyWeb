@@ -30,15 +30,21 @@ impl DbUser {
         let mut rng = rand::thread_rng();
         let token_id: u128 = rng.gen();
 
+        query!(
+            r#"
+            delete from auth_tokens
+            where user_id = $1
+            "#,
+            self.id
+        )
+        .execute(pool)
+        .await?;
+
         let token = query_as!(
             DbAuthToken,
             r#"
             insert into auth_tokens (id, user_id)
             values ($1, $2)
-
-            ON CONFLICT (user_id) DO
-            update
-            set id = $1
             
             returning *
             "#,
