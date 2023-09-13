@@ -7,22 +7,26 @@ use std::{collections::HashMap, ops::Deref};
 
 use leptos::{ev::MouseEvent, *};
 
-pub type SignalNodeChildren<T> = RwSignal<PointerMap<T, TreeViewNode<T>>>;
-pub type Selection<T> = RwSignal<PointerMap<T, bool>>;
+use crate::app::AccountAccentColor;
 
-#[derive(Debug, Clone)]
+pub type SignalNodeChildren<T> = RwSignal<PointerMap<T, TreeViewNode<T>>>;
+pub type SelectionSignal<T> = RwSignal<SelectionModel<T>>;
+
+#[derive(Debug, Clone, Default)]
 pub struct PointerMap<K, V>(HashMap<HashWrapper<K>, V>)
-where K: Deref + Clone;
+where
+    K: Deref + Clone;
 
 impl<K, V> PointerMap<K, V>
-where K: Deref + Clone,
+where
+    K: Deref + Clone,
 {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
-        return self.0.get(&HashWrapper(key.clone()))
+        return self.0.get(&HashWrapper(key.clone()));
     }
 
     pub fn insert(&mut self, key: K, value: V) {
@@ -35,38 +39,50 @@ where K: Deref + Clone,
 }
 
 impl<'a, K, V> IntoIterator for &'a PointerMap<K, V>
-where K: Deref + Clone {
+where
+    K: Deref + Clone,
+{
     type Item = (&'a K, &'a V);
 
     type IntoIter = std::vec::IntoIter<(&'a K, &'a V)>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.iter().map(|(w, v)| (w.inner(), v)).collect::<Vec<_>>().into_iter()
+        self.0
+            .iter()
+            .map(|(w, v)| (w.inner(), v))
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
 
 impl<K, V> IntoIterator for PointerMap<K, V>
-where K: Deref + Clone
+where
+    K: Deref + Clone,
 {
     type Item = (K, V);
 
     type IntoIter = std::vec::IntoIter<(K, V)>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter().map(|(w, v)| (w.into_inner(), v)).collect::<Vec<_>>().into_iter()
+        self.0
+            .into_iter()
+            .map(|(w, v)| (w.into_inner(), v))
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
 
 #[derive(Debug, Clone)]
 struct HashWrapper<T>(T)
-where T: Deref + Clone;
+where
+    T: Deref + Clone;
 
 impl<T: Deref + Clone> HashWrapper<T> {
     pub fn inner(&self) -> &T {
-        return &self.0
+        return &self.0;
     }
     pub fn into_inner(self) -> T {
-        return self.0
+        return self.0;
     }
 }
 
@@ -95,11 +111,33 @@ pub trait TreeViewNodeItem<T: TreeViewNodeItem<T>>:
     fn get_children(&self) -> Vec<T>;
 }
 
+#[derive(Debug, Clone)]
+pub struct SelectionModel<T: TreeViewNodeItem<T>> {
+    pub selection: PointerMap<T, bool>,
+    pub accent_color: Option<Signal<AccountAccentColor>>,
+}
+
+impl<T: TreeViewNodeItem<T>> SelectionModel<T> {
+    pub fn new(accent_color: Option<Signal<AccountAccentColor>>) -> Self {
+        return Self {
+            selection: PointerMap::new(),
+            accent_color,
+        };
+    }
+}
+
+impl<T: TreeViewNodeItem<T>> Default for SelectionModel<T> {
+    fn default() -> Self {
+        return Self::new(None);
+    }
+}
+
 #[component]
 pub fn TreeViewWidget<T, F, A, IV>(
     cx: Scope,
     start_nodes: F,
     after: A,
+    #[prop(optional)] selection_model: Option<RwSignal<SelectionModel<T>>>,
 ) -> impl IntoView
 where
     T: TreeViewNodeItem<T>,
@@ -124,15 +162,127 @@ where
             each=tree_nodes
             key=|c| c.id
             view=move |cx, item| {
-                view! { cx, {
-                    item.row.clone().into_view(cx)
-                }}
+                view! { cx,
+                    <TreeViewRow node=item.clone() selection_model=selection_model> {
+                        item.row.clone().into_view(cx)
+                    }</TreeViewRow>
+                }
             }
         />
         <li>{ after(cx) }</li>
         </ul>
     }
     .into_view(cx)
+}
+
+#[component]
+fn TreeViewRow<T>(
+    cx: Scope,
+    children: Children,
+    node: TreeViewNode<T>,
+
+    selection_model: Option<RwSignal<SelectionModel<T>>>,
+) -> impl IntoView
+where
+    T: TreeViewNodeItem<T>,
+{
+    let (node, _) = create_signal(cx, node);
+
+    let child_class = move || {
+        let mut class = String::from("nested ");
+        if node().is_expanded.get() {
+            class += "active "
+        }
+        return class;
+    };
+
+    let caret_class = move || {
+        if node().is_expanded.get() {
+            "caret fas fa-caret-down"
+        } else {
+            "caret fas fa-caret-right"
+        }
+    };
+
+    let div_class = move || {
+        let mut class = String::from("selectable row");
+        if selection_model
+            .map(|sel| sel.get().selection.get(&node().row).cloned())
+            .flatten()
+            .unwrap_or_default()
+        {
+            class += " selected"
+        }
+
+        return class;
+    };
+
+    let selection_style = move || {
+        if let Some(selection) = selection_model
+            && selection.get()
+                .selection
+                .get(&node().row)
+                .cloned()
+                .unwrap_or_default()
+        {
+            format!("background: {};", 
+                selection
+                    .get()
+                    .accent_color
+                    .map(|ac| ac.get().0)
+                    .unwrap_or(String::from("#8BE9FD")))
+        } else {
+            String::new()
+        }
+    };
+
+    let on_click = move |_: MouseEvent| {
+        if let Some(sel) = selection_model {
+            sel.update(|map| {
+                let current_value = map.selection.get(&node().row).cloned().unwrap_or_default();
+                map.selection.clear();
+                map.selection.insert(node().row, !current_value)
+            })
+        }
+    };
+
+    let on_caret_click = move |e: MouseEvent| {
+        e.stop_propagation();
+        node().toggle_expand()
+    };
+
+    let depth_style = move || {
+        let margin = format!("{}em", 2.0 * node().depth as f64);
+        let style = format!("padding-left:{};", margin);
+        style
+    };
+
+    view! { cx,
+    <li>
+        <div style={ move || { depth_style() + &selection_style() } } class=div_class on:click=on_click>
+            <Show
+                when= move || { node().row.get_children().len() > 0 }
+                fallback= move |_| {}
+            >
+                <span class=caret_class on:click=on_caret_click/>
+            </Show>
+            { children(cx) }
+        </div>
+        <ul class=child_class>
+        <For
+            each=move || { node().children.get() }
+            key=|c| c.id
+            view=move |cx, item| {
+                view! { cx,
+                    <TreeViewRow node=item.clone() selection_model=selection_model> {
+                        item.row.clone().into_view(cx)
+                    }</TreeViewRow>
+                }
+            }
+        />
+        </ul>
+    </li>
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -211,84 +361,3 @@ where
 }
 
 impl<T> Eq for TreeViewNode<T> where T: TreeViewNodeItem<T> {}
-
-#[component]
-pub fn TreeViewRow<T>(
-    cx: Scope,
-    children: Children,
-    node: TreeViewNode<T>,
-
-    #[prop(optional)]
-    selection: Option<Selection<T>>,
-) -> impl IntoView
-where
-    T: TreeViewNodeItem<T>,
-{
-    let (node, _) = create_signal(cx, node);
-
-    let child_class = move || {
-        let mut class = String::from("nested ");
-        if node().is_expanded.get() {
-            class += "active "
-        }
-        return class;
-    };
-
-    let caret_class = move || {
-        if node().is_expanded.get() {
-            "caret fas fa-caret-down"
-        } else {
-            "caret fas fa-caret-right"
-        }
-    };
-
-
-    let div_class = move || {
-        let mut class = String::from("selectable row");
-        if selection.map(|sel| sel.get().get(&node().row).cloned()).flatten().unwrap_or_default() {
-            class += " selected"
-        }
-
-        return class;
-    };
-
-    let on_click = move |_: MouseEvent| {
-        selection.map(|sel| sel.update(|map| {
-            let current_value = map.get(&node().row).cloned().unwrap_or_default();
-            map.clear();
-            map.insert(node().row, !current_value)
-        }));
-    };
-
-    let on_caret_click = move |e: MouseEvent| {
-        e.stop_propagation();
-        node().toggle_expand()
-    };
-
-    let depth_style = move || {
-        let margin = format!("{}em", 2.0 * node().depth as f64);
-        let style = format!("padding-left:{}", margin);
-        style
-    };
-
-    view! { cx,
-    <li>
-        <div style={ depth_style } class=div_class on:click=on_click>
-            <Show when= move || { node().row.get_children().len() > 0 }
-            fallback= move |_| {}
-            ><span class=caret_class on:click=on_caret_click/></Show>
-        { children(cx) }</div>
-        <ul class=child_class>
-        <For
-            each=move || { node().children.get() }
-            key=|c| c.id
-            view=move |cx, item| {
-                view! { cx, {
-                    item.row.clone().into_view(cx)
-                }}
-            }
-        />
-        </ul>
-    </li>
-    }
-}
