@@ -1,17 +1,18 @@
 #![allow(unused_braces)]
 #![allow(non_snake_case)]
 #![allow(elided_lifetimes_in_associated_constant)]
-use gloo_storage::{SessionStorage, Storage};
+use gloo_storage::{LocalStorage, Storage};
 use js_sys::Date;
 use leptos::{ev::MouseEvent, *};
 use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{pages::*, treeview::*};
+use crate::{elements::*, pages::*, treeview::*};
 use std::{
     any::Any,
     cmp::PartialEq,
+    fmt::Display,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -103,11 +104,7 @@ pub async fn create_account(
 }
 
 #[server(GetUserIdFromName, "/api")]
-async fn get_id_from_username(
-    cx: Scope,
-    username: String,
-    token: String,
-) -> Result<i32, ServerFnError> {
+async fn get_id_from_username(username: String, token: String) -> Result<i32, ServerFnError> {
     let pool = backend::create_pool().await?;
 
     let id = match backend::auth::get_user(&pool, username, token, true).await {
@@ -215,12 +212,45 @@ async fn save_all(user_id: i32, list: Vec<SerCounter>) -> Result<(), ServerFnErr
     return Ok(());
 }
 
-#[component]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccountAccentColor(pub String);
+
+impl AccountAccentColor {
+    fn new(user: SessionUser) -> Self {
+        let letter = user
+            .username
+            .to_uppercase()
+            .chars()
+            .next()
+            .unwrap_or_default();
+        let color_hex = letter_to_three_digit_hash(letter);
+        return Self(format!("#{color_hex}"));
+    }
+}
+
+impl Display for AccountAccentColor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+// #[component]
 pub fn App(cx: Scope) -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context(cx);
-    let user = create_rw_signal(cx, SessionUser::default());
+    let user = create_rw_signal(cx, None::<SessionUser>);
     provide_context(cx, user);
+
+    let acc_color_slice = create_read_slice(cx, user, move |user| {
+        AccountAccentColor::new(user.clone().unwrap_or_default())
+    });
+    provide_context(cx, acc_color_slice);
+
+    let close_overlay_signal = create_trigger(cx);
+    provide_context(cx, close_overlay_signal);
+    let close_overlays = move |_| {
+        close_overlay_signal.try_notify();
+    };
 
     view! { cx,
         // injects a stylesheet into the document <head>
@@ -237,10 +267,10 @@ pub fn App(cx: Scope) -> impl IntoView {
                 <A href="/"><img src="favicon.svg" width=48 height=48 alt="Home" class="tooltip-parent"/>
                     <span class="tooltip bottom">Home</span>
                 </A>
-                <A href="/login">Login</A>
+                <AccountIcon/>
             </nav>
 
-            <main>
+            <main on:click=close_overlays>
                 <Routes>
                     <Route path="" view=HomePage/>
                     <Route path="/login" view=LoginPage/>
@@ -326,7 +356,6 @@ impl std::ops::Deref for ArcCountable {
 impl TreeViewNodeItem<ArcCountable> for ArcCountable {
     fn into_view(self, cx: Scope) -> View {
         let node_children = expect_context::<SignalNodeChildren<ArcCountable>>(cx);
-        let selection = expect_context::<Selection<ArcCountable>>(cx);
 
         let item = create_rw_signal(cx, self.clone());
         let get_node = create_read_slice(cx, node_children, move |node_signal| {
@@ -367,18 +396,14 @@ impl TreeViewNodeItem<ArcCountable> for ArcCountable {
         };
 
         view! { cx,
-            <div on:contextmenu=on_right_click>
-                <TreeViewRow node=get_node().clone() selection=selection>
-                <div class="row-body">
-                    <span> { self.name() } </span>
-                    <Show when= move || {
-                        item.get().0.try_lock().map(|c| c.has_children()).unwrap_or_default()
-                    }
-                    fallback= move |_| {}
-                    ><button on:click=click_new_phase>+</button>
-                    </Show>
-                </div>
-                </TreeViewRow>
+            <div class="row-body" on:contextmenu=on_right_click>
+                <span> { self.name() } </span>
+                <Show when= move || {
+                    item.get().0.try_lock().map(|c| c.has_children()).unwrap_or_default()
+                }
+                fallback= move |_| {}
+                ><button on:click=click_new_phase>+</button>
+                </Show>
             </div>
         }
         .into_view(cx)
@@ -488,7 +513,7 @@ fn timer(cx: Scope) {
     create_effect(cx, move |_| {
         set_interval(
             move || {
-                if let Some(selection) = use_context::<Selection<ArcCountable>>(cx) {
+                if let Some(selection) = use_context::<SelectionSignal<ArcCountable>>(cx) {
                     let state = use_context::<RwSignal<CounterList>>(cx);
                     if state.is_none() {
                         time.1.set(Date::new_0().get_milliseconds());
@@ -502,6 +527,7 @@ fn timer(cx: Scope) {
                         }
                         selection
                             .get()
+                            .selection
                             .into_iter()
                             .filter(|(_, b)| *b)
                             .for_each(|(c, _)| {
@@ -546,20 +572,22 @@ pub fn navigate(cx: Scope, page: &'static str) {
     });
 }
 
-// #[component]
+#[component]
 pub fn HomePage(cx: Scope) -> impl IntoView {
-    let session_user = expect_context::<RwSignal<SessionUser>>(cx);
+    let session_user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
     create_effect(cx, move |_| {
-        session_user.update(|s| s.update());
+        request_animation_frame(move || {
+            session_user.set(SessionUser::from_storage(cx));
+        })
     });
     let data = create_local_resource(cx, session_user, move |user| async move {
-        match get_counters_by_user_name(cx, user.username.clone(), user.token.clone()).await {
-            Ok(CounterResponse::Counters(counters)) => counters,
-            _ if user.has_value() => Vec::new(),
-            _ => {
-                navigate(cx, "/login");
-                Vec::new()
+        if let Some(user) = user {
+            match get_counters_by_user_name(cx, user.username.clone(), user.token.clone()).await {
+                Ok(CounterResponse::Counters(counters)) => counters,
+                _ => Vec::new(),
             }
+        } else {
+            Vec::new()
         }
     });
 
@@ -578,7 +606,8 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
         state.set(list)
     });
 
-    let selection: PointerMap<ArcCountable, bool> = PointerMap::new();
+    let accent_color = use_context::<Signal<AccountAccentColor>>(cx);
+    let selection = SelectionModel::<ArcCountable>::new(accent_color);
     let selection_signal = create_rw_signal(cx, selection);
     provide_context(cx, selection_signal);
 
@@ -586,30 +615,35 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
 
     window_event_listener(ev::keypress, {
         move |ev| {
-            if let Some(selection) = use_context::<Selection<ArcCountable>>(cx) {
+            if let Some(selection) = use_context::<SelectionSignal<ArcCountable>>(cx) {
                 match ev.code().as_str() {
                     "Equal" => selection.with(|list| {
-                        list.into_iter().filter(|(_, b)| **b).for_each(|(node, _)| {
-                            let state = expect_context::<RwSignal<CounterList>>(cx);
-                            let item_s = create_rw_signal(cx, node.clone());
+                        list.selection
+                            .clone()
+                            .into_iter()
+                            .filter(|(_, b)| *b)
+                            .for_each(|(node, _)| {
+                                let state = expect_context::<RwSignal<CounterList>>(cx);
+                                let item_s = create_rw_signal(cx, node.clone());
 
-                            let (get_count, set_count) = create_slice(
-                                cx,
-                                state,
-                                move |_| {
-                                    item_s
-                                        .get()
-                                        .try_lock()
-                                        .map(|c| c.get_count())
-                                        .unwrap_or_default()
-                                },
-                                move |_, count| {
-                                    let _ = item_s.get().try_lock().map(|mut c| c.set_count(count));
-                                },
-                            );
+                                let (get_count, set_count) = create_slice(
+                                    cx,
+                                    state,
+                                    move |_| {
+                                        item_s
+                                            .get()
+                                            .try_lock()
+                                            .map(|c| c.get_count())
+                                            .unwrap_or_default()
+                                    },
+                                    move |_, count| {
+                                        let _ =
+                                            item_s.get().try_lock().map(|mut c| c.set_count(count));
+                                    },
+                                );
 
-                            set_count(get_count() + 1);
-                        })
+                                set_count(get_count() + 1);
+                            })
                     }),
                     "KeyP" => {
                         let _ = state.try_update(|list| list.toggle_paused());
@@ -621,8 +655,10 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     });
 
     let on_click = move |_| {
-        let user = expect_context::<RwSignal<SessionUser>>(cx);
-        user.update_untracked(|s| s.update());
+        let user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
+        if user().is_none() {
+            return;
+        }
         create_local_resource(
             cx,
             || (),
@@ -630,13 +666,18 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                 let name = format!("Counter {}", state.get_untracked().list.len() + 1);
                 let phase_name = String::from("Phase 1");
                 let counter_id = create_counter(
-                    user.get_untracked().username,
-                    user.get_untracked().token,
+                    user.get_untracked().unwrap().username,
+                    user.get_untracked().unwrap().token,
                     name.clone(),
                 )
                 .await
-                .map_err(|err| {
-                    log!("Count not create Counter, Got: {err}");
+                .map_err(|err| match err {
+                    ServerFnError::ServerError(msg) => {
+                        if msg == "Provided Token is Invalid" {
+                            navigate(cx, "/login")
+                        }
+                    }
+                    _ => {}
                 })
                 .unwrap();
                 let phase_id = create_phase(phase_name.clone())
@@ -660,7 +701,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
 
     view! { cx,
         <div id="HomeGrid">
-            <TreeViewWidget start_nodes=move || { state.get().list } after=move |cx| {
+            <TreeViewWidget selection_model=selection_signal start_nodes=move || { state.get().list } after=move |cx| {
                 view! {cx, <button on:click=on_click class="new-counter">New Counter</button> }
             }/>
             <InfoBox/>
@@ -686,11 +727,11 @@ where
 
 #[component]
 fn InfoBox(cx: Scope) -> impl IntoView {
-    let selection = expect_context::<Selection<ArcCountable>>(cx);
+    let selection = expect_context::<SelectionSignal<ArcCountable>>(cx);
     view! { cx,
         <div id="InfoBox"> {
             move || selection.with(|list| {
-                list.into_iter().filter(|(_, b)| **b).map(|(rc_counter, _)| {
+                list.selection.clone().into_iter().filter(|(_, b)| *b).map(|(rc_counter, _)| {
                     let rc_counter_signal = create_rw_signal(cx, rc_counter.clone());
                     view! {cx, <InfoBoxRow counter=rc_counter_signal/> }
                 }).collect_view(cx)})
@@ -1076,14 +1117,31 @@ impl std::ops::Index<usize> for CounterList {
         &self.list[index]
     }
 }
-
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SessionUser {
-    username: String,
-    token: String,
+    pub username: String,
+    pub token: String,
 }
 
 impl SessionUser {
+    pub fn from_storage(cx: Scope) -> Option<Self> {
+        if let Ok(Some(user)) = LocalStorage::get::<Option<SessionUser>>("user_session") {
+            let clone = user.clone();
+            spawn_local(async move {
+                if !clone.is_valid().await {
+                    navigate(cx, "/login")
+                }
+            });
+
+            return Some(user);
+        } else {
+            let _ = LocalStorage::set("user_session", None::<SessionUser>);
+            log!("here");
+            navigate(cx, "/login");
+            return None;
+        }
+    }
+
     pub fn has_value(&self) -> bool {
         // TODO: make this function check the backend for validity
         if self.username == "" || self.token.len() != 32 {
@@ -1092,10 +1150,13 @@ impl SessionUser {
             return true;
         }
     }
-    pub fn update(&mut self) {
-        if let Ok(user) = SessionStorage::get::<SessionUser>("user_session") {
-            self.username = user.username;
-            self.token = user.token;
+
+    async fn is_valid(&self) -> bool {
+        let id = get_id_from_username(self.username.clone(), self.token.clone()).await;
+        if id.is_err() || id.unwrap() < 1 {
+            return false;
+        } else {
+            return true;
         }
     }
 }
