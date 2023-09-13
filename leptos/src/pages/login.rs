@@ -16,7 +16,7 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
     let show_err = move || {
         action.value().with(|v| {
             if let Some(user) = v && user.is_err() {
-                "display: block; color: red;"
+                "display: block;"
             } else {
                 "display: none"
             }
@@ -60,12 +60,12 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
             </div>
         </div>
         </ActionForm>
-        <p style=show_err class="notification-box">{ move || {
+        <b style=show_err class="notification-box">{ move || {
             if let Some(Err(err)) = action.value().get() {
                 err.to_string().split_once(": ").map(|s| s.1.to_string()).unwrap_or_default()
             } else {
                 String::new()
             }
-        }}</p>
+        }}</b>
     }
 }

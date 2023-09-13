@@ -1,5 +1,10 @@
+#![allow(non_snake_case)]
+
 use crate::app::{navigate, AccountAccentColor, SessionUser};
 use leptos::*;
+use leptos_router::A;
+
+use super::*;
 
 pub fn letter_to_three_digit_hash(letter: char) -> String {
     use rand::{Rng, SeedableRng};
@@ -35,15 +40,18 @@ pub fn AccountIcon(cx: Scope) -> impl IntoView {
         )
     };
 
+    let open_overlay = move |ev: web_sys::MouseEvent| {
+        ev.stop_propagation();
+        show_overlay.update(|s| *s = !*s);
+    };
+
     view! { cx,
         <Show
             when=move || { session_user().is_some() }
             fallback=|_| {view! { cx,  }}
         >
-            <div id="user-icon" style=colour on:click=move |_| { show_overlay.update(|s| *s = !*s) }>
-                <b>{ move || {
-                    initial()
-                }}</b>
+            <div id="user-icon" style=colour on:click=open_overlay>
+                <b>{ move || { initial() }}</b>
             </div>
             <AccountOverlay show_overlay=show_overlay/>
         </Show>
@@ -52,11 +60,14 @@ pub fn AccountIcon(cx: Scope) -> impl IntoView {
 
 #[component]
 pub fn AccountOverlay(cx: Scope, show_overlay: RwSignal<bool>) -> impl IntoView {
-    let close_signal = expect_context::<Trigger>(cx);
-    create_effect(cx, move |_| {
-        close_signal.track();
-        show_overlay.set(false);
-    });
+    if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>(cx) {
+        create_effect(cx, move |_| {
+            close_signal.get();
+            show_overlay.set(false);
+        });
+    } else {
+        debug_warn!("No `close overlay` signal available");
+    }
 
     let accent_color = expect_context::<Signal<AccountAccentColor>>(cx);
     let border_style = move || format!("border: 2px solid {}", accent_color.get());
@@ -66,8 +77,18 @@ pub fn AccountOverlay(cx: Scope, show_overlay: RwSignal<bool>) -> impl IntoView 
             when=move || { show_overlay.get() }
             fallback=|_| { view! { cx,  } }
         >
-            <div id="account-overlay" style=border_style>
-                <LogoutButton/>
+            <div id="account-overlay" style=border_style on:click=move |ev: web_sys::MouseEvent| { ev.stop_propagation() }>
+                <AccountOverlayNavigate
+                    link="/preferences"
+                    fa_icon="fa-solid fa-gear"
+                    text="preferences"
+                />
+                <hr/>
+                <AccountOverlayNavigate
+                    link="/login"
+                    fa_icon="fa-solid fa-right-from-bracket"
+                    text="Logout"
+                />
             </div>
         </Show>
     }
@@ -82,5 +103,86 @@ pub fn LogoutButton(cx: Scope) -> impl IntoView {
             <i class="fa-solid fa-right-from-bracket"></i>
             <span>Logout</span>
         </button>
+    }
+}
+
+#[component]
+pub fn AccountOverlayButton(
+    cx: Scope,
+    #[prop(default = true)] close_overlay: bool,
+    #[prop(optional)] icon: Option<&'static str>,
+    #[prop(optional)] fa_icon: Option<&'static str>,
+    #[prop(optional)] text: Option<&'static str>,
+) -> impl IntoView {
+    view! { cx,
+        <button
+            class="overlay-button"
+            on:click=move |_| { if close_overlay {
+                use_context::<RwSignal<CloseOverlays>>(cx).map(|t| t.update(|_| ()));
+            }}
+        >
+            <Show
+                when=move || fa_icon.is_some()
+                fallback=|_| ()
+            >
+                <i class={ fa_icon.unwrap() }></i>
+            </Show>
+            <Show
+                when=move || icon.is_some()
+                fallback=|_| ()
+            >
+                <svg src={ icon.unwrap() }></svg>
+            </Show>
+            <Show
+                when=move || text.is_some()
+                fallback=|_| ()
+            >
+                <span>{ text.unwrap() }</span>
+            </Show>
+        </button>
+    }
+}
+
+#[component]
+pub fn AccountOverlayNavigate(
+    cx: Scope,
+    link: &'static str,
+    #[prop(default = true)] close_overlay: bool,
+    #[prop(default = false)] show_link: bool,
+    #[prop(optional)] icon: Option<&'static str>,
+    #[prop(optional)] fa_icon: Option<&'static str>,
+    #[prop(optional)] text: Option<&'static str>,
+) -> impl IntoView {
+    view! { cx,
+        <A
+            href=link
+            class={ if !show_link { "remove-underline" } else { "" } }
+        >
+            <button
+                class="overlay-button"
+                on:click=move |_| { if close_overlay {
+                    use_context::<RwSignal<CloseOverlays>>(cx).map(|t| t.update(|_| ()));
+                }}
+            >
+                <Show
+                    when=move || fa_icon.is_some()
+                    fallback=|_| ()
+                >
+                    <i class={ fa_icon.unwrap() }></i>
+                </Show>
+                <Show
+                    when=move || icon.is_some()
+                    fallback=|_| ()
+                >
+                    <svg src={ icon.unwrap() }></svg>
+                </Show>
+                <Show
+                    when=move || text.is_some()
+                    fallback=|_| ()
+                >
+                    <span>{ text.unwrap() }</span>
+                </Show>
+            </button>
+        </A>
     }
 }

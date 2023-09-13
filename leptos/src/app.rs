@@ -171,6 +171,19 @@ async fn create_counter(
     return Ok(counter_id);
 }
 
+#[server(RemoveCounter, "/api")]
+pub async fn remove_counter(
+    username: String,
+    token: String,
+    counter_id: i32,
+) -> Result<(), ServerFnError> {
+    let pool = backend::create_pool().await?;
+    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    backend::remove_counter(&pool, user.id, counter_id).await?;
+
+    return Ok(());
+}
+
 #[server(CreatePhase, "/api")]
 async fn create_phase(name: String) -> Result<i32, ServerFnError> {
     let pool = backend::create_pool().await?;
@@ -234,7 +247,7 @@ impl Display for AccountAccentColor {
     }
 }
 
-// #[component]
+#[component]
 pub fn App(cx: Scope) -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context(cx);
@@ -246,10 +259,12 @@ pub fn App(cx: Scope) -> impl IntoView {
     });
     provide_context(cx, acc_color_slice);
 
-    let close_overlay_signal = create_trigger(cx);
+    let close_overlay_signal = create_rw_signal(cx, CloseOverlays::new());
     provide_context(cx, close_overlay_signal);
+
     let close_overlays = move |_| {
-        close_overlay_signal.try_notify();
+        debug_warn!("Closing Overlays");
+        close_overlay_signal.update(|_| ());
     };
 
     view! { cx,
@@ -263,7 +278,7 @@ pub fn App(cx: Scope) -> impl IntoView {
         <Title text="TallyWeb"/>
 
         <Router>
-            <nav>
+            <nav on:click=close_overlays>
                 <A href="/"><img src="favicon.svg" width=48 height=48 alt="Home" class="tooltip-parent"/>
                     <span class="tooltip bottom">Home</span>
                 </A>
@@ -390,13 +405,19 @@ impl TreeViewNodeItem<ArcCountable> for ArcCountable {
             );
         };
 
-        let on_right_click = move |event: MouseEvent| {
-            event.prevent_default();
-            log!("here")
+        let show_context_menu = create_rw_signal(cx, false);
+        let (click_location, set_click_location) = create_signal(cx, (0, 0));
+        let on_right_click = move |ev: MouseEvent| {
+            ev.prevent_default();
+            show_context_menu.set(!show_context_menu());
+            set_click_location((ev.x(), ev.y()))
         };
 
         view! { cx,
-            <div class="row-body" on:contextmenu=on_right_click>
+            <div
+                class="row-body"
+                on:contextmenu=on_right_click
+            >
                 <span> { self.name() } </span>
                 <Show when= move || {
                     item.get().0.try_lock().map(|c| c.has_children()).unwrap_or_default()
@@ -405,6 +426,11 @@ impl TreeViewNodeItem<ArcCountable> for ArcCountable {
                 ><button on:click=click_new_phase>+</button>
                 </Show>
             </div>
+            <CounterContextMenu
+                show_overlay=show_context_menu
+                location=click_location
+                counter_id=item.get_untracked().0.lock().unwrap().get_id()
+            />
         }
         .into_view(cx)
     }
@@ -565,10 +591,11 @@ fn timer(cx: Scope) {
 }
 
 #[cfg(not(ssr))]
-pub fn navigate(cx: Scope, page: &'static str) {
+pub fn navigate(cx: Scope, page: impl ToString) {
+    let page = page.to_string();
     request_animation_frame(move || {
         let navigate = leptos_router::use_navigate(cx);
-        let _ = navigate(page, Default::default());
+        let _ = navigate(page.as_str(), Default::default());
     });
 }
 
@@ -580,6 +607,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
             session_user.set(SessionUser::from_storage(cx));
         })
     });
+
     let data = create_local_resource(cx, session_user, move |user| async move {
         if let Some(user) = user {
             match get_counters_by_user_name(cx, user.username.clone(), user.token.clone()).await {
@@ -591,8 +619,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
         }
     });
 
-    create_effect(cx, move |_| {});
-
+    provide_context(cx, data);
     let list = CounterList::new(&[]);
     let state = create_rw_signal(cx, list);
     provide_context(cx, state);
@@ -701,9 +728,13 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
 
     view! { cx,
         <div id="HomeGrid">
-            <TreeViewWidget selection_model=selection_signal start_nodes=move || { state.get().list } after=move |cx| {
-                view! {cx, <button on:click=on_click class="new-counter">New Counter</button> }
-            }/>
+            <TreeViewWidget
+                selection_model=selection_signal
+                start_nodes=move || { state.get().list }
+                after=move |cx| {
+                    view! {cx, <button on:click=on_click class="new-counter">New Counter</button> }
+                }
+            />
             <InfoBox/>
         </div>
     }
@@ -1038,7 +1069,7 @@ impl Countable for Phase {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-struct CounterList {
+pub struct CounterList {
     list: Vec<ArcCountable>,
     is_paused: bool,
 }
@@ -1136,7 +1167,6 @@ impl SessionUser {
             return Some(user);
         } else {
             let _ = LocalStorage::set("user_session", None::<SessionUser>);
-            log!("here");
             navigate(cx, "/login");
             return None;
         }

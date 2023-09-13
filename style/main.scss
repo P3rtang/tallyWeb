@@ -121,11 +121,14 @@ button {
         display: grid;
     }
 
-    div {
-        color: white;
-        font-size: 1.4rem;
-        padding: 0px;
-        border-radius: 0.6em;
+    .selected {
+        color: black !important;
+
+        &:hover {
+            color: black;
+            // opacity: 0.85;
+            // background: $select-color-hover-dark;
+        }
     }
 
     ul {
@@ -140,6 +143,9 @@ button {
     }
 
     .row {
+        color: white;
+        font-size: 1.4rem;
+        border-radius: 0.6em;
         cursor: default;
         display: flex;
         min-width: 10em;
@@ -174,18 +180,6 @@ button {
         }
     }
 
-    .selected {
-        * { 
-            color: black;
-        }
-
-        &:hover {
-            color: black;
-            opacity: 80%;
-            // background: $select-color-hover-dark;
-        }
-    }
-
     .caret {
         display: flex;
         flex-wrap: wrap;
@@ -217,6 +211,24 @@ button {
 
     .indent {
         width: 40px;
+    }
+}
+
+.overlay {
+    position: fixed;
+    background: $element-background-color-dark;
+    padding: 8px;
+    border-radius: 12px;
+
+    .context-menu-row {
+        color: white;
+        padding: 12px;
+        min-width: 10rem;
+        border-radius: 8px;
+
+        &:hover {
+            background: $element-hover-color-dark;
+        }
     }
 }
 
@@ -371,7 +383,8 @@ form {
     right: 16px;
     margin: 0px;
     padding: 24px;
-    border: 2px solid red;
+    color: tomato;
+    border: 2px solid tomato;
     border-radius: 16px;
     background: #444444;
 }
@@ -399,7 +412,7 @@ form {
     user-select: none;
 
     &:hover {
-        background: $interactable-hover-color-dark;
+        opacity: 85%;
     }
 }
 
@@ -439,4 +452,15 @@ form {
             margin-left: 16px;
         }
     }
+
+    hr {
+        opacity: 40%;
+    }
+
+    a {
+        display: block;
+        margin: 0px;
+        width: 100%;
+    }
 }
+

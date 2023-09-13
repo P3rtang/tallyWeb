@@ -176,7 +176,7 @@ pub async fn update_phase(pool: &PgPool, phase: DbPhase) -> Result<(), sqlx::err
 }
 
 pub async fn update_counter(pool: &PgPool, counter: DbCounter) -> Result<(), sqlx::error::Error> {
-    let _ = sqlx::query!(
+    sqlx::query!(
         r#"
         UPDATE counters
         SET name = $2, phases = $3
@@ -185,6 +185,25 @@ pub async fn update_counter(pool: &PgPool, counter: DbCounter) -> Result<(), sql
         counter.id,
         counter.name,
         &counter.phases,
+    )
+    .execute(pool)
+    .await?;
+
+    return Ok(());
+}
+
+pub async fn remove_counter(
+    pool: &PgPool,
+    user_id: i32,
+    counter_id: i32,
+) -> Result<(), sqlx::error::Error> {
+    sqlx::query!(
+        r#"
+        delete from counters
+        where user_id = $1 AND id = $2
+        "#,
+        user_id,
+        counter_id,
     )
     .execute(pool)
     .await?;

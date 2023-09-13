@@ -77,6 +77,6 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
                 </div>
             </div>
         </ActionForm>
-        <label style=show_err class="notification-box">{ move || { err_message() } }</label>
+        <b style=show_err class="notification-box">{ move || { err_message() } }</b>
     }
 }

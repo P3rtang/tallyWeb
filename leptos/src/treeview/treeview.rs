@@ -225,7 +225,7 @@ where
                 .cloned()
                 .unwrap_or_default()
         {
-            format!("background: {};", 
+            format!("background: {};",
                 selection
                     .get()
                     .accent_color
