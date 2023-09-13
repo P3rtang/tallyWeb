@@ -1,4 +1,4 @@
-use gloo_storage::{SessionStorage, Storage};
+use gloo_storage::{LocalStorage, Storage};
 use leptos::*;
 use leptos_router::{ActionForm, FromFormData, A};
 use web_sys::SubmitEvent;
@@ -12,7 +12,7 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
     let (err_message, set_err_message) = create_signal(cx, None);
 
     let show_err = move || {
-        if action.value().get().map(|v| v.ok()).flatten().is_none() || err_message().is_some() {
+        if err_message().is_some() {
             "display: block; color: red;"
         } else {
             "display: none"
@@ -21,7 +21,7 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
 
     create_effect(cx, move |_| {
         if let Some(login) = action.value().get().map(|v| v.ok()).flatten() {
-            if let Ok(_) = SessionStorage::set("user_session", login.clone()) {
+            if let Ok(_) = LocalStorage::set("user_session", login.clone()) {
                 if action.value().get().is_some() && action.value().get().unwrap().is_ok() {
                     crate::app::navigate(cx, "/")
                 }
@@ -38,7 +38,7 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
                     .unwrap_or_default(),
             )
         } else {
-            Some(String::new())
+            None
         })
     });
 
@@ -70,13 +70,13 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
                 <div class="clearfix action-buttons">
                     <div class="action-buttons-el">
                         <input type="checkbox" required></input>
-                        <A href="/privacy-policy" class="acceptTS"><b>Terms&Conditions</b></A>
+                        <A href="/privacy-policy" class="acceptTS"><b>Terms & Conditions</b></A>
                     </div>
                     <button type="button" on:click=move |_| { navigate(cx, "/login") }><i class="fa-solid fa-xmark"></i></button>
                     <button type="submit" class="signupbtn"><i class="fa-solid fa-right-to-bracket"></i></button>
                 </div>
             </div>
         </ActionForm>
-        <label style=show_err>{ move || { err_message() } }</label>
+        <label style=show_err class="notification-box">{ move || { err_message() } }</label>
     }
 }

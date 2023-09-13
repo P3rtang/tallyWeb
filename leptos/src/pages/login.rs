@@ -1,13 +1,17 @@
-use gloo_storage::{SessionStorage, Storage};
+use crate::app::{navigate, SessionUser};
+use gloo_storage::{LocalStorage, Storage};
 use leptos::*;
-use leptos_router::{ActionForm, A};
-use web_sys::SubmitEvent;
-
-use crate::app::navigate;
+use leptos_router::ActionForm;
 
 #[component]
 pub fn LoginPage(cx: Scope) -> impl IntoView {
     let action = create_server_action::<crate::app::LoginUser>(cx);
+    create_effect(cx, move |_| {
+        request_animation_frame(move || {
+            expect_context::<RwSignal<Option<SessionUser>>>(cx).set(None);
+            let _ = LocalStorage::set("user_session", None::<SessionUser>);
+        })
+    });
 
     let show_err = move || {
         action.value().with(|v| {
@@ -21,7 +25,7 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
 
     create_effect(cx, move |_| {
         if let Some(login) = action.value().get().map(|v| v.ok()).flatten() {
-            if let Ok(_) = SessionStorage::set("user_session", login.clone()) {
+            if let Ok(_) = LocalStorage::set("user_session", login.clone()) {
                 crate::app::navigate(cx, "/")
             }
         }
@@ -30,6 +34,7 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
     view! { cx,
         <ActionForm action=action>
         <div class="container login-form">
+            <h1>Login</h1>
             <label for="username"><b>Username</b></label>
                 <input
                     type="text"
@@ -55,7 +60,7 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
             </div>
         </div>
         </ActionForm>
-        <p style=show_err class="error-box">{ move || {
+        <p style=show_err class="notification-box">{ move || {
             if let Some(Err(err)) = action.value().get() {
                 err.to_string().split_once(": ").map(|s| s.1.to_string()).unwrap_or_default()
             } else {

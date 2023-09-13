@@ -25,7 +25,7 @@ impl DatabaseError for SignupError {}
 pub enum LoginError {
     #[error("Account does not exist")]
     InvalidUsername,
-    #[error("User provide the wrong password")]
+    #[error("User provided the wrong password")]
     InvalidPassword,
     #[error("Internal Server error when logging in user")]
     Internal(#[from] sqlx::Error),

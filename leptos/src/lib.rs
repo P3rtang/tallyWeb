@@ -2,6 +2,7 @@
 #![feature(let_chains)]
 
 pub mod app;
+mod elements;
 mod pages;
 mod treeview;
 
