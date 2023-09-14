@@ -104,13 +104,20 @@ pub async fn create_account(
 }
 
 #[server(GetUserIdFromName, "/api")]
-async fn get_id_from_username(username: String, token: String) -> Result<i32, ServerFnError> {
+async fn get_id_from_username(
+    cx: Scope,
+    username: String,
+    token: String,
+) -> Result<i32, ServerFnError> {
     let pool = backend::create_pool().await?;
 
     let id = match backend::auth::get_user(&pool, username, token, true).await {
         Ok(id) => id.id,
         Err(backend::AuthorizationError::Internal(err)) => return Err(err)?,
-        Err(_) => return Ok(-1),
+        Err(_) => {
+            leptos_actix::redirect(cx, "/login");
+            -1
+        }
     };
 
     return Ok(id);
@@ -240,8 +247,15 @@ impl Display for AccountAccentColor {
 pub fn App(cx: Scope) -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context(cx);
+
     let user = create_rw_signal(cx, None::<SessionUser>);
     provide_context(cx, user);
+
+    create_effect(cx, move |_| {
+        request_animation_frame(move || {
+            user.set(SessionUser::from_storage(cx));
+        })
+    });
 
     let close_overlay_signal = create_rw_signal(cx, CloseOverlays::new());
     provide_context(cx, close_overlay_signal);
@@ -250,12 +264,6 @@ pub fn App(cx: Scope) -> impl IntoView {
         debug_warn!("Closing Overlays");
         close_overlay_signal.update(|_| ());
     };
-
-    create_effect(cx, move |_| {
-        request_animation_frame(move || {
-            user.set(SessionUser::from_storage(cx));
-        })
-    });
 
     let preferences = create_rw_signal(
         cx,
@@ -277,7 +285,7 @@ pub fn App(cx: Scope) -> impl IntoView {
         // <Stylesheet href="/stylers.css"/>
         <Script src="https://kit.fontawesome.com/7173474e94.js" crossorigin="anonymous"/>
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg"/>
-
+        // <Meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <Title text="TallyWeb"/>
 
         <Router>
@@ -1167,9 +1175,7 @@ impl SessionUser {
         if let Ok(Some(user)) = LocalStorage::get::<Option<SessionUser>>("user_session") {
             let clone = user.clone();
             spawn_local(async move {
-                if !clone.is_valid().await {
-                    navigate(cx, "/login")
-                }
+                let _ = clone.is_valid(cx);
             });
 
             return Some(user);
@@ -1189,8 +1195,8 @@ impl SessionUser {
         }
     }
 
-    async fn is_valid(&self) -> bool {
-        let id = get_id_from_username(self.username.clone(), self.token.clone()).await;
+    async fn is_valid(&self, cx: Scope) -> bool {
+        let id = get_id_from_username(cx, self.username.clone(), self.token.clone()).await;
         if id.is_err() || id.unwrap() < 1 {
             return false;
         } else {

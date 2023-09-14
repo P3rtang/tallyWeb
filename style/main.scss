@@ -9,7 +9,7 @@ $element-hover-color-dark: #323232;
 $border-color-dark: #FFFFFF80;
 
 * {
-    font-family: sans-serif;
+    font-family: Roboto, Arial, sans-serif;
 }
 
 nav {
@@ -69,6 +69,7 @@ main {
 }
 
 button {
+    color: black;
     background: #666666;
 
     &:hover {
