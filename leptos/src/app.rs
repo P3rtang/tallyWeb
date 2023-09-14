@@ -225,20 +225,9 @@ async fn save_all(user_id: i32, list: Vec<SerCounter>) -> Result<(), ServerFnErr
     return Ok(());
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AccountAccentColor(pub String);
-
-impl AccountAccentColor {
-    fn new(user: SessionUser) -> Self {
-        let letter = user
-            .username
-            .to_uppercase()
-            .chars()
-            .next()
-            .unwrap_or_default();
-        let color_hex = letter_to_three_digit_hash(letter);
-        return Self(format!("#{color_hex}"));
-    }
+#[server(SavePreferences, "/api")]
+async fn save_preferences(_user_id: i32, _prefs: Preferences) -> Result<(), ServerFnError> {
+    todo!()
 }
 
 impl Display for AccountAccentColor {
@@ -254,11 +243,6 @@ pub fn App(cx: Scope) -> impl IntoView {
     let user = create_rw_signal(cx, None::<SessionUser>);
     provide_context(cx, user);
 
-    let acc_color_slice = create_read_slice(cx, user, move |user| {
-        AccountAccentColor::new(user.clone().unwrap_or_default())
-    });
-    provide_context(cx, acc_color_slice);
-
     let close_overlay_signal = create_rw_signal(cx, CloseOverlays::new());
     provide_context(cx, close_overlay_signal);
 
@@ -266,6 +250,25 @@ pub fn App(cx: Scope) -> impl IntoView {
         debug_warn!("Closing Overlays");
         close_overlay_signal.update(|_| ());
     };
+
+    create_effect(cx, move |_| {
+        request_animation_frame(move || {
+            user.set(SessionUser::from_storage(cx));
+        })
+    });
+
+    let preferences = create_rw_signal(
+        cx,
+        Preferences::new(&user.get_untracked().unwrap_or_default()),
+    );
+    provide_context(cx, preferences);
+
+    let memo = create_memo(cx, move |_| {
+        preferences.update(|pref| pref.accent_color.set_user(&user.get().unwrap_or_default()))
+    });
+    create_effect(cx, move |_| {
+        memo.get();
+    });
 
     view! { cx,
         // injects a stylesheet into the document <head>
@@ -291,6 +294,9 @@ pub fn App(cx: Scope) -> impl IntoView {
                     <Route path="/login" view=LoginPage/>
                     <Route path="/create-account" view=CreateAccount/>
                     <Route path="/privacy-policy" view=PrivacyPolicy/>
+
+                    <Route path="/preferences" view=PreferencesWindow/>
+
                     <Route path="/*any" view=NotFound/>
                 </Routes>
             </main>
@@ -602,12 +608,6 @@ pub fn navigate(cx: Scope, page: impl ToString) {
 #[component]
 pub fn HomePage(cx: Scope) -> impl IntoView {
     let session_user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
-    create_effect(cx, move |_| {
-        request_animation_frame(move || {
-            session_user.set(SessionUser::from_storage(cx));
-        })
-    });
-
     let data = create_local_resource(cx, session_user, move |user| async move {
         if let Some(user) = user {
             match get_counters_by_user_name(cx, user.username.clone(), user.token.clone()).await {
@@ -633,10 +633,18 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
         state.set(list)
     });
 
-    let accent_color = use_context::<Signal<AccountAccentColor>>(cx);
-    let selection = SelectionModel::<ArcCountable>::new(accent_color);
-    let selection_signal = create_rw_signal(cx, selection);
-    provide_context(cx, selection_signal);
+    let selection_signal = if let Some(preferences) = use_context::<RwSignal<Preferences>>(cx) {
+        let accent_color = create_read_slice(cx, preferences, |pref| pref.accent_color.0.clone());
+        let selection = SelectionModel::<ArcCountable>::new(Some(accent_color));
+        let selection_signal = create_rw_signal(cx, selection);
+        provide_context(cx, selection_signal);
+        selection_signal
+    } else {
+        let selection = SelectionModel::<ArcCountable>::new(None);
+        let selection_signal = create_rw_signal(cx, selection);
+        provide_context(cx, selection_signal);
+        selection_signal
+    };
 
     timer(cx);
 
@@ -1188,5 +1196,43 @@ impl SessionUser {
         } else {
             return true;
         }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AccountAccentColor(pub String);
+
+impl AccountAccentColor {
+    fn new(user: &SessionUser) -> Self {
+        let mut this = Self(String::new());
+        this.set_user(user);
+        return this;
+    }
+
+    pub fn set_user(&mut self, user: &SessionUser) {
+        let letter = user
+            .username
+            .to_uppercase()
+            .chars()
+            .next()
+            .unwrap_or_default();
+        let color_hex = letter_to_three_digit_hash(letter);
+        self.0 = format!("#{color_hex}")
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Preferences {
+    pub use_default_accent_color: bool,
+    pub accent_color: AccountAccentColor,
+}
+
+impl Preferences {
+    fn new(user: &SessionUser) -> Self {
+        let accent_color = AccountAccentColor::new(user);
+        return Self {
+            use_default_accent_color: true,
+            accent_color,
+        };
     }
 }

@@ -7,8 +7,6 @@ use std::{collections::HashMap, ops::Deref};
 
 use leptos::{ev::MouseEvent, *};
 
-use crate::app::AccountAccentColor;
-
 pub type SignalNodeChildren<T> = RwSignal<PointerMap<T, TreeViewNode<T>>>;
 pub type SelectionSignal<T> = RwSignal<SelectionModel<T>>;
 
@@ -114,11 +112,11 @@ pub trait TreeViewNodeItem<T: TreeViewNodeItem<T>>:
 #[derive(Debug, Clone)]
 pub struct SelectionModel<T: TreeViewNodeItem<T>> {
     pub selection: PointerMap<T, bool>,
-    pub accent_color: Option<Signal<AccountAccentColor>>,
+    pub accent_color: Option<Signal<String>>,
 }
 
 impl<T: TreeViewNodeItem<T>> SelectionModel<T> {
-    pub fn new(accent_color: Option<Signal<AccountAccentColor>>) -> Self {
+    pub fn new(accent_color: Option<Signal<String>>) -> Self {
         return Self {
             selection: PointerMap::new(),
             accent_color,
@@ -229,7 +227,7 @@ where
                 selection
                     .get()
                     .accent_color
-                    .map(|ac| ac.get().0)
+                    .map(|ac| ac.get())
                     .unwrap_or(String::from("#8BE9FD")))
         } else {
             String::new()

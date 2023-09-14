@@ -3,7 +3,6 @@ pub mod context_menu;
 pub use account_icon::*;
 pub use context_menu::*;
 
-use crate::app::AccountAccentColor;
 use leptos::*;
 
 #[derive(Debug, Clone)]
@@ -32,8 +31,11 @@ where {
         debug_warn!("No `close overlay` signal available");
     }
 
-    let accent_color = expect_context::<Signal<AccountAccentColor>>(cx);
-    let border_style = move || format!("border: 2px solid {};", accent_color.get());
+    let preferences = expect_context::<RwSignal<crate::app::Preferences>>(cx);
+    let border_style = create_read_slice(cx, preferences, |pref| {
+        format!("border: 2px solid {};", pref.accent_color.0)
+    });
+
     let location_style = move || {
         format!(
             "left: {}px; top: {}px;",

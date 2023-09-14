@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::app::{navigate, AccountAccentColor, SessionUser};
+use crate::app::{navigate, SessionUser};
 use leptos::*;
 use leptos_router::A;
 
@@ -31,15 +31,12 @@ pub fn AccountIcon(cx: Scope) -> impl IntoView {
             .unwrap_or_default()
     });
 
+    let preferences = expect_context::<RwSignal<crate::app::Preferences>>(cx);
+    let style = create_read_slice(cx, preferences, |pref| {
+        format!("background-color: {};", pref.accent_color.0)
+    });
+
     let show_overlay = create_rw_signal(cx, false);
-
-    let colour = move || {
-        format!(
-            "background: #{}",
-            letter_to_three_digit_hash(initial().chars().next().unwrap_or_default()),
-        )
-    };
-
     let open_overlay = move |ev: web_sys::MouseEvent| {
         ev.stop_propagation();
         show_overlay.update(|s| *s = !*s);
@@ -50,7 +47,7 @@ pub fn AccountIcon(cx: Scope) -> impl IntoView {
             when=move || { session_user().is_some() }
             fallback=|_| {view! { cx,  }}
         >
-            <div id="user-icon" style=colour on:click=open_overlay>
+            <div id="user-icon" style=style on:click=open_overlay>
                 <b>{ move || { initial() }}</b>
             </div>
             <AccountOverlay show_overlay=show_overlay/>
@@ -69,8 +66,8 @@ pub fn AccountOverlay(cx: Scope, show_overlay: RwSignal<bool>) -> impl IntoView 
         debug_warn!("No `close overlay` signal available");
     }
 
-    let accent_color = expect_context::<Signal<AccountAccentColor>>(cx);
-    let border_style = move || format!("border: 2px solid {}", accent_color.get());
+    let preferences = expect_context::<RwSignal<crate::app::Preferences>>(cx);
+    let border_style = move || format!("border: 2px solid {}", preferences.get().accent_color);
 
     view! { cx ,
         <Show
