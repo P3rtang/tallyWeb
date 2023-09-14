@@ -293,7 +293,7 @@ form {
 .login-form {
     display: flex;
     flex-flow: column;
-    width: 25em;
+    min-width: 25em;
     height: 100%;
     justify-content: center;
 
@@ -336,14 +336,21 @@ form {
             align-items: center;
             background: $interactable-bg-color-dark;
             color: black;
-            height: 3.5rem;
+            max-height: 3.5rem;
             border-radius: 3rem;
             border: none;
             font-size: 1.2rem;
+            margin-right: auto;
 
             a {
-                margin-right: 16px;
+                display: grid;
+                padding: 0px 24px 0px 12px;
                 color: #8494B6;
+            }
+
+            b {
+                margin: 0px;
+                font-size: 1rem;
             }
         }
 
@@ -355,7 +362,7 @@ form {
             width: 1.6rem;
             font-size: 1.6em;
             border-radius: 4px;
-            margin: 16px;
+            margin-left: 16px;
         }
 
         input[type="checkbox"]:checked {

@@ -70,7 +70,7 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
                 <div class="clearfix action-buttons">
                     <div class="action-buttons-el">
                         <input type="checkbox" required></input>
-                        <A href="/privacy-policy" class="acceptTS"><b>Terms & Conditions</b></A>
+                        <A href="/privacy-policy" class="acceptTS"><b>I have read the</b><b>Terms & Conditions</b></A>
                     </div>
                     <button type="button" on:click=move |_| { navigate(cx, "/login") }><i class="fa-solid fa-xmark"></i></button>
                     <button type="submit" class="signupbtn"><i class="fa-solid fa-right-to-bracket"></i></button>
