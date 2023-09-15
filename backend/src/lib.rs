@@ -210,3 +210,28 @@ pub async fn remove_counter(
 
     return Ok(());
 }
+
+pub async fn remove_phase(pool: &PgPool, phase_id: i32) -> Result<(), sqlx::error::Error> {
+    sqlx::query!(
+        r#"
+        UPDATE counters
+        SET phases = array_remove(phases, $1)
+        WHERE $1 = ANY(phases);
+        "#,
+        phase_id,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query!(
+        r#"
+        delete from phases
+        where id = $1
+        "#,
+        phase_id,
+    )
+    .execute(pool)
+    .await?;
+
+    return Ok(());
+}

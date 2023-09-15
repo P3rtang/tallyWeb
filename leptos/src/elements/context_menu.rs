@@ -1,21 +1,22 @@
 #![allow(unused_braces)]
 
-use crate::app::{navigate, remove_counter, SerCounter, SessionUser};
+use crate::app::{navigate, remove_counter, remove_phase, SerCounter, SessionUser};
 
 use super::*;
 use leptos::*;
 use web_sys::MouseEvent;
 
 #[component]
-pub fn CounterContextMenu(
+pub fn CountableContextMenu(
     cx: Scope,
     show_overlay: RwSignal<bool>,
     location: ReadSignal<(i32, i32)>,
-    counter_id: i32,
+    countable_id: i32,
+    is_phase: bool,
 ) -> impl IntoView {
     let on_edit_click = move |ev: MouseEvent| {
         ev.stop_propagation();
-        navigate(cx, format!("/edit/{counter_id}"));
+        navigate(cx, format!("/edit/{countable_id}"));
     };
 
     let on_del_click = move |ev: MouseEvent| {
@@ -26,12 +27,21 @@ pub fn CounterContextMenu(
         {
             let user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
             spawn_local(async move {
-                let _ = remove_counter(
-                    user.get_untracked().unwrap().username,
-                    user.get_untracked().unwrap().token,
-                    counter_id,
-                )
-                .await;
+                if is_phase {
+                    let _ = remove_phase(
+                        user.get_untracked().unwrap().username,
+                        user.get_untracked().unwrap().token,
+                        countable_id,
+                    )
+                    .await;
+                } else {
+                    let _ = remove_counter(
+                        user.get_untracked().unwrap().username,
+                        user.get_untracked().unwrap().token,
+                        countable_id,
+                    )
+                    .await;
+                }
                 create_effect(cx, move |_| {
                     expect_context::<Resource<Option<SessionUser>, Vec<SerCounter>>>(cx).refetch();
                 })

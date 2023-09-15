@@ -7,6 +7,7 @@ use leptos::{ev::MouseEvent, *};
 use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
+use stylers::style_str;
 
 use crate::{elements::*, pages::*, treeview::*};
 use std::{
@@ -24,7 +25,9 @@ cfg_if::cfg_if!(
             async fn from_db(value: DbCounter) -> Self {
                 let mut phase_list = Vec::new();
                 for id in value.phases {
-                    phase_list.push(get_phase_by_id(id).await.unwrap())
+                    if let Ok(phase) = get_phase_by_id(id).await {
+                        phase_list.push(phase)
+                    }
                 }
 
                 Self {
@@ -187,6 +190,19 @@ pub async fn remove_counter(
     let pool = backend::create_pool().await?;
     let user = backend::auth::get_user(&pool, username, token, true).await?;
     backend::remove_counter(&pool, user.id, counter_id).await?;
+
+    return Ok(());
+}
+
+#[server(RemovePhase, "/api")]
+pub async fn remove_phase(
+    username: String,
+    token: String,
+    phase_id: i32,
+) -> Result<(), ServerFnError> {
+    let pool = backend::create_pool().await?;
+    let _ = backend::auth::get_user(&pool, username, token, true).await?;
+    backend::remove_phase(&pool, phase_id).await?;
 
     return Ok(());
 }
@@ -427,6 +443,19 @@ impl TreeViewNodeItem<ArcCountable> for ArcCountable {
             set_click_location((ev.x(), ev.y()))
         };
 
+        let has_children = item
+            .get_untracked()
+            .0
+            .try_lock()
+            .map(|i| i.has_children())
+            .unwrap_or_default();
+        let id = item
+            .get_untracked()
+            .0
+            .try_lock()
+            .map(|i| i.get_id())
+            .unwrap_or(-1);
+
         view! { cx,
             <div
                 class="row-body"
@@ -440,10 +469,11 @@ impl TreeViewNodeItem<ArcCountable> for ArcCountable {
                 ><button on:click=click_new_phase>+</button>
                 </Show>
             </div>
-            <CounterContextMenu
+            <CountableContextMenu
                 show_overlay=show_context_menu
                 location=click_location
-                counter_id=item.get_untracked().0.lock().unwrap().get_id()
+                countable_id=id
+                is_phase=!has_children
             />
         }
         .into_view(cx)
@@ -761,13 +791,45 @@ fn Progressbar<F>(cx: Scope, progress: F, class: &'static str, children: Childre
 where
     F: Fn() -> f64 + 'static,
 {
+    let prefs = expect_context::<RwSignal<Preferences>>(cx);
+    let accent_color = create_read_slice(cx, prefs, |prefs| prefs.accent_color.clone());
     view! { cx,
-        <div style="display: grid; justify-items: center" class=class>
-            <div style="font-size: 0.6em; color: gray">{ children(cx) }</div>
-            <progress
-                max=1
-                value=progress
-            />
+        <div
+            class={ format!("{class} progress-bar") }
+            style="
+                display:flex;
+                justify-content: center
+                align-items: center">
+            <div
+                style={ format!("
+                    font-size: 1.4rem;
+                    color: #BBB;
+                    padding: 0px 12px;
+                    margin: auto;",
+                    // accent_color().0,
+                )}>
+                { children(cx) }
+            </div>
+            <div
+                class="through"
+                style="
+                    background: #DDD;
+                    padding: 1px;
+                    width: 100%;
+                    height: 24px;
+                    ">
+                <div
+                    class="progress"
+                    style={ move || { format!("
+                        height: 24px;
+                        width: max({}%, 24px);
+                        background: {};
+                        ",
+                        progress() * 100.0,
+                        accent_color().0,
+                    )}}>
+                </div>
+            </div>
         </div>
     }
 }

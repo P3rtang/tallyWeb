@@ -279,6 +279,14 @@ li {
         align-content: center;
     }
 
+    .progress-bar {
+        width: 24rem;
+
+        .through, .progress {
+            border-radius: 24px;
+        }
+    }
+
     .longtime {
         width: 320px;
     }
