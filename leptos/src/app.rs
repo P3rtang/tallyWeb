@@ -157,6 +157,8 @@ async fn get_counters_by_user_name(
         counters.push(SerCounter::from_db(db_counter).await)
     }
 
+    counters.sort_by(|a, b| a.name.cmp(&b.name));
+
     return Ok(CounterResponse::Counters(counters));
 }
 
@@ -881,7 +883,7 @@ pub trait Countable: std::fmt::Debug + Send + Any {
     fn as_any(&self) -> &dyn Any;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SerCounter {
     id: i32,
     name: String,
@@ -1043,7 +1045,7 @@ impl Countable for Counter {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Phase {
     pub id: i32,
     pub name: String,
