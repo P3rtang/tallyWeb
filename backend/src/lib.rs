@@ -47,6 +47,16 @@ pub enum AuthorizationError {
 
 impl DatabaseError for AuthorizationError {}
 
+#[derive(Debug, Error)]
+pub enum DataError {
+    #[error("Uninitialized Data")]
+    Uninitialized,
+    #[error("Internal Server error when loading data")]
+    Internal(#[from] sqlx::Error),
+}
+
+impl DatabaseError for DataError {}
+
 pub async fn create_pool() -> Result<PgPool, sqlx::error::Error> {
     dotenv().ok();
 

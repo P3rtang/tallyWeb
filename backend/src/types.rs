@@ -1,7 +1,7 @@
 use rand::Rng;
 use sqlx::{query, query_as, PgPool};
 
-use crate::AuthorizationError;
+use crate::{AuthorizationError, DataError};
 
 pub struct DbCounter {
     pub id: i32,
@@ -45,7 +45,7 @@ impl DbUser {
             r#"
             insert into auth_tokens (id, user_id)
             values ($1, $2)
-            
+
             returning *
             "#,
             format!("{:X}", token_id),
@@ -125,4 +125,50 @@ pub enum TokenStatus {
     Valid,
     Invalid,
     Expired,
+}
+
+pub struct DbPreferences {
+    pub user_id: i32,
+    pub use_default_accent_color: bool,
+    pub accent_color: Option<String>,
+}
+
+impl DbPreferences {
+    pub async fn db_get(pool: &PgPool, user_id: i32) -> Result<Self, DataError> {
+        let data = match query_as!(
+            Self,
+            r#"
+            select * from preferences
+            where user_id = $1
+            "#,
+            user_id,
+        )
+        .fetch_one(pool)
+        .await
+        {
+            Ok(data) => data,
+            Err(sqlx::Error::RowNotFound) => return Err(DataError::Uninitialized),
+            Err(err) => return Err(DataError::Internal(err)),
+        };
+
+        return Ok(data);
+    }
+
+    pub async fn db_set(self, pool: &PgPool, user_id: i32) -> Result<(), sqlx::error::Error> {
+        query!(
+            r#"
+            insert into preferences (user_id, use_default_accent_color, accent_color)
+            values ($1, $2, $3)
+            on conflict (user_id)
+            do update set use_default_accent_color = $2, accent_color = $3
+            "#,
+            user_id,
+            self.use_default_accent_color,
+            self.accent_color,
+        )
+        .execute(pool)
+        .await?;
+
+        return Ok(());
+    }
 }

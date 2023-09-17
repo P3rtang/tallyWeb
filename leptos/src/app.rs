@@ -7,12 +7,10 @@ use leptos::{ev::MouseEvent, *};
 use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
-use stylers::style_str;
 
 use crate::{elements::*, pages::*, treeview::*};
 use std::{
     any::Any,
-    cmp::PartialEq,
     fmt::Display,
     sync::{Arc, Mutex},
     time::Duration,
@@ -114,16 +112,8 @@ async fn get_id_from_username(
 ) -> Result<i32, ServerFnError> {
     let pool = backend::create_pool().await?;
 
-    let id = match backend::auth::get_user(&pool, username, token, true).await {
-        Ok(id) => id.id,
-        Err(backend::AuthorizationError::Internal(err)) => return Err(err)?,
-        Err(_) => {
-            leptos_actix::redirect(cx, "/login");
-            -1
-        }
-    };
-
-    return Ok(id);
+    let db_user = backend::auth::get_user(&pool, username, token, true).await?;
+    return Ok(db_user.id);
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -250,9 +240,60 @@ async fn save_all(user_id: i32, list: Vec<SerCounter>) -> Result<(), ServerFnErr
     return Ok(());
 }
 
+#[server(GetUserPreferences, "/api")]
+async fn get_user_preferences(
+    cx: Scope,
+    username: String,
+    token: String,
+) -> Result<Preferences, ServerFnError> {
+    let pool = backend::create_pool().await?;
+    let user = match backend::auth::get_user(&pool, username.clone(), token.clone(), true).await {
+        Ok(user) => user,
+        Err(_) => {
+            return Ok(Preferences::default());
+        }
+    };
+    let session_user = SessionUser {
+        username: user.username,
+        token: user.token.unwrap_or_default(),
+    };
+    let prefs = match backend::DbPreferences::db_get(&pool, user.id).await {
+        Ok(data) => Preferences::from_db(&session_user, data),
+        Err(backend::DataError::Uninitialized) => {
+            let new_prefs = Preferences::new(&session_user);
+            save_preferences(
+                username,
+                token,
+                Some(new_prefs.use_default_accent_color),
+                Some(new_prefs.accent_color.0.clone()),
+            )
+            .await?;
+            new_prefs
+        }
+        Err(err) => return Err(err)?,
+    };
+
+    return Ok(Preferences::from(prefs));
+}
+
 #[server(SavePreferences, "/api")]
-async fn save_preferences(_user_id: i32, _prefs: Preferences) -> Result<(), ServerFnError> {
-    todo!()
+async fn save_preferences(
+    username: String,
+    token: String,
+    use_default_accent_color: Option<bool>,
+    accent_color: Option<String>,
+) -> Result<(), ServerFnError> {
+    let pool = backend::create_pool().await?;
+    let user = backend::auth::get_user(&pool, username, token, true).await?;
+
+    let db_prefs = backend::DbPreferences {
+        user_id: user.id,
+        use_default_accent_color: use_default_accent_color.is_some(),
+        accent_color,
+    };
+    db_prefs.db_set(&pool, user.id).await?;
+
+    return Ok(());
 }
 
 impl Display for AccountAccentColor {
@@ -269,12 +310,6 @@ pub fn App(cx: Scope) -> impl IntoView {
     let user = create_rw_signal(cx, None::<SessionUser>);
     provide_context(cx, user);
 
-    create_effect(cx, move |_| {
-        request_animation_frame(move || {
-            user.set(SessionUser::from_storage(cx));
-        })
-    });
-
     let close_overlay_signal = create_rw_signal(cx, CloseOverlays::new());
     provide_context(cx, close_overlay_signal);
 
@@ -283,20 +318,25 @@ pub fn App(cx: Scope) -> impl IntoView {
         close_overlay_signal.update(|_| ());
     };
 
-    let preferences = create_rw_signal(
-        cx,
-        Preferences::new(&user.get_untracked().unwrap_or_default()),
-    );
+    let pref_resources = create_resource(cx, user, async move |user| {
+        if let Some(user) = user {
+            get_user_preferences(cx, user.username.clone(), user.token.clone())
+                .await
+                .unwrap_or(Preferences::new(&user))
+        } else {
+            Preferences::default()
+        }
+    });
+
+    let preferences = create_rw_signal(cx, Preferences::default());
+    provide_context(cx, pref_resources);
     provide_context(cx, preferences);
 
-    let memo = create_memo(cx, move |_| {
-        preferences.update(|pref| pref.accent_color.set_user(&user.get().unwrap_or_default()))
-    });
-    create_effect(cx, move |_| {
-        memo.get();
-    });
-
     view! { cx,
+        <Transition
+            fallback= || ()
+        >
+        {move || { preferences.set(pref_resources.read(cx).unwrap_or_default()); }}
         // injects a stylesheet into the document <head>
         // id=leptos means cargo-leptos will hot-reload this stylesheet
         <Stylesheet href="/pkg/tally_web.css"/>
@@ -317,16 +357,16 @@ pub fn App(cx: Scope) -> impl IntoView {
             <main on:click=close_overlays>
                 <Routes>
                     <Route path="" view=HomePage/>
+                    <Route path="/preferences" view=PreferencesWindow/>
+
                     <Route path="/login" view=LoginPage/>
                     <Route path="/create-account" view=CreateAccount/>
                     <Route path="/privacy-policy" view=PrivacyPolicy/>
-
-                    <Route path="/preferences" view=PreferencesWindow/>
-
                     <Route path="/*any" view=NotFound/>
                 </Routes>
             </main>
         </Router>
+        </Transition>
     }
 }
 
@@ -639,15 +679,24 @@ fn timer(cx: Scope) {
 #[cfg(not(ssr))]
 pub fn navigate(cx: Scope, page: impl ToString) {
     let page = page.to_string();
-    request_animation_frame(move || {
-        let navigate = leptos_router::use_navigate(cx);
-        let _ = navigate(page.as_str(), Default::default());
-    });
+    create_effect(cx, move |_| {
+        let page = page.clone();
+        request_animation_frame(move || {
+            let navigate = leptos_router::use_navigate(cx);
+            let _ = navigate(page.as_str(), Default::default());
+        });
+    })
 }
 
 #[component]
 pub fn HomePage(cx: Scope) -> impl IntoView {
     let session_user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
+    create_effect(cx, move |_| {
+        request_animation_frame(move || {
+            session_user.set(SessionUser::from_storage(cx));
+        })
+    });
+
     let data = create_local_resource(cx, session_user, move |user| async move {
         if let Some(user) = user {
             match get_counters_by_user_name(cx, user.username.clone(), user.token.clone()).await {
@@ -673,18 +722,12 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
         state.set(list)
     });
 
-    let selection_signal = if let Some(preferences) = use_context::<RwSignal<Preferences>>(cx) {
-        let accent_color = create_read_slice(cx, preferences, |pref| pref.accent_color.0.clone());
-        let selection = SelectionModel::<ArcCountable>::new(Some(accent_color));
-        let selection_signal = create_rw_signal(cx, selection);
-        provide_context(cx, selection_signal);
-        selection_signal
-    } else {
-        let selection = SelectionModel::<ArcCountable>::new(None);
-        let selection_signal = create_rw_signal(cx, selection);
-        provide_context(cx, selection_signal);
-        selection_signal
-    };
+    let preferences = expect_context::<RwSignal<Preferences>>(cx);
+    let accent_color = create_read_slice(cx, preferences, |prefs| prefs.accent_color.0.clone());
+
+    let selection = SelectionModel::<ArcCountable>::new(Some(accent_color));
+    let selection_signal = create_rw_signal(cx, selection);
+    provide_context(cx, selection_signal);
 
     timer(cx);
 
@@ -718,6 +761,34 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                                 );
 
                                 set_count(get_count() + 1);
+                            })
+                    }),
+                    "Minus" => selection.with(|list| {
+                        list.selection
+                            .clone()
+                            .into_iter()
+                            .filter(|(_, b)| *b)
+                            .for_each(|(node, _)| {
+                                let state = expect_context::<RwSignal<CounterList>>(cx);
+                                let item_s = create_rw_signal(cx, node.clone());
+
+                                let (get_count, set_count) = create_slice(
+                                    cx,
+                                    state,
+                                    move |_| {
+                                        item_s
+                                            .get()
+                                            .try_lock()
+                                            .map(|c| c.get_count())
+                                            .unwrap_or_default()
+                                    },
+                                    move |_, count| {
+                                        let _ =
+                                            item_s.get().try_lock().map(|mut c| c.set_count(count));
+                                    },
+                                );
+
+                                set_count(get_count() - 1);
                             })
                     }),
                     "KeyP" => {
@@ -775,6 +846,9 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     };
 
     view! { cx,
+    <Transition
+        fallback=move || view!{cx, <p>Loading...</p>}
+    >
         <div id="HomeGrid">
             <TreeViewWidget
                 selection_model=selection_signal
@@ -785,16 +859,22 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
             />
             <InfoBox/>
         </div>
+    </Transition>
     }
 }
 
 #[component]
-fn Progressbar<F>(cx: Scope, progress: F, class: &'static str, children: Children) -> impl IntoView
+fn Progressbar<F>(
+    cx: Scope,
+    progress: F,
+    class: &'static str,
+    children: ChildrenFn,
+) -> impl IntoView
 where
-    F: Fn() -> f64 + 'static,
+    F: Fn() -> f64 + Copy + 'static,
 {
-    let prefs = expect_context::<RwSignal<Preferences>>(cx);
-    let accent_color = create_read_slice(cx, prefs, |prefs| prefs.accent_color.clone());
+    let preferences = expect_context::<RwSignal<Preferences>>(cx);
+    let accent_color = create_read_slice(cx, preferences, |prefs| prefs.accent_color.0.clone());
     view! { cx,
         <div
             class={ format!("{class} progress-bar") }
@@ -820,6 +900,10 @@ where
                     width: 100%;
                     height: 24px;
                     ">
+                <Show
+                    when=move || {progress() > 0.0}
+                    fallback=|_| ()
+                >
                 <div
                     class="progress"
                     style={ move || { format!("
@@ -828,9 +912,10 @@ where
                         background: {};
                         ",
                         progress() * 100.0,
-                        accent_color().0,
+                        accent_color(),
                     )}}>
                 </div>
+                </Show>
             </div>
         </div>
     }
@@ -1237,12 +1322,17 @@ pub struct SessionUser {
 impl SessionUser {
     pub fn from_storage(cx: Scope) -> Option<Self> {
         if let Ok(Some(user)) = LocalStorage::get::<Option<SessionUser>>("user_session") {
-            let clone = user.clone();
-            spawn_local(async move {
-                let _ = clone.is_valid(cx);
+            let (user, _) = create_signal(cx, user);
+            create_local_resource(cx, user, move |user| async move {
+                if get_id_from_username(cx, user.username, user.token)
+                    .await
+                    .is_err()
+                {
+                    navigate(cx, "/login");
+                }
             });
 
-            return Some(user);
+            return Some(user.get_untracked());
         } else {
             let _ = LocalStorage::set("user_session", None::<SessionUser>);
             navigate(cx, "/login");
@@ -1253,15 +1343,6 @@ impl SessionUser {
     pub fn has_value(&self) -> bool {
         // TODO: make this function check the backend for validity
         if self.username == "" || self.token.len() != 32 {
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    async fn is_valid(&self, cx: Scope) -> bool {
-        let id = get_id_from_username(cx, self.username.clone(), self.token.clone()).await;
-        if id.is_err() || id.unwrap() < 1 {
             return false;
         } else {
             return true;
@@ -1303,6 +1384,19 @@ impl Preferences {
         return Self {
             use_default_accent_color: true,
             accent_color,
+        };
+    }
+}
+
+#[cfg(feature = "ssr")]
+impl Preferences {
+    fn from_db(user: &SessionUser, value: backend::DbPreferences) -> Self {
+        return Self {
+            use_default_accent_color: value.use_default_accent_color,
+            accent_color: value
+                .accent_color
+                .map(|c| AccountAccentColor(c))
+                .unwrap_or(AccountAccentColor::new(user)),
         };
     }
 }

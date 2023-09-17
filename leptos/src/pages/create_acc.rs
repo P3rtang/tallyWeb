@@ -13,7 +13,9 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
 
     let show_err = move || {
         if err_message().is_some() {
-            "display: block; color: red;"
+            "display: block;
+            color: tomato;
+            border: 2px solid tomato;"
         } else {
             "display: none"
         }

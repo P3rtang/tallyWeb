@@ -23,4 +23,10 @@ create table auth_tokens(
     id          varchar         UNIQUE NOT NULL,
     user_id     integer         UNIQUE NOT NULL,
     expire_on   timestamp       DEFAULT now() + interval '1' day NOT NULL
+);
+
+create table preferences(
+    user_id                     integer         UNIQUE NOT NULL,
+    use_default_accent_color    boolean         DEFAULT true NOT NULL,
+    accent_color                varchar
 )

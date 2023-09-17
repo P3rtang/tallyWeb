@@ -16,7 +16,9 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
     let show_err = move || {
         action.value().with(|v| {
             if let Some(user) = v && user.is_err() {
-                "display: block;"
+                "display: block;
+                color: tomato;
+                border: 2px solid tomato;"
             } else {
                 "display: none"
             }
