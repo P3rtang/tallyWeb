@@ -84,10 +84,22 @@ pub async fn execute_multi_file(pool: &PgPool, _path: &str) -> Result<(), sqlx::
     return Ok(());
 }
 
-pub async fn get_counter_by_id(pool: &PgPool, id: i32) -> Result<DbCounter, sqlx::error::Error> {
-    let counter = sqlx::query_as!(DbCounter, r#"SELECT * FROM counters WHERE id = $1"#, id,)
-        .fetch_one(pool)
-        .await?;
+pub async fn get_counter_by_id(
+    pool: &PgPool,
+    user_id: i32,
+    id: i32,
+) -> Result<DbCounter, sqlx::error::Error> {
+    let counter = sqlx::query_as!(
+        DbCounter,
+        r#"
+        SELECT * FROM counters
+        WHERE id = $1 AND user_id = $2
+        "#,
+        id,
+        user_id
+    )
+    .fetch_one(pool)
+    .await?;
 
     return Ok(counter);
 }
@@ -146,10 +158,11 @@ pub async fn create_phase(pool: &PgPool, name: String) -> Result<i32, sqlx::erro
 
 pub async fn assign_phase(
     pool: &PgPool,
+    user_id: i32,
     counter_id: i32,
     phase_id: i32,
 ) -> Result<(), sqlx::error::Error> {
-    let counter = get_counter_by_id(pool, counter_id).await?;
+    let counter = get_counter_by_id(pool, user_id, counter_id).await?;
     let mut phases = counter.phases;
     phases.push(phase_id);
 
@@ -189,10 +202,11 @@ pub async fn update_counter(pool: &PgPool, counter: DbCounter) -> Result<(), sql
     sqlx::query!(
         r#"
         UPDATE counters
-        SET name = $2, phases = $3
-        WHERE id = $1
+        SET name = $3, phases = $4
+        WHERE id = $1 AND user_id = $2
         "#,
         counter.id,
+        counter.user_id,
         counter.name,
         &counter.phases,
     )
