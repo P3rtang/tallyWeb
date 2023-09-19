@@ -34,6 +34,14 @@ where
     pub fn clear(&mut self) {
         self.0.clear()
     }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 impl<'a, K, V> IntoIterator for &'a PointerMap<K, V>
@@ -196,9 +204,9 @@ where
 
     let caret_class = move || {
         if node().is_expanded.get() {
-            "caret fas fa-caret-down"
+            "caret fa-solid fa-caret-right caret-down"
         } else {
-            "caret fas fa-caret-right"
+            "caret fa-solid fa-caret-right"
         }
     };
 

@@ -88,7 +88,6 @@ button {
     padding-inline-end: 8px;
     border-right: 1px solid $border-color-dark;
     padding: 12px;
-    min-width: 22rem;
     overflow-y: auto;
     scrollbar-width: thin;
 
@@ -189,13 +188,16 @@ button {
     }
 
     .caret::before {
-        font-size: 1.2rem;
+        min-width: 10px;
+        padding-left: 4px;
+        font-size: 1.4rem;
         cursor: pointer;
         user-select: none; /* Prevent text selection */
     }
 
     .caret-down::before {
         transform: rotate(90deg);
+        translate: 0px 1px;
     }
 
     .nested {
@@ -221,6 +223,7 @@ button {
     border-radius: 12px;
 
     .context-menu-row {
+        cursor: default;
         color: white;
         padding: 12px;
         min-width: 10rem;
@@ -246,6 +249,7 @@ li {
     font-size: 36px;
     color: white;
     white-space: nowrap;
+    width: 100%;
 
     p {
         padding: 0px;
@@ -257,6 +261,7 @@ li {
         display: flex;
         align-items: center;
         background: $element-background-color-dark;
+        flex-grow: 1;
 
         border-radius: 16px;
         margin: 8px;
@@ -271,15 +276,17 @@ li {
     .info {
         display: flex;
         justify-content: center;
-        min-width: 3.2em;
+        // min-width: 3.2em;
         min-height: 2em;
         padding: 0.75em;
         flex-flow: wrap;
         align-content: center;
+        margin: auto;
     }
 
     .progress-bar {
-        width: 24rem;
+        min-width: 12rem;
+        flex-grow: 1;
 
         .through, .progress {
             border-radius: 24px;
@@ -287,7 +294,7 @@ li {
     }
 
     .longtime {
-        width: 320px;
+        flex-grow: 2;
     }
 }
 
@@ -337,6 +344,10 @@ form {
 
         > *:not(:first-child) {
             margin-left: 16px;
+        }
+
+        .fa-solid {
+            font-size: 1.4rem;
         }
 
         .action-buttons-el {
@@ -443,6 +454,10 @@ form {
     border-radius: 12px;
     background: $element-background-color-dark;
 
+    .fa-solid {
+        font-size: 2rem;
+    }
+
     .overlay-button {
         font-size: 24px;
         display: flex;
@@ -478,17 +493,17 @@ form {
     }
 }
 
-.preferences-form {
+.editing-form {
     margin: auto;
     font-size: 1.3rem;
     // display: flex;
     flex-flow: column;
-    min-width: 25em;
+    // min-width: 25em;
     background: $element-hover-color-dark;
     padding: 24px;
     border-radius: 16px;
 
-    .preferences-row {
+    .editing-row {
         display: flex;
         padding: 8px;
     }
@@ -645,4 +660,8 @@ input:checked + .slider:before {
     -webkit-transform: translateX(26px);
     -ms-transform: translateX(26px);
     transform: translateX(26px);
+}
+
+@keyframes slide {
+  100% { left: 0; }
 }

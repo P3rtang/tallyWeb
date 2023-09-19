@@ -1,6 +1,7 @@
 #![allow(unused_braces)]
-#![allow(non_snake_case)]
 #![allow(elided_lifetimes_in_associated_constant)]
+#![allow(non_snake_case)]
+
 use gloo_storage::{LocalStorage, Storage};
 use js_sys::Date;
 use leptos::{ev::MouseEvent, *};
@@ -152,10 +153,22 @@ async fn get_counters_by_user_name(
     return Ok(CounterResponse::Counters(counters));
 }
 
+#[server(GetCounterById, "/api")]
+pub async fn get_counter_by_id(
+    username: String,
+    token: String,
+    counter_id: i32,
+) -> Result<SerCounter, ServerFnError> {
+    let pool = backend::create_pool().await?;
+    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    let data = backend::get_counter_by_id(&pool, user.id, counter_id).await?;
+
+    return Ok(SerCounter::from_db(data).await);
+}
+
 #[server(GetPhaseById, "/api")]
 async fn get_phase_by_id(phase_id: i32) -> Result<Phase, ServerFnError> {
     let pool = backend::create_pool().await?;
-
     let data = backend::get_phase_by_id(&pool, phase_id).await?;
     return Ok(data.into());
 }
@@ -171,6 +184,23 @@ async fn create_counter(
     let counter_id = backend::create_counter(&pool, user.id, name).await?;
 
     return Ok(counter_id);
+}
+
+#[server(UpdateCounter, "/api")]
+pub async fn update_counter(
+    username: String,
+    token: String,
+    counter: SerCounter,
+) -> Result<(), ServerFnError> {
+    let pool = backend::create_pool().await?;
+    let user = backend::auth::get_user(&pool, username, token, true).await?;
+
+    backend::update_counter(&pool, counter.to_db(user.id).await).await?;
+    for phase in counter.phase_list {
+        backend::update_phase(&pool, phase.into()).await?;
+    }
+
+    return Ok(());
 }
 
 #[server(RemoveCounter, "/api")]
@@ -209,10 +239,16 @@ async fn create_phase(name: String) -> Result<i32, ServerFnError> {
 }
 
 #[server(AssignPhase, "/api")]
-async fn assign_phase(counter_id: i32, phase_id: i32) -> Result<(), ServerFnError> {
+async fn assign_phase(
+    username: String,
+    token: String,
+    counter_id: i32,
+    phase_id: i32,
+) -> Result<(), ServerFnError> {
     let pool = backend::create_pool().await?;
 
-    backend::assign_phase(&pool, counter_id, phase_id).await?;
+    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    backend::assign_phase(&pool, user.id, counter_id, phase_id).await?;
 
     return Ok(());
 }
@@ -308,7 +344,9 @@ pub fn App(cx: Scope) -> impl IntoView {
     provide_meta_context(cx);
 
     let user = create_rw_signal(cx, None::<SessionUser>);
+    let user_memo = create_memo(cx, move |_| user());
     provide_context(cx, user);
+    provide_context(cx, user_memo);
 
     let close_overlay_signal = create_rw_signal(cx, CloseOverlays::new());
     provide_context(cx, close_overlay_signal);
@@ -329,44 +367,66 @@ pub fn App(cx: Scope) -> impl IntoView {
     });
 
     let preferences = create_rw_signal(cx, Preferences::default());
+    let pref_memo = create_memo(cx, move |_| preferences());
     provide_context(cx, pref_resources);
+    provide_context(cx, pref_memo);
     provide_context(cx, preferences);
 
+    let show_sidebar = create_rw_signal(cx, ShowSidebar(true));
+    provide_context(cx, show_sidebar);
+    let toggle_sidebar = move |_| show_sidebar.update(|s| s.0 = !s.0);
+
     view! { cx,
-        <Transition
-            fallback= || ()
-        >
-        {move || { preferences.set(pref_resources.read(cx).unwrap_or_default()); }}
         // injects a stylesheet into the document <head>
         // id=leptos means cargo-leptos will hot-reload this stylesheet
         <Stylesheet href="/pkg/tally_web.css"/>
         // <Stylesheet href="/stylers.css"/>
-        <Script src="https://kit.fontawesome.com/7173474e94.js" crossorigin="anonymous"/>
+        // <Script src="https://kit.fontawesome.com/7173474e94.js" crossorigin="anonymous"/>
+        <Link href="fa/css/all.css" rel="stylesheet"/>
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg"/>
-        // <Meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <Meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <Title text="TallyWeb"/>
 
         <Router>
-            <nav on:click=close_overlays>
-                <A href="/"><img src="favicon.svg" width=48 height=48 alt="Home" class="tooltip-parent"/>
-                    <span class="tooltip bottom">Home</span>
-                </A>
-                <AccountIcon/>
-            </nav>
+            <Transition
+            fallback= || ()>
+                { move || {
+                    preferences.set(pref_resources.read(cx).unwrap_or_default());
+                    create_effect(cx, move |_| {
+                        request_animation_frame(move || {
+                            user.set(SessionUser::from_storage(cx));
+                        })
+                    });
+                }}
+                <nav on:click=close_overlays>
+                    <button on:click=toggle_sidebar>
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <A href="/"><img src="/favicon.svg" width=48 height=48 alt="Home" class="tooltip-parent"/>
+                        <span class="tooltip bottom">Home</span>
+                    </A>
+                    <AccountIcon/>
+                </nav>
 
-            <main on:click=close_overlays>
-                <Routes>
-                    <Route path="" view=HomePage/>
-                    <Route path="/preferences" view=PreferencesWindow/>
+                <main on:click=close_overlays>
+                    <Routes>
+                        <Route path="" view=HomePage/>
+                        <Route path="/preferences" view=PreferencesWindow/>
 
-                    <Route path="/login" view=LoginPage/>
-                    <Route path="/create-account" view=CreateAccount/>
-                    <Route path="/privacy-policy" view=PrivacyPolicy/>
-                    <Route path="/*any" view=NotFound/>
-                </Routes>
-            </main>
+                        <Route path="/edit" view=EditWindow>
+                            <Route path="counter" view=|cx| view!{ cx, <Outlet/> }>
+                                <Route path=":id" view=EditCounterWindow/>
+                            </Route>
+                        </Route>
+
+                        <Route path="/login" view=LoginPage/>
+                        <Route path="/create-account" view=CreateAccount/>
+                        <Route path="/privacy-policy" view=PrivacyPolicy/>
+                        <Route path="/*any" view=NotFound/>
+                    </Routes>
+                </main>
+            </Transition>
         </Router>
-        </Transition>
     }
 }
 
@@ -444,6 +504,8 @@ impl TreeViewNodeItem<ArcCountable> for ArcCountable {
     fn into_view(self, cx: Scope) -> View {
         let node_children = expect_context::<SignalNodeChildren<ArcCountable>>(cx);
 
+        let user = expect_context::<Memo<Option<SessionUser>>>(cx);
+
         let item = create_rw_signal(cx, self.clone());
         let get_node = create_read_slice(cx, node_children, move |node_signal| {
             node_signal.get(&item.get()).cloned().unwrap()
@@ -451,6 +513,9 @@ impl TreeViewNodeItem<ArcCountable> for ArcCountable {
 
         let click_new_phase = move |e: MouseEvent| {
             e.stop_propagation();
+            if user().is_none() {
+                return;
+            }
             create_local_resource(
                 cx,
                 || (),
@@ -466,9 +531,14 @@ impl TreeViewNodeItem<ArcCountable> for ArcCountable {
                     let phase_id = create_phase(name.clone())
                         .await
                         .expect("Could not create Phase");
-                    assign_phase(item.get_untracked().get_id(), phase_id)
-                        .await
-                        .expect("Could not assign phase to Counter");
+                    assign_phase(
+                        user().unwrap().username,
+                        user().unwrap().token,
+                        item.get_untracked().get_id(),
+                        phase_id,
+                    )
+                    .await
+                    .expect("Could not assign phase to Counter");
                     let phase = item.get_untracked().new_phase(phase_id, name);
 
                     get_node.get_untracked().set_expand(true);
@@ -574,18 +644,27 @@ impl IntoView for ArcCountable {
             set_count(get_count() + 1)
         };
 
+        let screen_layout = expect_context::<RwSignal<ScreenLayout>>(cx);
+        let show_title = move || {
+            if screen_layout() == ScreenLayout::Small {
+                format!("display: none")
+            } else {
+                String::new()
+            }
+        };
+
         view! { cx,
         <ul style="display:flex;align-items:center;flex-wrap:wrap">
             <li class="rowbox" on:click=on_count_click>
-                <p class="title">{ self.name() }</p>
+                <p class="title" style=show_title>{ self.name() }</p>
                 <p class="info">{ move || get_count() }</p>
             </li>
             <li class="rowbox">
-                <p class="title">Time</p>
+                <p class="title" style=show_title>Time</p>
                 <p class="info longtime">{ move || get_time.with(|t| format_time(*t)) }</p>
             </li>
             <li class="rowbox">
-                <p class="title">Progress</p>
+                <p class="title" style=show_title>Progress</p>
                 <Progressbar progress={
                     move || item_s.get().progress(get_count())
                 } class="info">{
@@ -690,14 +769,9 @@ pub fn navigate(cx: Scope, page: impl ToString) {
 
 #[component]
 pub fn HomePage(cx: Scope) -> impl IntoView {
-    let session_user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
-    create_effect(cx, move |_| {
-        request_animation_frame(move || {
-            session_user.set(SessionUser::from_storage(cx));
-        })
-    });
+    let session_user = expect_context::<Memo<Option<SessionUser>>>(cx);
 
-    let data = create_local_resource(cx, session_user, move |user| async move {
+    let data = create_resource(cx, session_user, move |user| async move {
         if let Some(user) = user {
             match get_counters_by_user_name(cx, user.username.clone(), user.token.clone()).await {
                 Ok(CounterResponse::Counters(counters)) => counters,
@@ -708,19 +782,12 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
         }
     });
 
+    create_effect(cx, move |_| data.refetch());
+
     provide_context(cx, data);
     let list = CounterList::new(&[]);
     let state = create_rw_signal(cx, list);
     provide_context(cx, state);
-
-    create_effect(cx, move |_| {
-        let list = match data.read(cx) {
-            None => state.get(),
-            Some(data_list) => data_list.into(),
-        };
-
-        state.set(list)
-    });
 
     let preferences = expect_context::<RwSignal<Preferences>>(cx);
     let accent_color = create_read_slice(cx, preferences, |prefs| prefs.accent_color.0.clone());
@@ -832,10 +899,15 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                         log!("Count not create Phase, Got: {err}");
                     })
                     .unwrap();
-                assign_phase(counter_id, phase_id)
-                    .await
-                    .map_err(|err| log!("Could not assign phase to Counter, Got: {err}"))
-                    .expect("Could not assign phase to Counter");
+                assign_phase(
+                    user.get_untracked().unwrap().username,
+                    user.get_untracked().unwrap().token,
+                    counter_id,
+                    phase_id,
+                )
+                .await
+                .map_err(|err| log!("Could not assign phase to Counter, Got: {err}"))
+                .expect("Could not assign phase to Counter");
 
                 state.update(|list| {
                     let counter = list.new_counter(counter_id, name.clone()).unwrap();
@@ -845,18 +917,56 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
         );
     };
 
+    let show_sidebar = expect_context::<RwSignal<ShowSidebar>>(cx);
+    let screen_layout = create_rw_signal(cx, ScreenLayout::Big);
+    provide_context(cx, screen_layout);
+
+    let handle_resize = move || {
+        if let Some(width) = leptos_dom::window()
+            .inner_width()
+            .ok()
+            .map(|v| v.as_f64())
+            .flatten()
+        {
+            if width < 1200.0 {
+                screen_layout.set(ScreenLayout::Small)
+            } else {
+                screen_layout.set(ScreenLayout::Big);
+                show_sidebar.update(|s| s.0 = true);
+            }
+        }
+    };
+
+    create_effect(cx, move |_| {
+        handle_resize();
+        connect_on_window_resize(Box::new(handle_resize));
+    });
+
     view! { cx,
     <Transition
-        fallback=move || view!{cx, <p>Loading...</p>}
-    >
+        fallback=move || view!{cx, <p>Loading...</p>}>
+        { move || {
+            let list = match data.read(cx) {
+                None => state.get(),
+                Some(data_list) => data_list.into(),
+            };
+            state.set(list)
+        }}
         <div id="HomeGrid">
-            <TreeViewWidget
-                selection_model=selection_signal
-                start_nodes=move || { state.get().list }
-                after=move |cx| {
-                    view! {cx, <button on:click=on_click class="new-counter">New Counter</button> }
+            { move || {
+                if screen_layout() == ScreenLayout::Small {
+                    selection_signal.with(|sel| show_sidebar.update(|s| s.0 = sel.selection.is_empty()))
                 }
-            />
+            }}
+            <Sidebar display=show_sidebar layout=screen_layout>
+                <TreeViewWidget
+                    selection_model=selection_signal
+                    start_nodes=move || { state.get().list }
+                    after=move |cx| {
+                        view! {cx, <button on:click=on_click class="new-counter">New Counter</button> }
+                    }
+                />
+            </Sidebar>
             <InfoBox/>
         </div>
     </Transition>
@@ -968,11 +1078,11 @@ pub trait Countable: std::fmt::Debug + Send + Any {
     fn as_any(&self) -> &dyn Any;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct SerCounter {
     id: i32,
-    name: String,
-    phase_list: Vec<Phase>,
+    pub name: String,
+    pub phase_list: Vec<Phase>,
 }
 
 impl From<Counter> for SerCounter {

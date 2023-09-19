@@ -28,6 +28,7 @@ cfg_if::cfg_if! {
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
                     // serve other assets from the `assets` directory
                     .service(Files::new("/assets", site_root))
+                    .service(Files::new("/fa", format!("{site_root}/font_awesome")))
                     // serve the favicon from /favicon.ico
                     .service(favicon)
                     .leptos_routes(
@@ -36,6 +37,7 @@ cfg_if::cfg_if! {
                         |cx| view! { cx, <App/> },
                     )
                     .app_data(web::Data::new(leptos_options.to_owned()))
+                    .service(Files::new("/", site_root))
                 //.wrap(middleware::Compress::default())
             })
             .bind(&addr)?

@@ -1,9 +1,11 @@
 #![allow(unused_braces)]
+#![allow(non_snake_case)]
 
-use crate::app::{navigate, remove_counter, remove_phase, SerCounter, SessionUser};
+use crate::app::{remove_counter, remove_phase, SerCounter, SessionUser};
 
 use super::*;
 use leptos::*;
+use leptos_router::A;
 use web_sys::MouseEvent;
 
 #[component]
@@ -14,10 +16,11 @@ pub fn CountableContextMenu(
     countable_id: i32,
     is_phase: bool,
 ) -> impl IntoView {
-    let on_edit_click = move |ev: MouseEvent| {
-        ev.stop_propagation();
-        navigate(cx, format!("/edit/{countable_id}"));
-    };
+    let edit_location = format!(
+        "/edit/{}/{}",
+        if is_phase { "phase" } else { "counter" },
+        countable_id
+    );
 
     let on_del_click = move |ev: MouseEvent| {
         ev.stop_propagation();
@@ -36,8 +39,8 @@ pub fn CountableContextMenu(
                     .await;
                 } else {
                     let _ = remove_counter(
-                        user.get_untracked().unwrap().username,
                         user.get_untracked().unwrap().token,
+                        user.get_untracked().unwrap().username,
                         countable_id,
                     )
                     .await;
@@ -51,9 +54,9 @@ pub fn CountableContextMenu(
 
     view! { cx,
         <Overlay show_overlay=show_overlay location=location>
-            <ContextMenuRow on:click=on_edit_click>
+            <ContextMenuNav href=edit_location.clone()>
                 <span>Edit</span>
-            </ContextMenuRow>
+            </ContextMenuNav>
             <ContextMenuRow on:click=on_del_click>
                 <span>Delete</span>
             </ContextMenuRow>
@@ -65,5 +68,16 @@ pub fn CountableContextMenu(
 pub fn ContextMenuRow(cx: Scope, children: Children) -> impl IntoView {
     view! { cx,
         <div class="context-menu-row">{ children(cx) }</div>
+    }
+}
+
+#[component]
+pub fn ContextMenuNav(cx: Scope, href: String, children: Children) -> impl IntoView {
+    let on_click = move |_| {
+        use_context::<RwSignal<CloseOverlays>>(cx).map(|t| t.update(|_| ()));
+    };
+
+    view! { cx,
+        <A href=href class="remove-underline" on:click=on_click><div class="context-menu-row">{ children(cx) }</div></A>
     }
 }

@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::app::{navigate, SessionUser};
+use crate::app::SessionUser;
 use leptos::*;
 use leptos_router::A;
 
@@ -18,9 +18,11 @@ pub fn letter_to_three_digit_hash(letter: char) -> String {
 
 #[component]
 pub fn AccountIcon(cx: Scope) -> impl IntoView {
-    let session_user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
-    let initial = create_read_slice(cx, session_user, move |user| {
-        user.clone()
+    let user = expect_context::<Memo<Option<SessionUser>>>(cx);
+
+    let initial = move || {
+        user()
+            .clone()
             .map(|u| {
                 u.username
                     .chars()
@@ -29,7 +31,7 @@ pub fn AccountIcon(cx: Scope) -> impl IntoView {
             })
             .flatten()
             .unwrap_or_default()
-    });
+    };
 
     let preferences = expect_context::<RwSignal<crate::app::Preferences>>(cx);
     let style = create_read_slice(cx, preferences, |pref| {
@@ -44,7 +46,7 @@ pub fn AccountIcon(cx: Scope) -> impl IntoView {
 
     view! { cx,
         <Show
-            when=move || { session_user().is_some() }
+            when=move || { user().is_some() }
             fallback=|_| {view! { cx,  }}
         >
             <div id="user-icon" style=style on:click=open_overlay>
@@ -88,18 +90,6 @@ pub fn AccountOverlay(cx: Scope, show_overlay: RwSignal<bool>) -> impl IntoView 
                 />
             </div>
         </Show>
-    }
-}
-
-#[component]
-pub fn LogoutButton(cx: Scope) -> impl IntoView {
-    let logout = move |_| navigate(cx, "/login");
-
-    view! { cx,
-        <button class="overlay-button" on:click=logout>
-            <i class="fa-solid fa-right-from-bracket"></i>
-            <span>Logout</span>
-        </button>
     }
 }
 
@@ -159,8 +149,7 @@ pub fn AccountOverlayNavigate(
                 class="overlay-button"
                 on:click=move |_| { if close_overlay {
                     use_context::<RwSignal<CloseOverlays>>(cx).map(|t| t.update(|_| ()));
-                }}
-            >
+                }}>
                 <Show
                     when=move || fa_icon.is_some()
                     fallback=|_| ()

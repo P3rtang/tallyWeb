@@ -1,7 +1,9 @@
-pub mod account_icon;
-pub mod context_menu;
+mod account_icon;
+mod context_menu;
+mod sidebar;
 pub use account_icon::*;
 pub use context_menu::*;
+pub use sidebar::*;
 
 use leptos::*;
 
