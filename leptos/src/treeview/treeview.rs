@@ -130,6 +130,15 @@ impl<T: TreeViewNodeItem<T>> SelectionModel<T> {
             accent_color,
         };
     }
+
+    pub fn selection(&self) -> Vec<T> {
+        self.selection
+            .clone()
+            .into_iter()
+            .filter(|(_, b)| *b)
+            .map(|(i, _)| i)
+            .collect()
+    }
 }
 
 impl<T: TreeViewNodeItem<T>> Default for SelectionModel<T> {

@@ -5,7 +5,10 @@ use leptos::{html::Input, *};
 use leptos_router::{use_params, Form, IntoParam, Outlet, Params, ParamsError};
 use web_sys::SubmitEvent;
 
-use crate::app::{navigate, update_counter, Preferences, SerCounter, SessionUser};
+use crate::{
+    app::{navigate, update_counter, Preferences, SerCounter, SessionUser},
+    elements::ScreenLayout,
+};
 
 #[component]
 pub fn EditWindow(cx: Scope) -> impl IntoView {
@@ -15,7 +18,10 @@ pub fn EditWindow(cx: Scope) -> impl IntoView {
 }
 
 #[component]
-pub fn EditCounterWindow(cx: Scope) -> impl IntoView {
+pub fn EditCounterWindow<F>(cx: Scope, layout: F) -> impl IntoView
+where
+    F: Fn() -> ScreenLayout + 'static,
+{
     let user = expect_context::<Memo<Option<SessionUser>>>(cx);
     let params = use_params::<CountableId>(cx);
 

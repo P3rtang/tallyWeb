@@ -372,9 +372,12 @@ pub fn App(cx: Scope) -> impl IntoView {
     provide_context(cx, pref_memo);
     provide_context(cx, preferences);
 
+    let screen_layout = create_rw_signal(cx, ScreenLayout::Big);
     let show_sidebar = create_rw_signal(cx, ShowSidebar(true));
-    provide_context(cx, show_sidebar);
     let toggle_sidebar = move |_| show_sidebar.update(|s| s.0 = !s.0);
+
+    provide_context(cx, screen_layout);
+    provide_context(cx, show_sidebar);
 
     view! { cx,
         // injects a stylesheet into the document <head>
@@ -399,7 +402,7 @@ pub fn App(cx: Scope) -> impl IntoView {
                     });
                 }}
                 <nav on:click=close_overlays>
-                    <button on:click=toggle_sidebar>
+                    <button id="toggle-sidebar" on:click=toggle_sidebar>
                         <i class="fa-solid fa-bars"></i>
                     </button>
                     <A href="/"><img src="/favicon.svg" width=48 height=48 alt="Home" class="tooltip-parent"/>
@@ -415,7 +418,9 @@ pub fn App(cx: Scope) -> impl IntoView {
 
                         <Route path="/edit" view=EditWindow>
                             <Route path="counter" view=|cx| view!{ cx, <Outlet/> }>
-                                <Route path=":id" view=EditCounterWindow/>
+                                <Route path=":id" view=move |cx| view! { cx,
+                                    <EditCounterWindow layout=screen_layout/>
+                                }/>
                             </Route>
                         </Route>
 
@@ -803,60 +808,50 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
             if let Some(selection) = use_context::<SelectionSignal<ArcCountable>>(cx) {
                 match ev.code().as_str() {
                     "Equal" => selection.with(|list| {
-                        list.selection
-                            .clone()
-                            .into_iter()
-                            .filter(|(_, b)| *b)
-                            .for_each(|(node, _)| {
-                                let state = expect_context::<RwSignal<CounterList>>(cx);
-                                let item_s = create_rw_signal(cx, node.clone());
+                        list.selection().into_iter().for_each(|node| {
+                            let state = expect_context::<RwSignal<CounterList>>(cx);
+                            let item_s = create_rw_signal(cx, node.clone());
 
-                                let (get_count, set_count) = create_slice(
-                                    cx,
-                                    state,
-                                    move |_| {
-                                        item_s
-                                            .get()
-                                            .try_lock()
-                                            .map(|c| c.get_count())
-                                            .unwrap_or_default()
-                                    },
-                                    move |_, count| {
-                                        let _ =
-                                            item_s.get().try_lock().map(|mut c| c.set_count(count));
-                                    },
-                                );
+                            let (get_count, set_count) = create_slice(
+                                cx,
+                                state,
+                                move |_| {
+                                    item_s
+                                        .get()
+                                        .try_lock()
+                                        .map(|c| c.get_count())
+                                        .unwrap_or_default()
+                                },
+                                move |_, count| {
+                                    let _ = item_s.get().try_lock().map(|mut c| c.set_count(count));
+                                },
+                            );
 
-                                set_count(get_count() + 1);
-                            })
+                            set_count(get_count() + 1);
+                        })
                     }),
                     "Minus" => selection.with(|list| {
-                        list.selection
-                            .clone()
-                            .into_iter()
-                            .filter(|(_, b)| *b)
-                            .for_each(|(node, _)| {
-                                let state = expect_context::<RwSignal<CounterList>>(cx);
-                                let item_s = create_rw_signal(cx, node.clone());
+                        list.selection().into_iter().for_each(|node| {
+                            let state = expect_context::<RwSignal<CounterList>>(cx);
+                            let item_s = create_rw_signal(cx, node.clone());
 
-                                let (get_count, set_count) = create_slice(
-                                    cx,
-                                    state,
-                                    move |_| {
-                                        item_s
-                                            .get()
-                                            .try_lock()
-                                            .map(|c| c.get_count())
-                                            .unwrap_or_default()
-                                    },
-                                    move |_, count| {
-                                        let _ =
-                                            item_s.get().try_lock().map(|mut c| c.set_count(count));
-                                    },
-                                );
+                            let (get_count, set_count) = create_slice(
+                                cx,
+                                state,
+                                move |_| {
+                                    item_s
+                                        .get()
+                                        .try_lock()
+                                        .map(|c| c.get_count())
+                                        .unwrap_or_default()
+                                },
+                                move |_, count| {
+                                    let _ = item_s.get().try_lock().map(|mut c| c.set_count(count));
+                                },
+                            );
 
-                                set_count(get_count() - 1);
-                            })
+                            set_count(get_count() - 1);
+                        })
                     }),
                     "KeyP" => {
                         let _ = state.try_update(|list| list.toggle_paused());
@@ -918,9 +913,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     };
 
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>(cx);
-    let screen_layout = create_rw_signal(cx, ScreenLayout::Big);
-    provide_context(cx, screen_layout);
-
+    let screen_layout = expect_context::<RwSignal<ScreenLayout>>(cx);
     let handle_resize = move || {
         if let Some(width) = leptos_dom::window()
             .inner_width()
@@ -955,7 +948,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
         <div id="HomeGrid">
             { move || {
                 if screen_layout() == ScreenLayout::Small {
-                    selection_signal.with(|sel| show_sidebar.update(|s| s.0 = sel.selection.is_empty()))
+                    selection_signal.with(|sel| show_sidebar.update(|s| s.0 = sel.selection().is_empty()))
                 }
             }}
             <Sidebar display=show_sidebar layout=screen_layout>

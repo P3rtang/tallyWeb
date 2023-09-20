@@ -34,6 +34,25 @@ nav {
             margin: 0px;
         }
     }
+
+    #toggle-sidebar {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.2em;
+        background: none;
+        color: white;
+        border: none;
+        border-radius: 2em;
+        height: 42px;
+        width: 42px;
+        margin-left: 8px;
+        cursor: pointer;
+
+        &:hover {
+            background: #AAAAAA40;
+        }
+    }
 }
 
 .tooltip {
@@ -189,7 +208,7 @@ button {
 
     .caret::before {
         min-width: 10px;
-        padding-left: 4px;
+        padding: 2px;
         font-size: 1.4rem;
         cursor: pointer;
         user-select: none; /* Prevent text selection */
@@ -197,7 +216,7 @@ button {
 
     .caret-down::before {
         transform: rotate(90deg);
-        translate: 0px 1px;
+        translate: 2px -2px;
     }
 
     .nested {
@@ -494,18 +513,22 @@ form {
 }
 
 .editing-form {
+    display: flex;
+    flex-flow: column;
     margin: auto;
     font-size: 1.3rem;
-    // display: flex;
-    flex-flow: column;
-    // min-width: 25em;
     background: $element-hover-color-dark;
-    padding: 24px;
+    padding: 8px;
     border-radius: 16px;
+    height: 60vh;
 
     .editing-row {
         display: flex;
         padding: 8px;
+
+        *:last-child {
+            margin-left: auto;
+        }
     }
 
     h1 {
@@ -516,7 +539,7 @@ form {
         display: flex;
         align-items: center;
         background: $interactable-hover-color-dark;
-        min-width: 14em;
+        // min-width: 14em;
         border-radius: 12px;
         margin-right: 16px;
         padding: 12px 20px;
@@ -526,6 +549,7 @@ form {
         font-size: 1.3rem;
         height: 3rem;
         padding-left: 16px;
+        width: 6em;
 
         border-radius: 12px;
         border: none;
@@ -549,7 +573,7 @@ form {
     .action-buttons {
         display: flex;
         justify-content: right;
-        margin-top: 480px;
+        margin-top: auto;
 
         > *:not(:first-child) {
             margin-left: 16px;
@@ -613,7 +637,7 @@ form {
 .switch {
     position: relative;
     display: inline-block;
-    width: 60px;
+    min-width: 60px;
     height: 34px;
     margin: auto 0px;
 }
