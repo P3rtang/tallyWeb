@@ -513,61 +513,63 @@ form {
 }
 
 .editing-form {
-    display: flex;
-    flex-flow: column;
-    margin: auto;
-    font-size: 1.3rem;
-    background: $element-hover-color-dark;
-    padding: 8px;
-    border-radius: 16px;
-    height: 60vh;
-
-    .editing-row {
+    &.desktop {
         display: flex;
-        padding: 8px;
-
-        *:last-child {
-            margin-left: auto;
-        }
-    }
-
-    h1 {
-        color: #6272A4;
-    }
-
-    label:not(.switch) {
-        display: flex;
-        align-items: center;
-        background: $interactable-hover-color-dark;
-        // min-width: 14em;
-        border-radius: 12px;
-        margin-right: 16px;
-        padding: 12px 20px;
-    }
-
-    input[type="text"] {
+        flex-flow: column;
+        margin: auto;
         font-size: 1.3rem;
-        height: 3rem;
-        padding-left: 16px;
-        width: 6em;
+        background: $element-hover-color-dark;
+        padding: 24px;
+        border-radius: 16px;
+        height: 60vh;
 
-        border-radius: 12px;
-        border: none;
-        outline: none;
-        background: $interactable-hover-color-dark;
-    }
+        .editing-row {
+            display: flex;
+            padding: 8px;
 
-    input[type="checkbox"] {
-        font-size: unset;
-    }
+//             *:last-child {
+//                 margin-left: auto;
+//             }
+        }
 
-    input:focus-visible {
-        background: $interactable-bg-color-dark;
-    }
+        h1 {
+            color: #6272A4;
+        }
 
-    input:disabled {
-        color: unset;
-        opacity: .75;
+        label:not(.switch) {
+            display: flex;
+            align-items: center;
+            background: $interactable-hover-color-dark;
+            min-width: 12em;
+            border-radius: 12px;
+            margin-right: 16px;
+            padding: 12px 20px;
+        }
+
+        input[type="text"] {
+            font-size: 1.3rem;
+            height: 3rem;
+            padding-left: 16px;
+            width: 6em;
+
+            border-radius: 12px;
+            border: none;
+            outline: none;
+            background: $interactable-hover-color-dark;
+        }
+
+        input[type="checkbox"] {
+            font-size: unset;
+        }
+
+        input:focus-visible {
+            background: $interactable-bg-color-dark;
+        }
+
+        input:disabled {
+            color: unset;
+            opacity: .75;
+        }
     }
 
     .action-buttons {

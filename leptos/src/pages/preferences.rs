@@ -119,7 +119,7 @@ pub fn PreferencesWindow(cx: Scope) -> impl IntoView {
         <ActionForm action=action on:submit=on_submit class="parent-form">
             <input style="display:none" type="text" value={move || { user().map(|u| u.username).unwrap_or_default() }} name="username"/>
             <input style="display:none" type="text" value={move || { user().map(|u| u.token).unwrap_or_default() }} name="token"/>
-            <div class="editing-form" style=border_style>
+            <div class="editing-form desktop" style=border_style>
                 <div class="editing-row">
                     <label for="use_default_accent_color">Use Default Accent Color</label>
                     <label class="switch">

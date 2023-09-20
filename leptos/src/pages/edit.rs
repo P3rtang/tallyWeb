@@ -20,7 +20,7 @@ pub fn EditWindow(cx: Scope) -> impl IntoView {
 #[component]
 pub fn EditCounterWindow<F>(cx: Scope, layout: F) -> impl IntoView
 where
-    F: Fn() -> ScreenLayout + 'static,
+    F: Fn() -> ScreenLayout + Copy + 'static,
 {
     let user = expect_context::<Memo<Option<SessionUser>>>(cx);
     let params = use_params::<CountableId>(cx);
@@ -41,7 +41,7 @@ where
                 }
             });
 
-            view! { cx, <EditCounterBox counter_rsrc=counter_rsrc/> }
+            view! { cx, <EditCounterBox layout=layout counter_rsrc=counter_rsrc/> }
         }}
     </Show>
     }
@@ -61,10 +61,13 @@ impl std::ops::Deref for CountableId {
 }
 
 #[component]
-fn EditCounterBox(
+fn EditCounterBox<F>(
     cx: Scope,
+    layout: F,
     counter_rsrc: Resource<Result<CountableId, ParamsError>, Result<SerCounter, String>>,
-) -> impl IntoView {
+) -> impl IntoView
+where F: Fn() -> ScreenLayout + 'static
+{
     let user = expect_context::<Memo<Option<SessionUser>>>(cx);
     let preferences = expect_context::<Memo<Preferences>>(cx);
 
@@ -114,7 +117,7 @@ fn EditCounterBox(
         >
         { move || { counter.set(counter_rsrc.read(cx).map(|c| c.ok()).flatten()); } }
         <Form action="/" on:submit=on_submit class="parent-form">
-            <div class="editing-form" style=border_style>
+            <div class="editing-form desktop" style=border_style>
                 <EditRow label="name" input=name_input value=name/>
                 <div  class="action-buttons">
                     <button type="button" on:click=undo_changes>
