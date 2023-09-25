@@ -155,7 +155,7 @@ async fn get_counters_by_user_name(
         )
     }
 
-    counters.sort_by(|a, b| a.name.cmp(&b.name));
+    counters.sort_by(|a, b| a.id.cmp(&b.id));
 
     return Ok(CounterResponse::Counters(counters));
 }
@@ -361,6 +361,50 @@ impl Display for AccountAccentColor {
     }
 }
 
+fn save(cx: Scope, list: CounterList) -> Result<(), String> {
+    let user = use_context::<Memo<Option<SessionUser>>>(cx).ok_or("User Context should Exist")?;
+    spawn_local(async move {
+        save_all(
+            user.get_untracked().unwrap().username,
+            user.get_untracked().unwrap().token,
+            list.into(),
+        )
+        .await
+        .unwrap()
+    });
+    return Ok(());
+}
+
+fn save_counter(cx: Scope, counter: SerCounter) -> Result<(), String> {
+    let user = use_context::<Memo<Option<SessionUser>>>(cx).ok_or("User Context should Exist")?;
+    spawn_local(async move {
+        update_counter(
+            user.get_untracked().unwrap().username,
+            user.get_untracked().unwrap().token,
+            counter,
+        )
+        .await
+        .unwrap()
+    });
+
+    return Ok(());
+}
+
+fn save_phase(cx: Scope, phase: Phase) -> Result<(), String> {
+    let user = use_context::<Memo<Option<SessionUser>>>(cx).ok_or("User Context should Exist")?;
+    spawn_local(async move {
+        update_phase(
+            user.get_untracked().unwrap().username,
+            user.get_untracked().unwrap().token,
+            phase,
+        )
+        .await
+        .unwrap()
+    });
+
+    return Ok(());
+}
+
 #[component]
 pub fn App(cx: Scope) -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
@@ -470,7 +514,7 @@ pub fn App(cx: Scope) -> impl IntoView {
                             </Route>
                             <Route path="phase" view=|cx| view!{ cx, <Outlet/> }>
                                 <Route path=":id" view=move |cx| view! { cx,
-                                    <EditCounterWindow layout=screen_layout/>
+                                    <EditPhaseWindow layout=screen_layout/>
                                 }/>
                             </Route>
                         </Route>
@@ -540,6 +584,15 @@ impl ArcCountable {
         let _ = self.0.try_lock().map(|mut c| c.new_phase(id, name));
         self.get_children().last().cloned().unwrap()
     }
+
+    fn save(&self, cx: Scope) -> Result<(), String> {
+        let has_ch = self.0.try_lock().map_err(|_| "Failed to lock ArcCountable")?.has_children();
+        if has_ch {
+            save_counter(cx, self.0.try_lock().unwrap().as_any().downcast_ref::<Counter>().unwrap().clone().into())
+        } else {
+            save_phase(cx, self.0.try_lock().unwrap().as_any().downcast_ref::<Phase>().unwrap().clone())
+        }
+    }
 }
 
 impl PartialEq for ArcCountable {
@@ -585,24 +638,27 @@ impl TreeViewNodeItem<ArcCountable> for ArcCountable {
                         .unwrap_or(1);
                     let name = format!("Phase {n_phase}");
                     let phase_id = create_phase(
-                        user().unwrap().username,
-                        user().unwrap().token,
+                        user.get_untracked().unwrap().username,
+                        user.get_untracked().unwrap().token,
                         name.clone(),
                     )
                     .await
                     .expect("Could not create Phase");
                     assign_phase(
-                        user().unwrap().username,
-                        user().unwrap().token,
+                        user.get_untracked().unwrap().username,
+                        user.get_untracked().unwrap().token,
                         item.get_untracked().get_id(),
                         phase_id,
                     )
                     .await
                     .expect("Could not assign phase to Counter");
-                    let phase = item.get_untracked().new_phase(phase_id, name);
 
-                    get_node.get_untracked().set_expand(true);
-                    get_node.get_untracked().insert_child(cx, phase);
+                    expect_context::<RwSignal<CounterList>>(cx).update(|_| {
+                        let phase = item.get_untracked().new_phase(phase_id, name);
+                        get_node.get_untracked().set_expand(true);
+                        get_node.get_untracked().insert_child(cx, phase);
+
+                    });
                 },
             );
         };
@@ -699,9 +755,13 @@ impl IntoView for ArcCountable {
             },
         );
 
-        let on_count_click = move |e: MouseEvent| {
-            e.stop_propagation();
-            set_count(get_count() + 1)
+        let on_count_click = move |_| {
+            set_count(get_count() + 1);
+            state.update(|s| s.is_paused = false);
+        };
+
+        let on_time_click = move |_| {
+            state.update(|s| s.toggle_paused(cx));
         };
 
         let screen_layout = expect_context::<RwSignal<ScreenLayout>>(cx);
@@ -719,7 +779,7 @@ impl IntoView for ArcCountable {
                 <p class="title" style=show_title>{ self.name() }</p>
                 <p class="info">{ move || get_count() }</p>
             </li>
-            <li class="rowbox">
+            <li class="rowbox" on:click=on_time_click>
                 <p class="title" style=show_title>Time</p>
                 <p class="info longtime">{ move || get_time.with(|t| format_time(*t)) }</p>
             </li>
@@ -761,11 +821,26 @@ fn timer(cx: Scope) {
         };
     };
 
+    let state = use_context::<RwSignal<CounterList>>(cx);
+
+    create_effect(cx, move |_| {
+        if state.is_none() {
+            return;
+        }
+        set_interval(
+            move || {
+                if let Some(list) = state.unwrap().try_get() {
+                    let _ = save(cx, list);
+                }
+            },
+            Duration::from_secs(20),
+        );
+    });
+
     create_effect(cx, move |_| {
         set_interval(
             move || {
                 if let Some(selection) = use_context::<SelectionSignal<ArcCountable>>(cx) {
-                    let state = use_context::<RwSignal<CounterList>>(cx);
                     if state.is_none() {
                         time.1.set(Date::new_0().get_milliseconds());
                         return;
@@ -829,40 +904,30 @@ pub fn navigate(cx: Scope, page: impl ToString) {
 
 fn connect_keys(cx: Scope, state: RwSignal<CounterList>, selection: SelectionSignal<ArcCountable>) {
     let active = create_read_slice(cx, selection, |sel| sel.selection());
-    let user = expect_context::<Memo<Option<SessionUser>>>(cx);
-    if let Some(list) = use_context::<RwSignal<CounterList>>(cx) {
-        window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
-            "Equal" => {
-                active.try_get().map(|a| {
-                    a.into_iter().for_each(|c| {
-                        let _ = c.0.try_lock().map(|mut c| c.add_count(1));
-                    });
-                    state.update(|_| ());
+    window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
+        "Equal" => {
+            active.try_get().map(|a| {
+                a.into_iter().for_each(|c| {
+                    let _ = c.0.try_lock().map(|mut c| c.add_count(1));
+                    let _ = c.save(cx);
                 });
-                spawn_local(async move {
-                    save_all(
-                        user().unwrap().username,
-                        user().unwrap().token,
-                        list().into(),
-                    )
-                    .await
-                    .unwrap()
-                })
-            }
-            "Minus" => {
-                active.try_get().map(|a| {
-                    a.into_iter().for_each(|c| {
-                        let _ = c.0.try_lock().map(|mut c| c.add_count(-1));
-                    });
-                    state.update(|_| ());
+                state.try_update(|s| s.is_paused = false);
+            });
+        }
+        "Minus" => {
+            active.try_get().map(|a| {
+                a.into_iter().for_each(|c| {
+                    let _ = c.0.try_lock().map(|mut c| c.add_count(-1));
+                    let _ = c.save(cx);
                 });
-            }
-            "KeyP" => {
-                state.try_update(|s| s.toggle_paused());
-            }
-            _ => {}
-        });
-    }
+                state.try_update(|s| s.is_paused = false);
+            });
+        }
+        "KeyP" => {
+            state.try_update(|s| s.toggle_paused(cx));
+        }
+        _ => {}
+    });
 }
 
 #[component]
@@ -879,8 +944,6 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
             Vec::new()
         }
     });
-
-    create_effect(cx, move |_| data.refetch());
 
     provide_context(cx, data);
     let list = CounterList::new(&[]);
@@ -956,9 +1019,8 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>(cx);
 
     view! { cx,
-    <Show
-        when=move || session_user().is_some() && data.read(cx).is_some()
-        fallback=move |cx| view!{ cx, <LoadingScreen/> }
+    <Suspense
+        fallback=move || view!{ cx, <LoadingScreen/> }
     >
         { move || {
             let list = match data.read(cx) {
@@ -967,6 +1029,10 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
             };
             state.set(list)
         }}
+    <Show
+        when=move || session_user().is_some() && data.read(cx).is_some()
+        fallback=move |cx| view!{ cx, <LoadingScreen/> }
+    >
         <div id="HomeGrid">
             { move || {
                 if screen_layout() == ScreenLayout::Small {
@@ -985,6 +1051,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
             <InfoBox/>
         </div>
     </Show>
+    </Suspense>
     }
 }
 
@@ -1470,8 +1537,9 @@ impl CounterList {
         return Ok(arc_counter);
     }
 
-    fn toggle_paused(&mut self) {
+    fn toggle_paused(&mut self, cx: Scope) {
         self.is_paused = !self.is_paused;
+        let _ = save(cx, self.clone().into());
     }
 }
 

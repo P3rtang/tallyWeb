@@ -270,7 +270,7 @@ where
                 let user = user.get_untracked().unwrap_or_default();
                 if let Ok(id) = param.map(|p| p.id as i32) {
                     crate::app::get_phase_by_id(user.username, user.token, id).await.map_err(|_| {
-                        String::from("Could not access Counter")
+                        String::from("Could not access Phase")
                     })
                 } else {
                     Err(String::from("Could not get Id"))
