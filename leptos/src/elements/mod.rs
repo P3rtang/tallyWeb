@@ -1,8 +1,10 @@
 mod account_icon;
 mod context_menu;
+mod loading_screen;
 mod sidebar;
 pub use account_icon::*;
 pub use context_menu::*;
+pub use loading_screen::*;
 pub use sidebar::*;
 
 use leptos::*;

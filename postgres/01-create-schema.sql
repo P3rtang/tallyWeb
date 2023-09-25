@@ -7,6 +7,7 @@ create table counters(
 
 create table phases(
     id          serial          UNIQUE NOT NULL,
+    user_id     integer         NOT NULL,
     name        varchar         NOT NULL,
     count       integer         NOT NULL,
     time        bigint          NOT NULL

@@ -6,10 +6,16 @@ use leptos::*;
 use leptos_router::ActionForm;
 use web_sys::{Event, SubmitEvent};
 
-use crate::app::{Preferences, SavePreferences, SessionUser};
+use crate::{
+    app::{Preferences, SavePreferences, SessionUser},
+    elements::ScreenLayout,
+};
 
 #[component]
-pub fn PreferencesWindow(cx: Scope) -> impl IntoView {
+pub fn PreferencesWindow<F>(cx: Scope, layout: F) -> impl IntoView
+where
+    F: Fn() -> ScreenLayout + Copy + 'static,
+{
     let pref_resource = expect_context::<Resource<Option<SessionUser>, Preferences>>(cx);
     let preferences = expect_context::<RwSignal<Preferences>>(cx);
 
@@ -119,9 +125,9 @@ pub fn PreferencesWindow(cx: Scope) -> impl IntoView {
         <ActionForm action=action on:submit=on_submit class="parent-form">
             <input style="display:none" type="text" value={move || { user().map(|u| u.username).unwrap_or_default() }} name="username"/>
             <input style="display:none" type="text" value={move || { user().map(|u| u.token).unwrap_or_default() }} name="token"/>
-            <div class="editing-form desktop" style=border_style>
-                <div class="editing-row">
-                    <label for="use_default_accent_color">Use Default Accent Color</label>
+            <div class={ move || String::from("editing-form ") + layout().get_class() } style=border_style>
+                <div class="content">
+                    <label for="use_default_accent_color" class="title">Use Default Accent Color</label>
                     <label class="switch">
                         { move || { if use_default() { view! { cx,
                             <input
@@ -129,37 +135,39 @@ pub fn PreferencesWindow(cx: Scope) -> impl IntoView {
                                 checked="true"
                                 value="true"
                                 name="use_default_accent_color"
+                                class="edit"
                                 on:input=on_toggle/>
                         }} else { view! { cx,
                             <input
                                 type="checkbox"
                                 value="false"
                                 name="use_default_accent_color"
+                                class="edit"
                                 on:input=on_toggle/>
                         }}}}
                         <span class="slider" style=slider_style/>
                     </label>
-                </div>
-                <div class="editing-row">
-                    <label for="accent_color">Accent Color</label>
+                    <label for="accent_color" class="title">Accent Color</label>
                     { move || { if use_default() { view! { cx,
                         <input
-                            type="text"
+                            type="color"
                             placeholder="e.g #AAA"
                             value={accent_color.get()}
                             name="accent_color"
                             spellcheck="false"
+                            class="edit"
                             on:input=on_change
                             required
                             disabled
                         />
                      }} else { view! { cx,
                         <input
-                            type="text"
+                            type="color"
                             placeholder="e.g #AAA"
                             value={accent_color.get_untracked()}
                             name="accent_color"
                             spellcheck="false"
+                            class="edit"
                             on:input=on_change
                             required
                         />

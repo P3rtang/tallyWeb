@@ -25,6 +25,13 @@ impl ScreenLayout {
 
         format!("background: {background};")
     }
+
+    pub fn get_class(&self) -> &str {
+        return match self {
+            ScreenLayout::Small => "small",
+            ScreenLayout::Big => "big",
+        };
+    }
 }
 
 #[derive(Debug, Clone)]

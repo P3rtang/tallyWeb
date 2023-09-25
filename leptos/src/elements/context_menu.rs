@@ -39,8 +39,8 @@ pub fn CountableContextMenu(
                     .await;
                 } else {
                     let _ = remove_counter(
-                        user.get_untracked().unwrap().token,
                         user.get_untracked().unwrap().username,
+                        user.get_untracked().unwrap().token,
                         countable_id,
                     )
                     .await;
