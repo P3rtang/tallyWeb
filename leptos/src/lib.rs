@@ -4,7 +4,6 @@
 pub mod app;
 mod elements;
 mod pages;
-mod treeview;
 
 use cfg_if::cfg_if;
 

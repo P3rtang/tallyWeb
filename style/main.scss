@@ -111,14 +111,17 @@ button {
     display: flex;
 }
 
-.treeview {
-    height: 100%;
-    padding-inline-start: 8px;
-    padding-inline-end: 8px;
+.sidebar {
+    display: flex;
+    flex-flow: column;
     border-right: 1px solid $border-color-dark;
-    padding: 12px;
     overflow-y: auto;
     scrollbar-width: thin;
+
+    .treeview {
+        padding: 8px;
+        padding-top: 12px;
+    }
 
     &::-webkit-scrollbar {
         width: 7px;
@@ -140,8 +143,7 @@ button {
     .new-counter {
         border: none;
         border-radius: 0.5em;
-        padding: 0.2em;
-        margin: 0.3em 0.5em;
+        margin: 0em 0.75em;
         font-size: 1.5rem;
         height: 1.8em;
     }
@@ -269,10 +271,6 @@ ul {
     margin: 0px;
 }
 
-li {
-    display: block;
-}
-
 #InfoBox {
     padding: 8px;
     font-size: 36px;
@@ -285,46 +283,51 @@ li {
         margin: 0px;
     }
 
-    .rowbox {
-        user-select: none;
+    .row {
         display: flex;
-        align-items: center;
-        background: $element-background-color-dark;
-        flex-grow: 1;
-        min-width: 6em;
+        flex-wrap: wrap;
 
-        border-radius: 16px;
-        margin: 8px;
-    }
+        .rowbox {
+            user-select: none;
+            display: flex;
+            align-items: center;
+            background: $element-background-color-dark;
+            flex-grow: 1;
+            min-width: 6em;
 
-    .title {
-        font-size: 0.75em;
-        padding: 0.5em;
-        padding-left: 1em;
-    }
-
-    .info {
-        display: flex;
-        justify-content: center;
-        // min-width: 3.2em;
-        min-height: 2em;
-        padding: 0.75em;
-        flex-flow: wrap;
-        align-content: center;
-        margin: auto;
-    }
-
-    .progress-bar {
-        min-width: 12rem;
-        flex-grow: 1;
-
-        .through, .progress {
-            border-radius: 24px;
+            border-radius: 16px;
+            margin: 8px;
         }
-    }
 
-    .longtime {
-        flex-grow: 2;
+        .title {
+            font-size: 0.75em;
+            padding: 0.5em;
+            padding-left: 1em;
+        }
+
+        .info {
+            display: flex;
+            justify-content: center;
+            // min-width: 3.2em;
+            min-height: 2em;
+            padding: 0.75em;
+            flex-flow: wrap;
+            align-content: center;
+            margin: auto;
+        }
+
+        .progress-bar {
+            min-width: 12rem;
+            flex-grow: 1;
+
+            .through, .progress {
+                border-radius: 24px;
+            }
+        }
+
+        .longtime {
+            flex-grow: 2;
+        }
     }
 }
 

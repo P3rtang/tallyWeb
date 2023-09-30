@@ -9,13 +9,15 @@ use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
 
-use crate::{elements::*, pages::*, treeview::*};
+use crate::{elements::*, pages::*};
 use std::{
     any::Any,
     fmt::Display,
     sync::{Arc, Mutex},
     time::Duration,
 };
+
+pub type SelectionSignal = RwSignal<SelectionModel<ArcCountable, String>>;
 
 cfg_if::cfg_if!(
     if #[cfg(feature = "ssr")] {
@@ -560,24 +562,39 @@ impl ArcCountable {
         Self(Arc::new(Mutex::new(countable)))
     }
 
+    pub fn get_uuid(&self) -> String {
+        self.0.try_lock().map(|c| c.get_uuid()).unwrap_or_default()
+    }
+
     fn get_id(&self) -> i32 {
         self.0.try_lock().map(|c| c.get_id()).unwrap_or_default()
     }
 
-    fn name(&self) -> String {
+    pub fn get_name(&self) -> String {
         self.0.try_lock().map(|c| c.get_name()).unwrap_or_default()
     }
 
-    fn value(&self) -> i32 {
+    pub fn get_count(&self) -> i32 {
         self.0.try_lock().map(|c| c.get_count()).unwrap_or_default()
     }
 
-    fn duration(&self) -> Duration {
+    pub fn add_count(&self, count: i32) {
+        let _ = self.0.try_lock().map(|mut c| c.add_count(count));
+    }
+
+    pub fn get_time(&self) -> Duration {
         self.0.try_lock().map(|c| c.get_time()).unwrap_or_default()
     }
 
-    fn progress(&self, value: i32) -> f64 {
-        return 1.0 - (1.0 - 1.0_f64 / 8192.0).powi(value);
+    pub fn add_time(&self, dur: Duration) {
+        let _ = self.0.try_lock().map(|mut c| c.add_time(dur));
+    }
+
+    pub fn get_progress(&self) -> f64 {
+        self.0
+            .try_lock()
+            .map(|c| c.get_progress())
+            .unwrap_or_default()
     }
 
     fn new_phase(&self, id: i32, name: String) -> ArcCountable {
@@ -586,12 +603,45 @@ impl ArcCountable {
     }
 
     fn save(&self, cx: Scope) -> Result<(), String> {
-        let has_ch = self.0.try_lock().map_err(|_| "Failed to lock ArcCountable")?.has_children();
+        let has_ch = self
+            .0
+            .try_lock()
+            .map_err(|_| "Failed to lock ArcCountable")?
+            .has_children();
         if has_ch {
-            save_counter(cx, self.0.try_lock().unwrap().as_any().downcast_ref::<Counter>().unwrap().clone().into())
+            save_counter(
+                cx,
+                self.0
+                    .try_lock()
+                    .unwrap()
+                    .as_any()
+                    .downcast_ref::<Counter>()
+                    .unwrap()
+                    .clone()
+                    .into(),
+            )
         } else {
-            save_phase(cx, self.0.try_lock().unwrap().as_any().downcast_ref::<Phase>().unwrap().clone())
+            save_phase(
+                cx,
+                self.0
+                    .try_lock()
+                    .unwrap()
+                    .as_any()
+                    .downcast_ref::<Phase>()
+                    .unwrap()
+                    .clone(),
+            )
         }
+    }
+
+    fn get_children(&self) -> Vec<ArcCountable> {
+        self.0
+            .try_lock()
+            .map_or_else(
+                |_| Vec::new(),
+                |c| c.get_phases().into_iter().map(|p| p.clone()).collect(),
+            )
+            .clone()
     }
 }
 
@@ -609,205 +659,7 @@ impl std::ops::Deref for ArcCountable {
     }
 }
 
-impl TreeViewNodeItem<ArcCountable> for ArcCountable {
-    fn into_view(self, cx: Scope) -> View {
-        let node_children = expect_context::<SignalNodeChildren<ArcCountable>>(cx);
-
-        let user = expect_context::<Memo<Option<SessionUser>>>(cx);
-
-        let item = create_rw_signal(cx, self.clone());
-        let get_node = create_read_slice(cx, node_children, move |node_signal| {
-            node_signal.get(&item.get()).cloned().unwrap()
-        });
-
-        let click_new_phase = move |e: MouseEvent| {
-            e.stop_propagation();
-            if user().is_none() {
-                return;
-            }
-            create_local_resource(
-                cx,
-                || (),
-                move |_| async move {
-                    let n_phase = item
-                        .get_untracked()
-                        .clone()
-                        .0
-                        .try_lock()
-                        .map(|c| c.get_phases().len() + 1)
-                        .unwrap_or(1);
-                    let name = format!("Phase {n_phase}");
-                    let phase_id = create_phase(
-                        user.get_untracked().unwrap().username,
-                        user.get_untracked().unwrap().token,
-                        name.clone(),
-                    )
-                    .await
-                    .expect("Could not create Phase");
-                    assign_phase(
-                        user.get_untracked().unwrap().username,
-                        user.get_untracked().unwrap().token,
-                        item.get_untracked().get_id(),
-                        phase_id,
-                    )
-                    .await
-                    .expect("Could not assign phase to Counter");
-
-                    expect_context::<RwSignal<CounterList>>(cx).update(|_| {
-                        let phase = item.get_untracked().new_phase(phase_id, name);
-                        get_node.get_untracked().set_expand(true);
-                        get_node.get_untracked().insert_child(cx, phase);
-
-                    });
-                },
-            );
-        };
-
-        let show_context_menu = create_rw_signal(cx, false);
-        let (click_location, set_click_location) = create_signal(cx, (0, 0));
-        let on_right_click = move |ev: MouseEvent| {
-            ev.prevent_default();
-            show_context_menu.set(!show_context_menu());
-            set_click_location((ev.x(), ev.y()))
-        };
-
-        let has_children = item
-            .get_untracked()
-            .0
-            .try_lock()
-            .map(|i| i.has_children())
-            .unwrap_or_default();
-        let id = item
-            .get_untracked()
-            .0
-            .try_lock()
-            .map(|i| i.get_id())
-            .unwrap_or(-1);
-
-        view! { cx,
-            <div
-                class="row-body"
-                on:contextmenu=on_right_click
-            >
-                <span> { self.name() } </span>
-                <Show when= move || {
-                    item.get().0.try_lock().map(|c| c.has_children()).unwrap_or_default()
-                }
-                fallback= move |_| {}
-                ><button on:click=click_new_phase>+</button>
-                </Show>
-            </div>
-            <CountableContextMenu
-                show_overlay=show_context_menu
-                location=click_location
-                countable_id=id
-                is_phase=!has_children
-            />
-        }
-        .into_view(cx)
-    }
-
-    fn get_children(&self) -> Vec<ArcCountable> {
-        self.0
-            .try_lock()
-            .map_or_else(
-                |_| Vec::new(),
-                |c| c.get_phases().into_iter().map(|p| p.clone()).collect(),
-            )
-            .clone()
-    }
-}
-
-impl IntoView for ArcCountable {
-    fn into_view(self, cx: Scope) -> View {
-        let state = expect_context::<RwSignal<CounterList>>(cx);
-        let item_s = create_rw_signal(cx, self.clone());
-
-        let (get_count, set_count) = create_slice(
-            cx,
-            state,
-            move |_| {
-                item_s
-                    .get()
-                    .0
-                    .try_lock()
-                    .map(|c| c.get_count())
-                    .unwrap_or_default()
-            },
-            move |_, count| {
-                let _ = item_s.get().0.try_lock().map(|mut c| c.set_count(count));
-            },
-        );
-
-        let (get_time, _) = create_slice(
-            cx,
-            state,
-            move |_| {
-                item_s
-                    .get()
-                    .0
-                    .try_lock()
-                    .map(|c| c.get_time())
-                    .unwrap_or_default()
-            },
-            move |_, time| {
-                let _ = item_s.get().0.try_lock().map(|mut c| c.set_time(time));
-            },
-        );
-
-        let on_count_click = move |_| {
-            set_count(get_count() + 1);
-            state.update(|s| s.is_paused = false);
-        };
-
-        let on_time_click = move |_| {
-            state.update(|s| s.toggle_paused(cx));
-        };
-
-        let screen_layout = expect_context::<RwSignal<ScreenLayout>>(cx);
-        let show_title = move || {
-            if screen_layout() == ScreenLayout::Small {
-                format!("display: none")
-            } else {
-                String::new()
-            }
-        };
-
-        view! { cx,
-        <ul style="display:flex;align-items:center;flex-wrap:wrap">
-            <li class="rowbox" on:click=on_count_click>
-                <p class="title" style=show_title>{ self.name() }</p>
-                <p class="info">{ move || get_count() }</p>
-            </li>
-            <li class="rowbox" on:click=on_time_click>
-                <p class="title" style=show_title>Time</p>
-                <p class="info longtime">{ move || get_time.with(|t| format_time(*t)) }</p>
-            </li>
-            <li class="rowbox">
-                <p class="title" style=show_title>Progress</p>
-                <Progressbar progress={
-                    move || item_s.get().progress(get_count())
-                } class="info">{
-                    move || get_count.with(|p| format!("{:.03}%", item_s.get().progress(*p) * 100.0))
-                }</Progressbar>
-            </li>
-        </ul>
-        }
-        .into_view(cx)
-    }
-}
-
-fn format_time(dur: Duration) -> String {
-    format!(
-        "{:>02}:{:02}:{:02},{:03}",
-        dur.as_secs() / 3600,
-        dur.as_secs() / 60 % 60,
-        dur.as_secs() % 60,
-        dur.as_millis() - dur.as_secs() as u128 * 1000,
-    )
-}
-
-fn timer(cx: Scope) {
+fn timer(cx: Scope, selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
     const FRAMERATE: u64 = 30;
     const INTERVAL: Duration = Duration::from_millis(1000 / FRAMERATE);
 
@@ -840,50 +692,13 @@ fn timer(cx: Scope) {
     create_effect(cx, move |_| {
         set_interval(
             move || {
-                if let Some(selection) = use_context::<SelectionSignal<ArcCountable>>(cx) {
-                    if state.is_none() {
-                        time.1.set(Date::new_0().get_milliseconds());
-                        return;
-                    }
-
-                    if let Some(list) = state.map(|s| s.try_get()).flatten() {
-                        if list.is_paused {
-                            time.1.set(Date::new_0().get_milliseconds());
-                            return;
-                        }
-                        selection
-                            .get()
-                            .selection
-                            .into_iter()
-                            .filter(|(_, b)| *b)
-                            .for_each(|(c, _)| {
-                                let item_s = create_rw_signal(cx, c.clone());
-
-                                let (get_time, set_time) = create_slice(
-                                    cx,
-                                    state.unwrap(),
-                                    move |_| {
-                                        item_s
-                                            .get()
-                                            .try_lock()
-                                            .map(|c| c.get_time())
-                                            .unwrap_or_default()
-                                    },
-                                    move |_, time| {
-                                        let _ =
-                                            item_s.get().try_lock().map(|mut c| c.set_time(time));
-                                    },
-                                );
-
-                                let interval =
-                                    calc_interval(Date::new_0().get_milliseconds(), time.0.get());
-                                time.1.set(Date::new_0().get_milliseconds());
-                                set_time.set(get_time() + interval);
-                            });
-                    } else {
-                        return;
-                    }
+                if state.is_some_and(|s| !s().is_paused) {
+                    let interval = calc_interval(Date::new_0().get_milliseconds(), time.0.get());
+                    selection.get_untracked().iter().for_each(|c| {
+                        c.update(|c| c.add_time(interval));
+                    });
                 }
+                time.1.set(Date::new_0().get_milliseconds())
             },
             INTERVAL,
         )
@@ -902,14 +717,17 @@ pub fn navigate(cx: Scope, page: impl ToString) {
     })
 }
 
-fn connect_keys(cx: Scope, state: RwSignal<CounterList>, selection: SelectionSignal<ArcCountable>) {
-    let active = create_read_slice(cx, selection, |sel| sel.selection());
+fn connect_keys(
+    cx: Scope,
+    state: RwSignal<CounterList>,
+    active: RwSignal<Vec<RwSignal<ArcCountable>>>,
+) {
     window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
         "Equal" => {
             active.try_get().map(|a| {
                 a.into_iter().for_each(|c| {
-                    let _ = c.0.try_lock().map(|mut c| c.add_count(1));
-                    let _ = c.save(cx);
+                    let _ = c.update(|c| c.add_count(1));
+                    let _ = c.get_untracked().save(cx);
                 });
                 state.try_update(|s| s.is_paused = false);
             });
@@ -917,8 +735,8 @@ fn connect_keys(cx: Scope, state: RwSignal<CounterList>, selection: SelectionSig
         "Minus" => {
             active.try_get().map(|a| {
                 a.into_iter().for_each(|c| {
-                    let _ = c.0.try_lock().map(|mut c| c.add_count(-1));
-                    let _ = c.save(cx);
+                    let _ = c.update(|c| c.add_count(-1));
+                    let _ = c.get_untracked().save(cx);
                 });
                 state.try_update(|s| s.is_paused = false);
             });
@@ -953,12 +771,15 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     let preferences = expect_context::<RwSignal<Preferences>>(cx);
     let accent_color = create_read_slice(cx, preferences, |prefs| prefs.accent_color.0.clone());
 
-    let selection = SelectionModel::<ArcCountable>::new(Some(accent_color));
+    let selection = SelectionModel::<ArcCountable, String>::new(
+        Some(accent_color),
+        create_rw_signal(cx, Vec::new()),
+    );
     let selection_signal = create_rw_signal(cx, selection);
     provide_context(cx, selection_signal);
 
-    connect_keys(cx, state, selection_signal);
-    timer(cx);
+    connect_keys(cx, state, selection_signal.get_untracked().get_selected());
+    timer(cx, selection_signal.get_untracked().get_selected());
 
     let on_click = move |_| {
         let user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
@@ -1018,6 +839,8 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>(cx);
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>(cx);
 
+    let selct_slice = create_read_slice(cx, selection_signal, |sel| sel.get_selected());
+
     view! { cx,
     <Suspense
         fallback=move || view!{ cx, <LoadingScreen/> }
@@ -1029,34 +852,37 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
             };
             state.set(list)
         }}
-    <Show
-        when=move || session_user().is_some() && data.read(cx).is_some()
-        fallback=move |cx| view!{ cx, <LoadingScreen/> }
-    >
-        <div id="HomeGrid">
-            { move || {
-                if screen_layout() == ScreenLayout::Small {
-                    selection_signal.with(|sel| show_sidebar.update(|s| s.0 = sel.selection().is_empty()))
-                }
-            }}
-            <Sidebar display=show_sidebar layout=screen_layout>
-                <TreeViewWidget
-                    selection_model=selection_signal
-                    start_nodes=move || { state.get().list }
-                    after=move |cx| {
-                        view! {cx, <button on:click=on_click class="new-counter">New Counter</button> }
+        <Show
+            when=move || session_user().is_some() && data.read(cx).is_some()
+            fallback=move |cx| view!{ cx, <LoadingScreen/> }
+        >
+            <div id="HomeGrid">
+                { move || {
+                    if screen_layout() == ScreenLayout::Small {
+                        selection_signal.with(|sel| show_sidebar.update(|s| s.0 = sel.is_empty()))
                     }
-                />
-            </Sidebar>
-            <InfoBox/>
-        </div>
-    </Show>
+                }}
+                <Sidebar class="sidebar" display=show_sidebar layout=screen_layout>
+                    <TreeViewWidget
+                        each=move || { state.get().list }
+                        key=|countable| countable.get_uuid()
+                        each_child=|countable| countable.get_children()
+                        view=|cx, node| {
+                            view! { cx, <TreeViewRow node=node/> }
+                        }
+                        selection_model=selection_signal
+                    />
+                    <button on:click=on_click class="new-counter">New Counter</button>
+                </Sidebar>
+                <InfoBox countable_list=selct_slice()/>
+            </div>
+        </Show>
     </Suspense>
     }
 }
 
 #[component]
-fn Progressbar<F>(
+pub fn Progressbar<F>(
     cx: Scope,
     progress: F,
     class: &'static str,
@@ -1114,30 +940,125 @@ where
 }
 
 #[component]
-fn InfoBox(cx: Scope) -> impl IntoView {
-    let selection = expect_context::<SelectionSignal<ArcCountable>>(cx);
+fn TreeViewRow(cx: Scope, node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView {
+    let user = expect_context::<Memo<Option<SessionUser>>>(cx);
+
+    let countable = create_read_slice(cx, node, |node| node.row.get_untracked());
+
+    let click_new_phase = move |e: MouseEvent| {
+        e.stop_propagation();
+        if user().is_none() {
+            return;
+        }
+        create_local_resource(
+            cx,
+            || (),
+            move |_| async move {
+                let n_phase = countable
+                    .get_untracked()
+                    .clone()
+                    .0
+                    .try_lock()
+                    .map(|c| c.get_phases().len() + 1)
+                    .unwrap_or(1);
+                let name = format!("Phase {n_phase}");
+                let phase_id = create_phase(
+                    user.get_untracked().unwrap().username,
+                    user.get_untracked().unwrap().token,
+                    name.clone(),
+                )
+                .await
+                .expect("Could not create Phase");
+                assign_phase(
+                    user.get_untracked().unwrap().username,
+                    user.get_untracked().unwrap().token,
+                    countable.get_untracked().get_id(),
+                    phase_id,
+                )
+                .await
+                .expect("Could not assign phase to Counter");
+
+                expect_context::<RwSignal<CounterList>>(cx).update(|_| {
+                    let phase = countable.get_untracked().new_phase(phase_id, name);
+                    node.get_untracked().set_expand(true);
+                    node.get_untracked().insert_child(cx, phase);
+                });
+            },
+        );
+    };
+
+    let show_context_menu = create_rw_signal(cx, false);
+    let (click_location, set_click_location) = create_signal(cx, (0, 0));
+    let on_right_click = move |ev: MouseEvent| {
+        ev.prevent_default();
+        show_context_menu.set(!show_context_menu());
+        set_click_location((ev.x(), ev.y()))
+    };
+
+    let has_children = countable
+        .get_untracked()
+        .0
+        .try_lock()
+        .map(|i| i.has_children())
+        .unwrap_or_default();
+    let id = countable
+        .get_untracked()
+        .0
+        .try_lock()
+        .map(|i| i.get_id())
+        .unwrap_or(-1);
+
     view! { cx,
-        <div id="InfoBox"> {
-            move || selection.with(|list| {
-                list.selection.clone().into_iter().filter(|(_, b)| *b).map(|(rc_counter, _)| {
-                    let rc_counter_signal = create_rw_signal(cx, rc_counter.clone());
-                    view! {cx, <InfoBoxRow counter=rc_counter_signal/> }
-                }).collect_view(cx)})
-        } </div>
+    <div
+        class="row-body"
+        on:contextmenu=on_right_click
+        >
+        <span> { move || countable().get_name() } </span>
+        <Show
+            when= move || {
+                countable.get().0.try_lock().map(|c| c.has_children()).unwrap_or_default()
+            }
+            fallback= move |_| {}
+        >
+            <button on:click=click_new_phase>+</button>
+        </Show>
+
+    </div>
+    <CountableContextMenu
+        show_overlay=show_context_menu
+        location=click_location
+        countable_id=id
+        is_phase=!has_children
+    />
     }
 }
 
-#[component]
-fn InfoBoxRow(cx: Scope, counter: RwSignal<ArcCountable>) -> impl IntoView {
-    view! { cx,
-        <div class="row">
-            <div> { counter } </div>
-        </div>
-    }
-}
+// #[component]
+// fn InfoBox(cx: Scope) -> impl IntoView {
+//     let selection = expect_context::<SelectionSignal<ArcCountable>>(cx);
+//     view! { cx,
+//         <div id="InfoBox"> {
+//             move || selection.with(|list| {
+//                 list.selection.clone().into_iter().filter(|(_, b)| *b).map(|(rc_counter, _)| {
+//                     let rc_counter_signal = create_rw_signal(cx, rc_counter.clone());
+//                     view! {cx, <InfoBoxRow counter=rc_counter_signal/> }
+//                 }).collect_view(cx)})
+//         } </div>
+//     }
+// }
+
+// #[component]
+// fn InfoBoxRow(cx: Scope, counter: RwSignal<ArcCountable>) -> impl IntoView {
+//     view! { cx,
+//         <div class="row">
+//             <div> { counter } </div>
+//         </div>
+//     }
+// }
 
 pub trait Countable: std::fmt::Debug + Send + Any {
     fn get_id(&self) -> i32;
+    fn get_uuid(&self) -> String;
     fn get_name(&self) -> String;
     fn get_count(&self) -> i32;
     fn set_count(&mut self, count: i32);
@@ -1191,7 +1112,11 @@ impl From<Counter> for SerCounter {
 
 impl Countable for SerCounter {
     fn get_id(&self) -> i32 {
-        todo!()
+        self.id
+    }
+
+    fn get_uuid(&self) -> String {
+        format!("c{}", self.id)
     }
 
     fn get_name(&self) -> String {
@@ -1298,17 +1223,21 @@ impl Countable for Counter {
         return self.id;
     }
 
+    fn get_uuid(&self) -> String {
+        format!("c{}", self.id)
+    }
+
     fn get_name(&self) -> String {
         return self.name.clone();
     }
 
     fn get_count(&self) -> i32 {
-        return self.phase_list.iter().map(|p| p.value()).sum();
+        return self.phase_list.iter().map(|p| p.get_count()).sum();
     }
 
     fn set_count(&mut self, count: i32) {
-        let diff = self.phase_list.iter().map(|p| p.value()).sum::<i32>()
-            - self.phase_list.last().map(|p| p.value()).unwrap_or(0);
+        let diff = self.phase_list.iter().map(|p| p.get_count()).sum::<i32>()
+            - self.phase_list.last().map(|p| p.get_count()).unwrap_or(0);
         self.phase_list
             .last_mut()
             .map(|p| p.0.try_lock().map(|mut p| p.set_count(count - diff)));
@@ -1321,19 +1250,19 @@ impl Countable for Counter {
     }
 
     fn get_time(&self) -> Duration {
-        return self.phase_list.iter().map(|p| p.duration()).sum();
+        return self.phase_list.iter().map(|p| p.get_time()).sum();
     }
 
     fn set_time(&mut self, time: Duration) {
         let diff = self
             .phase_list
             .iter()
-            .map(|p| p.duration())
+            .map(|p| p.get_time())
             .sum::<Duration>()
             - self
                 .phase_list
                 .last()
-                .map(|p| p.duration())
+                .map(|p| p.get_time())
                 .unwrap_or_default();
         self.phase_list
             .last_mut()
@@ -1441,6 +1370,10 @@ impl Countable for Phase {
         return self.id;
     }
 
+    fn get_uuid(&self) -> String {
+        format!("p{}", self.id)
+    }
+
     fn get_name(&self) -> String {
         return self.name.clone();
     }
@@ -1516,8 +1449,8 @@ impl Countable for Phase {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CounterList {
-    list: Vec<ArcCountable>,
-    is_paused: bool,
+    pub list: Vec<ArcCountable>,
+    pub is_paused: bool,
 }
 
 impl CounterList {
@@ -1537,7 +1470,7 @@ impl CounterList {
         return Ok(arc_counter);
     }
 
-    fn toggle_paused(&mut self, cx: Scope) {
+    pub fn toggle_paused(&mut self, cx: Scope) {
         self.is_paused = !self.is_paused;
         let _ = save(cx, self.clone().into());
     }

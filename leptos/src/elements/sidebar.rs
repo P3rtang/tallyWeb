@@ -38,7 +38,13 @@ impl ScreenLayout {
 pub struct ShowSidebar(pub bool);
 
 #[component]
-pub fn Sidebar<F1, F2>(cx: Scope, display: F1, layout: F2, children: ChildrenFn) -> impl IntoView
+pub fn Sidebar<F1, F2>(
+    cx: Scope,
+    class: &'static str,
+    display: F1,
+    layout: F2,
+    children: ChildrenFn,
+) -> impl IntoView
 where
     F1: Fn() -> ShowSidebar + 'static,
     F2: Fn() -> ScreenLayout + 'static,
@@ -52,12 +58,12 @@ where
             }
             + layout().get_background().as_str()
             + "height: 100%;"
-            + "min-width: min(25rem, 100%);"
+            + "min-width: min(24rem, 100%);"
             + "transition: 0.35s;"
     };
 
     view! { cx,
-        <div style=sidebar_style>
+        <div style=sidebar_style class=class>
             { children(cx) }
         </div>
     }
