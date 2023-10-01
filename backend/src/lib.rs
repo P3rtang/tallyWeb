@@ -104,8 +104,14 @@ pub async fn get_counter_by_id(
     return Ok(counter);
 }
 
-pub async fn get_phase_by_id(pool: &PgPool, phase_id: i32) -> Result<DbPhase, sqlx::error::Error> {
-    let phase = sqlx::query_as!(DbPhase, r#"SELECT * FROM phases WHERE id = $1"#, phase_id)
+pub async fn get_phase_by_id(
+    pool: &PgPool,
+    user_id: i32,
+    phase_id: i32,
+) -> Result<DbPhase, sqlx::error::Error> {
+    let phase: DbPhase = sqlx::query_as("SELECT * FROM phases WHERE id = $1 AND user_id = $2")
+        .bind(phase_id)
+        .bind(user_id)
         .fetch_one(pool)
         .await?;
 
@@ -123,10 +129,10 @@ pub async fn create_counter(
     let record = sqlx::query_as!(
         Record,
         r#"
-            INSERT INTO counters (user_id, name)
-            VALUES ($1, $2)
-            RETURNING id
-            "#,
+        INSERT INTO counters (user_id, name)
+        VALUES ($1, $2)
+        RETURNING id
+        "#,
         user_id,
         name,
     )
@@ -136,24 +142,29 @@ pub async fn create_counter(
     return Ok(record.id);
 }
 
-pub async fn create_phase(pool: &PgPool, name: String) -> Result<i32, sqlx::error::Error> {
-    struct Record {
-        id: i32,
-    }
-    let record = sqlx::query_as!(
-        Record,
+pub async fn create_phase(
+    pool: &PgPool,
+    user_id: i32,
+    name: String,
+    hunt_type: Hunttype,
+) -> Result<i32, sqlx::error::Error> {
+    #[derive(sqlx::FromRow)]
+    struct Id(i32);
+    let id: Id = sqlx::query_as(
         r#"
-            INSERT INTO phases (name, count, time)
-            VALUES ($1, $2, $3)
-            RETURNING id
-            "#,
-        name,
-        0,
-        0,
+        INSERT INTO phases (user_id, name, count, time, hunt_type)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id
+    "#,
     )
+    .bind(user_id)
+    .bind(name)
+    .bind(0)
+    .bind(0)
+    .bind(hunt_type)
     .fetch_one(pool)
     .await?;
-    return Ok(record.id);
+    return Ok(id.0);
 }
 
 pub async fn assign_phase(
@@ -180,18 +191,25 @@ pub async fn assign_phase(
     return Ok(());
 }
 
-pub async fn update_phase(pool: &PgPool, phase: DbPhase) -> Result<(), sqlx::error::Error> {
-    let _ = sqlx::query!(
+pub async fn update_phase(
+    pool: &PgPool,
+    user_id: i32,
+    phase: DbPhase,
+) -> Result<(), sqlx::error::Error> {
+    let _ = sqlx::query(
         r#"
             UPDATE phases
-            SET name = $2, count = $3, time = $4
-            WHERE id = $1
+            SET name = $3, count = $4, time = $5, hunt_type = $6, has_charm = $7
+            WHERE id = $1 AND user_id = $2
             "#,
-        phase.id,
-        phase.name,
-        phase.count,
-        phase.time,
     )
+    .bind(phase.id)
+    .bind(user_id)
+    .bind(phase.name)
+    .bind(phase.count)
+    .bind(phase.time)
+    .bind(phase.hunt_type)
+    .bind(phase.has_charm)
     .execute(pool)
     .await?;
 

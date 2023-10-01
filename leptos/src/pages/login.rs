@@ -28,6 +28,7 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
     create_effect(cx, move |_| {
         if let Some(login) = action.value().get().map(|v| v.ok()).flatten() {
             if let Ok(_) = LocalStorage::set("user_session", login.clone()) {
+                expect_context::<RwSignal<Option<SessionUser>>>(cx).set(Some(login));
                 crate::app::navigate(cx, "/")
             }
         }

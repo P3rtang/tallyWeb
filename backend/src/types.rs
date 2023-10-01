@@ -3,6 +3,16 @@ use sqlx::{query, query_as, PgPool};
 
 use crate::{AuthorizationError, DataError};
 
+#[derive(Debug, Clone, sqlx::Type)]
+#[sqlx(type_name = "hunttype")]
+pub enum Hunttype {
+    OldOdds,
+    NewOdds,
+    SOS,
+    DexNav,
+}
+
+#[derive(Debug, sqlx::FromRow)]
 pub struct DbCounter {
     pub id: i32,
     pub user_id: i32,
@@ -10,11 +20,15 @@ pub struct DbCounter {
     pub phases: Vec<i32>,
 }
 
+#[derive(Debug, sqlx::FromRow)]
 pub struct DbPhase {
     pub id: i32,
+    pub user_id: i32,
     pub name: String,
     pub count: i32,
     pub time: i64,
+    pub hunt_type: Hunttype,
+    pub has_charm: bool,
 }
 
 #[derive(Debug)]
@@ -131,6 +145,7 @@ pub struct DbPreferences {
     pub user_id: i32,
     pub use_default_accent_color: bool,
     pub accent_color: Option<String>,
+    pub show_separator: bool,
 }
 
 impl DbPreferences {
@@ -157,14 +172,15 @@ impl DbPreferences {
     pub async fn db_set(self, pool: &PgPool, user_id: i32) -> Result<(), sqlx::error::Error> {
         query!(
             r#"
-            insert into preferences (user_id, use_default_accent_color, accent_color)
-            values ($1, $2, $3)
+            insert into preferences (user_id, use_default_accent_color, accent_color, show_separator)
+            values ($1, $2, $3, $4)
             on conflict (user_id)
-            do update set use_default_accent_color = $2, accent_color = $3
+            do update set use_default_accent_color = $2, accent_color = $3, show_separator = $4
             "#,
             user_id,
             self.use_default_accent_color,
             self.accent_color,
+            self.show_separator,
         )
         .execute(pool)
         .await?;
