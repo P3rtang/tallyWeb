@@ -635,6 +635,7 @@ fn connect_keys(
 #[component]
 pub fn HomePage(cx: Scope) -> impl IntoView {
     let session_user = expect_context::<Memo<Option<SessionUser>>>(cx);
+    let user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
 
     let data = create_resource(cx, session_user, move |user| async move {
         if let Some(user) = user {
@@ -729,20 +730,25 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     let show_sep = create_read_slice(cx, preferences, |pref| pref.show_separator);
 
     view! { cx,
-    <Suspense
-        fallback=move || view!{ cx, <LoadingScreen/> }
-    >
-        { move || {
-            let list = match data.read(cx) {
-                None => state.get(),
-                Some(data_list) => data_list.into(),
-            };
-            state.set(list)
-        }}
         <Show
             when=move || session_user().is_some() && data.read(cx).is_some()
-            fallback=move |cx| view!{ cx, <LoadingScreen/> }
+            fallback=move |cx| {
+                create_effect(cx, move |_| {
+                    request_animation_frame(move || {
+                        log!("here");
+                        user.set(SessionUser::from_storage(cx));
+                    })
+                });
+                view!{ cx, <LoadingScreen/> }
+            }
         >
+            { move || {
+                let list = match data.read(cx) {
+                    None => state.get(),
+                    Some(data_list) => data_list.into(),
+                };
+                state.set(list)
+            }}
             <div id="HomeGrid">
                 { move || {
                     if screen_layout() == ScreenLayout::Small {
@@ -765,7 +771,6 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                 <InfoBox countable_list=selct_slice()/>
             </div>
         </Show>
-    </Suspense>
     }
 }
 
