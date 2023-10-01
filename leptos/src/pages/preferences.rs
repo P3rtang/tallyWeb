@@ -146,8 +146,6 @@ where
         fallback=move |_| { view! { cx,  } }
     >
         <ActionForm action=action on:submit=on_submit class="parent-form">
-            <input style="display:none" type="text" value={move || { user().map(|u| u.username).unwrap_or_default() }} name="username" autocomplete="none"/>
-            <input style="display:none" type="text" value={move || { user().map(|u| u.token).unwrap_or_default() }} name="token"/>
             <div class={ move || String::from("editing-form ") + layout().get_class() } style=border_style>
                 <div class="content">
                     <label for="use_default_accent_color" class="title">Use Default Accent Color</label>

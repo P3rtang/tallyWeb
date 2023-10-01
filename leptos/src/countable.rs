@@ -5,8 +5,6 @@ use std::{
     time::Duration,
 };
 
-use crate::app::get_phase_by_id;
-
 #[derive(Debug, Clone)]
 pub struct ArcCountable(pub Arc<Mutex<Box<dyn Countable>>>);
 
@@ -674,6 +672,7 @@ impl Countable for Phase {
 
 cfg_if::cfg_if!(
     if #[cfg(feature = "ssr")] {
+        use crate::app::get_phase_by_id;
         use backend::{DbCounter, DbPhase};
         impl SerCounter {
             pub async fn from_db(username: String, token: String, value: DbCounter) -> Self {
