@@ -57,7 +57,7 @@ where
                 ""
             }
             + layout().get_background().as_str()
-            + "height: 100%;"
+            + "height: inherit;"
             + "min-width: min(24rem, 100%);"
             + "transition: 0.35s;"
     };

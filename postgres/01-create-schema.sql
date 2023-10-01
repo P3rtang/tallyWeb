@@ -10,7 +10,8 @@ create table phases(
     user_id     integer         NOT NULL,
     name        varchar         NOT NULL,
     count       integer         NOT NULL,
-    time        bigint          NOT NULL
+    time        bigint          NOT NULL,
+    hunt_type   hunttype        NOT NULL
 );
 
 create table users(

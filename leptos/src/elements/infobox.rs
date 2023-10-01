@@ -1,7 +1,8 @@
 use leptos::*;
 
 use crate::{
-    app::{ArcCountable, CounterList, Progressbar},
+    app::{CounterList, Progressbar},
+    countable::ArcCountable,
     elements::ScreenLayout,
 };
 

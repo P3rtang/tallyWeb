@@ -1,7 +1,10 @@
 #![allow(unused_braces)]
 #![allow(non_snake_case)]
 
-use crate::app::{remove_counter, remove_phase, SerCounter, SessionUser};
+use crate::{
+    app::{remove_counter, remove_phase, SessionUser},
+    countable::SerCounter,
+};
 
 use super::*;
 use leptos::*;

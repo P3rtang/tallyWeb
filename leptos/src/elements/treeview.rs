@@ -64,18 +64,20 @@ where
 }
 
 #[component]
-pub fn TreeViewWidget<T, F, S>(
+pub fn TreeViewWidget<T, F, S, FS>(
     cx: Scope,
     each: F,
     key: fn(&T) -> S,
     each_child: fn(&T) -> Vec<T>,
     view: fn(Scope, RwSignal<TreeNode<T, S>>) -> View,
     selection_model: RwSignal<SelectionModel<T, S>>,
+    show_separator: FS,
 ) -> impl IntoView
 where
     T: Clone + 'static + std::ops::Deref + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
     F: Fn() -> Vec<T> + Copy + 'static,
+    FS: Fn() -> bool + Copy + 'static,
 {
     let tree_nodes = move || {
         each()
@@ -99,6 +101,12 @@ where
                     > {
                         view(cx, create_rw_signal(cx, item))
                     }</TreeViewRow>
+                    <Show
+                        when=show_separator
+                        fallback=|_| ()
+                    >
+                        <hr/>
+                    </Show>
                 }
             }
         />

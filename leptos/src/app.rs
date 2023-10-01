@@ -2,6 +2,7 @@
 #![allow(elided_lifetimes_in_associated_constant)]
 #![allow(non_snake_case)]
 
+use crate::countable::*;
 use gloo_storage::{LocalStorage, Storage};
 use js_sys::Date;
 use leptos::{ev::MouseEvent, *};
@@ -10,68 +11,9 @@ use leptos_router::*;
 use serde::{Deserialize, Serialize};
 
 use crate::{elements::*, pages::*};
-use std::{
-    any::Any,
-    fmt::Display,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{fmt::Display, time::Duration};
 
 pub type SelectionSignal = RwSignal<SelectionModel<ArcCountable, String>>;
-
-cfg_if::cfg_if!(
-    if #[cfg(feature = "ssr")] {
-        use backend::{DbCounter, DbPhase};
-        impl SerCounter {
-            async fn from_db(username: String, token: String, value: DbCounter) -> Self {
-                let mut phase_list = Vec::new();
-                for id in value.phases {
-                    if let Ok(phase) = get_phase_by_id(username.clone(), token.clone(), id).await {
-                        phase_list.push(phase)
-                    }
-                }
-
-                Self {
-                    id: value.id,
-                    name: value.name,
-                    phase_list,
-                }
-            }
-            async fn to_db(&self, user_id: i32) -> DbCounter {
-                DbCounter {
-                    id: self.id,
-                    user_id,
-                    name: self.name.clone(),
-                    phases: self.phase_list.iter().map(|p| p.id).collect()
-                }
-            }
-        }
-
-        impl From<DbPhase> for Phase {
-            fn from(value: DbPhase) -> Self {
-                Self {
-                    id: value.id,
-                    name: value.name,
-                    count: value.count,
-                    time: Duration::from_millis(value.time as u64),
-                    is_active: false,
-                }
-            }
-        }
-
-        impl Phase {
-            async fn to_db(&self, user_id: i32) -> DbPhase {
-                DbPhase {
-                    id: self.id,
-                    user_id,
-                    name: self.name.clone(),
-                    count: self.count,
-                    time: self.time.as_millis() as i64,
-                }
-            }
-        }
-    }
-);
 
 #[server(LoginUser, "/api", "Url", "login_user")]
 pub async fn login_user(username: String, password: String) -> Result<SessionUser, ServerFnError> {
@@ -244,11 +186,16 @@ pub async fn remove_phase(
 }
 
 #[server(CreatePhase, "/api")]
-async fn create_phase(username: String, token: String, name: String) -> Result<i32, ServerFnError> {
+async fn create_phase(
+    username: String,
+    token: String,
+    name: String,
+    hunt_type: Hunttype,
+) -> Result<i32, ServerFnError> {
     let pool = backend::create_pool().await?;
 
     let user = backend::auth::get_user(&pool, username, token, true).await?;
-    let id = backend::create_phase(&pool, user.id, name).await?;
+    let id = backend::create_phase(&pool, user.id, name, hunt_type.into()).await?;
 
     return Ok(id);
 }
@@ -322,13 +269,7 @@ async fn get_user_preferences(
         Ok(data) => Preferences::from_db(&session_user, data),
         Err(backend::DataError::Uninitialized) => {
             let new_prefs = Preferences::new(&session_user);
-            save_preferences(
-                username,
-                token,
-                Some(new_prefs.use_default_accent_color),
-                Some(new_prefs.accent_color.0.clone()),
-            )
-            .await?;
+            save_preferences(username, token, new_prefs.clone()).await?;
             new_prefs
         }
         Err(err) => return Err(err)?,
@@ -338,19 +279,25 @@ async fn get_user_preferences(
 }
 
 #[server(SavePreferences, "/api")]
-async fn save_preferences(
+pub async fn save_preferences(
     username: String,
     token: String,
-    use_default_accent_color: Option<bool>,
-    accent_color: Option<String>,
+    preferences: Preferences,
 ) -> Result<(), ServerFnError> {
     let pool = backend::create_pool().await?;
     let user = backend::auth::get_user(&pool, username, token, true).await?;
 
+    let accent_color = if preferences.use_default_accent_color {
+        None
+    } else {
+        Some(preferences.accent_color.0)
+    };
+
     let db_prefs = backend::DbPreferences {
         user_id: user.id,
-        use_default_accent_color: use_default_accent_color.is_some(),
+        use_default_accent_color: preferences.use_default_accent_color,
         accent_color,
+        show_separator: preferences.show_separator,
     };
     db_prefs.db_set(&pool, user.id).await?;
 
@@ -554,111 +501,6 @@ fn NotFound(cx: Scope) -> impl IntoView {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ArcCountable(Arc<Mutex<Box<dyn Countable>>>);
-
-impl ArcCountable {
-    fn new(countable: Box<dyn Countable>) -> Self {
-        Self(Arc::new(Mutex::new(countable)))
-    }
-
-    pub fn get_uuid(&self) -> String {
-        self.0.try_lock().map(|c| c.get_uuid()).unwrap_or_default()
-    }
-
-    fn get_id(&self) -> i32 {
-        self.0.try_lock().map(|c| c.get_id()).unwrap_or_default()
-    }
-
-    pub fn get_name(&self) -> String {
-        self.0.try_lock().map(|c| c.get_name()).unwrap_or_default()
-    }
-
-    pub fn get_count(&self) -> i32 {
-        self.0.try_lock().map(|c| c.get_count()).unwrap_or_default()
-    }
-
-    pub fn add_count(&self, count: i32) {
-        let _ = self.0.try_lock().map(|mut c| c.add_count(count));
-    }
-
-    pub fn get_time(&self) -> Duration {
-        self.0.try_lock().map(|c| c.get_time()).unwrap_or_default()
-    }
-
-    pub fn add_time(&self, dur: Duration) {
-        let _ = self.0.try_lock().map(|mut c| c.add_time(dur));
-    }
-
-    pub fn get_progress(&self) -> f64 {
-        self.0
-            .try_lock()
-            .map(|c| c.get_progress())
-            .unwrap_or_default()
-    }
-
-    fn new_phase(&self, id: i32, name: String) -> ArcCountable {
-        let _ = self.0.try_lock().map(|mut c| c.new_phase(id, name));
-        self.get_children().last().cloned().unwrap()
-    }
-
-    fn save(&self, cx: Scope) -> Result<(), String> {
-        let has_ch = self
-            .0
-            .try_lock()
-            .map_err(|_| "Failed to lock ArcCountable")?
-            .has_children();
-        if has_ch {
-            save_counter(
-                cx,
-                self.0
-                    .try_lock()
-                    .unwrap()
-                    .as_any()
-                    .downcast_ref::<Counter>()
-                    .unwrap()
-                    .clone()
-                    .into(),
-            )
-        } else {
-            save_phase(
-                cx,
-                self.0
-                    .try_lock()
-                    .unwrap()
-                    .as_any()
-                    .downcast_ref::<Phase>()
-                    .unwrap()
-                    .clone(),
-            )
-        }
-    }
-
-    fn get_children(&self) -> Vec<ArcCountable> {
-        self.0
-            .try_lock()
-            .map_or_else(
-                |_| Vec::new(),
-                |c| c.get_phases().into_iter().map(|p| p.clone()).collect(),
-            )
-            .clone()
-    }
-}
-
-impl PartialEq for ArcCountable {
-    fn eq(&self, other: &Self) -> bool {
-        std::ptr::eq(&*self.0, &*other.0)
-    }
-}
-
-impl std::ops::Deref for ArcCountable {
-    type Target = Mutex<Box<dyn Countable>>;
-
-    fn deref(&self) -> &Self::Target {
-        return &*self.0;
-    }
-}
-
 fn timer(cx: Scope, selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
     const FRAMERATE: u64 = 30;
     const INTERVAL: Duration = Duration::from_millis(1000 / FRAMERATE);
@@ -676,11 +518,11 @@ fn timer(cx: Scope, selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
     let state = use_context::<RwSignal<CounterList>>(cx);
 
     create_effect(cx, move |_| {
-        if state.is_none() {
-            return;
-        }
         set_interval(
             move || {
+                if state.is_none() {
+                    return;
+                }
                 if let Some(list) = state.unwrap().try_get() {
                     let _ = save(cx, list);
                 }
@@ -692,13 +534,21 @@ fn timer(cx: Scope, selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
     create_effect(cx, move |_| {
         set_interval(
             move || {
-                if state.is_some_and(|s| !s().is_paused) {
+                if state.is_none() {
+                    return;
+                }
+                if state
+                    .unwrap()
+                    .try_get()
+                    .map(|s| !s.is_paused)
+                    .unwrap_or_default()
+                {
                     let interval = calc_interval(Date::new_0().get_milliseconds(), time.0.get());
                     selection.get_untracked().iter().for_each(|c| {
                         c.update(|c| c.add_time(interval));
                     });
                 }
-                time.1.set(Date::new_0().get_milliseconds())
+                time.1.try_set(Date::new_0().get_milliseconds());
             },
             INTERVAL,
         )
@@ -717,6 +567,40 @@ pub fn navigate(cx: Scope, page: impl ToString) {
     })
 }
 
+fn save_countable(cx: Scope, countable: &ArcCountable) -> Result<(), String> {
+    let has_ch = countable
+        .0
+        .try_lock()
+        .map_err(|_| "Failed to lock ArcCountable")?
+        .has_children();
+    if has_ch {
+        save_counter(
+            cx,
+            countable
+                .0
+                .try_lock()
+                .unwrap()
+                .as_any()
+                .downcast_ref::<Counter>()
+                .unwrap()
+                .clone()
+                .into(),
+        )
+    } else {
+        save_phase(
+            cx,
+            countable
+                .0
+                .try_lock()
+                .unwrap()
+                .as_any()
+                .downcast_ref::<Phase>()
+                .unwrap()
+                .clone(),
+        )
+    }
+}
+
 fn connect_keys(
     cx: Scope,
     state: RwSignal<CounterList>,
@@ -727,7 +611,7 @@ fn connect_keys(
             active.try_get().map(|a| {
                 a.into_iter().for_each(|c| {
                     let _ = c.update(|c| c.add_count(1));
-                    let _ = c.get_untracked().save(cx);
+                    let _ = save_countable(cx, &c.get_untracked());
                 });
                 state.try_update(|s| s.is_paused = false);
             });
@@ -736,7 +620,7 @@ fn connect_keys(
             active.try_get().map(|a| {
                 a.into_iter().for_each(|c| {
                     let _ = c.update(|c| c.add_count(-1));
-                    let _ = c.get_untracked().save(cx);
+                    let _ = save_countable(cx, &c.get_untracked());
                 });
                 state.try_update(|s| s.is_paused = false);
             });
@@ -812,6 +696,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                     user.get_untracked().unwrap().username,
                     user.get_untracked().unwrap().token,
                     phase_name.clone(),
+                    Hunttype::NewOdds,
                 )
                 .await
                 .map_err(|err| {
@@ -840,6 +725,8 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>(cx);
 
     let selct_slice = create_read_slice(cx, selection_signal, |sel| sel.get_selected());
+
+    let show_sep = create_read_slice(cx, preferences, |pref| pref.show_separator);
 
     view! { cx,
     <Suspense
@@ -870,6 +757,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                         view=|cx, node| {
                             view! { cx, <TreeViewRow node=node/> }
                         }
+                        show_separator=show_sep
                         selection_model=selection_signal
                     />
                     <button on:click=on_click class="new-counter">New Counter</button>
@@ -966,6 +854,7 @@ fn TreeViewRow(cx: Scope, node: RwSignal<TreeNode<ArcCountable, String>>) -> imp
                     user.get_untracked().unwrap().username,
                     user.get_untracked().unwrap().token,
                     name.clone(),
+                    countable().get_hunt_type(),
                 )
                 .await
                 .expect("Could not create Phase");
@@ -1055,397 +944,6 @@ fn TreeViewRow(cx: Scope, node: RwSignal<TreeNode<ArcCountable, String>>) -> imp
 //         </div>
 //     }
 // }
-
-pub trait Countable: std::fmt::Debug + Send + Any {
-    fn get_id(&self) -> i32;
-    fn get_uuid(&self) -> String;
-    fn get_name(&self) -> String;
-    fn get_count(&self) -> i32;
-    fn set_count(&mut self, count: i32);
-    fn add_count(&mut self, count: i32);
-    fn get_time(&self) -> Duration;
-    fn set_time(&mut self, dur: Duration);
-    fn add_time(&mut self, dur: Duration);
-    fn rem_time(&mut self, dur: Duration);
-    fn get_progress(&self) -> f64;
-    fn is_active(&self) -> bool;
-    fn toggle_active(&mut self);
-    fn set_active(&mut self, active: bool);
-
-    fn new_phase(&mut self, id: i32, name: String);
-    fn new_counter(&mut self, id: i32, name: String) -> Result<ArcCountable, String>;
-
-    fn get_phases(&self) -> Vec<&ArcCountable>;
-    fn get_phases_mut(&mut self) -> Vec<&mut ArcCountable>;
-
-    fn has_children(&self) -> bool;
-    fn as_any(&self) -> &dyn Any;
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-pub struct SerCounter {
-    id: i32,
-    pub name: String,
-    pub phase_list: Vec<Phase>,
-}
-
-impl From<Counter> for SerCounter {
-    fn from(value: Counter) -> Self {
-        let mut phase_list = Vec::new();
-        for arc_p in value.phase_list {
-            if let Some(phase) = arc_p
-                .lock()
-                .map(|c| c.as_any().downcast_ref::<Phase>().cloned())
-                .ok()
-                .flatten()
-            {
-                phase_list.push(phase.clone())
-            }
-        }
-        return SerCounter {
-            id: value.id,
-            name: value.name,
-            phase_list,
-        };
-    }
-}
-
-impl Countable for SerCounter {
-    fn get_id(&self) -> i32 {
-        self.id
-    }
-
-    fn get_uuid(&self) -> String {
-        format!("c{}", self.id)
-    }
-
-    fn get_name(&self) -> String {
-        todo!()
-    }
-
-    fn get_count(&self) -> i32 {
-        self.phase_list.iter().map(|p| p.get_count()).sum()
-    }
-
-    fn set_count(&mut self, count: i32) {
-        let diff = self.phase_list.iter().map(|p| p.get_count()).sum::<i32>()
-            - self.phase_list.last().map(|p| p.get_count()).unwrap_or(0);
-        self.phase_list
-            .last_mut()
-            .map(|p| p.set_count(count - diff));
-    }
-
-    fn add_count(&mut self, _count: i32) {
-        todo!()
-    }
-
-    fn get_time(&self) -> Duration {
-        self.phase_list.iter().map(|p| p.get_time()).sum()
-    }
-
-    fn set_time(&mut self, _dur: Duration) {
-        todo!()
-    }
-
-    fn add_time(&mut self, dur: Duration) {
-        self.phase_list.last_mut().map(|p| {
-            p.add_time(dur);
-        });
-    }
-
-    fn rem_time(&mut self, dur: Duration) {
-        self.phase_list.last_mut().map(|p| {
-            p.rem_time(dur);
-        });
-    }
-
-    fn get_progress(&self) -> f64 {
-        todo!()
-    }
-
-    fn is_active(&self) -> bool {
-        todo!()
-    }
-
-    fn toggle_active(&mut self) {
-        todo!()
-    }
-
-    fn set_active(&mut self, _active: bool) {
-        todo!()
-    }
-
-    fn new_phase(&mut self, _id: i32, _name: String) {
-        todo!()
-    }
-
-    fn new_counter(&mut self, _id: i32, _name: String) -> Result<ArcCountable, String> {
-        todo!()
-    }
-
-    fn get_phases(&self) -> Vec<&ArcCountable> {
-        todo!()
-    }
-
-    fn get_phases_mut(&mut self) -> Vec<&mut ArcCountable> {
-        todo!()
-    }
-
-    fn has_children(&self) -> bool {
-        todo!()
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        todo!()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Counter {
-    id: i32,
-    name: String,
-    phase_list: Vec<ArcCountable>,
-}
-
-#[allow(dead_code)]
-impl Counter {
-    fn new(id: i32, name: impl ToString) -> Result<Self, String> {
-        return Ok(Counter {
-            id,
-            name: name.to_string(),
-            phase_list: Vec::new(),
-        });
-    }
-}
-
-impl Countable for Counter {
-    fn get_id(&self) -> i32 {
-        return self.id;
-    }
-
-    fn get_uuid(&self) -> String {
-        format!("c{}", self.id)
-    }
-
-    fn get_name(&self) -> String {
-        return self.name.clone();
-    }
-
-    fn get_count(&self) -> i32 {
-        return self.phase_list.iter().map(|p| p.get_count()).sum();
-    }
-
-    fn set_count(&mut self, count: i32) {
-        let diff = self.phase_list.iter().map(|p| p.get_count()).sum::<i32>()
-            - self.phase_list.last().map(|p| p.get_count()).unwrap_or(0);
-        self.phase_list
-            .last_mut()
-            .map(|p| p.0.try_lock().map(|mut p| p.set_count(count - diff)));
-    }
-
-    fn add_count(&mut self, count: i32) {
-        self.phase_list.last_mut().map(|p| {
-            let _ = p.0.try_lock().map(|mut p| p.add_count(count));
-        });
-    }
-
-    fn get_time(&self) -> Duration {
-        return self.phase_list.iter().map(|p| p.get_time()).sum();
-    }
-
-    fn set_time(&mut self, time: Duration) {
-        let diff = self
-            .phase_list
-            .iter()
-            .map(|p| p.get_time())
-            .sum::<Duration>()
-            - self
-                .phase_list
-                .last()
-                .map(|p| p.get_time())
-                .unwrap_or_default();
-        self.phase_list
-            .last_mut()
-            .map(|p| p.0.lock().map(|mut p| p.set_time(time - diff)));
-    }
-
-    fn add_time(&mut self, dur: Duration) {
-        self.phase_list.last_mut().map(|p| {
-            let _ = p.0.try_lock().map(|mut p| p.add_time(dur));
-        });
-    }
-
-    fn rem_time(&mut self, dur: Duration) {
-        self.phase_list.last_mut().map(|p| {
-            let _ = p.0.try_lock().map(|mut p| p.rem_time(dur));
-        });
-    }
-
-    fn get_progress(&self) -> f64 {
-        return 1.0 - (1.0 - 1.0_f64 / 8192.0).powi(self.get_count());
-    }
-
-    fn is_active(&self) -> bool {
-        for p in self.phase_list.iter() {
-            if p.try_lock().map(|p| p.is_active()).unwrap_or_default() {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    fn toggle_active(&mut self) {
-        if self.is_active() {
-            self.set_active(false)
-        } else {
-            self.set_active(true)
-        }
-    }
-
-    fn set_active(&mut self, active: bool) {
-        if !active {
-            self.phase_list.iter().for_each(|p| {
-                let _ = p.0.lock().map(|mut p| p.set_active(false));
-            });
-        } else {
-            self.phase_list
-                .last_mut()
-                .map(|p| p.try_lock().ok())
-                .flatten()
-                .map(|mut p| p.set_active(active));
-        }
-    }
-
-    fn new_phase(&mut self, id: i32, name: String) {
-        self.phase_list
-            .push(ArcCountable::new(Box::new(Phase::new(id, name))))
-    }
-
-    fn new_counter(&mut self, id: i32, name: String) -> Result<ArcCountable, String> {
-        let arc_counter = ArcCountable::new(Box::new(Counter::new(id, name)?));
-        self.phase_list.push(arc_counter.clone());
-        return Ok(arc_counter);
-    }
-
-    fn get_phases(&self) -> Vec<&ArcCountable> {
-        self.phase_list.iter().collect()
-    }
-
-    fn get_phases_mut(&mut self) -> Vec<&mut ArcCountable> {
-        return self.phase_list.iter_mut().collect();
-    }
-
-    fn has_children(&self) -> bool {
-        true
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Phase {
-    pub id: i32,
-    pub name: String,
-    pub count: i32,
-    pub time: Duration,
-    pub is_active: bool,
-}
-
-impl Phase {
-    fn new(id: i32, name: impl ToString) -> Self {
-        return Phase {
-            id,
-            name: name.to_string(),
-            count: 0,
-            time: Duration::ZERO,
-            is_active: false,
-        };
-    }
-}
-
-impl Countable for Phase {
-    fn get_id(&self) -> i32 {
-        return self.id;
-    }
-
-    fn get_uuid(&self) -> String {
-        format!("p{}", self.id)
-    }
-
-    fn get_name(&self) -> String {
-        return self.name.clone();
-    }
-
-    fn get_count(&self) -> i32 {
-        return self.count;
-    }
-
-    fn set_count(&mut self, count: i32) {
-        self.count = count;
-    }
-
-    fn add_count(&mut self, count: i32) {
-        self.count += count;
-    }
-
-    fn get_time(&self) -> Duration {
-        return self.time;
-    }
-
-    fn set_time(&mut self, dur: Duration) {
-        self.time = dur
-    }
-
-    fn add_time(&mut self, dur: Duration) {
-        self.time += dur
-    }
-
-    fn rem_time(&mut self, dur: Duration) {
-        self.time -= dur
-    }
-
-    fn get_progress(&self) -> f64 {
-        return 1.0 - (1.0 - 1.0_f64 / 8192.0).powi(self.get_count());
-    }
-
-    fn is_active(&self) -> bool {
-        return self.is_active;
-    }
-
-    fn toggle_active(&mut self) {
-        self.is_active = !self.is_active;
-    }
-
-    fn set_active(&mut self, active: bool) {
-        self.is_active = active;
-    }
-
-    fn new_phase(&mut self, _: i32, _: String) {
-        return ();
-    }
-
-    fn new_counter(&mut self, _: i32, _: String) -> Result<ArcCountable, String> {
-        return Err(String::from("Can not add counter to phase"));
-    }
-
-    fn get_phases(&self) -> Vec<&ArcCountable> {
-        return vec![];
-    }
-
-    fn get_phases_mut(&mut self) -> Vec<&mut ArcCountable> {
-        return vec![];
-    }
-
-    fn has_children(&self) -> bool {
-        false
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CounterList {
@@ -1589,6 +1087,7 @@ impl AccountAccentColor {
 pub struct Preferences {
     pub use_default_accent_color: bool,
     pub accent_color: AccountAccentColor,
+    pub show_separator: bool,
 }
 
 impl Preferences {
@@ -1597,6 +1096,7 @@ impl Preferences {
         return Self {
             use_default_accent_color: true,
             accent_color,
+            show_separator: false,
         };
     }
 }
@@ -1610,6 +1110,7 @@ impl Preferences {
                 .accent_color
                 .map(|c| AccountAccentColor(c))
                 .unwrap_or(AccountAccentColor::new(user)),
+            show_separator: value.show_separator,
         };
     }
 }

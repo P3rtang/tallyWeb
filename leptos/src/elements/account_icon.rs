@@ -13,7 +13,10 @@ pub fn letter_to_three_digit_hash(letter: char) -> String {
     let random_hash = rng.gen_range(0x6..=0xF);
     let random_hash2 = rng.gen_range(0x6..=0xF);
     let random_hash3 = rng.gen_range(0x6..=0xF);
-    format!("{:x}{:x}{:x}", random_hash, random_hash2, random_hash3)
+    format!(
+        "{:x}{:x}{:x}{:x}{:x}{:x}",
+        random_hash, random_hash, random_hash2, random_hash2, random_hash3, random_hash3
+    )
 }
 
 #[component]

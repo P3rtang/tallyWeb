@@ -18,6 +18,7 @@ input::-webkit-inner-spin-button {
     margin: 0;
 }
 
+
 input[type=number]{
     -moz-appearance: textfield;
 }
@@ -107,21 +108,18 @@ button {
 }
 
 #HomeGrid {
-    height: 100%;
+    height: calc(100vh - 52px);
     display: flex;
+    overflow-y: auto;
 }
 
 .sidebar {
+    position: relative;
     display: flex;
     flex-flow: column;
     border-right: 1px solid $border-color-dark;
     overflow-y: auto;
     scrollbar-width: thin;
-
-    .treeview {
-        padding: 8px;
-        padding-top: 12px;
-    }
 
     &::-webkit-scrollbar {
         width: 7px;
@@ -143,107 +141,117 @@ button {
     .new-counter {
         border: none;
         border-radius: 0.5em;
-        margin: 0em 0.75em;
+        margin: 0em 0.75em 0.75em 0.75em;
         font-size: 1.5rem;
-        height: 1.8em;
+        min-height: 1.8em;
     }
 
-    li {
-        display: grid;
-    }
+    .treeview {
+        padding: 8px;
+        padding-top: 12px;
 
-    .selected {
-        color: black !important;
-
-        &:hover {
-            color: black;
-            // opacity: 0.85;
-            // background: $select-color-hover-dark;
+        li {
+            display: grid;
         }
-    }
 
-    ul {
-        padding: 0px;
-        margin: 0px;
-    }
+        hr {
+            border: 1px solid $interactable-bg-color-dark;
+            margin: 6px;
+        }
 
-    & > span {
-        margin: 0px;
-        padding: 0px;
-        display: flex;
-    }
+        .selected {
+            color: black !important;
 
-    .row {
-        color: white;
-        font-size: 1.4rem;
-        border-radius: 0.75em;
-        cursor: default;
-        display: flex;
-        min-width: 10em;
-        padding: 2px;
-        margin-top: 2px;
-        margin-bottom: 2px;
-        min-height: 1.6em;
-    }
+            &:hover {
+                color: black;
+                // opacity: 0.85;
+                // background: $select-color-hover-dark;
+            }
+        }
 
-    .row-body {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        button {
-            height: 36px;
-            width: 36px;
-            font-size: 1.4rem;
-            border-radius: 16px;
-            border: 0px;
-            align-content: center;
-            align-items: center;
+        ul {
+            padding: 0px;
+            margin: 0px;
+        }
+
+        & > span {
+            margin: 0px;
+            padding: 0px;
             display: flex;
-            justify-content: center;
         }
-    }
 
-    .selectable {
-        &:hover {
-            background: #333333;
+        .row {
+            color: white;
+            font-size: 1.4rem;
+            border-radius: 0.75em;
+            cursor: default;
+            display: flex;
+            min-width: 10em;
+            padding: 2px;
+            margin-top: 2px;
+            margin-bottom: 2px;
+            min-height: 1.6em;
         }
-    }
 
-    .caret {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        padding-right: .4em;
-        padding-left: .6em;
-    }
+        .row-body {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            button {
+                height: 36px;
+                width: 36px;
+                font-size: 1.4rem;
+                border-radius: 16px;
+                border: 0px;
+                align-content: center;
+                align-items: center;
+                display: flex;
+                justify-content: center;
+            }
+        }
 
-    .caret::before {
-        min-width: 10px;
-        padding: 2px;
-        font-size: 1.4rem;
-        cursor: pointer;
-        user-select: none; /* Prevent text selection */
-    }
+        .selectable {
+            &:hover {
+                background: #333333;
+            }
+        }
 
-    .caret-down::before {
-        transform: rotate(90deg);
-        translate: 2px -2px;
-    }
-
-    .nested {
-        display: none;
         .caret {
-            padding-left: 0em;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            padding-right: .4em;
+            padding-left: .6em;
         }
-    }
 
-    .active {
-        display: block;
-    }
+        .caret::before {
+            min-width: 10px;
+            padding: 2px;
+            font-size: 1.4rem;
+            cursor: pointer;
+            user-select: none; /* Prevent text selection */
+        }
 
-    .indent {
-        width: 40px;
+        .caret-down::before {
+            transform: rotate(90deg);
+            translate: 2px -2px;
+        }
+
+        .nested {
+            display: none;
+            .caret {
+                padding-left: 0em;
+            }
+        }
+
+        .active {
+            display: block;
+        }
+
+        .indent {
+            width: 40px;
+        }
     }
 }
 
@@ -562,7 +570,7 @@ form {
         padding: 12px 20px;
     }
 
-    input[type="text"], input[type="number"] {
+    input[type="text"], input[type="number"], select {
         font-size: 1.3rem;
         height: 3rem;
         padding-left: 12px;
@@ -576,7 +584,18 @@ form {
     }
 
     input[type="checkbox"] {
-        font-size: unset;
+        appearance: none;
+        border: 2px solid white;
+        background: white;
+        height: 1.6rem;
+        width: 1.6rem;
+        font-size: 1.6em;
+        border-radius: 4px;
+        margin-left: 16px;
+    }
+
+    input[type="checkbox"]:checked {
+        background: #6272A4;
     }
 
     input:focus-visible {
