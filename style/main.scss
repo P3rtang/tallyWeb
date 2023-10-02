@@ -305,6 +305,10 @@ ul {
 
             border-radius: 16px;
             margin: 8px;
+
+            &.rowexpand {
+                min-width: 95%;
+            }
         }
 
         .title {
@@ -349,11 +353,13 @@ form {
 .login-form {
     display: flex;
     flex-flow: column;
-    min-width: 25em;
-    height: 100%;
     justify-content: center;
+    width: min(100%, 25em);
+    padding: 8px;
 
     h1 {
+        margin-top: 0px;
+        padding: 0px;
         color: #6272A4;
     }
 
@@ -364,7 +370,6 @@ form {
 
     input[type="text"], input[type="password"] {
         font-size: 1.3em;
-        min-width: calc(100% - 16px);
         height: 3rem;
         padding-left: 16px;
 

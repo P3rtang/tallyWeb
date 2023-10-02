@@ -319,6 +319,10 @@ fn save(cx: Scope, list: CounterList) -> Result<(), String> {
             list.into(),
         )
         .await
+        .map_err(|err| {
+            navigate(cx, "/login");
+            err.to_string()
+        })
         .unwrap()
     });
     return Ok(());
@@ -333,6 +337,10 @@ fn save_counter(cx: Scope, counter: SerCounter) -> Result<(), String> {
             counter,
         )
         .await
+        .map_err(|err| {
+            navigate(cx, "/login");
+            err.to_string()
+        })
         .unwrap()
     });
 
@@ -348,6 +356,10 @@ fn save_phase(cx: Scope, phase: Phase) -> Result<(), String> {
             phase,
         )
         .await
+        .map_err(|err| {
+            navigate(cx, "/login");
+            err.to_string()
+        })
         .unwrap()
     });
 
@@ -571,7 +583,7 @@ fn save_countable(cx: Scope, countable: &ArcCountable) -> Result<(), String> {
     let has_ch = countable
         .0
         .try_lock()
-        .map_err(|_| "Failed to lock ArcCountable")?
+        .map_err(|err| err.to_string())?
         .has_children();
     if has_ch {
         save_counter(
@@ -635,6 +647,7 @@ fn connect_keys(
 #[component]
 pub fn HomePage(cx: Scope) -> impl IntoView {
     let session_user = expect_context::<Memo<Option<SessionUser>>>(cx);
+    let user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
 
     let data = create_resource(cx, session_user, move |user| async move {
         if let Some(user) = user {
@@ -729,20 +742,25 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     let show_sep = create_read_slice(cx, preferences, |pref| pref.show_separator);
 
     view! { cx,
-    <Suspense
-        fallback=move || view!{ cx, <LoadingScreen/> }
-    >
-        { move || {
-            let list = match data.read(cx) {
-                None => state.get(),
-                Some(data_list) => data_list.into(),
-            };
-            state.set(list)
-        }}
         <Show
             when=move || session_user().is_some() && data.read(cx).is_some()
-            fallback=move |cx| view!{ cx, <LoadingScreen/> }
+            fallback=move |cx| {
+                create_effect(cx, move |_| {
+                    request_animation_frame(move || {
+                        log!("here");
+                        user.set(SessionUser::from_storage(cx));
+                    })
+                });
+                view!{ cx, <LoadingScreen/> }
+            }
         >
+            { move || {
+                let list = match data.read(cx) {
+                    None => state.get(),
+                    Some(data_list) => data_list.into(),
+                };
+                state.set(list)
+            }}
             <div id="HomeGrid">
                 { move || {
                     if screen_layout() == ScreenLayout::Small {
@@ -765,7 +783,6 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                 <InfoBox countable_list=selct_slice()/>
             </div>
         </Show>
-    </Suspense>
     }
 }
 
