@@ -32,5 +32,5 @@ create table preferences(
     user_id                     integer         UNIQUE NOT NULL,
     use_default_accent_color    boolean         NOT NULL DEFAULT true,
     accent_color                varchar,
-    show_separator              boolean         NOT NULL DEFAULT false,
+    show_separator              boolean         NOT NULL DEFAULT false
 )
