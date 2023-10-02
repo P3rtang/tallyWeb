@@ -2,7 +2,7 @@
 
 ## About
 ### website
-visit leptos.p3rtang.me for a demo
+visit [tallyWeb](https://tallyweb.p3rtang.me) for a demo
 
 ### like tallyGo
 Meant to keep track of hunting shiny pokemon,
