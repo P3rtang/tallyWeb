@@ -1,5 +1,6 @@
 #!/bin/bash
 
+docker mkdir postgres_tallyWeb:/postgres
 docker cp postgres/00-recreate-db.sql postgres_tallyWeb:/postgres/
 docker cp postgres/01-create-schema.sql postgres_tallyWeb:/postgres/
 docker cp postgres/02-clear-tables.sql postgres_tallyWeb:/postgres/
