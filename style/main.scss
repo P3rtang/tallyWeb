@@ -305,6 +305,10 @@ ul {
 
             border-radius: 16px;
             margin: 8px;
+
+            &.rowexpand {
+                min-width: 95%;
+            }
         }
 
         .title {

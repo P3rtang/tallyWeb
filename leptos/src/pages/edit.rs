@@ -34,8 +34,8 @@ where
     view! { cx,
     <Show
         when=move || user().is_some()
-        fallback=|_| ()>
-        { move || {
+        fallback=|_| ()
+    > { move || {
             let counter_rsrc = create_resource(cx, params, async move |param| {
                 let user = user.get_untracked().unwrap_or_default();
                 if let Ok(id) = param.map(|p| p.id as i32) {
