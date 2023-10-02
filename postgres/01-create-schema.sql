@@ -11,7 +11,8 @@ create table phases(
     name        varchar         NOT NULL,
     count       integer         NOT NULL,
     time        bigint          NOT NULL,
-    hunt_type   hunttype        NOT NULL
+    hunt_type   hunttype        NOT NULL,
+    has_charm   bool            NOT NULL DEFAULT false
 );
 
 create table users(
@@ -29,6 +30,7 @@ create table auth_tokens(
 
 create table preferences(
     user_id                     integer         UNIQUE NOT NULL,
-    use_default_accent_color    boolean         DEFAULT true NOT NULL,
+    use_default_accent_color    boolean         NOT NULL DEFAULT true,
     accent_color                varchar
+    show_separator              boolean         NOT NULL DEFAULT false,
 )
