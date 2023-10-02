@@ -20,11 +20,11 @@ if you have a request for a feature open an issue
 
 ## Roadmap
 ### V0.1
-[x] basic functionality
-[x] backend stable
+- [x] basic functionality
+- [x] backend stable
 
 ### V0.2
-[x] more infobox information
-[] counters can hold subcounters (not just phases)
-[] progress calculation for more hunting method (e.g DexNav, Raids...)
-[] ...
+- [x] more infobox information
+- [] counters can hold subcounters (not just phases)
+- [] progress calculation for more hunting method (e.g DexNav, Raids...)
+- [] ...
