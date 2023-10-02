@@ -1,6 +1,9 @@
 # TallyWeb
 
 ## About
+### website
+visit leptos.p3rtang.me for a demo
+
 ### like tallyGo
 Meant to keep track of hunting shiny pokemon,
 but can be used for anything that a counter with timer is useful for
@@ -10,7 +13,6 @@ features are almost the same but sometimes differ slightly
 
 ### leptos
 TallyWeb is a website build using the leptos.rs framework
-hosted on leptos.p3rtang.me
 
 ### build information
 TODO
@@ -25,6 +27,6 @@ if you have a request for a feature open an issue
 
 ### V0.2
 - [x] more infobox information
-- [] counters can hold subcounters (not just phases)
-- [] progress calculation for more hunting method (e.g DexNav, Raids...)
-- [] ...
+- [ ] counters can hold subcounters (not just phases)
+- [ ] progress calculation for more hunting method (e.g DexNav, Raids...)
+- [ ] ...
