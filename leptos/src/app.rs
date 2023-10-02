@@ -319,6 +319,10 @@ fn save(cx: Scope, list: CounterList) -> Result<(), String> {
             list.into(),
         )
         .await
+        .map_err(|err| {
+            navigate(cx, "/login");
+            err.to_string()
+        })
         .unwrap()
     });
     return Ok(());
@@ -333,6 +337,10 @@ fn save_counter(cx: Scope, counter: SerCounter) -> Result<(), String> {
             counter,
         )
         .await
+        .map_err(|err| {
+            navigate(cx, "/login");
+            err.to_string()
+        })
         .unwrap()
     });
 
@@ -348,6 +356,10 @@ fn save_phase(cx: Scope, phase: Phase) -> Result<(), String> {
             phase,
         )
         .await
+        .map_err(|err| {
+            navigate(cx, "/login");
+            err.to_string()
+        })
         .unwrap()
     });
 
@@ -571,7 +583,7 @@ fn save_countable(cx: Scope, countable: &ArcCountable) -> Result<(), String> {
     let has_ch = countable
         .0
         .try_lock()
-        .map_err(|_| "Failed to lock ArcCountable")?
+        .map_err(|err| err.to_string())?
         .has_children();
     if has_ch {
         save_counter(
