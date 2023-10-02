@@ -1,3 +1,10 @@
+CREATE TYPE hunttype AS ENUM (
+    'OldOdds',
+    'NewOdds',
+    'SOS',
+    'DexNav'
+);
+
 create table counters(
     id          serial          UNIQUE NOT NULL,
     user_id     integer         NOT NULL,
