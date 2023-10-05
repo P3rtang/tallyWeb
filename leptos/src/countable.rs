@@ -107,7 +107,7 @@ pub enum Hunttype {
     OldOdds,
     NewOdds,
     SOS,
-    DexNav,
+    DexNav(i32),
 }
 
 impl Hunttype {
@@ -132,7 +132,7 @@ impl Hunttype {
                 }
                 return rolls;
             }
-            Hunttype::DexNav => todo!(),
+            Hunttype::DexNav(_) => todo!(),
         }
     }
 
@@ -150,7 +150,7 @@ impl Into<String> for Hunttype {
             Hunttype::OldOdds => String::from("OldOdds"),
             Hunttype::NewOdds => String::from("NewOdds"),
             Hunttype::SOS => String::from("SOS"),
-            Hunttype::DexNav => String::from("DexNav"),
+            Hunttype::DexNav(_) => String::from("DexNav"),
         }
     }
 }
@@ -163,7 +163,7 @@ impl TryFrom<String> for Hunttype {
             "OldOdds" => Ok(Self::OldOdds),
             "NewOdds" => Ok(Self::NewOdds),
             "SOS" => Ok(Self::SOS),
-            "DexNav" => Ok(Self::DexNav),
+            "DexNav" => Ok(Self::DexNav(0)),
             _ => Err(String::from(
                 "Hunttype should be one of the following: OldOdds, NewOdds, SOS, DexNav",
             )),
@@ -721,8 +721,9 @@ cfg_if::cfg_if!(
                     name: self.name.clone(),
                     count: self.count,
                     time: self.time.as_millis() as i64,
-                    hunt_type: self.hunt_type.into(),
+                    hunt_type: self.hunt_type.clone().into(),
                     has_charm: self.has_charm,
+                    dexnav_encounters: self.hunt_type.into(),
                 }
             }
         }
@@ -730,10 +731,19 @@ cfg_if::cfg_if!(
         impl Into<backend::Hunttype> for Hunttype {
             fn into(self) -> backend::Hunttype {
                 match self {
-                    Self::OldOdds => backend::Hunttype::OldOdds,
-                    Self::NewOdds => backend::Hunttype::NewOdds,
-                    Self::SOS     => backend::Hunttype::SOS,
-                    Self::DexNav  => backend::Hunttype::DexNav,
+                    Self::OldOdds    => backend::Hunttype::OldOdds,
+                    Self::NewOdds    => backend::Hunttype::NewOdds,
+                    Self::SOS        => backend::Hunttype::SOS,
+                    Self::DexNav(_)  => backend::Hunttype::DexNav,
+                }
+            }
+        }
+
+        impl Into<Option<i32>> for Hunttype {
+            fn into(self) -> Option<i32> {
+                match self {
+                    Self::DexNav(num) => Some(num),
+                    _ => None,
                 }
             }
         }
@@ -743,8 +753,8 @@ cfg_if::cfg_if!(
                 match value {
                     backend::Hunttype::OldOdds => Self::OldOdds,
                     backend::Hunttype::NewOdds => Self::NewOdds,
-                    backend::Hunttype::SOS => Self::SOS,
-                    backend::Hunttype::DexNav => Self::DexNav,
+                    backend::Hunttype::SOS     => Self::SOS,
+                    backend::Hunttype::DexNav  => Self::DexNav(0),
                 }
             }
         }
