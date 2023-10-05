@@ -403,6 +403,7 @@ pub fn App(cx: Scope) -> impl IntoView {
         <Stylesheet href="/pkg/tally_web.css"/>
         // <Stylesheet href="/stylers.css"/>
         // <Script src="https://kit.fontawesome.com/7173474e94.js" crossorigin="anonymous"/>
+        <Link href="https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet"/>
         <Link href="/fa/css/all.css" rel="stylesheet"/>
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg"/>
         <Meta name="viewport" content="width=device-width, initial-scale=1.0"/>
