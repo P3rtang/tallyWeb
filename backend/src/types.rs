@@ -29,6 +29,7 @@ pub struct DbPhase {
     pub time: i64,
     pub hunt_type: Hunttype,
     pub has_charm: bool,
+    pub dexnav_encounters: Option<i32>,
 }
 
 #[derive(Debug)]

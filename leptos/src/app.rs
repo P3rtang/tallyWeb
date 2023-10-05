@@ -233,16 +233,22 @@ pub async fn update_phase(
 async fn save_all(
     username: String,
     token: String,
-    list: Vec<SerCounter>,
+    counters: Vec<SerCounter>,
+    phases: Option<Vec<Phase>>,
 ) -> Result<(), ServerFnError> {
     let pool = backend::create_pool().await?;
+    let phases = phases.unwrap_or_default();
 
     let user = backend::auth::get_user(&pool, username, token, true).await?;
-    for counter in list {
+    for counter in counters {
         backend::update_counter(&pool, counter.to_db(user.id).await).await?;
         for phase in counter.phase_list {
             backend::update_phase(&pool, user.id, phase.to_db(user.id).await).await?;
         }
+    }
+
+    for phase in phases {
+        backend::update_phase(&pool, user.id, phase.to_db(user.id).await).await?;
     }
 
     return Ok(());
@@ -312,57 +318,15 @@ impl Display for AccountAccentColor {
 
 fn save(cx: Scope, list: CounterList) -> Result<(), String> {
     let user = use_context::<Memo<Option<SessionUser>>>(cx).ok_or("User Context should Exist")?;
-    spawn_local(async move {
+    create_action(cx, move |_: &()| {
         save_all(
             user.get_untracked().unwrap().username,
             user.get_untracked().unwrap().token,
-            list.into(),
+            list.clone().into(),
+            None,
         )
-        .await
-        .map_err(|err| {
-            navigate(cx, "/login");
-            err.to_string()
-        })
-        .unwrap()
-    });
-    return Ok(());
-}
-
-fn save_counter(cx: Scope, counter: SerCounter) -> Result<(), String> {
-    let user = use_context::<Memo<Option<SessionUser>>>(cx).ok_or("User Context should Exist")?;
-    spawn_local(async move {
-        update_counter(
-            user.get_untracked().unwrap().username,
-            user.get_untracked().unwrap().token,
-            counter,
-        )
-        .await
-        .map_err(|err| {
-            navigate(cx, "/login");
-            err.to_string()
-        })
-        .unwrap()
-    });
-
-    return Ok(());
-}
-
-fn save_phase(cx: Scope, phase: Phase) -> Result<(), String> {
-    let user = use_context::<Memo<Option<SessionUser>>>(cx).ok_or("User Context should Exist")?;
-    spawn_local(async move {
-        update_phase(
-            user.get_untracked().unwrap().username,
-            user.get_untracked().unwrap().token,
-            phase,
-        )
-        .await
-        .map_err(|err| {
-            navigate(cx, "/login");
-            err.to_string()
-        })
-        .unwrap()
-    });
-
+    })
+    .dispatch(());
     return Ok(());
 }
 
@@ -378,6 +342,11 @@ pub fn App(cx: Scope) -> impl IntoView {
 
     let close_overlay_signal = create_rw_signal(cx, CloseOverlays::new());
     provide_context(cx, close_overlay_signal);
+
+    let change_flag_buffer = create_rw_signal(cx, Vec::<ChangeFlag>::new());
+    provide_context(cx, change_flag_buffer);
+
+    create_effect(cx, move |_| {});
 
     let close_overlays = move |_| {
         debug_warn!("Closing Overlays");
@@ -434,6 +403,7 @@ pub fn App(cx: Scope) -> impl IntoView {
         <Stylesheet href="/pkg/tally_web.css"/>
         // <Stylesheet href="/stylers.css"/>
         // <Script src="https://kit.fontawesome.com/7173474e94.js" crossorigin="anonymous"/>
+        <Link href="https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet"/>
         <Link href="/fa/css/all.css" rel="stylesheet"/>
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg"/>
         <Meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -513,6 +483,53 @@ fn NotFound(cx: Scope) -> impl IntoView {
     }
 }
 
+fn save_timer(
+    cx: Scope,
+    user: Memo<Option<SessionUser>>,
+    save_flags: RwSignal<Vec<ChangeFlag>>,
+    state: RwSignal<CounterList>,
+) {
+    const INTERVAL: Duration = Duration::from_secs(10);
+
+    create_effect(cx, move |_| {
+        set_interval(
+            move || {
+                let mut do_save = false;
+                for change in save_flags.get_untracked() {
+                    match change {
+                        ChangeFlag::ChangeCountable(_) => do_save = true,
+                        ChangeFlag::ChangePreferences(preferences) => {
+                            let save = create_action(cx, move |_: &()| {
+                                save_preferences(
+                                    user.get_untracked().unwrap_or_default().username,
+                                    user.get_untracked().unwrap_or_default().token,
+                                    preferences.clone(),
+                                )
+                            });
+                            save.dispatch(())
+                        }
+                    }
+                }
+
+                if do_save {
+                    create_action(cx, move |(): &()| {
+                        save_all(
+                            user.get_untracked().unwrap_or_default().username,
+                            user.get_untracked().unwrap_or_default().token,
+                            state.get_untracked().into(),
+                            None,
+                        )
+                    })
+                    .dispatch(())
+                }
+
+                save_flags.update(|s| s.clear());
+            },
+            INTERVAL,
+        )
+    });
+}
+
 fn timer(cx: Scope, selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
     const FRAMERATE: u64 = 30;
     const INTERVAL: Duration = Duration::from_millis(1000 / FRAMERATE);
@@ -528,20 +545,6 @@ fn timer(cx: Scope, selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
     };
 
     let state = use_context::<RwSignal<CounterList>>(cx);
-
-    create_effect(cx, move |_| {
-        set_interval(
-            move || {
-                if state.is_none() {
-                    return;
-                }
-                if let Some(list) = state.unwrap().try_get() {
-                    let _ = save(cx, list);
-                }
-            },
-            Duration::from_secs(20),
-        );
-    });
 
     create_effect(cx, move |_| {
         set_interval(
@@ -579,51 +582,20 @@ pub fn navigate(cx: Scope, page: impl ToString) {
     })
 }
 
-fn save_countable(cx: Scope, countable: &ArcCountable) -> Result<(), String> {
-    let has_ch = countable
-        .0
-        .try_lock()
-        .map_err(|err| err.to_string())?
-        .has_children();
-    if has_ch {
-        save_counter(
-            cx,
-            countable
-                .0
-                .try_lock()
-                .unwrap()
-                .as_any()
-                .downcast_ref::<Counter>()
-                .unwrap()
-                .clone()
-                .into(),
-        )
-    } else {
-        save_phase(
-            cx,
-            countable
-                .0
-                .try_lock()
-                .unwrap()
-                .as_any()
-                .downcast_ref::<Phase>()
-                .unwrap()
-                .clone(),
-        )
-    }
-}
-
 fn connect_keys(
     cx: Scope,
     state: RwSignal<CounterList>,
     active: RwSignal<Vec<RwSignal<ArcCountable>>>,
+    save_flags: RwSignal<Vec<ChangeFlag>>,
 ) {
     window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
         "Equal" => {
             active.try_get().map(|a| {
                 a.into_iter().for_each(|c| {
-                    let _ = c.update(|c| c.add_count(1));
-                    let _ = save_countable(cx, &c.get_untracked());
+                    let _ = c.update(|c| {
+                        c.add_count(1);
+                        save_flags.update(|s| s.push(ChangeFlag::ChangeCountable(c.clone())))
+                    });
                 });
                 state.try_update(|s| s.is_paused = false);
             });
@@ -631,8 +603,10 @@ fn connect_keys(
         "Minus" => {
             active.try_get().map(|a| {
                 a.into_iter().for_each(|c| {
-                    let _ = c.update(|c| c.add_count(-1));
-                    let _ = save_countable(cx, &c.get_untracked());
+                    let _ = c.update(|c| {
+                        c.add_count(-1);
+                        save_flags.update(|s| s.push(ChangeFlag::ChangeCountable(c.clone())))
+                    });
                 });
                 state.try_update(|s| s.is_paused = false);
             });
@@ -648,6 +622,7 @@ fn connect_keys(
 pub fn HomePage(cx: Scope) -> impl IntoView {
     let session_user = expect_context::<Memo<Option<SessionUser>>>(cx);
     let user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
+    let change_flags = expect_context::<RwSignal<Vec<ChangeFlag>>>(cx);
 
     let data = create_resource(cx, session_user, move |user| async move {
         if let Some(user) = user {
@@ -675,7 +650,14 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
     let selection_signal = create_rw_signal(cx, selection);
     provide_context(cx, selection_signal);
 
-    connect_keys(cx, state, selection_signal.get_untracked().get_selected());
+    connect_keys(
+        cx,
+        state,
+        selection_signal.get_untracked().get_selected(),
+        change_flags,
+    );
+
+    save_timer(cx, session_user, change_flags, state);
     timer(cx, selection_signal.get_untracked().get_selected());
 
     let on_click = move |_| {
@@ -1130,4 +1112,10 @@ impl Preferences {
             show_separator: value.show_separator,
         };
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum ChangeFlag {
+    ChangeCountable(ArcCountable),
+    ChangePreferences(Preferences),
 }

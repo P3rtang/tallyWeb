@@ -224,13 +224,21 @@ where
             set_count(num)
         }
 
-        if let Ok(num) = hours_input().expect("Defined above").value().parse::<i32>() {
-            set_hours(num);
-        }
+        set_hours(
+            hours_input()
+                .expect("Defined above")
+                .value()
+                .parse::<i32>()
+                .unwrap_or_default(),
+        );
 
-        if let Ok(num) = mins_input().expect("Defined above").value().parse::<i32>() {
-            set_mins(num);
-        }
+        set_mins(
+            mins_input()
+                .expect("Defined above")
+                .value()
+                .parse::<i32>()
+                .unwrap_or_default(),
+        );
 
         if let Ok(hunt_type) =
             Hunttype::try_from(hunt_type_dropdown().expect("Defined above").value())
