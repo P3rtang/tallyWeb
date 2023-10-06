@@ -10,6 +10,9 @@ pub enum Hunttype {
     NewOdds,
     SOS,
     DexNav,
+    MasudaGenIV,
+    MasudaGenV,
+    MasudaGenVI,
 }
 
 #[derive(Debug, sqlx::FromRow)]

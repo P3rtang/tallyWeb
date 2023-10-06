@@ -108,6 +108,15 @@ pub enum Hunttype {
     NewOdds,
     SOS,
     DexNav(i32),
+    Masuda(Masuda),
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum Masuda {
+    GenIV,
+    GenV,
+    #[default]
+    GenVI,
 }
 
 impl Hunttype {
@@ -133,12 +142,17 @@ impl Hunttype {
                 return rolls;
             }
             Hunttype::DexNav(_) => todo!(),
+            Hunttype::Masuda(Masuda::GenIV) => {
+                return if has_charm { count * 7 } else { count * 5 }
+            }
+            Hunttype::Masuda(_) => return if has_charm { count * 8 } else { count * 6 },
         }
     }
 
     fn get_odds(&self) -> i32 {
         return match self {
             Hunttype::OldOdds => 8192,
+            Hunttype::Masuda(Masuda::GenIV | Masuda::GenV) => 8192,
             _ => 4096,
         };
     }
@@ -151,6 +165,9 @@ impl Into<String> for Hunttype {
             Hunttype::NewOdds => String::from("NewOdds"),
             Hunttype::SOS => String::from("SOS"),
             Hunttype::DexNav(_) => String::from("DexNav"),
+            Hunttype::Masuda(Masuda::GenIV) => String::from("MasudaGenIV"),
+            Hunttype::Masuda(Masuda::GenV) => String::from("MasudaGenV"),
+            Hunttype::Masuda(Masuda::GenVI) => String::from("MasudaGenVI"),
         }
     }
 }
@@ -164,8 +181,11 @@ impl TryFrom<String> for Hunttype {
             "NewOdds" => Ok(Self::NewOdds),
             "SOS" => Ok(Self::SOS),
             "DexNav" => Ok(Self::DexNav(0)),
+            "MasudaGenIV" => Ok(Self::Masuda(Masuda::GenIV)),
+            "MasudaGenV" => Ok(Self::Masuda(Masuda::GenV)),
+            "MasudaGenVI" => Ok(Self::Masuda(Masuda::GenVI)),
             _ => Err(String::from(
-                "Hunttype should be one of the following: OldOdds, NewOdds, SOS, DexNav",
+                "Hunttype should be one of the following: OldOdds, NewOdds, SOS, Masuda",
             )),
         };
     }
@@ -270,7 +290,7 @@ impl Countable for SerCounter {
     }
 
     fn get_rolls(&self) -> i32 {
-        todo!()
+        self.phase_list.iter().map(|p| p.get_rolls()).sum()
     }
 
     fn get_time(&self) -> Duration {
@@ -731,10 +751,13 @@ cfg_if::cfg_if!(
         impl Into<backend::Hunttype> for Hunttype {
             fn into(self) -> backend::Hunttype {
                 match self {
-                    Self::OldOdds    => backend::Hunttype::OldOdds,
-                    Self::NewOdds    => backend::Hunttype::NewOdds,
-                    Self::SOS        => backend::Hunttype::SOS,
-                    Self::DexNav(_)  => backend::Hunttype::DexNav,
+                    Self::OldOdds               => backend::Hunttype::OldOdds,
+                    Self::NewOdds               => backend::Hunttype::NewOdds,
+                    Self::SOS                   => backend::Hunttype::SOS,
+                    Self::DexNav(_)             => backend::Hunttype::DexNav,
+                    Self::Masuda(Masuda::GenIV) => backend::Hunttype::MasudaGenIV,
+                    Self::Masuda(Masuda::GenV)  => backend::Hunttype::MasudaGenV,
+                    Self::Masuda(Masuda::GenVI) => backend::Hunttype::MasudaGenVI,
                 }
             }
         }
@@ -751,10 +774,13 @@ cfg_if::cfg_if!(
         impl From<backend::Hunttype> for Hunttype {
             fn from(value: backend::Hunttype) -> Self {
                 match value {
-                    backend::Hunttype::OldOdds => Self::OldOdds,
-                    backend::Hunttype::NewOdds => Self::NewOdds,
-                    backend::Hunttype::SOS     => Self::SOS,
-                    backend::Hunttype::DexNav  => Self::DexNav(0),
+                    backend::Hunttype::OldOdds     => Self::OldOdds,
+                    backend::Hunttype::NewOdds     => Self::NewOdds,
+                    backend::Hunttype::SOS         => Self::SOS,
+                    backend::Hunttype::DexNav      => Self::DexNav(0),
+                    backend::Hunttype::MasudaGenIV => Self::Masuda(Masuda::GenIV),
+                    backend::Hunttype::MasudaGenV  => Self::Masuda(Masuda::GenV),
+                    backend::Hunttype::MasudaGenVI => Self::Masuda(Masuda::GenVI),
                 }
             }
         }

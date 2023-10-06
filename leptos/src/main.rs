@@ -22,6 +22,7 @@ cfg_if::cfg_if! {
                 let site_root = &leptos_options.site_root;
 
                 App::new()
+                    .wrap(middleware::Compress::default())
                     .route("/api/{tail:.*}", leptos_actix::handle_server_fns())
                     .service(privacy_policy)
                     // serve JS/WASM/CSS from `pkg`
@@ -38,7 +39,6 @@ cfg_if::cfg_if! {
                     )
                     .app_data(web::Data::new(leptos_options.to_owned()))
                     .service(Files::new("/", site_root))
-                //.wrap(middleware::Compress::default())
             })
             .bind(&addr)?
             .run()

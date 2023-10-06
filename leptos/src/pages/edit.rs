@@ -110,6 +110,8 @@ where
     let user = expect_context::<Memo<Option<SessionUser>>>(cx);
     let preferences = expect_context::<Memo<Preferences>>(cx);
 
+    let message = create_rw_signal(cx, None::<String>);
+
     let border_style = move || format!("border: 2px solid {}", preferences().accent_color.0);
     let confirm_style = move || format!("background-color: {}", preferences().accent_color.0);
 
@@ -244,6 +246,9 @@ where
             Hunttype::try_from(hunt_type_dropdown().expect("Defined above").value())
         {
             set_hunt_type(hunt_type);
+        } else {
+            message.set(Some(String::from("Could not save selected Hunttype")));
+            return;
         }
 
         set_charm(charm_toggle().expect("Defined above").checked());
@@ -253,13 +258,20 @@ where
                 .get_untracked()
                 .ok_or(ServerFnError::MissingArg(String::from(
                     "User not available",
-                )))?;
-            let counter =
-                counter
-                    .get_untracked()
-                    .ok_or(ServerFnError::MissingArg(String::from(
-                        "Could not find Counter",
-                    )))?;
+                )))
+                .map_err(|err| {
+                    message.set(Some(String::from("Failed to Save, Could not get user")));
+                    err
+                })?;
+            let counter = counter
+                .get_untracked()
+                .ok_or(ServerFnError::MissingArg(String::from(
+                    "Could not find Counter",
+                )))
+                .map_err(|err| {
+                    message.set(Some(String::from("Failed to Save, Could not get Counter")));
+                    err
+                })?;
 
             if is_phase {
                 update_phase(
@@ -267,14 +279,22 @@ where
                     user.token,
                     counter.as_any().downcast_ref().cloned().unwrap(),
                 )
-                .await?;
+                .await
+                .map_err(|err| {
+                    message.set(Some(format!("Failed to update Phase\nGot error {}", err)));
+                    err
+                })?;
             } else {
                 update_counter(
                     user.username,
                     user.token,
                     counter.as_any().downcast_ref().cloned().unwrap(),
                 )
-                .await?;
+                .await
+                .map_err(|err| {
+                    message.set(Some(format!("Failed to update Counter\nGot error {}", err)));
+                    err
+                })?;
             }
 
             navigate(cx, "/");
@@ -333,7 +353,9 @@ where
                             <option value="OldOdds">Old odds (1/8192)</option>
                             <option value="NewOdds">New odds (1/4096)</option>
                             <option value="SOS">SOS hunt</option>
-                            <option value="DexNav">DexNav</option>
+                            <option value="MasudaGenIV">Masuda GenIV</option>
+                            <option value="MasudaGenV">Masuda GenV</option>
+                            <option value="MasudaGenVI">Masuda GenVI+</option>
                         </select>
                         <label for="charm" class="title">Shiny Charm</label>
                         <input type="checkbox" id="charm" node_ref=charm_toggle prop:checked=has_charm.get_untracked() class="edit"/>
@@ -349,5 +371,11 @@ where
                 </div>
             </Form>
         </Transition>
+        <Show
+            when=move || { message().is_some() }
+            fallback=|_| ()
+        >
+            <b class="notification-box" style=border_style>{ move || { message().unwrap() } }</b>
+        </Show>
     }
 }
