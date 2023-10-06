@@ -13,7 +13,7 @@ pub trait DatabaseError: Error {}
 
 #[derive(Debug, thiserror::Error)]
 pub enum SignupError {
-    #[error("Could not create new User, username already exists")]
+    #[error("Username already exists")]
     UserExists,
     #[error("Internal Server error when creating user")]
     Internal(#[from] sqlx::Error),

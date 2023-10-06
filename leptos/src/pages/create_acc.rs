@@ -1,24 +1,18 @@
 use gloo_storage::{LocalStorage, Storage};
-use leptos::*;
-use leptos_router::{ActionForm, FromFormData, A};
+use leptos::{html::Input, *};
+use leptos_router::{ActionForm, A};
 use web_sys::SubmitEvent;
 
-use crate::app::{navigate, CreateAccount};
+use crate::app::navigate;
 
 #[component]
 pub fn CreateAccount(cx: Scope) -> impl IntoView {
     let action = create_server_action::<crate::app::CreateAccount>(cx);
 
-    let (err_message, set_err_message) = create_signal(cx, None);
-
-    let show_err = move || {
-        if err_message().is_some() {
-            "display: block;
-            color: tomato;
-            border: 2px solid tomato;"
-        } else {
-            "display: none"
-        }
+    let message = create_rw_signal(cx, None::<String>);
+    let border_style = move || {
+        "color: tomato;
+        border: 2px solid tomato;"
     };
 
     create_effect(cx, move |_| {
@@ -32,24 +26,24 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
     });
 
     create_effect(cx, move |_| {
-        set_err_message.set(if let Some(Err(err)) = action.value().get() {
-            Some(
-                err.to_string()
-                    .split_once(": ")
-                    .map(|s| s.1.to_string())
-                    .unwrap_or_default(),
-            )
-        } else {
-            None
-        })
+        if let Some(Err(err)) = action.value().get() {
+            message.set(err.to_string().split_once(": ").map(|s| s.1.to_string()))
+        }
     });
 
+    let password_input = create_node_ref::<Input>(cx);
+    let password_repeat = create_node_ref::<Input>(cx);
+
     let on_submit = move |ev: SubmitEvent| {
-        if let Ok(data) = CreateAccount::from_event(&ev) {
-            if data.password != data.password_repeat {
-                set_err_message(Some(format!("passwords do not match")));
-                ev.prevent_default();
-            }
+        if password_input().unwrap().value().len() < 8 {
+            message.set(Some(String::from(
+                "Password should be longer than 8 characters",
+            )));
+            ev.prevent_default()
+        }
+        if password_input().unwrap().value() != password_repeat().unwrap().value() {
+            message.set(Some(format!("passwords do not match")));
+            ev.prevent_default();
         }
     };
 
@@ -62,10 +56,22 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
                 <input type="text" placeholder="Enter Username" name="username" required/>
 
                 <label for="password"><b>Password</b></label>
-                <input type="password" placeholder="Enter Password" name="password" required/>
+                <input
+                    type="password"
+                    placeholder="Enter Password"
+                    name="password"
+                    node_ref=password_input
+                    required
+                />
 
                 <label for="password_repeat"><b>Repeat Password</b></label>
-                <input type="password" placeholder="Repeat Password" name="password_repeat" required/>
+                <input
+                    type="password"
+                    placeholder="Repeat Password"
+                    name="password_repeat"
+                    node_ref=password_repeat
+                    required
+                />
 
                 // <p>By creating an account you agree to our <a href="#" style="color:dodgerblue">Terms & Privacy</a>.</p>
 
@@ -79,6 +85,11 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
                 </div>
             </div>
         </ActionForm>
-        <b style=show_err class="notification-box">{ move || { err_message() } }</b>
+        <Show
+            when=move || { message().is_some() }
+            fallback=|_| ()
+        >
+            <b class="notification-box" style=border_style>{ move || { message().unwrap() } }</b>
+        </Show>
     }
 }
