@@ -1,11 +1,12 @@
 use crate::app::{navigate, SessionUser};
 use gloo_storage::{LocalStorage, Storage};
-use leptos::*;
+use leptos::{html::Input, *};
 use leptos_router::ActionForm;
 
 #[component]
 pub fn LoginPage(cx: Scope) -> impl IntoView {
     let action = create_server_action::<crate::app::LoginUser>(cx);
+
     create_effect(cx, move |_| {
         request_animation_frame(move || {
             expect_context::<RwSignal<Option<SessionUser>>>(cx).set(None);
@@ -13,16 +14,10 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
         })
     });
 
-    let show_err = move || {
-        action.value().with(|v| {
-            if let Some(user) = v && user.is_err() {
-                "display: block;
-                color: tomato;
-                border: 2px solid tomato;"
-            } else {
-                "display: none"
-            }
-        })
+    let message = create_rw_signal(cx, None::<String>);
+    let border_style = move || {
+        "color: tomato;
+        border: 2px solid tomato;"
     };
 
     create_effect(cx, move |_| {
@@ -31,11 +26,15 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
                 expect_context::<RwSignal<Option<SessionUser>>>(cx).set(Some(login));
                 crate::app::navigate(cx, "/")
             }
+        } else if let Some(Err(err)) = action.value().get() {
+            message.set(err.to_string().split_once(": ").map(|s| s.1.to_string()))
         }
     });
 
+    let password_input = create_node_ref::<Input>(cx);
+
     view! { cx,
-        <ActionForm action=action>
+        <ActionForm action=action on:submit=|_|()>
         <div class="container login-form">
             <h1>Login</h1>
             <label for="username"><b>Username</b></label>
@@ -54,6 +53,7 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
                 name="password"
                 id="password"
                 autocomplete="current-password"
+                node_ref=password_input
                 required
             />
 
@@ -63,12 +63,11 @@ pub fn LoginPage(cx: Scope) -> impl IntoView {
             </div>
         </div>
         </ActionForm>
-        <b style=show_err class="notification-box">{ move || {
-            if let Some(Err(err)) = action.value().get() {
-                err.to_string().split_once(": ").map(|s| s.1.to_string()).unwrap_or_default()
-            } else {
-                String::new()
-            }
-        }}</b>
+        <Show
+            when=move || { message().is_some() }
+            fallback=|_| ()
+        >
+            <b class="notification-box" style=border_style>{ move || { message().unwrap() } }</b>
+        </Show>
     }
 }
