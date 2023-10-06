@@ -29,4 +29,6 @@ if you have a request for a feature open an issue
 - [x] more infobox information
 - [ ] counters can hold subcounters (not just phases)
 - [ ] progress calculation for more hunting method (e.g DexNav, Raids...)
+- [ ] offline support
+- [ ] without account support
 - [ ] ...
