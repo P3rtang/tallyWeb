@@ -16,12 +16,6 @@ use leptos::*;
 #[derive(Debug, Clone)]
 pub struct CloseOverlays();
 
-impl CloseOverlays {
-    pub fn new() -> Self {
-        Self()
-    }
-}
-
 #[component]
 pub fn Overlay(
     cx: Scope,
@@ -36,7 +30,7 @@ where {
             show_overlay.set(false);
         });
     } else {
-        debug_warn!("No `close overlay` signal available");
+        warn!("No `close overlay` signal available");
     }
 
     let preferences = expect_context::<RwSignal<crate::app::Preferences>>(cx);
