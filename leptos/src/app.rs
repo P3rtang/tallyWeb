@@ -340,7 +340,7 @@ pub fn App(cx: Scope) -> impl IntoView {
     provide_context(cx, user);
     provide_context(cx, user_memo);
 
-    let close_overlay_signal = create_rw_signal(cx, CloseOverlays::new());
+    let close_overlay_signal = create_rw_signal(cx, CloseOverlays());
     provide_context(cx, close_overlay_signal);
 
     let change_flag_buffer = create_rw_signal(cx, Vec::<ChangeFlag>::new());
@@ -349,7 +349,6 @@ pub fn App(cx: Scope) -> impl IntoView {
     create_effect(cx, move |_| {});
 
     let close_overlays = move |_| {
-        debug_warn!("Closing Overlays");
         close_overlay_signal.update(|_| ());
     };
 
