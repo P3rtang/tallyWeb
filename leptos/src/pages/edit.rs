@@ -1,8 +1,7 @@
 #![allow(unused_braces)]
 #![allow(non_snake_case)]
 
-use std::time::Duration;
-
+use chrono::Duration;
 use leptos::{
     html::{Input, Select},
     *,
@@ -140,21 +139,16 @@ where
         counter,
         |c| {
             c.clone()
-                .map(|c| c.get_time().as_secs() / 3600)
+                .map(|c| c.get_time().num_hours())
                 .unwrap_or_default()
         },
         |c, new| {
             let old_h = c
                 .clone()
-                .map(|c| c.get_time().as_secs() / 3600)
+                .map(|c| c.get_time().num_hours())
                 .unwrap_or_default();
-            if new < old_h as i32 {
-                let diff = Duration::from_secs((old_h - new as u64) * 3600);
-                c.as_mut().map(|c| c.rem_time(diff));
-            } else {
-                let diff = Duration::from_secs((new as u64 - old_h) * 3600);
-                c.as_mut().map(|c| c.add_time(diff));
-            }
+            let diff = Duration::hours(old_h - new);
+            c.as_mut().map(|c| c.set_time(c.get_time() - diff));
         },
     );
     let (mins, set_mins) = create_slice(
@@ -162,21 +156,16 @@ where
         counter,
         |c| {
             c.clone()
-                .map(|c| c.get_time().as_secs() / 60 % 60)
+                .map(|c| c.get_time().num_minutes() % 60)
                 .unwrap_or_default()
         },
         |c, new| {
             let old_m = c
                 .clone()
-                .map(|c| c.get_time().as_secs() / 60 % 60)
+                .map(|c| c.get_time().num_minutes() % 60)
                 .unwrap_or_default();
-            if new < old_m as i32 {
-                let diff = Duration::from_secs((old_m - new as u64) * 60);
-                c.as_mut().map(|c| c.rem_time(diff));
-            } else {
-                let diff = Duration::from_secs((new as u64 - old_m) * 60);
-                c.as_mut().map(|c| c.add_time(diff));
-            }
+            let diff = Duration::minutes(old_m - new);
+            c.as_mut().map(|c| c.set_time(c.get_time() - diff));
         },
     );
 
@@ -230,7 +219,7 @@ where
             hours_input()
                 .expect("Defined above")
                 .value()
-                .parse::<i32>()
+                .parse::<i64>()
                 .unwrap_or_default(),
         );
 
@@ -238,7 +227,7 @@ where
             mins_input()
                 .expect("Defined above")
                 .value()
-                .parse::<i32>()
+                .parse::<i64>()
                 .unwrap_or_default(),
         );
 

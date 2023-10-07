@@ -25,6 +25,8 @@ backend = { path = "../backend", optional = true }
 serde_json = "1.0.105"
 gloo-storage = "0.3.0"
 rand = "0.8.5"
+chrono = { version = "0.4.31", features = ["serde"] }
+serde_with = { version = "3.3.0", features = ["chrono"] }
 
 [features]
 csr = ["leptos/csr", "leptos_meta/csr", "leptos_router/csr"]

@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
+use chrono::Duration;
 use leptos::*;
-use std::time::Duration;
 
 use crate::{
     app::{CounterList, Progressbar},
@@ -45,28 +45,30 @@ where
     }
 }
 
-fn format_time(dur: std::time::Duration) -> String {
+fn format_time(dur: Duration) -> String {
     format!(
         "{:>02}:{:02}:{:02},{:03}",
-        dur.as_secs() / 3600,
-        dur.as_secs() / 60 % 60,
-        dur.as_secs() % 60,
-        dur.as_millis() - dur.as_secs() as u128 * 1000,
+        dur.num_hours(),
+        dur.num_minutes() % 60,
+        dur.num_seconds() % 60,
+        dur.num_milliseconds() - dur.num_seconds() * 1000,
     )
 }
 
-fn short_format_time(dur: std::time::Duration) -> String {
-    const HOUR: u64 = 60 * 60 * 1000;
-    const MINUTE: u64 = 60 * 1000;
-    const SECOND: u64 = 1000;
-
-    return match dur.as_millis() as u64 {
-        millis if millis > HOUR => format!("{:02}h {:02}m", millis / HOUR, millis % HOUR / MINUTE),
-        millis if millis > MINUTE => {
-            format!("{:02}m {:02}s", millis / MINUTE, millis % MINUTE / SECOND)
+fn short_format_time(dur: Duration) -> String {
+    return match dur {
+        dur if dur.num_hours() > 0 => {
+            format!("{:02}h {:02}m", dur.num_hours(), dur.num_minutes() % 60)
         }
-        millis => {
-            format!("{:02}s {:03}", millis / SECOND, millis % SECOND)
+        dur if dur.num_minutes() > 0 => {
+            format!("{:02}m {:02}s", dur.num_minutes(), dur.num_seconds() % 60)
+        }
+        dur => {
+            format!(
+                "{:02}s {:03}",
+                dur.num_seconds(),
+                dur.num_milliseconds() % 1000
+            )
         }
     };
 }
@@ -145,7 +147,7 @@ where
 
     let on_count = create_read_slice(cx, countable, |c| c.get_count());
     let time = create_read_slice(cx, countable, |c| c.get_time());
-    let last_interaction = create_rw_signal(cx, None::<u128>);
+    let last_interaction = create_rw_signal(cx, None::<i64>);
 
     view! { cx,
         <div class="rowbox">
@@ -153,9 +155,9 @@ where
             <p class="info">{ move || {
                 on_count.with(|_| {
                     let time_str = format_time(last_interaction.get_untracked().map(|t| {
-                        time.get_untracked() - Duration::from_millis(t as u64)
+                        time.get_untracked() - Duration::milliseconds(t)
                     }));
-                    last_interaction.set(Some(time.get_untracked().as_millis()));
+                    last_interaction.set(Some(time.get_untracked().num_milliseconds()));
                     time_str
                 })}
             }</p>
@@ -170,7 +172,7 @@ where
 {
     let count = create_read_slice(cx, countable, |c| c.get_count());
     let step = create_read_slice(cx, countable, move |c| {
-        Duration::from_millis(c.get_time().as_millis() as u64 / count() as u64)
+        Duration::milliseconds(c.get_time().num_milliseconds() / count() as i64)
     });
 
     view! { cx,

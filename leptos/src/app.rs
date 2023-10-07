@@ -3,15 +3,16 @@
 #![allow(non_snake_case)]
 
 use crate::countable::*;
+use chrono::Duration;
 use gloo_storage::{LocalStorage, Storage};
 use js_sys::Date;
 use leptos::{ev::MouseEvent, *};
 use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 use crate::{elements::*, pages::*};
-use std::{fmt::Display, time::Duration};
 
 pub type SelectionSignal = RwSignal<SelectionModel<ArcCountable, String>>;
 
@@ -410,7 +411,7 @@ pub fn App(cx: Scope) -> impl IntoView {
 
         <Router>
             <Transition
-            fallback= || ()>
+                fallback= || ()>
                 { move || {
                     preferences.set(pref_resources.read(cx).unwrap_or_default());
                     create_effect(cx, move |_| {
@@ -488,7 +489,8 @@ fn save_timer(
     save_flags: RwSignal<Vec<ChangeFlag>>,
     state: RwSignal<CounterList>,
 ) {
-    const INTERVAL: Duration = Duration::from_secs(10);
+    // only the milliseconds function is a const function
+    const INTERVAL: Duration = Duration::milliseconds(10 * 1000);
 
     create_effect(cx, move |_| {
         set_interval(
@@ -524,22 +526,24 @@ fn save_timer(
 
                 save_flags.update(|s| s.clear());
             },
-            INTERVAL,
+            INTERVAL
+                .to_std()
+                .unwrap_or(std::time::Duration::from_millis(30)),
         )
     });
 }
 
 fn timer(cx: Scope, selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
-    const FRAMERATE: u64 = 30;
-    const INTERVAL: Duration = Duration::from_millis(1000 / FRAMERATE);
+    const FRAMERATE: i64 = 30;
+    const INTERVAL: Duration = Duration::milliseconds(1000 / FRAMERATE);
 
     let time = create_signal(cx, 0_u32);
 
     let calc_interval = |now: u32, old: u32| -> Duration {
         return if now < old {
-            Duration::from_millis((1000 + now - old).into())
+            Duration::milliseconds((1000 + now - old).into())
         } else {
-            Duration::from_millis((now - old).into())
+            Duration::milliseconds((now - old).into())
         };
     };
 
@@ -564,7 +568,9 @@ fn timer(cx: Scope, selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
                 }
                 time.1.try_set(Date::new_0().get_milliseconds());
             },
-            INTERVAL,
+            INTERVAL
+                .to_std()
+                .unwrap_or(std::time::Duration::from_millis(30)),
         )
     });
 }
@@ -728,7 +734,6 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
             fallback=move |cx| {
                 create_effect(cx, move |_| {
                     request_animation_frame(move || {
-                        log!("here");
                         user.set(SessionUser::from_storage(cx));
                     })
                 });

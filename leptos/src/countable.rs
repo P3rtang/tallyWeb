@@ -1,8 +1,8 @@
+use chrono::Duration;
 use serde::{Deserialize, Serialize};
 use std::{
     any::Any,
     sync::{Arc, Mutex},
-    time::Duration,
 };
 
 #[derive(Debug, Clone)]
@@ -38,11 +38,18 @@ impl ArcCountable {
     }
 
     pub fn get_time(&self) -> Duration {
-        self.0.try_lock().map(|c| c.get_time()).unwrap_or_default()
+        self.0
+            .try_lock()
+            .map(|c| c.get_time())
+            .unwrap_or(Duration::zero())
     }
 
     pub fn add_time(&self, dur: Duration) {
         let _ = self.0.try_lock().map(|mut c| c.add_time(dur));
+    }
+
+    pub fn set_time(&self, dur: Duration) {
+        let _ = self.0.try_lock().map(|mut c| c.set_time(dur));
     }
 
     pub fn get_progress(&self) -> f64 {
@@ -207,7 +214,6 @@ pub trait Countable: std::fmt::Debug + Send + Any {
     fn get_time(&self) -> Duration;
     fn set_time(&mut self, dur: Duration);
     fn add_time(&mut self, dur: Duration);
-    fn rem_time(&mut self, dur: Duration);
     fn get_progress(&self) -> f64;
     fn is_active(&self) -> bool;
     fn toggle_active(&mut self);
@@ -278,11 +284,16 @@ impl Countable for SerCounter {
     }
 
     fn set_count(&mut self, count: i32) {
-        let diff = self.phase_list.iter().map(|p| p.get_count()).sum::<i32>()
-            - self.phase_list.last().map(|p| p.get_count()).unwrap_or(0);
-        self.phase_list
-            .last_mut()
-            .map(|p| p.set_count(count - diff));
+        let mut diff = self.get_count() - count;
+        for phase in self.phase_list.iter_mut().rev() {
+            if phase.get_count() < diff {
+                diff -= phase.get_count();
+                phase.set_count(0);
+            } else {
+                phase.set_count(phase.get_count() - diff);
+                break;
+            }
+        }
     }
 
     fn add_count(&mut self, _count: i32) {
@@ -297,19 +308,22 @@ impl Countable for SerCounter {
         self.phase_list.iter().map(|p| p.get_time()).sum()
     }
 
-    fn set_time(&mut self, _dur: Duration) {
-        todo!()
+    fn set_time(&mut self, dur: Duration) {
+        let mut diff = self.get_time() - dur;
+        for phase in self.phase_list.iter_mut().rev() {
+            if phase.get_time() < diff {
+                diff = diff - phase.get_time();
+                phase.set_time(Duration::zero());
+            } else {
+                phase.set_time(phase.get_time() - diff);
+                break;
+            }
+        }
     }
 
     fn add_time(&mut self, dur: Duration) {
         self.phase_list.last_mut().map(|p| {
             p.add_time(dur);
-        });
-    }
-
-    fn rem_time(&mut self, dur: Duration) {
-        self.phase_list.last_mut().map(|p| {
-            p.rem_time(dur);
         });
     }
 
@@ -439,31 +453,22 @@ impl Countable for Counter {
         return self.phase_list.iter().map(|p| p.get_time()).sum();
     }
 
-    fn set_time(&mut self, time: Duration) {
-        let diff = self
-            .phase_list
-            .iter()
-            .map(|p| p.get_time())
-            .sum::<Duration>()
-            - self
-                .phase_list
-                .last()
-                .map(|p| p.get_time())
-                .unwrap_or_default();
-        self.phase_list
-            .last_mut()
-            .map(|p| p.0.lock().map(|mut p| p.set_time(time - diff)));
+    fn set_time(&mut self, dur: Duration) {
+        let mut diff = self.get_time() - dur;
+        for phase in self.phase_list.iter_mut().rev() {
+            if phase.get_time() < diff {
+                diff = diff - phase.get_time();
+                phase.set_time(Duration::zero());
+            } else {
+                phase.set_time(phase.get_time() - diff);
+                break;
+            }
+        }
     }
 
     fn add_time(&mut self, dur: Duration) {
         self.phase_list.last_mut().map(|p| {
             let _ = p.0.try_lock().map(|mut p| p.add_time(dur));
-        });
-    }
-
-    fn rem_time(&mut self, dur: Duration) {
-        self.phase_list.last_mut().map(|p| {
-            let _ = p.0.try_lock().map(|mut p| p.rem_time(dur));
         });
     }
 
@@ -559,11 +564,13 @@ impl Countable for Counter {
     }
 }
 
+#[serde_with::serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Phase {
     pub id: i32,
     pub name: String,
     pub count: i32,
+    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
     pub time: Duration,
     pub is_active: bool,
     pub hunt_type: Hunttype,
@@ -576,7 +583,7 @@ impl Phase {
             id,
             name: name.to_string(),
             count: 0,
-            time: Duration::ZERO,
+            time: Duration::zero(),
             is_active: false,
             hunt_type,
             has_charm,
@@ -626,11 +633,7 @@ impl Countable for Phase {
     }
 
     fn add_time(&mut self, dur: Duration) {
-        self.time += dur
-    }
-
-    fn rem_time(&mut self, dur: Duration) {
-        self.time -= dur
+        self.time = self.time + dur
     }
 
     fn get_progress(&self) -> f64 {
@@ -725,7 +728,7 @@ cfg_if::cfg_if!(
                     id: value.id,
                     name: value.name,
                     count: value.count,
-                    time: Duration::from_millis(value.time as u64),
+                    time: Duration::milliseconds(value.time),
                     is_active: false,
                     hunt_type: value.hunt_type.into(),
                     has_charm: value.has_charm,
@@ -740,7 +743,7 @@ cfg_if::cfg_if!(
                     user_id,
                     name: self.name.clone(),
                     count: self.count,
-                    time: self.time.as_millis() as i64,
+                    time: self.time.num_milliseconds(),
                     hunt_type: self.hunt_type.clone().into(),
                     has_charm: self.has_charm,
                     dexnav_encounters: self.hunt_type.into(),
