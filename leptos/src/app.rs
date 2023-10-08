@@ -331,6 +331,27 @@ fn save(cx: Scope, list: CounterList) -> Result<(), String> {
     return Ok(());
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Notification {
+    None,
+    Message(String),
+    Error(String),
+}
+
+impl Notification {
+    fn is_some(&self) -> bool {
+        self != &Self::None
+    }
+
+    fn get_text(&self) -> String {
+        match self {
+            Notification::None => String::new(),
+            Notification::Message(msg) => msg.to_string(),
+            Notification::Error(msg) => msg.to_string(),
+        }
+    }
+}
+
 #[component]
 pub fn App(cx: Scope) -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
@@ -397,6 +418,13 @@ pub fn App(cx: Scope) -> impl IntoView {
         connect_on_window_resize(Box::new(handle_resize));
     });
 
+    let message = create_rw_signal(cx, Notification::None);
+    let border_style = move || {
+        "color: tomato;
+        border: 2px solid tomato;"
+    };
+    provide_context(cx, message);
+
     view! { cx,
         // injects a stylesheet into the document <head>
         // id=leptos means cargo-leptos will hot-reload this stylesheet
@@ -455,6 +483,13 @@ pub fn App(cx: Scope) -> impl IntoView {
                         <Route path="/privacy-policy" view=PrivacyPolicy/>
                         <Route path="/*any" view=NotFound/>
                     </Routes>
+
+                    <Show
+                        when=move || { message().is_some() }
+                            fallback=|_| ()
+                    >
+                        <b class="notification-box" style=border_style>{ move || { message().get_text() } }</b>
+                    </Show>
                 </main>
             </Transition>
         </Router>
@@ -492,6 +527,26 @@ fn save_timer(
     // only the milliseconds function is a const function
     const INTERVAL: Duration = Duration::milliseconds(10 * 1000);
 
+    let action = create_action(cx, move |(): &()| {
+        save_all(
+            user.get_untracked().unwrap_or_default().username,
+            user.get_untracked().unwrap_or_default().token,
+            state.get_untracked().into(),
+            None,
+        )
+    });
+    create_effect(cx, move |_| match action.value().get() {
+        Some(Err(_)) => {
+            let notification = expect_context::<RwSignal<Notification>>(cx);
+            notification.set(Notification::Error(
+                "Could not save Counter\n
+                    Closing the tab will result in data loss"
+                    .into(),
+            ))
+        }
+        _ => {}
+    });
+
     create_effect(cx, move |_| {
         set_interval(
             move || {
@@ -500,28 +555,20 @@ fn save_timer(
                     match change {
                         ChangeFlag::ChangeCountable(_) => do_save = true,
                         ChangeFlag::ChangePreferences(preferences) => {
-                            let save = create_action(cx, move |_: &()| {
+                            create_action(cx, move |_: &()| {
                                 save_preferences(
                                     user.get_untracked().unwrap_or_default().username,
                                     user.get_untracked().unwrap_or_default().token,
                                     preferences.clone(),
                                 )
-                            });
-                            save.dispatch(())
+                            })
+                            .dispatch(());
                         }
                     }
                 }
 
                 if do_save {
-                    create_action(cx, move |(): &()| {
-                        save_all(
-                            user.get_untracked().unwrap_or_default().username,
-                            user.get_untracked().unwrap_or_default().token,
-                            state.get_untracked().into(),
-                            None,
-                        )
-                    })
-                    .dispatch(())
+                    action.dispatch(());
                 }
 
                 save_flags.update(|s| s.clear());
