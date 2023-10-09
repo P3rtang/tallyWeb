@@ -10,10 +10,7 @@ use crate::{
 };
 
 #[component]
-pub fn InfoBox<F>(countable_list: F) -> impl IntoView
-where
-    F: Fn() -> Vec<RwSignal<ArcCountable>> + 'static,
-{
+pub fn InfoBox(countable_list: RwSignal<Vec<RwSignal<ArcCountable>>>) -> impl IntoView {
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
     let show_title = move || {
         if screen_layout() == ScreenLayout::Small {
@@ -121,12 +118,20 @@ where
 {
     let progress = create_read_slice(countable, |c| c.get_progress());
 
+    let color = create_read_slice(countable, |c| match c.get_progress() {
+        num if num < 0.5 => "#50fa7b",
+        num if num < 0.75 && c.get_rolls() < c.get_odds() => "#fcff10",
+        num if num < 0.75 => "#ffb86c",
+        _ => "#ff9580",
+    });
+
     view! {
         <div class="rowbox rowexpand">
             <p class="title" style=show_title>Progress</p>
             <Progressbar
                 progress=progress
                 class="info"
+                color
             >
                 { move || format!("{:.03}%", progress() * 100.0) }
             </Progressbar>

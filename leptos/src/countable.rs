@@ -37,6 +37,10 @@ impl ArcCountable {
         self.0.try_lock().map(|c| c.get_rolls()).unwrap_or_default()
     }
 
+    pub fn get_odds(&self) -> i32 {
+        self.0.try_lock().map(|c| c.get_odds()).unwrap_or(8192)
+    }
+
     pub fn get_time(&self) -> Duration {
         self.0
             .try_lock()
@@ -210,6 +214,7 @@ pub trait Countable: std::fmt::Debug + Send + Any {
     fn add_count(&mut self, count: i32);
 
     fn get_rolls(&self) -> i32;
+    fn get_odds(&self) -> i32;
 
     fn get_time(&self) -> Duration;
     fn set_time(&mut self, dur: Duration);
@@ -302,6 +307,13 @@ impl Countable for SerCounter {
 
     fn get_rolls(&self) -> i32 {
         self.phase_list.iter().map(|p| p.get_rolls()).sum()
+    }
+
+    fn get_odds(&self) -> i32 {
+        self.phase_list
+            .last()
+            .map(|p| p.get_rolls())
+            .unwrap_or(8192)
     }
 
     fn get_time(&self) -> Duration {
@@ -447,6 +459,10 @@ impl Countable for Counter {
 
     fn get_rolls(&self) -> i32 {
         self.phase_list.iter().map(|p| p.get_rolls()).sum()
+    }
+
+    fn get_odds(&self) -> i32 {
+        self.phase_list.last().map(|p| p.get_odds()).unwrap_or(8192)
     }
 
     fn get_time(&self) -> Duration {
@@ -622,6 +638,10 @@ impl Countable for Phase {
 
     fn get_rolls(&self) -> i32 {
         self.hunt_type.get_rolls(self.count, self.has_charm)
+    }
+
+    fn get_odds(&self) -> i32 {
+        self.hunt_type.get_odds()
     }
 
     fn get_time(&self) -> Duration {
