@@ -38,10 +38,16 @@ where
         self.selection.clear();
         self.selection.insert(key.clone(), !current_value);
 
-        self.selected.update(|s| *s = self.selection())
+        self.selected.update(|s| {
+            *s = self
+                .selection()
+                .into_iter()
+                .map(|t| create_rw_signal(t))
+                .collect()
+        })
     }
 
-    fn selection(&self) -> Vec<RwSignal<T>> {
+    fn selection(&self) -> Vec<T> {
         self.selection
             .clone()
             .into_iter()
@@ -89,7 +95,7 @@ where
         <ul class="treeview">
         <For
             each=tree_nodes
-            key=move |c| key(&c.row.get_untracked())
+            key=move |c| key(&c.row)
             children=move |item| {
                 view! {
                     <TreeViewRow
@@ -184,7 +190,7 @@ where
     <li>
         <div style={ move || { depth_style() + &selection_style() } } class=div_class on:click=on_click>
             <Show
-                when= move || { each_child(&node.get_untracked().row.get_untracked()).len() > 0 }
+                when= move || { each_child(&node.get_untracked().row).len() > 0 }
                 fallback= move || {}
             >
                 <span class=caret_class on:click=on_caret_click/>
@@ -220,7 +226,7 @@ where
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
     pub key: fn(&T) -> S,
-    pub row: RwSignal<T>,
+    pub row: T,
     pub depth: usize,
     pub is_expanded: RwSignal<bool>,
     pub update: Trigger,
@@ -236,7 +242,7 @@ where
     pub fn new(key: fn(&T) -> S, item: T, each_child: fn(&T) -> Vec<T>, depth: usize) -> Self {
         let this = Self {
             key,
-            row: create_rw_signal(item.clone()),
+            row: item.clone(),
             depth,
             is_expanded: create_rw_signal(false),
             update: create_trigger(),
@@ -246,8 +252,7 @@ where
 
         let nodes = expect_context::<RwSignal<SelectionModel<T, S>>>();
         nodes.update(|map| {
-            map.items
-                .insert(key(&this.row.get_untracked()), this.clone());
+            map.items.insert(key(&this.row), this.clone());
         });
 
         this.children.set(
@@ -261,7 +266,7 @@ where
     }
 
     pub fn get_key(&self) -> S {
-        (self.key)(&self.row.get_untracked())
+        (self.key)(&self.row)
     }
 
     pub fn insert_child(&self, item: T) {

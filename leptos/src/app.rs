@@ -565,7 +565,7 @@ fn save_timer(
     });
 }
 
-fn timer(selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
+fn timer(active: RwSignal<Vec<RwSignal<ArcCountable>>>) {
     const FRAMERATE: i64 = 30;
     const INTERVAL: Duration = Duration::milliseconds(1000 / FRAMERATE);
 
@@ -594,9 +594,9 @@ fn timer(selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
                     .unwrap_or_default()
                 {
                     let interval = calc_interval(Date::new_0().get_milliseconds(), time.0.get());
-                    selection.get_untracked().iter().for_each(|c| {
-                        c.update(|c| c.add_time(interval));
-                    });
+                    active.with(|list| {
+                        list.iter().for_each(|c| c.update(|c| c.add_time(interval)));
+                    })
                 }
                 time.1.try_set(Date::new_0().get_milliseconds());
             },
@@ -625,28 +625,18 @@ fn connect_keys(
     save_flags: RwSignal<Vec<ChangeFlag>>,
 ) {
     window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
-        "Equal" => {
-            active.try_get().map(|a| {
-                a.into_iter().for_each(|c| {
-                    let _ = c.update(|c| {
-                        c.add_count(1);
-                        save_flags.update(|s| s.push(ChangeFlag::ChangeCountable(c.clone())))
-                    });
-                });
-                state.try_update(|s| s.is_paused = false);
+        "Equal" => active.with(|list| {
+            list.iter().for_each(|c| {
+                c.update(|c| c.add_count(1));
+                save_flags.update(|s| s.push(ChangeFlag::ChangeCountable(c.get_untracked())));
             });
-        }
-        "Minus" => {
-            active.try_get().map(|a| {
-                a.into_iter().for_each(|c| {
-                    let _ = c.update(|c| {
-                        c.add_count(-1);
-                        save_flags.update(|s| s.push(ChangeFlag::ChangeCountable(c.clone())))
-                    });
-                });
-                state.try_update(|s| s.is_paused = false);
+        }),
+        "Minus" => active.with(|list| {
+            list.iter().for_each(|c| {
+                c.update(|c| c.add_count(-1));
+                save_flags.update(|s| s.push(ChangeFlag::ChangeCountable(c.get_untracked())));
             });
-        }
+        }),
         "KeyP" => {
             state.try_update(|s| s.toggle_paused());
         }
@@ -683,17 +673,6 @@ pub fn HomePage() -> impl IntoView {
         Some(accent_color),
         create_rw_signal(Vec::new()),
     );
-    let selection_signal = create_rw_signal(selection);
-    provide_context(selection_signal);
-
-    connect_keys(
-        state,
-        selection_signal.get_untracked().get_selected(),
-        change_flags,
-    );
-
-    save_timer(session_user, change_flags, state);
-    timer(selection_signal.get_untracked().get_selected());
 
     let on_click = move |_| {
         let user = expect_context::<RwSignal<Option<SessionUser>>>();
@@ -753,7 +732,17 @@ pub fn HomePage() -> impl IntoView {
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
 
-    let selct_slice = create_read_slice(selection_signal, |sel| sel.get_selected());
+    let selection_signal = create_rw_signal(selection);
+    provide_context(selection_signal);
+
+    connect_keys(
+        state,
+        selection_signal.get_untracked().get_selected(),
+        change_flags,
+    );
+
+    save_timer(session_user, change_flags, state);
+    timer(selection_signal.get_untracked().get_selected());
 
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
 
@@ -795,19 +784,23 @@ pub fn HomePage() -> impl IntoView {
                     />
                     <button on:click=on_click class="new-counter">New Counter</button>
                 </Sidebar>
-                <InfoBox countable_list=selct_slice()/>
+                <InfoBox countable_list=selection_signal.get_untracked().get_selected()/>
             </div>
         </Show>
     }
 }
 
 #[component]
-pub fn Progressbar<F>(progress: F, class: &'static str, children: ChildrenFn) -> impl IntoView
+pub fn Progressbar<F, C>(
+    progress: F,
+    color: C,
+    class: &'static str,
+    children: ChildrenFn,
+) -> impl IntoView
 where
     F: Fn() -> f64 + Copy + 'static,
+    C: Fn() -> &'static str + Copy + 'static,
 {
-    let preferences = expect_context::<RwSignal<Preferences>>();
-    let accent_color = create_read_slice(preferences, |prefs| prefs.accent_color.0.clone());
     view! {
         <div
             class={ format!("{class} progress-bar") }
@@ -845,7 +838,7 @@ where
                         background: {};
                         ",
                         progress() * 100.0,
-                        accent_color(),
+                        color()
                     )}}>
                 </div>
                 </Show>
@@ -858,7 +851,7 @@ where
 fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView {
     let user = expect_context::<Memo<Option<SessionUser>>>();
 
-    let countable = create_read_slice(node, |node| node.row.get_untracked());
+    let countable = create_read_slice(node, |node| node.row.clone());
 
     let click_new_phase = move |e: MouseEvent| {
         e.stop_propagation();
