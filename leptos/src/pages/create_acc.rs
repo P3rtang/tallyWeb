@@ -6,33 +6,33 @@ use web_sys::SubmitEvent;
 use crate::app::navigate;
 
 #[component]
-pub fn CreateAccount(cx: Scope) -> impl IntoView {
-    let action = create_server_action::<crate::app::CreateAccount>(cx);
+pub fn CreateAccount() -> impl IntoView {
+    let action = create_server_action::<crate::app::CreateAccount>();
 
-    let message = create_rw_signal(cx, None::<String>);
+    let message = create_rw_signal(None::<String>);
     let border_style = move || {
         "color: tomato;
         border: 2px solid tomato;"
     };
 
-    create_effect(cx, move |_| {
+    create_effect(move |_| {
         if let Some(login) = action.value().get().map(|v| v.ok()).flatten() {
             if let Ok(_) = LocalStorage::set("user_session", login.clone()) {
                 if action.value().get().is_some() && action.value().get().unwrap().is_ok() {
-                    crate::app::navigate(cx, "/")
+                    crate::app::navigate("/")
                 }
             }
         }
     });
 
-    create_effect(cx, move |_| {
+    create_effect(move |_| {
         if let Some(Err(err)) = action.value().get() {
             message.set(err.to_string().split_once(": ").map(|s| s.1.to_string()))
         }
     });
 
-    let password_input = create_node_ref::<Input>(cx);
-    let password_repeat = create_node_ref::<Input>(cx);
+    let password_input = create_node_ref::<Input>();
+    let password_repeat = create_node_ref::<Input>();
 
     let on_submit = move |ev: SubmitEvent| {
         if password_input().unwrap().value().len() < 8 {
@@ -47,8 +47,7 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
         }
     };
 
-    view! { cx,
-        <ActionForm action=action on:submit=on_submit>
+    view! {         <ActionForm action=action on:submit=on_submit>
             <div class="container login-form">
                 <h1>Sign Up</h1>
 
@@ -80,14 +79,14 @@ pub fn CreateAccount(cx: Scope) -> impl IntoView {
                         <input type="checkbox" required></input>
                         <A href="/privacy-policy" class="acceptTS"><b>I have read the</b><b>Terms & Conditions</b></A>
                     </div>
-                    <button type="button" on:click=move |_| { navigate(cx, "/login") }><i class="fa-solid fa-xmark"></i></button>
+                    <button type="button" on:click=move |_| { navigate( "/login") }><i class="fa-solid fa-xmark"></i></button>
                     <button type="submit" class="signupbtn"><i class="fa-solid fa-right-to-bracket"></i></button>
                 </div>
             </div>
         </ActionForm>
         <Show
             when=move || { message().is_some() }
-            fallback=|_| ()
+            fallback=|| ()
         >
             <b class="notification-box" style=border_style>{ move || { message().unwrap() } }</b>
         </Show>

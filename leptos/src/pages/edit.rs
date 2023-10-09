@@ -16,26 +16,26 @@ use crate::{
 };
 
 #[component]
-pub fn EditWindow(cx: Scope) -> impl IntoView {
-    view! { cx,
+pub fn EditWindow() -> impl IntoView {
+    view! {
         <Outlet/>
     }
 }
 
 #[component]
-pub fn EditCounterWindow<F>(cx: Scope, layout: F) -> impl IntoView
+pub fn EditCounterWindow<F>(layout: F) -> impl IntoView
 where
     F: Fn() -> ScreenLayout + Copy + 'static,
 {
-    let user = expect_context::<Memo<Option<SessionUser>>>(cx);
-    let params = use_params::<CountableId>(cx);
+    let user = expect_context::<Memo<Option<SessionUser>>>();
+    let params = use_params::<CountableId>();
 
-    view! { cx,
+    view! {
     <Show
         when=move || user().is_some()
-        fallback=|_| ()
+        fallback=|| ()
     > { move || {
-            let counter_rsrc = create_resource(cx, params, async move |param| {
+            let counter_rsrc = create_resource(params, async move |param| {
                 let user = user.get_untracked().unwrap_or_default();
                 if let Ok(id) = param.map(|p| p.id as i32) {
                     crate::app::get_counter_by_id(user.username, user.token, id).await.map_err(|_| {
@@ -46,26 +46,26 @@ where
                 }
             });
 
-            view! { cx, <EditCounterBox layout=layout is_phase=false counter_rsrc=counter_rsrc/> }
+            view! { <EditCounterBox layout=layout is_phase=false counter_rsrc=counter_rsrc/> }
         }}
     </Show>
     }
 }
 
 #[component]
-pub fn EditPhaseWindow<F>(cx: Scope, layout: F) -> impl IntoView
+pub fn EditPhaseWindow<F>(layout: F) -> impl IntoView
 where
     F: Fn() -> ScreenLayout + Copy + 'static,
 {
-    let user = expect_context::<Memo<Option<SessionUser>>>(cx);
-    let params = use_params::<CountableId>(cx);
+    let user = expect_context::<Memo<Option<SessionUser>>>();
+    let params = use_params::<CountableId>();
 
-    view! { cx,
+    view! {
     <Show
         when=move || user().is_some()
-        fallback=|_| ()>
+        fallback=|| ()>
         { move || {
-            let phase_rsrc = create_resource(cx, params, async move |param| {
+            let phase_rsrc = create_resource(params, async move |param| {
                 let user = user.get_untracked().unwrap_or_default();
                 if let Ok(id) = param.map(|p| p.id as i32) {
                     crate::app::get_phase_by_id(user.username, user.token, id).await.map_err(|_| {
@@ -76,7 +76,7 @@ where
                 }
             });
 
-            view! { cx, <EditCounterBox layout=layout is_phase=true counter_rsrc=phase_rsrc/> }
+            view! { <EditCounterBox layout=layout is_phase=true counter_rsrc=phase_rsrc/> }
         }}
     </Show>
     }
@@ -97,7 +97,6 @@ impl std::ops::Deref for CountableId {
 
 #[component]
 fn EditCounterBox<F, T>(
-    cx: Scope,
     layout: F,
     is_phase: bool,
     counter_rsrc: Resource<Result<CountableId, ParamsError>, Result<T, String>>,
@@ -106,18 +105,17 @@ where
     F: Fn() -> ScreenLayout + Copy + 'static,
     T: Countable + Clone,
 {
-    let user = expect_context::<Memo<Option<SessionUser>>>(cx);
-    let preferences = expect_context::<Memo<Preferences>>(cx);
+    let user = expect_context::<Memo<Option<SessionUser>>>();
+    let preferences = expect_context::<Memo<Preferences>>();
 
-    let message = create_rw_signal(cx, None::<String>);
+    let message = create_rw_signal(None::<String>);
 
     let border_style = move || format!("border: 2px solid {}", preferences().accent_color.0);
     let confirm_style = move || format!("background-color: {}", preferences().accent_color.0);
 
-    let counter = create_rw_signal(cx, None::<T>);
+    let counter = create_rw_signal(None::<T>);
 
     let (name, set_name) = create_slice(
-        cx,
         counter,
         |c| c.clone().map(|c| c.get_name()).unwrap_or_default(),
         |c, new| {
@@ -126,7 +124,6 @@ where
     );
 
     let (count, set_count) = create_slice(
-        cx,
         counter,
         |c| c.clone().map(|c| c.get_count()).unwrap_or_default(),
         |c, new| {
@@ -135,7 +132,6 @@ where
     );
 
     let (hours, set_hours) = create_slice(
-        cx,
         counter,
         |c| {
             c.clone()
@@ -152,7 +148,6 @@ where
         },
     );
     let (mins, set_mins) = create_slice(
-        cx,
         counter,
         |c| {
             c.clone()
@@ -170,7 +165,6 @@ where
     );
 
     let (hunt_type, set_hunt_type) = create_slice(
-        cx,
         counter,
         |c| c.as_ref().map(|c| c.get_hunt_type()).unwrap_or_default(),
         |c, new| {
@@ -179,7 +173,6 @@ where
     );
 
     let (has_charm, set_charm) = create_slice(
-        cx,
         counter,
         |c| c.as_ref().map(|c| c.has_charm()).unwrap_or_default(),
         |c, new| {
@@ -187,14 +180,14 @@ where
         },
     );
 
-    let name_input: NodeRef<Input> = create_node_ref(cx);
-    let count_input: NodeRef<Input> = create_node_ref(cx);
-    let hours_input: NodeRef<Input> = create_node_ref(cx);
-    let mins_input: NodeRef<Input> = create_node_ref(cx);
-    let hunt_type_dropdown: NodeRef<Select> = create_node_ref(cx);
-    let charm_toggle: NodeRef<Input> = create_node_ref(cx);
+    let name_input: NodeRef<Input> = create_node_ref();
+    let count_input: NodeRef<Input> = create_node_ref();
+    let hours_input: NodeRef<Input> = create_node_ref();
+    let mins_input: NodeRef<Input> = create_node_ref();
+    let hunt_type_dropdown: NodeRef<Select> = create_node_ref();
+    let charm_toggle: NodeRef<Input> = create_node_ref();
 
-    create_effect(cx, move |_| {
+    create_effect(move |_| {
         let hunt: String = hunt_type().into();
         hunt_type_dropdown().map(|d| d.set_value(&hunt));
         charm_toggle().map(|t| t.set_checked(has_charm()));
@@ -242,7 +235,7 @@ where
 
         set_charm(charm_toggle().expect("Defined above").checked());
 
-        let action = create_action(cx, async move |_: &()| -> Result<(), ServerFnError> {
+        let action = create_action(async move |_: &()| -> Result<(), ServerFnError> {
             let user = user
                 .get_untracked()
                 .ok_or(ServerFnError::MissingArg(String::from(
@@ -286,7 +279,7 @@ where
                 })?;
             }
 
-            navigate(cx, "/");
+            navigate("/");
             return Ok(());
         });
         action.dispatch(());
@@ -302,11 +295,10 @@ where
         }
     };
 
-    view! { cx,
-        <Transition
+    view! {         <Transition
             fallback=|| ()
         >
-            { move || { counter.set(counter_rsrc.read(cx).map(|c| c.ok()).flatten()); } }
+            { move || { counter.set(counter_rsrc.get().map(|c| c.ok()).flatten()); } }
             <Form action="/" on:submit=on_submit class="parent-form">
                 <div class={ move || String::from("editing-form ") + layout().get_class() } style=border_style>
                     <div class="content">
@@ -362,7 +354,7 @@ where
         </Transition>
         <Show
             when=move || { message().is_some() }
-            fallback=|_| ()
+            fallback=|| ()
         >
             <b class="notification-box" style=border_style>{ move || { message().unwrap() } }</b>
         </Show>

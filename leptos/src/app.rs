@@ -6,7 +6,7 @@ use crate::countable::*;
 use chrono::Duration;
 use gloo_storage::{LocalStorage, Storage};
 use js_sys::Date;
-use leptos::{ev::MouseEvent, *};
+use leptos::{ev::MouseEvent, logging::log, *};
 use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
@@ -51,11 +51,7 @@ pub async fn create_account(
 }
 
 #[server(GetUserIdFromName, "/api")]
-async fn get_id_from_username(
-    cx: Scope,
-    username: String,
-    token: String,
-) -> Result<i32, ServerFnError> {
+async fn get_id_from_username(username: String, token: String) -> Result<i32, ServerFnError> {
     let pool = backend::create_pool().await?;
 
     let db_user = backend::auth::get_user(&pool, username, token, true).await?;
@@ -71,7 +67,6 @@ pub enum CounterResponse {
 
 #[server(GetCountersByUserName, "/api")]
 async fn get_counters_by_user_name(
-    cx: Scope,
     username: String,
     token: String,
 ) -> Result<CounterResponse, ServerFnError> {
@@ -257,7 +252,6 @@ async fn save_all(
 
 #[server(GetUserPreferences, "/api")]
 async fn get_user_preferences(
-    cx: Scope,
     username: String,
     token: String,
 ) -> Result<Preferences, ServerFnError> {
@@ -317,9 +311,9 @@ impl Display for AccountAccentColor {
     }
 }
 
-fn save(cx: Scope, list: CounterList) -> Result<(), String> {
-    let user = use_context::<Memo<Option<SessionUser>>>(cx).ok_or("User Context should Exist")?;
-    create_action(cx, move |_: &()| {
+fn save(list: CounterList) -> Result<(), String> {
+    let user = use_context::<Memo<Option<SessionUser>>>().ok_or("User Context should Exist")?;
+    create_action(move |_: &()| {
         save_all(
             user.get_untracked().unwrap().username,
             user.get_untracked().unwrap().token,
@@ -331,31 +325,52 @@ fn save(cx: Scope, list: CounterList) -> Result<(), String> {
     return Ok(());
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Notification {
+    None,
+    Message(String),
+    Error(String),
+}
+
+impl Notification {
+    fn is_some(&self) -> bool {
+        self != &Self::None
+    }
+
+    fn get_text(&self) -> String {
+        match self {
+            Notification::None => String::new(),
+            Notification::Message(msg) => msg.to_string(),
+            Notification::Error(msg) => msg.to_string(),
+        }
+    }
+}
+
 #[component]
-pub fn App(cx: Scope) -> impl IntoView {
+pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
-    provide_meta_context(cx);
+    provide_meta_context();
 
-    let user = create_rw_signal(cx, None::<SessionUser>);
-    let user_memo = create_memo(cx, move |_| user());
-    provide_context(cx, user);
-    provide_context(cx, user_memo);
+    let user = create_rw_signal(None::<SessionUser>);
+    let user_memo = create_memo(move |_| user());
+    provide_context(user);
+    provide_context(user_memo);
 
-    let close_overlay_signal = create_rw_signal(cx, CloseOverlays());
-    provide_context(cx, close_overlay_signal);
+    let close_overlay_signal = create_rw_signal(CloseOverlays());
+    provide_context(close_overlay_signal);
 
-    let change_flag_buffer = create_rw_signal(cx, Vec::<ChangeFlag>::new());
-    provide_context(cx, change_flag_buffer);
+    let change_flag_buffer = create_rw_signal(Vec::<ChangeFlag>::new());
+    provide_context(change_flag_buffer);
 
-    create_effect(cx, move |_| {});
+    create_effect(move |_| {});
 
     let close_overlays = move |_| {
         close_overlay_signal.update(|_| ());
     };
 
-    let pref_resources = create_resource(cx, user, async move |user| {
+    let pref_resources = create_resource(user, async move |user| {
         if let Some(user) = user {
-            get_user_preferences(cx, user.username.clone(), user.token.clone())
+            get_user_preferences(user.username.clone(), user.token.clone())
                 .await
                 .unwrap_or(Preferences::new(&user))
         } else {
@@ -363,18 +378,17 @@ pub fn App(cx: Scope) -> impl IntoView {
         }
     });
 
-    let preferences = create_rw_signal(cx, Preferences::default());
-    let pref_memo = create_memo(cx, move |_| preferences());
-    provide_context(cx, pref_resources);
-    provide_context(cx, pref_memo);
-    provide_context(cx, preferences);
+    let preferences = create_rw_signal(Preferences::default());
+    let pref_memo = create_memo(move |_| preferences());
+    provide_context(pref_resources);
+    provide_context(pref_memo);
+    provide_context(preferences);
 
-    let screen_layout = create_rw_signal(cx, ScreenLayout::Big);
-    let show_sidebar = create_rw_signal(cx, ShowSidebar(true));
-    let toggle_sidebar = move |_| show_sidebar.update(|s| s.0 = !s.0);
+    let screen_layout = create_rw_signal(ScreenLayout::Big);
+    let show_sidebar = create_rw_signal(ShowSidebar(true));
 
-    provide_context(cx, screen_layout);
-    provide_context(cx, show_sidebar);
+    provide_context(screen_layout);
+    provide_context(show_sidebar);
 
     let handle_resize = move || {
         if let Some(width) = leptos_dom::window()
@@ -392,12 +406,19 @@ pub fn App(cx: Scope) -> impl IntoView {
         }
     };
 
-    create_effect(cx, move |_| {
+    create_effect(move |_| {
         handle_resize();
         connect_on_window_resize(Box::new(handle_resize));
     });
 
-    view! { cx,
+    let message = create_rw_signal(Notification::None);
+    let border_style = move || {
+        "color: tomato;
+        border: 2px solid tomato;"
+    };
+    provide_context(message);
+
+    view! {
         // injects a stylesheet into the document <head>
         // id=leptos means cargo-leptos will hot-reload this stylesheet
         <Stylesheet href="/pkg/tally_web.css"/>
@@ -411,59 +432,59 @@ pub fn App(cx: Scope) -> impl IntoView {
 
         <Router>
             <Transition
-                fallback= || ()>
+                fallback= || ()
+            >
                 { move || {
-                    preferences.set(pref_resources.read(cx).unwrap_or_default());
-                    create_effect(cx, move |_| {
+                    preferences.set(pref_resources.get().unwrap_or_default());
+                    create_effect(move |_| {
                         request_animation_frame(move || {
-                            user.set(SessionUser::from_storage(cx));
+                            user.set(SessionUser::from_storage());
                         })
                     });
                 }}
-                <nav on:click=close_overlays>
-                    <button id="toggle-sidebar" on:click=toggle_sidebar>
-                        <i class="fa-solid fa-bars"></i>
-                    </button>
-                    <A href="/"><img src="/favicon.svg" width=48 height=48 alt="Home" class="tooltip-parent"/>
-                        <span class="tooltip bottom">Home</span>
-                    </A>
-                    <AccountIcon/>
-                </nav>
-
-                <main on:click=close_overlays>
-                    <Routes>
-                        <Route path="" view=HomePage/>
-                        <Route path="/preferences" view=move |cx| view!{ cx,
-                            <PreferencesWindow layout=screen_layout/>
-                        }/>
-
-                        <Route path="/edit" view=EditWindow>
-                            <Route path="counter" view=|cx| view!{ cx, <Outlet/> }>
-                                <Route path=":id" view=move |cx| view! { cx,
-                                    <EditCounterWindow layout=screen_layout/>
-                                }/>
-                            </Route>
-                            <Route path="phase" view=|cx| view!{ cx, <Outlet/> }>
-                                <Route path=":id" view=move |cx| view! { cx,
-                                    <EditPhaseWindow layout=screen_layout/>
-                                }/>
-                            </Route>
-                        </Route>
-
-                        <Route path="/login" view=LoginPage/>
-                        <Route path="/create-account" view=CreateAccount/>
-                        <Route path="/privacy-policy" view=PrivacyPolicy/>
-                        <Route path="/*any" view=NotFound/>
-                    </Routes>
-                </main>
             </Transition>
+            <Navbar on:click=close_overlays/>
+
+            <main on:click=close_overlays>
+                <Routes>
+                    <Route path="" view=HomePage/>
+                    <Route path="/preferences" view=move || view! {
+                        <PreferencesWindow layout=screen_layout/>
+                    }/>
+
+                    <Route path="/edit" view=EditWindow>
+                        <Route path="counter" view=|| view!{ <Outlet/> }>
+                            <Route path=":id" view=move || view! {
+                                <EditCounterWindow layout=screen_layout/>
+                            }/>
+                        </Route>
+                        <Route path="phase" view=|| view!{ <Outlet/> }>
+                            <Route path=":id" view=move || view! {
+                                <EditPhaseWindow layout=screen_layout/>
+                            }/>
+                        </Route>
+                    </Route>
+
+                    <Route path="/login" view=LoginPage/>
+                    <Route path="/create-account" view=CreateAccount/>
+                    <Route path="/privacy-policy" view=PrivacyPolicy/>
+                    <Route path="/*any" view=NotFound/>
+                </Routes>
+
+                <Show
+                    when=move || { message().is_some() }
+                        fallback=|| ()
+                >
+                    <b class="notification-box" style=border_style>{ move || { message().get_text() } }</b>
+                </Show>
+            </main>
         </Router>
     }
 }
 
 /// 404 - Not Found
 #[component]
-fn NotFound(cx: Scope) -> impl IntoView {
+fn NotFound() -> impl IntoView {
     // set an HTTP status code 404
     // this is feature gated because it can only be done during
     // initial server-side rendering
@@ -474,17 +495,16 @@ fn NotFound(cx: Scope) -> impl IntoView {
     {
         // this can be done inline because it's synchronous
         // if it were async, we'd use a server function
-        let resp = expect_context::<leptos_actix::ResponseOptions>(cx);
+        let resp = expect_context::<leptos_actix::ResponseOptions>();
         resp.set_status(actix_web::http::StatusCode::NOT_FOUND);
     }
 
-    view! { cx,
+    view! {
         <h1>"Not Found"</h1>
     }
 }
 
 fn save_timer(
-    cx: Scope,
     user: Memo<Option<SessionUser>>,
     save_flags: RwSignal<Vec<ChangeFlag>>,
     state: RwSignal<CounterList>,
@@ -492,7 +512,27 @@ fn save_timer(
     // only the milliseconds function is a const function
     const INTERVAL: Duration = Duration::milliseconds(10 * 1000);
 
-    create_effect(cx, move |_| {
+    let action = create_action(move |(): &()| {
+        save_all(
+            user.get_untracked().unwrap_or_default().username,
+            user.get_untracked().unwrap_or_default().token,
+            state.get_untracked().into(),
+            None,
+        )
+    });
+    create_effect(move |_| match action.value().get() {
+        Some(Err(_)) => {
+            let notification = expect_context::<RwSignal<Notification>>();
+            notification.set(Notification::Error(
+                "Could not save Counter\n
+                    Closing the tab will result in data loss"
+                    .into(),
+            ))
+        }
+        _ => {}
+    });
+
+    create_effect(move |_| {
         set_interval(
             move || {
                 let mut do_save = false;
@@ -500,28 +540,20 @@ fn save_timer(
                     match change {
                         ChangeFlag::ChangeCountable(_) => do_save = true,
                         ChangeFlag::ChangePreferences(preferences) => {
-                            let save = create_action(cx, move |_: &()| {
+                            create_action(move |_: &()| {
                                 save_preferences(
                                     user.get_untracked().unwrap_or_default().username,
                                     user.get_untracked().unwrap_or_default().token,
                                     preferences.clone(),
                                 )
-                            });
-                            save.dispatch(())
+                            })
+                            .dispatch(());
                         }
                     }
                 }
 
                 if do_save {
-                    create_action(cx, move |(): &()| {
-                        save_all(
-                            user.get_untracked().unwrap_or_default().username,
-                            user.get_untracked().unwrap_or_default().token,
-                            state.get_untracked().into(),
-                            None,
-                        )
-                    })
-                    .dispatch(())
+                    action.dispatch(());
                 }
 
                 save_flags.update(|s| s.clear());
@@ -533,11 +565,11 @@ fn save_timer(
     });
 }
 
-fn timer(cx: Scope, selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
+fn timer(selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
     const FRAMERATE: i64 = 30;
     const INTERVAL: Duration = Duration::milliseconds(1000 / FRAMERATE);
 
-    let time = create_signal(cx, 0_u32);
+    let time = create_signal(0_u32);
 
     let calc_interval = |now: u32, old: u32| -> Duration {
         return if now < old {
@@ -547,9 +579,9 @@ fn timer(cx: Scope, selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
         };
     };
 
-    let state = use_context::<RwSignal<CounterList>>(cx);
+    let state = use_context::<RwSignal<CounterList>>();
 
-    create_effect(cx, move |_| {
+    create_effect(move |_| {
         set_interval(
             move || {
                 if state.is_none() {
@@ -576,19 +608,18 @@ fn timer(cx: Scope, selection: RwSignal<Vec<RwSignal<ArcCountable>>>) {
 }
 
 #[cfg(not(ssr))]
-pub fn navigate(cx: Scope, page: impl ToString) {
+pub fn navigate(page: impl ToString) {
     let page = page.to_string();
-    create_effect(cx, move |_| {
+    create_effect(move |_| {
         let page = page.clone();
         request_animation_frame(move || {
-            let navigate = leptos_router::use_navigate(cx);
+            let navigate = leptos_router::use_navigate();
             let _ = navigate(page.as_str(), Default::default());
         });
-    })
+    });
 }
 
 fn connect_keys(
-    cx: Scope,
     state: RwSignal<CounterList>,
     active: RwSignal<Vec<RwSignal<ArcCountable>>>,
     save_flags: RwSignal<Vec<ChangeFlag>>,
@@ -617,21 +648,21 @@ fn connect_keys(
             });
         }
         "KeyP" => {
-            state.try_update(|s| s.toggle_paused(cx));
+            state.try_update(|s| s.toggle_paused());
         }
         _ => {}
     });
 }
 
 #[component]
-pub fn HomePage(cx: Scope) -> impl IntoView {
-    let session_user = expect_context::<Memo<Option<SessionUser>>>(cx);
-    let user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
-    let change_flags = expect_context::<RwSignal<Vec<ChangeFlag>>>(cx);
+pub fn HomePage() -> impl IntoView {
+    let session_user = expect_context::<Memo<Option<SessionUser>>>();
+    let user = expect_context::<RwSignal<Option<SessionUser>>>();
+    let change_flags = expect_context::<RwSignal<Vec<ChangeFlag>>>();
 
-    let data = create_resource(cx, session_user, move |user| async move {
+    let data = create_local_resource(session_user, move |user| async move {
         if let Some(user) = user {
-            match get_counters_by_user_name(cx, user.username.clone(), user.token.clone()).await {
+            match get_counters_by_user_name(user.username.clone(), user.token.clone()).await {
                 Ok(CounterResponse::Counters(counters)) => counters,
                 _ => Vec::new(),
             }
@@ -640,38 +671,36 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
         }
     });
 
-    provide_context(cx, data);
+    provide_context(data);
     let list = CounterList::new(&[]);
-    let state = create_rw_signal(cx, list);
-    provide_context(cx, state);
+    let state = create_rw_signal(list);
+    provide_context(state);
 
-    let preferences = expect_context::<RwSignal<Preferences>>(cx);
-    let accent_color = create_read_slice(cx, preferences, |prefs| prefs.accent_color.0.clone());
+    let preferences = expect_context::<RwSignal<Preferences>>();
+    let accent_color = create_read_slice(preferences, |prefs| prefs.accent_color.0.clone());
 
     let selection = SelectionModel::<ArcCountable, String>::new(
         Some(accent_color),
-        create_rw_signal(cx, Vec::new()),
+        create_rw_signal(Vec::new()),
     );
-    let selection_signal = create_rw_signal(cx, selection);
-    provide_context(cx, selection_signal);
+    let selection_signal = create_rw_signal(selection);
+    provide_context(selection_signal);
 
     connect_keys(
-        cx,
         state,
         selection_signal.get_untracked().get_selected(),
         change_flags,
     );
 
-    save_timer(cx, session_user, change_flags, state);
-    timer(cx, selection_signal.get_untracked().get_selected());
+    save_timer(session_user, change_flags, state);
+    timer(selection_signal.get_untracked().get_selected());
 
     let on_click = move |_| {
-        let user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
+        let user = expect_context::<RwSignal<Option<SessionUser>>>();
         if user().is_none() {
             return;
         }
         create_local_resource(
-            cx,
             || (),
             async move |_| {
                 let name = format!("Counter {}", state.get_untracked().list.len() + 1);
@@ -685,7 +714,7 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                 .map_err(|err| match err {
                     ServerFnError::ServerError(msg) => {
                         if msg == "Provided Token is Invalid" {
-                            navigate(cx, "/login")
+                            navigate("/login")
                         }
                     }
                     _ => {}
@@ -721,27 +750,27 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
         );
     };
 
-    let show_sidebar = expect_context::<RwSignal<ShowSidebar>>(cx);
-    let screen_layout = expect_context::<RwSignal<ScreenLayout>>(cx);
+    let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
+    let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
 
-    let selct_slice = create_read_slice(cx, selection_signal, |sel| sel.get_selected());
+    let selct_slice = create_read_slice(selection_signal, |sel| sel.get_selected());
 
-    let show_sep = create_read_slice(cx, preferences, |pref| pref.show_separator);
+    let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
 
-    view! { cx,
+    view! {
         <Show
-            when=move || session_user().is_some() && data.read(cx).is_some()
-            fallback=move |cx| {
-                create_effect(cx, move |_| {
+            when=move || session_user().is_some() && data.get().is_some()
+            fallback=move || {
+                create_effect(move |_| {
                     request_animation_frame(move || {
-                        user.set(SessionUser::from_storage(cx));
+                        user.set(SessionUser::from_storage());
                     })
                 });
-                view!{ cx, <LoadingScreen/> }
+                view!{ <LoadingScreen/> }
             }
         >
             { move || {
-                let list = match data.read(cx) {
+                let list = match data.get() {
                     None => state.get(),
                     Some(data_list) => data_list.into(),
                 };
@@ -758,8 +787,8 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
                         each=move || { state.get().list }
                         key=|countable| countable.get_uuid()
                         each_child=|countable| countable.get_children()
-                        view=|cx, node| {
-                            view! { cx, <TreeViewRow node=node/> }
+                        view=|node| {
+                            view! { <TreeViewRow node=node/> }
                         }
                         show_separator=show_sep
                         selection_model=selection_signal
@@ -773,18 +802,13 @@ pub fn HomePage(cx: Scope) -> impl IntoView {
 }
 
 #[component]
-pub fn Progressbar<F>(
-    cx: Scope,
-    progress: F,
-    class: &'static str,
-    children: ChildrenFn,
-) -> impl IntoView
+pub fn Progressbar<F>(progress: F, class: &'static str, children: ChildrenFn) -> impl IntoView
 where
     F: Fn() -> f64 + Copy + 'static,
 {
-    let preferences = expect_context::<RwSignal<Preferences>>(cx);
-    let accent_color = create_read_slice(cx, preferences, |prefs| prefs.accent_color.0.clone());
-    view! { cx,
+    let preferences = expect_context::<RwSignal<Preferences>>();
+    let accent_color = create_read_slice(preferences, |prefs| prefs.accent_color.0.clone());
+    view! {
         <div
             class={ format!("{class} progress-bar") }
             style="
@@ -799,7 +823,7 @@ where
                     margin: auto;",
                     // accent_color().0,
                 )}>
-                { children(cx) }
+                { children() }
             </div>
             <div
                 class="through"
@@ -811,7 +835,7 @@ where
             >
                 <Show
                     when=move || {progress() > 0.0}
-                    fallback=|_| ()
+                    fallback=|| ()
                 >
                 <div
                     class="progress"
@@ -831,10 +855,10 @@ where
 }
 
 #[component]
-fn TreeViewRow(cx: Scope, node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView {
-    let user = expect_context::<Memo<Option<SessionUser>>>(cx);
+fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView {
+    let user = expect_context::<Memo<Option<SessionUser>>>();
 
-    let countable = create_read_slice(cx, node, |node| node.row.get_untracked());
+    let countable = create_read_slice(node, |node| node.row.get_untracked());
 
     let click_new_phase = move |e: MouseEvent| {
         e.stop_propagation();
@@ -842,7 +866,6 @@ fn TreeViewRow(cx: Scope, node: RwSignal<TreeNode<ArcCountable, String>>) -> imp
             return;
         }
         create_local_resource(
-            cx,
             || (),
             move |_| async move {
                 let n_phase = countable
@@ -870,17 +893,17 @@ fn TreeViewRow(cx: Scope, node: RwSignal<TreeNode<ArcCountable, String>>) -> imp
                 .await
                 .expect("Could not assign phase to Counter");
 
-                expect_context::<RwSignal<CounterList>>(cx).update(|_| {
+                expect_context::<RwSignal<CounterList>>().update(|_| {
                     let phase = countable.get_untracked().new_phase(phase_id, name);
                     node.get_untracked().set_expand(true);
-                    node.get_untracked().insert_child(cx, phase);
+                    node.get_untracked().insert_child(phase);
                 });
             },
         );
     };
 
-    let show_context_menu = create_rw_signal(cx, false);
-    let (click_location, set_click_location) = create_signal(cx, (0, 0));
+    let show_context_menu = create_rw_signal(false);
+    let (click_location, set_click_location) = create_signal((0, 0));
     let on_right_click = move |ev: MouseEvent| {
         ev.prevent_default();
         show_context_menu.set(!show_context_menu());
@@ -900,7 +923,7 @@ fn TreeViewRow(cx: Scope, node: RwSignal<TreeNode<ArcCountable, String>>) -> imp
         .map(|i| i.get_id())
         .unwrap_or(-1);
 
-    view! { cx,
+    view! {
     <div
         class="row-body"
         on:contextmenu=on_right_click
@@ -910,7 +933,7 @@ fn TreeViewRow(cx: Scope, node: RwSignal<TreeNode<ArcCountable, String>>) -> imp
             when= move || {
                 countable.get().0.try_lock().map(|c| c.has_children()).unwrap_or_default()
             }
-            fallback= move |_| {}
+            fallback=||()
         >
             <button on:click=click_new_phase>+</button>
         </Show>
@@ -924,29 +947,6 @@ fn TreeViewRow(cx: Scope, node: RwSignal<TreeNode<ArcCountable, String>>) -> imp
     />
     }
 }
-
-// #[component]
-// fn InfoBox(cx: Scope) -> impl IntoView {
-//     let selection = expect_context::<SelectionSignal<ArcCountable>>(cx);
-//     view! { cx,
-//         <div id="InfoBox"> {
-//             move || selection.with(|list| {
-//                 list.selection.clone().into_iter().filter(|(_, b)| *b).map(|(rc_counter, _)| {
-//                     let rc_counter_signal = create_rw_signal(cx, rc_counter.clone());
-//                     view! {cx, <InfoBoxRow counter=rc_counter_signal/> }
-//                 }).collect_view(cx)})
-//         } </div>
-//     }
-// }
-
-// #[component]
-// fn InfoBoxRow(cx: Scope, counter: RwSignal<ArcCountable>) -> impl IntoView {
-//     view! { cx,
-//         <div class="row">
-//             <div> { counter } </div>
-//         </div>
-//     }
-// }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CounterList {
@@ -971,9 +971,9 @@ impl CounterList {
         return Ok(arc_counter);
     }
 
-    pub fn toggle_paused(&mut self, cx: Scope) {
+    pub fn toggle_paused(&mut self) {
         self.is_paused = !self.is_paused;
-        let _ = save(cx, self.clone().into());
+        let _ = save(self.clone().into());
     }
 }
 
@@ -1034,22 +1034,22 @@ pub struct SessionUser {
 }
 
 impl SessionUser {
-    pub fn from_storage(cx: Scope) -> Option<Self> {
+    pub fn from_storage() -> Option<Self> {
         if let Ok(Some(user)) = LocalStorage::get::<Option<SessionUser>>("user_session") {
-            let (user, _) = create_signal(cx, user);
-            create_local_resource(cx, user, move |user| async move {
-                if get_id_from_username(cx, user.username, user.token)
+            let (user, _) = create_signal(user);
+            create_local_resource(user, move |user| async move {
+                if get_id_from_username(user.username, user.token)
                     .await
                     .is_err()
                 {
-                    navigate(cx, "/login");
+                    navigate("/login");
                 }
             });
 
             return Some(user.get_untracked());
         } else {
             let _ = LocalStorage::set("user_session", None::<SessionUser>);
-            navigate(cx, "/login");
+            navigate("/login");
             return None;
         }
     }

@@ -65,11 +65,10 @@ where
 
 #[component]
 pub fn TreeViewWidget<T, F, S, FS>(
-    cx: Scope,
     each: F,
     key: fn(&T) -> S,
     each_child: fn(&T) -> Vec<T>,
-    view: fn(Scope, RwSignal<TreeNode<T, S>>) -> View,
+    view: fn(RwSignal<TreeNode<T, S>>) -> View,
     selection_model: RwSignal<SelectionModel<T, S>>,
     show_separator: FS,
 ) -> impl IntoView
@@ -82,28 +81,28 @@ where
     let tree_nodes = move || {
         each()
             .iter()
-            .map(|c| TreeNode::<T, S>::new(cx, key, c.clone(), each_child, 0))
+            .map(|c| TreeNode::<T, S>::new(key, c.clone(), each_child, 0))
             .collect::<Vec<_>>()
     };
 
-    view! { cx,
+    view! {
         <ul class="treeview">
         <For
             each=tree_nodes
             key=move |c| key(&c.row.get_untracked())
-            view=move |cx, item| {
-                view! { cx,
+            children=move |item| {
+                view! {
                     <TreeViewRow
                         node=item.clone()
                         selection_model=selection_model
                         view=view
                         each_child=each_child
                     > {
-                        view(cx, create_rw_signal(cx, item))
+                        view(create_rw_signal(item))
                     }</TreeViewRow>
                     <Show
                         when=show_separator
-                        fallback=|_| ()
+                        fallback=|| ()
                     >
                         <hr/>
                     </Show>
@@ -112,23 +111,22 @@ where
         />
         </ul>
     }
-    .into_view(cx)
+    .into_view()
 }
 
 #[component]
 fn TreeViewRow<T, S>(
-    cx: Scope,
     children: Children,
     node: TreeNode<T, S>,
     each_child: fn(&T) -> Vec<T>,
-    view: fn(Scope, RwSignal<TreeNode<T, S>>) -> View,
+    view: fn(RwSignal<TreeNode<T, S>>) -> View,
     selection_model: RwSignal<SelectionModel<T, S>>,
 ) -> impl IntoView
 where
     T: Clone + 'static + std::ops::Deref + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
-    let (node, _) = create_signal(cx, node);
+    let (node, _) = create_signal(node);
 
     let child_class = move || {
         let mut class = String::from("nested ");
@@ -182,30 +180,30 @@ where
         style
     };
 
-    view! { cx,
+    view! {
     <li>
         <div style={ move || { depth_style() + &selection_style() } } class=div_class on:click=on_click>
             <Show
                 when= move || { each_child(&node.get_untracked().row.get_untracked()).len() > 0 }
-                fallback= move |_| {}
+                fallback= move || {}
             >
                 <span class=caret_class on:click=on_caret_click/>
             </Show>
-            { children(cx) }
+            { children() }
         </div>
         <ul class=child_class>
         <For
             each=move || { node().children.get() }
             key=|c| c.get_key()
-            view=move |cx, item| {
-                view! { cx,
+            children=move |item| {
+                view! {
                     <TreeViewRow
                         node=item.clone()
                         selection_model=selection_model
                         each_child=each_child
                         view=view
                     > {
-                        view(cx, create_rw_signal(cx, item))
+                        view(create_rw_signal(item))
                     }</TreeViewRow>
                 }
             }
@@ -235,24 +233,18 @@ where
     T: Clone + 'static + std::ops::Deref + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
-    pub fn new(
-        cx: Scope,
-        key: fn(&T) -> S,
-        item: T,
-        each_child: fn(&T) -> Vec<T>,
-        depth: usize,
-    ) -> Self {
+    pub fn new(key: fn(&T) -> S, item: T, each_child: fn(&T) -> Vec<T>, depth: usize) -> Self {
         let this = Self {
             key,
-            row: create_rw_signal(cx, item.clone()),
+            row: create_rw_signal(item.clone()),
             depth,
-            is_expanded: create_rw_signal(cx, false),
-            update: create_trigger(cx),
-            children: create_rw_signal(cx, Vec::new()),
+            is_expanded: create_rw_signal(false),
+            update: create_trigger(),
+            children: create_rw_signal(Vec::new()),
             each_child,
         };
 
-        let nodes = expect_context::<RwSignal<SelectionModel<T, S>>>(cx);
+        let nodes = expect_context::<RwSignal<SelectionModel<T, S>>>();
         nodes.update(|map| {
             map.items
                 .insert(key(&this.row.get_untracked()), this.clone());
@@ -261,7 +253,7 @@ where
         this.children.set(
             each_child(&item)
                 .iter()
-                .map(|c| TreeNode::new(cx, key, c.clone(), each_child, depth + 1))
+                .map(|c| TreeNode::new(key, c.clone(), each_child, depth + 1))
                 .collect(),
         );
 
@@ -272,8 +264,8 @@ where
         (self.key)(&self.row.get_untracked())
     }
 
-    pub fn insert_child(&self, cx: Scope, item: T) {
-        let node = TreeNode::new(cx, self.key, item, self.each_child, self.depth + 1);
+    pub fn insert_child(&self, item: T) {
+        let node = TreeNode::new(self.key, item, self.each_child, self.depth + 1);
         self.children.update(|children| children.push(node))
     }
 

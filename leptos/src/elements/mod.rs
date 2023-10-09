@@ -1,31 +1,34 @@
+mod about;
 mod account_icon;
 mod context_menu;
 mod infobox;
 mod loading_screen;
+mod navbar;
 mod sidebar;
 mod treeview;
+pub use about::*;
 pub use account_icon::*;
 pub use context_menu::*;
 pub use infobox::*;
 pub use loading_screen::*;
+pub use navbar::*;
 pub use sidebar::*;
 pub use treeview::*;
 
-use leptos::*;
+use leptos::{logging::warn, *};
 
 #[derive(Debug, Clone)]
 pub struct CloseOverlays();
 
 #[component]
 pub fn Overlay(
-    cx: Scope,
     show_overlay: RwSignal<bool>,
     location: ReadSignal<(i32, i32)>,
     children: ChildrenFn,
 ) -> impl IntoView
 where {
-    if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>(cx) {
-        create_effect(cx, move |_| {
+    if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>() {
+        create_effect(move |_| {
             close_signal.get();
             show_overlay.set(false);
         });
@@ -33,8 +36,8 @@ where {
         warn!("No `close overlay` signal available");
     }
 
-    let preferences = expect_context::<RwSignal<crate::app::Preferences>>(cx);
-    let border_style = create_read_slice(cx, preferences, |pref| {
+    let preferences = expect_context::<RwSignal<crate::app::Preferences>>();
+    let border_style = create_read_slice(preferences, |pref| {
         format!("border: 2px solid {};", pref.accent_color.0)
     });
 
@@ -46,15 +49,15 @@ where {
         )
     };
 
-    view! { cx,
+    view! {
         <Show
             when=move || { show_overlay.get() }
-            fallback=|_| ()
+            fallback=|| ()
         >
             <div
                 class="overlay"
                 style={ border_style() + &location_style() }
-            >{ children(cx) }</div>
+            >{ children() }</div>
         </Show>
     }
 }

@@ -1,8 +1,8 @@
 use leptos::*;
 
 #[component]
-pub fn PrivacyPolicy(cx: Scope) -> impl IntoView {
-    view! {cx,
+pub fn PrivacyPolicy() -> impl IntoView {
+    view! {
         <div class="page">
             <div class="header">
             <div class="container">

@@ -255,15 +255,67 @@ button {
     }
 }
 
+#about {
+    font-size: 20px;
+    &.big {
+        padding: 12px;
+    }
+
+    button {
+        margin-top: 6rem;
+        margin-left: auto;
+    }
+
+    .content {
+        display: grid;
+        grid-gap: 8px;
+        align-items: center;
+        justify-items: left;
+    }
+
+    label, a {
+        margin: 0px;
+        padding: 12px;
+        border-radius: 8px;
+        background: #666666;
+
+        &.title{
+            width: 4em;
+            grid-column: 1;
+        }
+
+        &.info {
+            width: 6em;
+            grid-column: 2;
+        }
+
+        &.button {
+            border-radius: 48px;
+            grid-column: 2;
+        }
+    }
+
+    &.big {
+        .title {
+            width: 8em;
+        }
+        
+        .info {
+            width: 12em;
+        }
+    }
+}
+
 .overlay {
     position: fixed;
     background: $element-background-color-dark;
     padding: 8px;
     border-radius: 12px;
+    color: white;
 
     .context-menu-row {
-        cursor: default;
         color: white;
+        cursor: default;
         padding: 12px;
         min-width: 10rem;
         border-radius: 8px;
@@ -271,6 +323,19 @@ button {
         &:hover {
             background: $element-hover-color-dark;
         }
+    }
+
+    button {
+        font-size: 3rem;
+        padding: 12px;
+        min-width: 6em;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 12px;
+        border: none;
+        font-size: 1.2rem;
+        cursor: pointer;
     }
 }
 
@@ -445,7 +510,6 @@ form {
             font-size: 1.2rem;
             cursor: pointer;
         }
-
     }
 }
 

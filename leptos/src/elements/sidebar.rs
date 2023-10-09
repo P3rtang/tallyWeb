@@ -39,7 +39,6 @@ pub struct ShowSidebar(pub bool);
 
 #[component]
 pub fn Sidebar<F1, F2>(
-    cx: Scope,
     class: &'static str,
     display: F1,
     layout: F2,
@@ -62,9 +61,9 @@ where
             + "transition: 0.35s;"
     };
 
-    view! { cx,
+    view! {
         <div style=sidebar_style class=class>
-            { children(cx) }
+            { children() }
         </div>
     }
 }
