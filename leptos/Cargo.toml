@@ -12,10 +12,10 @@ actix-web = { version = "4", optional = true, features = ["macros"] }
 console_error_panic_hook = "0.1"
 cfg-if = "1"
 http = { version = "0.2", optional = true }
-leptos = { version = "0.4", features = ["nightly"] }
-leptos_meta = { version = "0.4", features = ["nightly"] }
-leptos_actix = { version = "0.4", optional = true }
-leptos_router = { version = "0.4", features = ["nightly"] }
+leptos = { version = "0.5", features = ["nightly"] }
+leptos_meta = { version = "0.5", features = ["nightly"] }
+leptos_actix = { version = "0.5", optional = true }
+leptos_router = { version = "0.5", features = ["nightly"] }
 wasm-bindgen = "=0.2.87"
 js-sys = "0.3.64"
 serde = { version = "1.0.188", features = ["derive"] }
@@ -27,6 +27,7 @@ gloo-storage = "0.3.0"
 rand = "0.8.5"
 chrono = { version = "0.4.31", features = ["serde"] }
 serde_with = { version = "3.3.0", features = ["chrono"] }
+leptos-use = { version = "0.7.1", features = ["ssr", "serde", "serde_json", "storage"] }
 
 [features]
 csr = ["leptos/csr", "leptos_meta/csr", "leptos_router/csr"]

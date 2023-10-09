@@ -12,49 +12,46 @@ use crate::{
 };
 
 #[component]
-pub fn PreferencesWindow<F>(cx: Scope, layout: F) -> impl IntoView
+pub fn PreferencesWindow<F>(layout: F) -> impl IntoView
 where
     F: Fn() -> ScreenLayout + Copy + 'static,
 {
-    let pref_resource = expect_context::<Resource<Option<SessionUser>, Preferences>>(cx);
-    let preferences = expect_context::<RwSignal<Preferences>>(cx);
+    let pref_resource = expect_context::<Resource<Option<SessionUser>, Preferences>>();
+    let preferences = expect_context::<RwSignal<Preferences>>();
 
-    let user = expect_context::<RwSignal<Option<SessionUser>>>(cx);
-    create_effect(cx, move |_| {
+    let user = expect_context::<RwSignal<Option<SessionUser>>>();
+    create_effect(move |_| {
         request_animation_frame(move || {
-            user.set(SessionUser::from_storage(cx));
+            user.set(SessionUser::from_storage());
         })
     });
 
     let (use_default, set_default) = create_slice(
-        cx,
         preferences,
         |pref| pref.use_default_accent_color,
         |pref, new| pref.use_default_accent_color = new,
     );
 
     let (accent_color, set_accent_color) = create_slice(
-        cx,
         preferences,
         |pref| pref.accent_color.0.clone(),
         |pref, new| pref.accent_color.0 = new,
     );
 
     let (show_sep, set_sep) = create_slice(
-        cx,
         preferences,
         |pref| pref.show_separator,
         |pref, new| pref.show_separator = new,
     );
 
-    let action = create_server_action::<SavePreferences>(cx);
-    let message = create_rw_signal(cx, None::<&'static str>);
+    let action = create_server_action::<SavePreferences>();
+    let message = create_rw_signal(None::<&'static str>);
 
-    let i_use_default: NodeRef<Input> = create_node_ref(cx);
-    let i_accent_color: NodeRef<Input> = create_node_ref(cx);
-    let i_show_separator: NodeRef<Input> = create_node_ref(cx);
+    let i_use_default: NodeRef<Input> = create_node_ref();
+    let i_accent_color: NodeRef<Input> = create_node_ref();
+    let i_show_separator: NodeRef<Input> = create_node_ref();
 
-    create_effect(cx, move |_| {
+    create_effect(move |_| {
         i_accent_color().map(|i| i.set_value(&accent_color()));
         i_show_separator().map(|i| i.set_checked(show_sep()))
     });
@@ -79,7 +76,7 @@ where
         set_accent_color(i_accent_color().map(|i| i.value()).unwrap_or_default());
         set_sep(i_show_separator().map(|i| i.checked()).unwrap_or_default());
 
-        let action = create_action(cx, async move |_: &()| -> Result<(), ServerFnError> {
+        let action = create_action(async move |_: &()| -> Result<(), ServerFnError> {
             let user = user
                 .get_untracked()
                 .ok_or(ServerFnError::MissingArg(String::from(
@@ -122,7 +119,7 @@ where
         }
     };
 
-    let slider_style = create_read_slice(cx, preferences, move |pref| {
+    let slider_style = create_read_slice(preferences, move |pref| {
         if use_default() {
             format!("background-color: {}", pref.accent_color.0)
         } else {
@@ -130,7 +127,7 @@ where
         }
     });
 
-    let confirm_style = create_read_slice(cx, preferences, move |pref| {
+    let confirm_style = create_read_slice(preferences, move |pref| {
         format!("background-color: {}", pref.accent_color.0)
     });
 
@@ -138,13 +135,14 @@ where
         pref_resource.refetch();
     };
 
-    view! { cx,
-    <Show
-        when=move || {
-            user().is_some() && pref_resource.read(cx).is_some()
+    view! {
+        <Suspense
+            fallback=|| ()
+        >
+        {
+            pref_resource();
         }
-        fallback=move |_| { view! { cx,  } }
-    >
+        <Show when=move || user().is_some() fallback=|| ()>
         <ActionForm action=action on:submit=on_submit class="parent-form">
             <div class={ move || String::from("editing-form ") + layout().get_class() } style=border_style>
                 <div class="content">
@@ -190,9 +188,10 @@ where
             </div>
         </ActionForm>
         </Show>
+        </Suspense>
         <Show
             when=move || { message().is_some() }
-            fallback=|_| ()
+            fallback=|| ()
         >
             <b class="notification-box" style=border_style>{ move || { message().unwrap() } }</b>
         </Show>

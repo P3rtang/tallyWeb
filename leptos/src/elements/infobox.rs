@@ -10,11 +10,11 @@ use crate::{
 };
 
 #[component]
-pub fn InfoBox<F>(cx: Scope, countable_list: F) -> impl IntoView
+pub fn InfoBox<F>(countable_list: F) -> impl IntoView
 where
     F: Fn() -> Vec<RwSignal<ArcCountable>> + 'static,
 {
-    let screen_layout = expect_context::<RwSignal<ScreenLayout>>(cx);
+    let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
     let show_title = move || {
         if screen_layout() == ScreenLayout::Small {
             format!("display: none")
@@ -23,13 +23,13 @@ where
         }
     };
 
-    view! { cx,
+    view! {
         <ul id="InfoBox">
         <For
             each=countable_list
             key=|countable| countable().get_uuid()
-            view=move |cx, countable| {
-                view! { cx,
+            children=move |countable| {
+                view! {
                 <li class="row">
                     <Count countable show_title/>
                     <Time countable show_title/>
@@ -74,21 +74,21 @@ fn short_format_time(dur: Duration) -> String {
 }
 
 #[component]
-fn Count<T>(cx: Scope, countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
+fn Count<T>(countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
 where
     T: Fn() -> String + 'static,
 {
-    let state = expect_context::<RwSignal<CounterList>>(cx);
+    let state = expect_context::<RwSignal<CounterList>>();
 
     let on_count_click = move |_| {
         countable.update(|c| c.add_count(1));
         state.update(|s| s.is_paused = false)
     };
 
-    let name = create_read_slice(cx, countable, |c| c.get_name());
-    let count = create_read_slice(cx, countable, |c| c.get_count());
+    let name = create_read_slice(countable, |c| c.get_name());
+    let count = create_read_slice(countable, |c| c.get_count());
 
-    view! {cx,
+    view! {
         <div class="rowbox" on:click=on_count_click>
             <p class="title" style=show_title>{ name }</p>
             <p class="info">{ count }</p>
@@ -97,16 +97,16 @@ where
 }
 
 #[component]
-fn Time<T>(cx: Scope, countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
+fn Time<T>(countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
 where
     T: Fn() -> String + 'static,
 {
-    let state = expect_context::<RwSignal<CounterList>>(cx);
-    let on_time_click = move |_| state.update(|s| s.toggle_paused(cx));
+    let state = expect_context::<RwSignal<CounterList>>();
+    let on_time_click = move |_| state.update(|s| s.toggle_paused());
 
-    let time = create_read_slice(cx, countable, |c| format_time(c.get_time()));
+    let time = create_read_slice(countable, |c| format_time(c.get_time()));
 
-    view! { cx,
+    view! {
         <div class="rowbox" on:click=on_time_click>
             <p class="title" style=show_title>Time</p>
             <p class="info longtime">{ time }</p>
@@ -115,13 +115,13 @@ where
 }
 
 #[component]
-fn Progress<T>(cx: Scope, countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
+fn Progress<T>(countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
 where
     T: Fn() -> String + 'static,
 {
-    let progress = create_read_slice(cx, countable, |c| c.get_progress());
+    let progress = create_read_slice(countable, |c| c.get_progress());
 
-    view! { cx,
+    view! {
         <div class="rowbox rowexpand">
             <p class="title" style=show_title>Progress</p>
             <Progressbar
@@ -135,7 +135,7 @@ where
 }
 
 #[component]
-fn LastStep<T>(cx: Scope, countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
+fn LastStep<T>(countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
 where
     T: Fn() -> String + 'static,
 {
@@ -145,11 +145,11 @@ where
         Some(m) => short_format_time(m),
     };
 
-    let on_count = create_read_slice(cx, countable, |c| c.get_count());
-    let time = create_read_slice(cx, countable, |c| c.get_time());
-    let last_interaction = create_rw_signal(cx, None::<i64>);
+    let on_count = create_read_slice(countable, |c| c.get_count());
+    let time = create_read_slice(countable, |c| c.get_time());
+    let last_interaction = create_rw_signal(None::<i64>);
 
-    view! { cx,
+    view! {
         <div class="rowbox">
             <p class="title" style=show_title>Last Step</p>
             <p class="info">{ move || {
@@ -166,16 +166,16 @@ where
 }
 
 #[component]
-fn AverageStep<T>(cx: Scope, countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
+fn AverageStep<T>(countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
 where
     T: Fn() -> String + 'static,
 {
-    let count = create_read_slice(cx, countable, |c| c.get_count());
-    let step = create_read_slice(cx, countable, move |c| {
+    let count = create_read_slice(countable, |c| c.get_count());
+    let step = create_read_slice(countable, move |c| {
         Duration::milliseconds(c.get_time().num_milliseconds() / count() as i64)
     });
 
-    view! { cx,
+    view! {
         <div class="rowbox">
             <p class="title" style=show_title>Avg Step Time</p>
             <p class="info"> { move || {
