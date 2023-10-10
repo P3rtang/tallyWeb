@@ -75,7 +75,10 @@ pub async fn login_user(
         return Err(LoginError::InvalidPassword);
     };
 
-    user.new_token(pool).await?;
+    user.new_token(pool).await.map_err(|err| {
+        println!("{err}");
+        err
+    })?;
 
     return Ok(user);
 }
@@ -84,9 +87,8 @@ pub async fn get_user(
     pool: &PgPool,
     username: String,
     token: String,
-    do_regenerate_token: bool,
 ) -> Result<DbUser, AuthorizationError> {
-    let mut user = match query_as!(
+    let user = match query_as!(
         DbUser,
         r#"
         select * from users
@@ -106,12 +108,6 @@ pub async fn get_user(
         return Err(AuthorizationError::InvalidToken);
     }
 
-    let status = user.token_status(pool).await;
-    if do_regenerate_token && (status == TokenStatus::Expired || status == TokenStatus::Invalid) {
-        user.new_token(pool).await?;
-    }
-
-    // recheck status after regeneration
     match user.token_status(pool).await {
         TokenStatus::Expired => return Err(AuthorizationError::ExpiredToken),
         // TODO: add logging for invalid token use, user might be suspicious

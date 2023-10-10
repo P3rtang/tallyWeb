@@ -2,6 +2,7 @@ use chrono::Duration;
 use serde::{Deserialize, Serialize};
 use std::{
     any::Any,
+    cmp::Ordering,
     sync::{Arc, Mutex},
 };
 
@@ -95,6 +96,13 @@ impl ArcCountable {
                 |c| c.get_phases().into_iter().map(|p| p.clone()).collect(),
             )
             .clone()
+    }
+
+    pub fn created_at(&self) -> chrono::NaiveDateTime {
+        self.0
+            .try_lock()
+            .map(|c| c.created_at())
+            .unwrap_or_default()
     }
 }
 
@@ -219,15 +227,18 @@ pub trait Countable: std::fmt::Debug + Send + Any {
     fn get_time(&self) -> Duration;
     fn set_time(&mut self, dur: Duration);
     fn add_time(&mut self, dur: Duration);
-    fn get_progress(&self) -> f64;
+
     fn is_active(&self) -> bool;
     fn toggle_active(&mut self);
     fn set_active(&mut self, active: bool);
 
+    fn get_progress(&self) -> f64;
     fn get_hunt_type(&self) -> Hunttype;
     fn set_hunt_type(&mut self, hunt_type: Hunttype);
     fn has_charm(&self) -> bool;
     fn set_charm(&mut self, set: bool);
+
+    fn created_at(&self) -> chrono::NaiveDateTime;
 
     fn new_phase(&mut self, id: i32, name: String);
     fn new_counter(&mut self, id: i32, name: String) -> Result<ArcCountable, String>;
@@ -244,6 +255,7 @@ pub struct SerCounter {
     pub id: i32,
     pub name: String,
     pub phase_list: Vec<Phase>,
+    pub created_at: chrono::NaiveDateTime,
 }
 
 impl From<Counter> for SerCounter {
@@ -263,6 +275,7 @@ impl From<Counter> for SerCounter {
             id: value.id,
             name: value.name,
             phase_list,
+            created_at: value.created_at,
         };
     }
 }
@@ -301,8 +314,17 @@ impl Countable for SerCounter {
         }
     }
 
-    fn add_count(&mut self, _count: i32) {
-        todo!()
+    fn add_count(&mut self, count: i32) {
+        let mut diff = count;
+        for phase in self.phase_list.iter_mut().rev() {
+            if phase.get_count() < diff {
+                diff -= phase.get_count();
+                phase.set_count(0);
+            } else {
+                phase.set_count(phase.get_count() - diff);
+                break;
+            }
+        }
     }
 
     fn get_rolls(&self) -> i32 {
@@ -339,10 +361,6 @@ impl Countable for SerCounter {
         });
     }
 
-    fn get_progress(&self) -> f64 {
-        todo!()
-    }
-
     fn is_active(&self) -> bool {
         todo!()
     }
@@ -352,6 +370,10 @@ impl Countable for SerCounter {
     }
 
     fn set_active(&mut self, _active: bool) {
+        todo!()
+    }
+
+    fn get_progress(&self) -> f64 {
         todo!()
     }
 
@@ -377,6 +399,10 @@ impl Countable for SerCounter {
 
     fn set_charm(&mut self, set: bool) {
         self.phase_list.iter_mut().for_each(|p| p.set_charm(set))
+    }
+
+    fn created_at(&self) -> chrono::NaiveDateTime {
+        todo!()
     }
 
     fn new_phase(&mut self, _id: i32, _name: String) {
@@ -409,6 +435,7 @@ pub struct Counter {
     pub id: i32,
     pub name: String,
     pub phase_list: Vec<ArcCountable>,
+    pub created_at: chrono::NaiveDateTime,
 }
 
 #[allow(dead_code)]
@@ -418,6 +445,7 @@ impl Counter {
             id,
             name: name.to_string(),
             phase_list: Vec::new(),
+            created_at: chrono::Utc::now().naive_utc(),
         });
     }
 }
@@ -488,11 +516,6 @@ impl Countable for Counter {
         });
     }
 
-    fn get_progress(&self) -> f64 {
-        return 1.0
-            - (1.0 - 1.0_f64 / self.get_hunt_type().get_odds() as f64).powi(self.get_rolls());
-    }
-
     fn is_active(&self) -> bool {
         for p in self.phase_list.iter() {
             if p.try_lock().map(|p| p.is_active()).unwrap_or_default() {
@@ -524,6 +547,11 @@ impl Countable for Counter {
         }
     }
 
+    fn get_progress(&self) -> f64 {
+        return 1.0
+            - (1.0 - 1.0_f64 / self.get_hunt_type().get_odds() as f64).powi(self.get_rolls());
+    }
+
     fn get_hunt_type(&self) -> Hunttype {
         self.phase_list
             .last()
@@ -546,6 +574,10 @@ impl Countable for Counter {
 
     fn set_charm(&mut self, set: bool) {
         let _ = self.phase_list.iter_mut().for_each(|c| c.set_charm(set));
+    }
+
+    fn created_at(&self) -> chrono::NaiveDateTime {
+        self.created_at
     }
 
     fn new_phase(&mut self, id: i32, name: String) {
@@ -591,6 +623,7 @@ pub struct Phase {
     pub is_active: bool,
     pub hunt_type: Hunttype,
     pub has_charm: bool,
+    pub created_at: chrono::NaiveDateTime,
 }
 
 impl Phase {
@@ -603,6 +636,7 @@ impl Phase {
             is_active: false,
             hunt_type,
             has_charm,
+            created_at: chrono::Utc::now().naive_utc(),
         };
     }
 }
@@ -656,10 +690,6 @@ impl Countable for Phase {
         self.time = self.time + dur
     }
 
-    fn get_progress(&self) -> f64 {
-        return 1.0 - (1.0 - 1.0_f64 / self.hunt_type.get_odds() as f64).powi(self.get_rolls());
-    }
-
     fn is_active(&self) -> bool {
         return self.is_active;
     }
@@ -670,6 +700,10 @@ impl Countable for Phase {
 
     fn set_active(&mut self, active: bool) {
         self.is_active = active;
+    }
+
+    fn get_progress(&self) -> f64 {
+        return 1.0 - (1.0 - 1.0_f64 / self.hunt_type.get_odds() as f64).powi(self.get_rolls());
     }
 
     fn get_hunt_type(&self) -> Hunttype {
@@ -686,6 +720,10 @@ impl Countable for Phase {
 
     fn set_charm(&mut self, set: bool) {
         self.has_charm = set
+    }
+
+    fn created_at(&self) -> chrono::NaiveDateTime {
+        self.created_at
     }
 
     fn new_phase(&mut self, _: i32, _: String) {
@@ -713,6 +751,84 @@ impl Countable for Phase {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum SortCountable {
+    Id(bool),
+    Name(bool),
+    Count(bool),
+    Time(bool),
+    CreatedAt(bool),
+}
+
+impl SortCountable {
+    pub fn sort_by(&self) -> impl Fn(&ArcCountable, &ArcCountable) -> Ordering {
+        return match self {
+            SortCountable::Id(false) => {
+                |a: &ArcCountable, b: &ArcCountable| a.get_id().cmp(&b.get_id())
+            }
+            SortCountable::Id(true) => {
+                |a: &ArcCountable, b: &ArcCountable| b.get_id().cmp(&a.get_id())
+            }
+            SortCountable::Name(false) => {
+                |a: &ArcCountable, b: &ArcCountable| a.get_name().cmp(&b.get_name())
+            }
+            SortCountable::Name(true) => {
+                |a: &ArcCountable, b: &ArcCountable| b.get_name().cmp(&a.get_name())
+            }
+            SortCountable::Count(false) => {
+                |a: &ArcCountable, b: &ArcCountable| a.get_count().cmp(&b.get_count())
+            }
+            SortCountable::Count(true) => {
+                |a: &ArcCountable, b: &ArcCountable| b.get_count().cmp(&a.get_count())
+            }
+            SortCountable::Time(false) => {
+                |a: &ArcCountable, b: &ArcCountable| a.get_time().cmp(&b.get_time())
+            }
+            SortCountable::Time(true) => {
+                |a: &ArcCountable, b: &ArcCountable| b.get_time().cmp(&a.get_time())
+            }
+            SortCountable::CreatedAt(false) => {
+                |a: &ArcCountable, b: &ArcCountable| a.created_at().cmp(&b.created_at())
+            }
+            SortCountable::CreatedAt(true) => {
+                |a: &ArcCountable, b: &ArcCountable| b.created_at().cmp(&a.created_at())
+            }
+        };
+    }
+
+    pub fn toggle(&self) -> Self {
+        match self {
+            Self::Id(b) => Self::Id(!b),
+            Self::Name(b) => Self::Name(!b),
+            Self::Count(b) => Self::Count(!b),
+            Self::Time(b) => Self::Time(!b),
+            Self::CreatedAt(b) => Self::CreatedAt(!b),
+        }
+    }
+
+    pub fn is_reversed(&self) -> bool {
+        match self {
+            SortCountable::Id(b) => *b,
+            SortCountable::Name(b) => *b,
+            SortCountable::Count(b) => *b,
+            SortCountable::Time(b) => *b,
+            SortCountable::CreatedAt(b) => *b,
+        }
+    }
+}
+
+impl From<String> for SortCountable {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "Name" => SortCountable::Name(false),
+            "Count" => SortCountable::Count(false),
+            "Time" => SortCountable::Time(false),
+            "CreatedAt" => SortCountable::CreatedAt(false),
+            _ => SortCountable::Id(false),
+        }
+    }
+}
+
 cfg_if::cfg_if!(
     if #[cfg(feature = "ssr")] {
         use crate::app::get_phase_by_id;
@@ -730,6 +846,7 @@ cfg_if::cfg_if!(
                     id: value.id,
                     name: value.name,
                     phase_list,
+                    created_at: value.created_at,
                 }
             }
             pub async fn to_db(&self, user_id: i32) -> DbCounter {
@@ -737,7 +854,8 @@ cfg_if::cfg_if!(
                     id: self.id,
                     user_id,
                     name: self.name.clone(),
-                    phases: self.phase_list.iter().map(|p| p.id).collect()
+                    phases: self.phase_list.iter().map(|p| p.id).collect(),
+                    created_at: self.created_at,
                 }
             }
         }
@@ -752,6 +870,7 @@ cfg_if::cfg_if!(
                     is_active: false,
                     hunt_type: value.hunt_type.into(),
                     has_charm: value.has_charm,
+                    created_at: value.created_at,
                 }
             }
         }
@@ -767,6 +886,7 @@ cfg_if::cfg_if!(
                     hunt_type: self.hunt_type.clone().into(),
                     has_charm: self.has_charm,
                     dexnav_encounters: self.hunt_type.into(),
+                    created_at: self.created_at,
                 }
             }
         }

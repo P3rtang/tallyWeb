@@ -21,6 +21,7 @@ pub struct DbCounter {
     pub user_id: i32,
     pub name: String,
     pub phases: Vec<i32>,
+    pub created_at: chrono::NaiveDateTime,
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -33,6 +34,7 @@ pub struct DbPhase {
     pub hunt_type: Hunttype,
     pub has_charm: bool,
     pub dexnav_encounters: Option<i32>,
+    pub created_at: chrono::NaiveDateTime,
 }
 
 #[derive(Debug)]

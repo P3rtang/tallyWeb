@@ -21,7 +21,7 @@ pub fn Navbar() -> impl IntoView {
                 <span class="tooltip bottom">Home</span>
             </A>
             <Show
-                when=move || user.get().is_some()
+                when=move || user().is_some()
                 fallback=|| view! { <div id="user-icon" style="background: #555555;"/> }
             >
                 { view! { <AccountIcon user=move || user.get().unwrap()/> } }
