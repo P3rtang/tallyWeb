@@ -5,6 +5,7 @@ mod infobox;
 mod loading_screen;
 mod navbar;
 mod sidebar;
+mod sort_search;
 mod treeview;
 pub use about::*;
 pub use account_icon::*;
@@ -13,6 +14,7 @@ pub use infobox::*;
 pub use loading_screen::*;
 pub use navbar::*;
 pub use sidebar::*;
+pub use sort_search::*;
 pub use treeview::*;
 
 use leptos::{logging::warn, *};

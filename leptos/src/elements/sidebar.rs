@@ -11,7 +11,7 @@ impl ScreenLayout {
     fn get_position(&self) -> String {
         let position = match self {
             ScreenLayout::Small => "fixed",
-            ScreenLayout::Big => "unset",
+            ScreenLayout::Big => "relative",
         };
 
         format!("position: {position};")
@@ -59,6 +59,7 @@ where
             + "height: inherit;"
             + "min-width: min(24rem, 100%);"
             + "transition: 0.35s;"
+            + "overflow-y: auto"
     };
 
     view! {

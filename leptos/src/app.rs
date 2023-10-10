@@ -5,12 +5,14 @@
 use crate::countable::*;
 use chrono::Duration;
 use gloo_storage::{LocalStorage, Storage};
-use js_sys::Date;
+use js_sys::{Date, Function};
 use leptos::{ev::MouseEvent, logging::log, *};
 use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::{cmp::Ordering, fmt::Display};
+use wasm_bindgen::{prelude::Closure, JsCast};
+use web_sys::Event;
 
 use crate::{elements::*, pages::*};
 
@@ -53,8 +55,8 @@ pub async fn create_account(
 #[server(GetUserIdFromName, "/api")]
 async fn get_id_from_username(username: String, token: String) -> Result<i32, ServerFnError> {
     let pool = backend::create_pool().await?;
+    let db_user = backend::auth::get_user(&pool, username, token).await?;
 
-    let db_user = backend::auth::get_user(&pool, username, token, true).await?;
     return Ok(db_user.id);
 }
 
@@ -72,7 +74,7 @@ async fn get_counters_by_user_name(
 ) -> Result<CounterResponse, ServerFnError> {
     let pool = backend::create_pool().await?;
 
-    let user = match backend::auth::get_user(&pool, username, token, true).await {
+    let user = match backend::auth::get_user(&pool, username, token).await {
         Ok(user) => user,
         Err(backend::AuthorizationError::Internal(err)) => Err(err)?,
         Err(backend::AuthorizationError::UserNotFound) => {
@@ -95,8 +97,6 @@ async fn get_counters_by_user_name(
         )
     }
 
-    counters.sort_by(|a, b| a.id.cmp(&b.id));
-
     return Ok(CounterResponse::Counters(counters));
 }
 
@@ -107,7 +107,7 @@ pub async fn get_counter_by_id(
     counter_id: i32,
 ) -> Result<SerCounter, ServerFnError> {
     let pool = backend::create_pool().await?;
-    let user = backend::auth::get_user(&pool, username.clone(), token.clone(), true).await?;
+    let user = backend::auth::get_user(&pool, username.clone(), token.clone()).await?;
     let data = backend::get_counter_by_id(&pool, user.id, counter_id).await?;
 
     return Ok(SerCounter::from_db(username, token, data).await);
@@ -120,7 +120,7 @@ pub async fn get_phase_by_id(
     phase_id: i32,
 ) -> Result<Phase, ServerFnError> {
     let pool = backend::create_pool().await?;
-    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    let user = backend::auth::get_user(&pool, username, token).await?;
     let data = backend::get_phase_by_id(&pool, user.id, phase_id).await?;
     return Ok(data.into());
 }
@@ -132,7 +132,7 @@ async fn create_counter(
     name: String,
 ) -> Result<i32, ServerFnError> {
     let pool = backend::create_pool().await?;
-    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    let user = backend::auth::get_user(&pool, username, token).await?;
     let counter_id = backend::create_counter(&pool, user.id, name).await?;
 
     return Ok(counter_id);
@@ -145,7 +145,7 @@ pub async fn update_counter(
     counter: SerCounter,
 ) -> Result<(), ServerFnError> {
     let pool = backend::create_pool().await?;
-    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    let user = backend::auth::get_user(&pool, username, token).await?;
 
     backend::update_counter(&pool, counter.to_db(user.id).await).await?;
     for phase in counter.phase_list {
@@ -162,7 +162,7 @@ pub async fn remove_counter(
     counter_id: i32,
 ) -> Result<(), ServerFnError> {
     let pool = backend::create_pool().await?;
-    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    let user = backend::auth::get_user(&pool, username, token).await?;
     backend::remove_counter(&pool, user.id, counter_id).await?;
 
     return Ok(());
@@ -175,7 +175,7 @@ pub async fn remove_phase(
     phase_id: i32,
 ) -> Result<(), ServerFnError> {
     let pool = backend::create_pool().await?;
-    let _ = backend::auth::get_user(&pool, username, token, true).await?;
+    let _ = backend::auth::get_user(&pool, username, token).await?;
     backend::remove_phase(&pool, phase_id).await?;
 
     return Ok(());
@@ -190,7 +190,7 @@ async fn create_phase(
 ) -> Result<i32, ServerFnError> {
     let pool = backend::create_pool().await?;
 
-    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    let user = backend::auth::get_user(&pool, username, token).await?;
     let id = backend::create_phase(&pool, user.id, name, hunt_type.into()).await?;
 
     return Ok(id);
@@ -205,7 +205,7 @@ async fn assign_phase(
 ) -> Result<(), ServerFnError> {
     let pool = backend::create_pool().await?;
 
-    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    let user = backend::auth::get_user(&pool, username, token).await?;
     backend::assign_phase(&pool, user.id, counter_id, phase_id).await?;
 
     return Ok(());
@@ -219,7 +219,7 @@ pub async fn update_phase(
 ) -> Result<(), ServerFnError> {
     let pool = backend::create_pool().await?;
 
-    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    let user = backend::auth::get_user(&pool, username, token).await?;
     backend::update_phase(&pool, user.id, phase.to_db(user.id).await).await?;
 
     return Ok(());
@@ -235,7 +235,7 @@ async fn save_all(
     let pool = backend::create_pool().await?;
     let phases = phases.unwrap_or_default();
 
-    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    let user = backend::auth::get_user(&pool, username, token).await?;
     for counter in counters {
         backend::update_counter(&pool, counter.to_db(user.id).await).await?;
         for phase in counter.phase_list {
@@ -256,7 +256,7 @@ async fn get_user_preferences(
     token: String,
 ) -> Result<Preferences, ServerFnError> {
     let pool = backend::create_pool().await?;
-    let user = match backend::auth::get_user(&pool, username.clone(), token.clone(), true).await {
+    let user = match backend::auth::get_user(&pool, username.clone(), token.clone()).await {
         Ok(user) => user,
         Err(_) => {
             return Ok(Preferences::default());
@@ -286,7 +286,7 @@ pub async fn save_preferences(
     preferences: Preferences,
 ) -> Result<(), ServerFnError> {
     let pool = backend::create_pool().await?;
-    let user = backend::auth::get_user(&pool, username, token, true).await?;
+    let user = backend::auth::get_user(&pool, username, token).await?;
 
     let accent_color = if preferences.use_default_accent_color {
         None
@@ -630,12 +630,14 @@ fn connect_keys(
                 c.update(|c| c.add_count(1));
                 save_flags.update(|s| s.push(ChangeFlag::ChangeCountable(c.get_untracked())));
             });
+            state.update(|_| ())
         }),
         "Minus" => active.with(|list| {
             list.iter().for_each(|c| {
                 c.update(|c| c.add_count(-1));
                 save_flags.update(|s| s.push(ChangeFlag::ChangeCountable(c.get_untracked())));
             });
+            state.update(|_| ())
         }),
         "KeyP" => {
             state.try_update(|s| s.toggle_paused());
@@ -644,7 +646,7 @@ fn connect_keys(
     });
 }
 
-#[component]
+// #[component]
 pub fn HomePage() -> impl IntoView {
     let session_user = expect_context::<Memo<Option<SessionUser>>>();
     let user = expect_context::<RwSignal<Option<SessionUser>>>();
@@ -664,6 +666,13 @@ pub fn HomePage() -> impl IntoView {
     provide_context(data);
     let list = CounterList::new(&[]);
     let state = create_rw_signal(list);
+    let sort_method = create_rw_signal(SortCountable::Count(true));
+
+    create_effect(move |_| {
+        state.get();
+        state.update(|s| s.sort_by(move |a, b| sort_method().sort_by()(a, b)));
+    });
+
     provide_context(state);
 
     let preferences = expect_context::<RwSignal<Preferences>>();
@@ -674,7 +683,7 @@ pub fn HomePage() -> impl IntoView {
         create_rw_signal(Vec::new()),
     );
 
-    let on_click = move |_| {
+    let on_click_new_counter = move |_| {
         let user = expect_context::<RwSignal<Option<SessionUser>>>();
         if user().is_none() {
             return;
@@ -745,6 +754,7 @@ pub fn HomePage() -> impl IntoView {
     timer(selection_signal.get_untracked().get_selected());
 
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
+    let show_sort_search = create_rw_signal(true);
 
     view! {
         <Show
@@ -772,6 +782,7 @@ pub fn HomePage() -> impl IntoView {
                     }
                 }}
                 <Sidebar class="sidebar" display=show_sidebar layout=screen_layout>
+                    <SortSearch sort_method shown=show_sort_search/>
                     <TreeViewWidget
                         each=move || { state.get().list }
                         key=|countable| countable.get_uuid()
@@ -782,7 +793,7 @@ pub fn HomePage() -> impl IntoView {
                         show_separator=show_sep
                         selection_model=selection_signal
                     />
-                    <button on:click=on_click class="new-counter">New Counter</button>
+                    <button on:click=on_click_new_counter class="new-counter">New Counter</button>
                 </Sidebar>
                 <InfoBox countable_list=selection_signal.get_untracked().get_selected()/>
             </div>
@@ -834,7 +845,7 @@ where
                     class="progress"
                     style={ move || { format!("
                         height: 18px;
-                        width: max({}%, 24px);
+                        width: max({}%, 10px);
                         background: {};
                         ",
                         progress() * 100.0,
@@ -889,7 +900,8 @@ fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView 
                 expect_context::<RwSignal<CounterList>>().update(|_| {
                     let phase = countable.get_untracked().new_phase(phase_id, name);
                     node.get_untracked().set_expand(true);
-                    node.get_untracked().insert_child(phase);
+                    node.get_untracked()
+                        .insert_child(phase, expect_context::<SelectionSignal>());
                 });
             },
         );
@@ -968,6 +980,10 @@ impl CounterList {
         self.is_paused = !self.is_paused;
         let _ = save(self.clone().into());
     }
+
+    pub fn sort_by(&mut self, compare: impl Fn(&ArcCountable, &ArcCountable) -> Ordering) {
+        self.list.sort_by(|a, b| compare(&a, &b))
+    }
 }
 
 impl From<Vec<SerCounter>> for CounterList {
@@ -984,6 +1000,7 @@ impl From<Vec<SerCounter>> for CounterList {
                     id: sc.id,
                     name: sc.name,
                     phase_list,
+                    created_at: sc.created_at,
                 };
                 ArcCountable::new(Box::new(counter))
             })
@@ -1030,7 +1047,8 @@ impl SessionUser {
     pub fn from_storage() -> Option<Self> {
         if let Ok(Some(user)) = LocalStorage::get::<Option<SessionUser>>("user_session") {
             let (user, _) = create_signal(user);
-            create_local_resource(user, move |user| async move {
+            create_blocking_resource(user, move |user| async move {
+                // TODO: regenerate token
                 if get_id_from_username(user.username, user.token)
                     .await
                     .is_err()

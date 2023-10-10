@@ -60,6 +60,14 @@ where
         self.selected
     }
 
+    pub fn get_selected_keys(&self) -> Vec<&S> {
+        self.selection
+            .iter()
+            .filter(|(_, b)| **b)
+            .map(|(key, _)| key)
+            .collect()
+    }
+
     pub fn is_selected(&self, key: &S) -> bool {
         return self.selection.get(key).cloned().unwrap_or_default();
     }
@@ -87,7 +95,7 @@ where
     let tree_nodes = move || {
         each()
             .iter()
-            .map(|c| TreeNode::<T, S>::new(key, c.clone(), each_child, 0))
+            .map(|c| TreeNode::<T, S>::new(key, c.clone(), each_child, selection_model, 0))
             .collect::<Vec<_>>()
     };
 
@@ -239,7 +247,13 @@ where
     T: Clone + 'static + std::ops::Deref + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
-    pub fn new(key: fn(&T) -> S, item: T, each_child: fn(&T) -> Vec<T>, depth: usize) -> Self {
+    pub fn new(
+        key: fn(&T) -> S,
+        item: T,
+        each_child: fn(&T) -> Vec<T>,
+        selection_model: RwSignal<SelectionModel<T, S>>,
+        depth: usize,
+    ) -> Self {
         let this = Self {
             key,
             row: item.clone(),
@@ -250,15 +264,14 @@ where
             each_child,
         };
 
-        let nodes = expect_context::<RwSignal<SelectionModel<T, S>>>();
-        nodes.update(|map| {
+        selection_model.update(|map| {
             map.items.insert(key(&this.row), this.clone());
         });
 
         this.children.set(
             each_child(&item)
                 .iter()
-                .map(|c| TreeNode::new(key, c.clone(), each_child, depth + 1))
+                .map(|c| TreeNode::new(key, c.clone(), each_child, selection_model, depth + 1))
                 .collect(),
         );
 
@@ -269,8 +282,14 @@ where
         (self.key)(&self.row)
     }
 
-    pub fn insert_child(&self, item: T) {
-        let node = TreeNode::new(self.key, item, self.each_child, self.depth + 1);
+    pub fn insert_child(&self, item: T, selection_model: RwSignal<SelectionModel<T, S>>) {
+        let node = TreeNode::new(
+            self.key,
+            item,
+            self.each_child,
+            selection_model,
+            self.depth + 1,
+        );
         self.children.update(|children| children.push(node))
     }
 
