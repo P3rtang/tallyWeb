@@ -5,14 +5,12 @@
 use crate::countable::*;
 use chrono::Duration;
 use gloo_storage::{LocalStorage, Storage};
-use js_sys::{Date, Function};
+use js_sys::Date;
 use leptos::{ev::MouseEvent, logging::log, *};
 use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, fmt::Display};
-use wasm_bindgen::{prelude::Closure, JsCast};
-use web_sys::Event;
 
 use crate::{elements::*, pages::*};
 
