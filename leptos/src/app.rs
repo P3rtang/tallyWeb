@@ -726,7 +726,8 @@ pub fn HomePage() -> impl IntoView {
             <div id="HomeGrid">
                 { move || {
                     if screen_layout() == ScreenLayout::Small {
-                        selection_signal.with(|sel| show_sidebar.update(|s| s.0 = sel.is_empty()))
+                        let sel_memo = create_read_slice(selection_signal, |sel| sel.selection());
+                        sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(sel.is_empty())));
                     }
                 }}
                 <Sidebar class="sidebar" display=show_sidebar layout=screen_layout>

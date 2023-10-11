@@ -47,7 +47,7 @@ where
         })
     }
 
-    fn selection(&self) -> Vec<T> {
+    pub fn selection(&self) -> Vec<T> {
         self.selection
             .clone()
             .into_iter()
