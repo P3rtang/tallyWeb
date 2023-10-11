@@ -434,13 +434,13 @@ form {
     }
 
     label {
-        display: block;
-        visibility: hidden;
+        display: none;
     }
 
     input[type="text"], input[type="password"] {
         font-size: 1.3em;
         height: 3rem;
+        margin: 8px 0px;
         padding-left: 16px;
 
         border-radius: 3em;
@@ -480,7 +480,7 @@ form {
             label {
                 color: #dddddd;
                 padding: 0px 16px 0px 8px;
-                visibility: unset;
+                display: block;
             }
 
             a {
@@ -627,6 +627,19 @@ form {
         display: grid;
         padding: 8px;
         grid-gap: 12px;
+
+        a.edit {
+            margin-left: 4px;
+            text-decoration: none;
+            color: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 3rem;
+            width: 3rem;
+            border-radius: 40px;
+            background: $interactable-bg-color-dark;
+        }
 
         .edit:not(.switch, .slider) {
             grid-column: 2;

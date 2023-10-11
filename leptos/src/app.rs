@@ -41,7 +41,7 @@ pub async fn create_account(
     password_repeat: String,
 ) -> Result<SessionUser, ServerFnError> {
     if password != password_repeat {
-        return Err(backend::LoginError::InvalidPassword.into());
+        Err(backend::LoginError::InvalidPassword)?;
     }
 
     let pool = backend::create_pool().await?;
@@ -53,6 +53,23 @@ pub async fn create_account(
     };
 
     return Ok(session_user);
+}
+
+#[server(ChangePassword, "/api")]
+pub async fn change_password(
+    username: String,
+    old_pass: String,
+    new_pass: String,
+    new_pass_repeat: String,
+) -> Result<(), ServerFnError> {
+    if new_pass != new_pass_repeat {
+        Err(backend::LoginError::InvalidPassword)?;
+    };
+
+    let pool = backend::create_pool().await?;
+    let _ = backend::auth::change_password(&pool, username, old_pass, new_pass).await?;
+
+    return Ok(());
 }
 
 #[server(GetUserIdFromName, "/api")]
@@ -445,6 +462,7 @@ pub fn App() -> impl IntoView {
 
                     <Route path="/login" view=LoginPage/>
                     <Route path="/create-account" view=CreateAccount/>
+                    <Route path="/change-password" view=NewPassword/>
                     <Route path="/privacy-policy" view=PrivacyPolicy/>
                     <Route path="/*any" view=NotFound/>
                 </Routes>

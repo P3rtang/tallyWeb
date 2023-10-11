@@ -90,6 +90,69 @@ pub async fn login_user(
     return Ok(user);
 }
 
+pub async fn change_password(
+    pool: &PgPool,
+    username: String,
+    old_pass: String,
+    new_pass: String,
+) -> Result<DbUser, impl DatabaseError> {
+    let user = match query_as!(
+        DbUser,
+        r#"
+        select * from users
+        where username = $1
+        "#,
+        username,
+    )
+    .fetch_one(pool)
+    .await
+    {
+        Ok(user) => user,
+        Err(_) => return Err(LoginError::InvalidUsername),
+    };
+
+    let parsed_hash = PasswordHash::new(&user.password).unwrap();
+    // Trait objects for algorithms to support
+    let algs: &[&dyn PasswordVerifier] = &[&Pbkdf2];
+    if let Err(_err) = parsed_hash.verify_password(algs, &old_pass) {
+        return Err(LoginError::InvalidPassword);
+    };
+
+    // generate salt
+    let salt = SaltString::generate(&mut OsRng);
+    let mut params = pbkdf2::Params::default();
+    params.rounds = 100_000;
+
+    // Hash password to PHC string ($pbkdf2-sha256$...
+    let hashed_password = Pbkdf2
+        .hash_password_customized(new_pass.as_bytes(), None, None, params, &salt)
+        // .hash_password(password.as_bytes(), &salt)
+        .unwrap()
+        .to_string();
+
+    let user = match query_as!(
+        DbUser,
+        r#"
+        update users
+        set password=$2
+        where username=$1
+
+        returning *
+        "#,
+        username,
+        hashed_password,
+    )
+    .fetch_one(pool)
+    .await
+    {
+        Ok(user) => user,
+        Err(sqlx::Error::RowNotFound) => return Err(LoginError::InvalidPassword),
+        Err(err) => Err(err)?,
+    };
+
+    return Ok(user);
+}
+
 pub async fn get_user(
     pool: &PgPool,
     username: String,

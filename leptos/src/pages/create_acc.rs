@@ -47,7 +47,8 @@ pub fn CreateAccount() -> impl IntoView {
         }
     };
 
-    view! {         <ActionForm action=action on:submit=on_submit>
+    view! {
+        <ActionForm action=action on:submit=on_submit>
             <div class="container login-form">
                 <h1>Sign Up</h1>
 
