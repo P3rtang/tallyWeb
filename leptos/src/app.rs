@@ -15,6 +15,7 @@ use std::{cmp::Ordering, fmt::Display};
 use crate::{elements::*, pages::*};
 
 pub type SelectionSignal = RwSignal<SelectionModel<ArcCountable, String>>;
+pub type SaveAllAction = Action<(SessionUser, CounterList), Result<(), ServerFnError>>;
 
 #[server(LoginUser, "/api", "Url", "login_user")]
 pub async fn login_user(username: String, password: String) -> Result<SessionUser, ServerFnError> {
@@ -234,6 +235,7 @@ async fn save_all(
     let phases = phases.unwrap_or_default();
 
     let user = backend::auth::get_user(&pool, username, token).await?;
+
     for counter in counters {
         backend::update_counter(&pool, counter.to_db(user.id).await).await?;
         for phase in counter.phase_list {
@@ -309,47 +311,36 @@ impl Display for AccountAccentColor {
     }
 }
 
-fn save(list: CounterList) -> Result<(), String> {
-    let user = use_context::<Memo<Option<SessionUser>>>().ok_or("User Context should Exist")?;
-    create_action(move |_: &()| {
-        save_all(
-            user.get_untracked().unwrap().username,
-            user.get_untracked().unwrap().token,
-            list.clone().into(),
-            None,
-        )
-    })
-    .dispatch(());
-    return Ok(());
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Notification {
-    None,
-    Message(String),
-    Error(String),
-}
-
-impl Notification {
-    fn is_some(&self) -> bool {
-        self != &Self::None
-    }
-
-    fn get_text(&self) -> String {
-        match self {
-            Notification::None => String::new(),
-            Notification::Message(msg) => msg.to_string(),
-            Notification::Error(msg) => msg.to_string(),
-        }
-    }
-}
-
 #[component]
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
 
     let user = create_rw_signal(None::<SessionUser>);
+    create_effect(move |_| {
+        user.set(SessionUser::from_storage());
+    });
+
+    let msg = Message::new(Duration::seconds(5));
+    provide_context(msg);
+
+    let save_all = create_action(move |(user, list): &(SessionUser, CounterList)| {
+        save_all(
+            user.username.clone(),
+            user.token.clone(),
+            list.clone().into(),
+            None,
+        )
+    });
+    provide_context(save_all);
+
+    create_effect(move |_| {
+        if let Some(Err(_err)) = save_all.value().get() {
+            msg.set_message("Token Expired");
+            navigate("/login")
+        }
+    });
+
     let user_memo = create_memo(move |_| user());
     provide_context(user);
     provide_context(user_memo);
@@ -359,8 +350,6 @@ pub fn App() -> impl IntoView {
 
     let change_flag_buffer = create_rw_signal(Vec::<ChangeFlag>::new());
     provide_context(change_flag_buffer);
-
-    create_effect(move |_| {});
 
     let close_overlays = move |_| {
         close_overlay_signal.update(|_| ());
@@ -409,16 +398,8 @@ pub fn App() -> impl IntoView {
         connect_on_window_resize(Box::new(handle_resize));
     });
 
-    let message = create_rw_signal(Notification::None);
-    let border_style = move || {
-        "color: tomato;
-        border: 2px solid tomato;"
-    };
-    provide_context(message);
-
     view! {
         // injects a stylesheet into the document <head>
-        // id=leptos means cargo-leptos will hot-reload this stylesheet
         <Stylesheet href="/pkg/tally_web.css"/>
         // <Stylesheet href="/stylers.css"/>
         // <Script src="https://kit.fontawesome.com/7173474e94.js" crossorigin="anonymous"/>
@@ -434,11 +415,6 @@ pub fn App() -> impl IntoView {
             >
                 { move || {
                     preferences.set(pref_resources.get().unwrap_or_default());
-                    create_effect(move |_| {
-                        request_animation_frame(move || {
-                            user.set(SessionUser::from_storage());
-                        })
-                    });
                 }}
             </Transition>
             <Navbar on:click=close_overlays/>
@@ -468,14 +444,8 @@ pub fn App() -> impl IntoView {
                     <Route path="/privacy-policy" view=PrivacyPolicy/>
                     <Route path="/*any" view=NotFound/>
                 </Routes>
-
-                <Show
-                    when=move || { message().is_some() }
-                        fallback=|| ()
-                >
-                    <b class="notification-box" style=border_style>{ move || { message().get_text() } }</b>
-                </Show>
             </main>
+            <MessageBox msg/>
         </Router>
     }
 }
@@ -510,26 +480,6 @@ fn save_timer(
     // only the milliseconds function is a const function
     const INTERVAL: Duration = Duration::milliseconds(10 * 1000);
 
-    let action = create_action(move |(): &()| {
-        save_all(
-            user.get_untracked().unwrap_or_default().username,
-            user.get_untracked().unwrap_or_default().token,
-            state.get_untracked().into(),
-            None,
-        )
-    });
-    create_effect(move |_| match action.value().get() {
-        Some(Err(_)) => {
-            let notification = expect_context::<RwSignal<Notification>>();
-            notification.set(Notification::Error(
-                "Could not save Counter\n
-                    Closing the tab will result in data loss"
-                    .into(),
-            ))
-        }
-        _ => {}
-    });
-
     create_effect(move |_| {
         set_interval(
             move || {
@@ -551,7 +501,7 @@ fn save_timer(
                 }
 
                 if do_save {
-                    action.dispatch(());
+                    expect_context::<SaveAllAction>().dispatch((user().unwrap(), state()));
                 }
 
                 save_flags.update(|s| s.clear());
@@ -628,14 +578,14 @@ fn connect_keys(
                 c.update(|c| c.add_count(1));
                 save_flags.update(|s| s.push(ChangeFlag::ChangeCountable(c.get_untracked())));
             });
-            state.update(|_| ())
+            state.try_update(|s| s.start());
         }),
         "Minus" => active.with(|list| {
             list.iter().for_each(|c| {
                 c.update(|c| c.add_count(-1));
                 save_flags.update(|s| s.push(ChangeFlag::ChangeCountable(c.get_untracked())));
             });
-            state.update(|_| ())
+            state.try_update(|s| s.start());
         }),
         "KeyP" => {
             state.try_update(|s| s.toggle_paused());
@@ -954,7 +904,7 @@ fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CounterList {
     pub list: Vec<ArcCountable>,
-    pub is_paused: bool,
+    is_paused: bool,
 }
 
 impl CounterList {
@@ -976,7 +926,14 @@ impl CounterList {
 
     pub fn toggle_paused(&mut self) {
         self.is_paused = !self.is_paused;
-        let _ = save(self.clone().into());
+        let user = expect_context::<Memo<Option<SessionUser>>>();
+        expect_context::<SaveAllAction>().dispatch((user().unwrap(), self.clone()))
+    }
+
+    pub fn start(&mut self) {
+        self.is_paused = false;
+        let user = expect_context::<Memo<Option<SessionUser>>>();
+        expect_context::<SaveAllAction>().dispatch((user().unwrap(), self.clone()))
     }
 
     pub fn sort_by(&mut self, compare: impl Fn(&ArcCountable, &ArcCountable) -> Ordering) {
@@ -1046,7 +1003,6 @@ impl SessionUser {
         if let Ok(Some(user)) = LocalStorage::get::<Option<SessionUser>>("user_session") {
             let (user, _) = create_signal(user);
             create_blocking_resource(user, move |user| async move {
-                // TODO: regenerate token
                 if get_id_from_username(user.username, user.token)
                     .await
                     .is_err()
