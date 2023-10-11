@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use leptos::{html::Input, *};
-use leptos_router::ActionForm;
+use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
 
 use crate::{
@@ -176,6 +176,10 @@ where
                         class="edit"
                         node_ref=i_show_separator
                     />
+                    <label class="title">Change Password</label>
+                    <A class="edit" href="/change-password">
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </A>
                 </div>
                 <div class="action-buttons">
                     <button type="button" on:click=undo_changes>
