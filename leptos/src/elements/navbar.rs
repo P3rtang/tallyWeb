@@ -24,7 +24,7 @@ pub fn Navbar() -> impl IntoView {
                 when=move || user().is_some()
                 fallback=|| view! { <div id="user-icon" style="background: #555555;"/> }
             >
-                { view! { <AccountIcon user=move || user.get().unwrap()/> } }
+                { view! { <AccountIcon user=move || user.get().unwrap_or_default()/> } }
             </Show>
         </nav>
     }
