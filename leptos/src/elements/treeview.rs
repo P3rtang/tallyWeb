@@ -10,7 +10,7 @@ use leptos::{ev::MouseEvent, *};
 #[derive(Debug, Clone)]
 pub struct SelectionModel<T, S>
 where
-    T: Clone + 'static + std::ops::Deref + Debug,
+    T: Clone + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
     items: HashMap<S, TreeNode<T, S>>,
@@ -21,7 +21,7 @@ where
 
 impl<T, S> SelectionModel<T, S>
 where
-    T: Clone + 'static + std::ops::Deref + Debug,
+    T: Clone + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
     pub fn new(accent_color: Option<Signal<String>>, selected: RwSignal<Vec<RwSignal<T>>>) -> Self {
@@ -87,7 +87,7 @@ pub fn TreeViewWidget<T, F, S, FS>(
     show_separator: FS,
 ) -> impl IntoView
 where
-    T: Clone + 'static + std::ops::Deref + Debug,
+    T: Clone + PartialEq + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
     F: Fn() -> Vec<T> + Copy + 'static,
     FS: Fn() -> bool + Copy + 'static,
@@ -137,10 +137,13 @@ fn TreeViewRow<T, S>(
     selection_model: RwSignal<SelectionModel<T, S>>,
 ) -> impl IntoView
 where
-    T: Clone + 'static + std::ops::Deref + Debug,
+    T: Clone + PartialEq + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
-    let (node, _) = create_signal(node);
+    let (key, _) = create_signal(node.get_key().clone());
+    let node = create_read_slice(selection_model, move |sm| {
+        sm.items.get(&key()).unwrap().clone()
+    });
 
     let child_class = move || {
         let mut class = String::from("nested ");
@@ -227,10 +230,10 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TreeNode<T, S>
 where
-    T: Clone + 'static + std::ops::Deref + Debug,
+    T: Clone + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
     pub key: fn(&T) -> S,
@@ -244,7 +247,7 @@ where
 
 impl<T, S> TreeNode<T, S>
 where
-    T: Clone + 'static + std::ops::Deref + Debug,
+    T: Clone + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
     pub fn new(
