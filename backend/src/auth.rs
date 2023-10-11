@@ -43,7 +43,7 @@ pub async fn insert_user(
         Err(err) => return Err(SignupError::Internal(err)),
     };
 
-    user.new_token(pool).await?;
+    user.new_token(pool, None).await?;
 
     return Ok(user);
 }
@@ -52,6 +52,7 @@ pub async fn login_user(
     pool: &PgPool,
     username: String,
     password: String,
+    remember: bool,
 ) -> Result<DbUser, impl DatabaseError> {
     let mut user = match query_as!(
         DbUser,
@@ -75,7 +76,13 @@ pub async fn login_user(
         return Err(LoginError::InvalidPassword);
     };
 
-    user.new_token(pool).await.map_err(|err| {
+    let dur = if remember {
+        Some(chrono::Duration::days(30))
+    } else {
+        None
+    };
+
+    user.new_token(pool, dur).await.map_err(|err| {
         println!("{err}");
         err
     })?;

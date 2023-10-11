@@ -56,7 +56,11 @@ pub fn LoginPage() -> impl IntoView {
                 />
 
                 <div class="action-buttons">
-                <button type="button" on:click= move |_| navigate( "/create-account")><i class="fa-solid fa-user-plus"></i></button>
+                    <div class="action-buttons-el">
+                        <input type="checkbox" name="remember" id="remember"/>
+                        <label for="remember">Remember Me</label>
+                    </div>
+                    <button type="button" on:click= move |_| navigate( "/create-account")><i class="fa-solid fa-user-plus"></i></button>
                     <button type="submit"><i class="fa-solid fa-right-to-bracket"></i></button>
                 </div>
             </div>

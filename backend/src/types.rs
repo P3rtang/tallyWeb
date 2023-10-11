@@ -1,3 +1,4 @@
+use chrono::{Duration, NaiveDateTime, Utc};
 use rand::Rng;
 use sqlx::{query, query_as, PgPool};
 
@@ -46,7 +47,11 @@ pub struct DbUser {
 }
 
 impl DbUser {
-    pub async fn new_token(&mut self, pool: &PgPool) -> Result<DbAuthToken, sqlx::error::Error> {
+    pub async fn new_token(
+        &mut self,
+        pool: &PgPool,
+        dur: Option<Duration>,
+    ) -> Result<DbAuthToken, sqlx::error::Error> {
         let mut rng = rand::thread_rng();
         let token_id: u128 = rng.gen();
 
@@ -63,13 +68,14 @@ impl DbUser {
         let token = query_as!(
             DbAuthToken,
             r#"
-            insert into auth_tokens (id, user_id)
-            values ($1, $2)
+            insert into auth_tokens (id, user_id, expire_on)
+            values ($1, $2, $3)
 
             returning *
             "#,
             format!("{:X}", token_id),
-            self.id
+            self.id,
+            (Utc::now() + dur.unwrap_or(Duration::days(1))).naive_utc()
         )
         .fetch_one(pool)
         .await?;

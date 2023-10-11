@@ -18,9 +18,13 @@ pub type SelectionSignal = RwSignal<SelectionModel<ArcCountable, String>>;
 pub type SaveAllAction = Action<(SessionUser, CounterList), Result<(), ServerFnError>>;
 
 #[server(LoginUser, "/api", "Url", "login_user")]
-pub async fn login_user(username: String, password: String) -> Result<SessionUser, ServerFnError> {
+pub async fn login_user(
+    username: String,
+    password: String,
+    remember: Option<String>,
+) -> Result<SessionUser, ServerFnError> {
     let pool = backend::create_pool().await?;
-    let user = backend::auth::login_user(&pool, username, password).await?;
+    let user = backend::auth::login_user(&pool, username, password, remember.is_some()).await?;
 
     let session_user = SessionUser {
         username: user.username,
