@@ -79,7 +79,7 @@ where
 
     let on_count_click = move |_| {
         countable.update(|c| c.add_count(1));
-        state.update(|s| s.is_paused = false)
+        state.update(|s| s.start())
     };
 
     let name = create_read_slice(countable, |c| c.get_name());
