@@ -15,6 +15,7 @@ use web_sys::MouseEvent;
 pub fn CountableContextMenu(
     show_overlay: RwSignal<bool>,
     location: ReadSignal<(i32, i32)>,
+    counters_resource: Resource<Option<SessionUser>, Vec<SerCounter>>,
     countable_id: i32,
     is_phase: bool,
 ) -> impl IntoView {
@@ -26,11 +27,11 @@ pub fn CountableContextMenu(
 
     let on_del_click = move |ev: MouseEvent| {
         ev.stop_propagation();
-        if let Some(_) = use_context::<RwSignal<Option<SessionUser>>>()
+        if let Some(_) = use_context::<Memo<Option<SessionUser>>>()
             .map(|s| s.get_untracked())
             .flatten()
         {
-            let user = expect_context::<RwSignal<Option<SessionUser>>>();
+            let user = expect_context::<Memo<Option<SessionUser>>>();
             spawn_local(async move {
                 if is_phase {
                     let _ = remove_phase(
@@ -48,7 +49,7 @@ pub fn CountableContextMenu(
                     .await;
                 }
                 create_effect(move |_| {
-                    expect_context::<Resource<Option<SessionUser>, Vec<SerCounter>>>().refetch();
+                    counters_resource.refetch()
                 });
             });
         }
