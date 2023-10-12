@@ -10,7 +10,7 @@ use leptos::{ev::MouseEvent, logging::log, *};
 use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
-use std::{cmp::Ordering, fmt::Display};
+use std::fmt::Display;
 
 use crate::{elements::*, pages::*};
 
@@ -636,12 +636,6 @@ pub fn HomePage() -> impl IntoView {
     provide_context(data);
     let list = CounterList::new(&[]);
     let state = create_rw_signal(list);
-    let sort_method = create_rw_signal(SortCountable::CreatedAt(true));
-
-    create_effect(move |_| {
-        state.get();
-        state.update(|s| s.sort_by(move |a, b| sort_method().sort_by()(a, b)));
-    });
 
     provide_context(state);
 
@@ -753,9 +747,9 @@ pub fn HomePage() -> impl IntoView {
                     }
                 }}
                 <Sidebar class="sidebar" display=show_sidebar layout=screen_layout>
-                    <SortSearch sort_method shown=show_sort_search/>
+                    <SortSearch list=state shown=show_sort_search/>
                     <TreeViewWidget
-                        each=move || { state.get().list }
+                        each=move || { state.get().get_filtered_list() }
                         key=|countable| countable.get_uuid()
                         each_child=|countable| countable.get_children()
                         view=|node| {
@@ -930,6 +924,8 @@ fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CounterList {
     pub list: Vec<ArcCountable>,
+    search: Option<String>,
+    pub sort: SortCountable,
     is_paused: bool,
 }
 
@@ -940,6 +936,8 @@ impl CounterList {
                 .into_iter()
                 .map(|c| ArcCountable::new(Box::new(c.clone())))
                 .collect(),
+            search: None,
+            sort: SortCountable::Name(false),
             is_paused: true,
         };
     }
@@ -962,8 +960,39 @@ impl CounterList {
         expect_context::<SaveAllAction>().dispatch((user().unwrap(), self.clone()))
     }
 
-    pub fn sort_by(&mut self, compare: impl Fn(&ArcCountable, &ArcCountable) -> Ordering) {
-        self.list.sort_by(|a, b| compare(&a, &b))
+    pub fn search(&mut self, value: &str) {
+        self.search = Some(value.to_lowercase().to_string())
+    }
+
+    pub fn get_filtered_list(&mut self) -> Vec<ArcCountable> {
+        self.list.sort_by(self.sort.sort_by());
+        return if let Some(search) = &self.search {
+            let mut list_starts_with = Vec::new();
+            let mut child_starts_with = Vec::new();
+            let mut list_contains = Vec::new();
+            let mut child_contains = Vec::new();
+
+            for counter in self.list.iter() {
+                let name = counter.get_name().to_lowercase();
+                if name.starts_with(search) {
+                    list_starts_with.push(counter.clone())
+                } else if counter.has_child_starts_with(search) {
+                    child_starts_with.push(counter.clone())
+                } else if name.contains(search) {
+                    list_contains.push(counter.clone())
+                } else if counter.has_child_contains(search) {
+                    child_contains.push(counter.clone())
+                }
+            }
+
+            list_starts_with.append(&mut child_starts_with);
+            list_starts_with.append(&mut list_contains);
+            list_starts_with.append(&mut child_contains);
+
+            return list_starts_with;
+        } else {
+            self.list.clone()
+        };
     }
 }
 
@@ -988,6 +1017,8 @@ impl From<Vec<SerCounter>> for CounterList {
             .collect();
         return Self {
             list,
+            search: None,
+            sort: SortCountable::Name(false),
             is_paused: true,
         };
     }

@@ -1,4 +1,4 @@
-use chrono::{Duration, NaiveDateTime, Utc};
+use chrono::{Duration, Utc};
 use rand::Rng;
 use sqlx::{query, query_as, PgPool};
 

@@ -104,6 +104,22 @@ impl ArcCountable {
             .map(|c| c.created_at())
             .unwrap_or_default()
     }
+
+    pub fn has_child_starts_with(&self, pat: &str) -> bool {
+        let mut has_child = self.get_name().to_lowercase().starts_with(pat);
+        for child in self.get_children() {
+            has_child |= child.has_child_starts_with(pat)
+        }
+        return has_child
+    }
+
+    pub fn has_child_contains(&self, pat: &str) -> bool {
+        let mut contains = self.get_name().to_lowercase().contains(pat);
+        for child in self.get_children() {
+            contains |= child.has_child_contains(pat)
+        }
+        return contains
+    }
 }
 
 impl PartialEq for ArcCountable {
@@ -751,7 +767,7 @@ impl Countable for Phase {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SortCountable {
     Id(bool),
     Name(bool),

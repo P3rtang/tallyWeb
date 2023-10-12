@@ -21,6 +21,7 @@ input::-webkit-inner-spin-button {
 
 input[type=number]{
     -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 nav {
@@ -836,7 +837,7 @@ input:checked + .slider:before {
     height: 2.4rem;
     display: flex;
 
-    #search {
+    #search-button {
         height: 2.4rem;
         width: 2.4rem;
         font-size: 1.1rem;
@@ -845,8 +846,19 @@ input:checked + .slider:before {
         align-content: center;
         align-items: center;
         display: flex;
-        display: none;
         justify-content: center;
+    }
+
+    #search-input {
+        font-size: 1.1em;
+        height: 2.25rem;
+        width: 12rem;
+        padding-left: 16px;
+
+        border-radius: 3em;
+        border: none;
+        outline: none;
+        background: $interactable-bg-color-dark;
     }
 
     #sort {

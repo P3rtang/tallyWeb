@@ -42,7 +42,7 @@ where
                     <i class="fa-solid fa-link"></i>
                 </a>
                 <label class="title">Version</label>
-                <label class="info">0.2.3</label>
+                <label class="info">0.2.4</label>
             </div>
             <div class="actionbuttons">
                 <button
