@@ -428,6 +428,8 @@ pub fn App() -> impl IntoView {
         <Link href="/fa/css/all.css" rel="stylesheet"/>
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg"/>
         <Meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <Meta name="apple-mobile-web-app-capable" content="yes"/>
+
         <Title text="TallyWeb"/>
 
         <Router>
