@@ -823,8 +823,21 @@ impl From<String> for SortCountable {
             "Name" => SortCountable::Name(false),
             "Count" => SortCountable::Count(false),
             "Time" => SortCountable::Time(false),
+            "Id" => SortCountable::Id(false),
             "CreatedAt" => SortCountable::CreatedAt(false),
             _ => SortCountable::Id(false),
+        }
+    }
+}
+
+impl Into<&str> for SortCountable {
+    fn into(self) -> &'static str {
+        match self {
+            SortCountable::Id(_) => "Id",
+            SortCountable::Name(_) => "Name",
+            SortCountable::Count(_) => "Count",
+            SortCountable::Time(_) => "Time",
+            SortCountable::CreatedAt(_) => "CreatedAt",
         }
     }
 }

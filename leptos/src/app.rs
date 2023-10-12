@@ -616,7 +616,7 @@ fn connect_keys(
     });
 }
 
-// #[component]
+#[component]
 pub fn HomePage() -> impl IntoView {
     let session_user = expect_context::<Memo<Option<SessionUser>>>();
     let user = expect_context::<RwSignal<Option<SessionUser>>>();
@@ -636,7 +636,7 @@ pub fn HomePage() -> impl IntoView {
     provide_context(data);
     let list = CounterList::new(&[]);
     let state = create_rw_signal(list);
-    let sort_method = create_rw_signal(SortCountable::Count(true));
+    let sort_method = create_rw_signal(SortCountable::CreatedAt(true));
 
     create_effect(move |_| {
         state.get();
@@ -832,6 +832,7 @@ where
 #[component]
 fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView {
     let user = expect_context::<Memo<Option<SessionUser>>>();
+    let data = expect_context::<Resource<Option<SessionUser>, Vec<SerCounter>>>();
 
     let countable = create_read_slice(node, |node| node.row.clone());
 
@@ -918,6 +919,7 @@ fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView 
     <CountableContextMenu
         show_overlay=show_context_menu
         location=click_location
+        counters_resource=data
         countable_id=id
         is_phase=!has_children
     />

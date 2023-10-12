@@ -17,6 +17,10 @@ where
         )
     };
 
+    create_effect(move |_| {
+        select_sort().map(|rf| rf.set_value(sort_method.get_untracked().into()))
+    });
+
     let reverse_order = move |_| sort_method.update(|s| *s = s.toggle());
     let arrow = move || {
         if sort_method().is_reversed() {
