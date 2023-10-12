@@ -883,6 +883,7 @@ fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView 
     let (click_location, set_click_location) = create_signal((0, 0));
     let on_right_click = move |ev: MouseEvent| {
         ev.prevent_default();
+        expect_context::<RwSignal<CloseOverlays>>().update(|_| ());
         show_context_menu.set(!show_context_menu());
         set_click_location((ev.x(), ev.y()))
     };
