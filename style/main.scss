@@ -829,13 +829,24 @@ input:checked + .slider:before {
 }
 
 @keyframes slide {
-  100% { left: 0; }
+    100% { left: 0; }
 }
 
 #sort-search {
     padding: 8px 8px 0px 8px;
     height: 2.4rem;
     display: flex;
+
+    #search {
+        flex-grow: 1;
+        padding-left: 16px;
+        margin-right: 16px;
+
+        border-radius: 3em;
+        border: none;
+        outline: none;
+        background: $interactable-bg-color-dark;
+    }
 
     #search-button {
         height: 2.4rem;
@@ -850,15 +861,12 @@ input:checked + .slider:before {
     }
 
     #search-input {
+        outline: none;
+        border: none;
+        width: calc(100% - 16px);
         font-size: 1.1em;
         height: 2.25rem;
-        width: 12rem;
-        padding-left: 16px;
-
-        border-radius: 3em;
-        border: none;
-        outline: none;
-        background: $interactable-bg-color-dark;
+        background: transparent;
     }
 
     #sort {
