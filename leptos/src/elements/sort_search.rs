@@ -42,6 +42,7 @@ where
             let _ = search_input().unwrap().blur();
         }
         list.update(|l| l.search(&search_input().unwrap().value()));
+        ev.stop_propagation();
     };
 
     view! {
@@ -63,16 +64,18 @@ where
                     </button>
                 }
             >
-                <input
-                    id="search-input"
-                    node_ref=search_input
-                    on:keyup=on_search
-                    on:focusout=move |_| {
-                        if search_input().map(|si| si.value() == "").unwrap_or_default() {
-                            is_searching.set(false)
+                <div id="search">
+                    <input
+                        id="search-input"
+                        node_ref=search_input
+                        on:keyup=on_search
+                        on:focusout=move |_| {
+                            if search_input().map(|si| si.value() == "").unwrap_or_default() {
+                                is_searching.set(false)
+                            }
                         }
-                    }
-                />
+                    />
+                </div>
             </Show>
             <div id="sort">
                 <button on:click=reverse_order>
