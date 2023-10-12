@@ -1,4 +1,4 @@
-use leptos::{*, logging::log};
+use leptos::*;
 use web_sys::KeyboardEvent;
 
 use crate::app::CounterList;
@@ -39,7 +39,7 @@ where
 
     let on_search = move |ev: KeyboardEvent| {
         if ev.key() == "Escape" || ev.key() == "Enter" {
-            search_input().unwrap().blur();
+            let _ = search_input().unwrap().blur();
         }
         list.update(|l| l.search(&search_input().unwrap().value()));
     };
@@ -66,7 +66,7 @@ where
                 <input
                     id="search-input"
                     node_ref=search_input
-                    on:keydown=on_search
+                    on:keyup=on_search
                     on:focusout=move |_| {
                         if search_input().map(|si| si.value() == "").unwrap_or_default() {
                             is_searching.set(false)
