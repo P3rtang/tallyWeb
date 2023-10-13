@@ -2,9 +2,9 @@
 
 ## About
 ### website
-visit [tallyWeb](https://tallyweb.p3rtang.me) for a demo
+visit [tallyWeb](https://tally-web.com) for a public version of the site
 
-### like tallyGo
+### Shiny Pokemon
 Meant to keep track of hunting shiny pokemon,
 but can be used for anything that a counter with timer is useful for
 
@@ -25,13 +25,17 @@ if you have a request for a feature open an issue
 - [x] basic functionality
 - [x] backend stable
 
-### V0.2
+### V0.2.*
 - [x] more infobox information
 - [x] sort and search the treeview
-- [ ] counters can hold subcounters (not just phases)
-- [ ] progress calculation for more hunting method (e.g DexNav, Raids...)
+- [ ] progress calculation for more hunting methods (e.g DexNav, Raids...)
 
 ### V0.3
+- [ ] counters can hold subcounters (not just phases)
+- [ ] custom infobox layout with reorderable widgets
+
+### V0.4
+- [ ] your own server with a docker image
 - [ ] without account support
 - [ ] offline support
 - [ ] ...
