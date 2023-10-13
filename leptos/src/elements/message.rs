@@ -19,8 +19,8 @@ impl Message {
         self.msg
     }
 
-    pub fn set_message(&self, msg: &'static str) {
-        self.msg.set(Notification::Message(msg));
+    pub fn set_message<'a>(&'a self, msg: &'a str) {
+        self.msg.set(Notification::Message(msg.to_string()));
         let msg = self.msg.clone();
         let reset_time = self.reset_time.clone();
         create_effect(move |_| {
@@ -31,16 +31,16 @@ impl Message {
         });
     }
 
-    pub fn set_error(&self, err: &'static str) {
-        self.msg.set(Notification::Error(err));
+    pub fn set_error<'a>(&self, err: &'a str) {
+        self.msg.set(Notification::Error(err.to_string()));
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Notification {
     None,
-    Message(&'static str),
-    Error(&'static str),
+    Message(String),
+    Error(String),
 }
 
 impl Notification {

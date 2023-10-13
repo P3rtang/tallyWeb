@@ -21,6 +21,18 @@ pub enum SignupError {
 
 impl DatabaseError for SignupError {}
 
+#[derive(Debug, thiserror::Error)]
+pub enum ChangeUserError {
+    #[error("Username already exists")]
+    UserExists,
+    #[error("User provided the wrong password")]
+    InvalidPassword(#[from] AuthorizationError),
+    #[error("Internal Server error when modifying user")]
+    Internal(#[from] sqlx::Error),
+}
+
+impl DatabaseError for ChangeUserError {}
+
 #[derive(Debug, Error)]
 pub enum LoginError {
     #[error("Account does not exist")]
@@ -41,6 +53,8 @@ pub enum AuthorizationError {
     InvalidToken,
     #[error("Provided Username does not exist")]
     UserNotFound,
+    #[error("Provided Password is incorrect")]
+    InvalidPassword,
     #[error("Internal Server error when checking AuthToken")]
     Internal(#[from] sqlx::Error),
 }
@@ -276,4 +290,12 @@ pub async fn remove_phase(pool: &PgPool, phase_id: i32) -> Result<(), sqlx::erro
     .await?;
 
     return Ok(());
+}
+
+pub async fn migrate() -> Result<(), sqlx::Error> {
+    let pool = create_pool().await?;
+
+    sqlx::migrate!("../migrations").run(&pool).await?;
+
+    return Ok(())
 }
