@@ -44,6 +44,7 @@ pub struct DbUser {
     pub username: String,
     pub password: String,
     pub token: Option<String>,
+    pub email: Option<String>,
 }
 
 impl DbUser {

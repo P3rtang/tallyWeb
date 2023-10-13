@@ -332,6 +332,15 @@ impl Display for AccountAccentColor {
     }
 }
 
+#[allow(dead_code)]
+fn set_fullscreen() {
+    create_effect(|_| {
+        log!("{}", document().fullscreen());
+        let _ = document().document_element().unwrap().request_fullscreen();
+        log!("{}", document().fullscreen());
+    });
+}
+
 #[component]
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
@@ -464,6 +473,7 @@ pub fn App() -> impl IntoView {
 
                     <Route path="/login" view=LoginPage/>
                     <Route path="/create-account" view=CreateAccount/>
+                    <Route path="/change-username" view=move || view!{ <ChangeAccountInfo user/> }/>
                     <Route path="/change-password" view=NewPassword/>
                     <Route path="/privacy-policy" view=PrivacyPolicy/>
                     <Route path="/*any" view=NotFound/>

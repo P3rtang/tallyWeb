@@ -176,6 +176,10 @@ where
                         class="edit"
                         node_ref=i_show_separator
                     />
+                    <label class="title">Change Username</label>
+                    <A class="edit" href="/change-username">
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </A>
                     <label class="title">Change Password</label>
                     <A class="edit" href="/change-password">
                         <i class="fa-solid fa-arrow-right"></i>

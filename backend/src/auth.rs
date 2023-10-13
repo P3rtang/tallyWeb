@@ -4,7 +4,10 @@ use pbkdf2::{
 };
 use sqlx::{query_as, PgPool};
 
-use crate::{AuthorizationError, DatabaseError, DbUser, LoginError, SignupError, TokenStatus};
+use crate::{
+    AuthorizationError, ChangeUserError, DatabaseError, DbUser, LoginError, SignupError,
+    TokenStatus,
+};
 
 pub async fn insert_user(
     pool: &PgPool,
@@ -151,6 +154,65 @@ pub async fn change_password(
     };
 
     return Ok(user);
+}
+
+pub async fn change_username(
+    pool: &PgPool,
+    old_username: String,
+    new_username: String,
+    password: String,
+) -> Result<DbUser, ChangeUserError> {
+    check_pass(pool, &old_username, &password).await?;
+
+    let user = match query_as!(
+        DbUser,
+        r#"
+        update users
+        set username=$2
+        where username=$1
+
+        returning *
+        "#,
+        old_username,
+        new_username,
+    )
+    .fetch_one(pool)
+    .await
+    {
+        Ok(user) => user,
+        Err(sqlx::Error::Database(err)) if err.constraint() == Some("users_username_key") => {
+            Err(ChangeUserError::UserExists)?
+        }
+        Err(err) => Err(err)?,
+    };
+
+    return Ok(user);
+
+}
+pub async fn check_pass(
+    pool: &PgPool,
+    username: &str,
+    password: &str,
+) -> Result<(), AuthorizationError> {
+    let user = query_as!(
+        DbUser,
+        r#"
+        select * from users
+        where username = $1
+        "#,
+        username,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    let parsed_hash = PasswordHash::new(&user.password).unwrap();
+    // Trait objects for algorithms to support
+    let algs: &[&dyn PasswordVerifier] = &[&Pbkdf2];
+    if let Err(_err) = parsed_hash.verify_password(algs, &password) {
+        Err(AuthorizationError::InvalidPassword)?;
+    };
+
+    return Ok(());
 }
 
 pub async fn get_user(
