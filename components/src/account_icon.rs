@@ -1,10 +1,8 @@
 #![allow(non_snake_case)]
 
-use crate::app::SessionUser;
+use super::*;
 use leptos::{logging::debug_warn, *};
 use leptos_router::A;
-
-use super::*;
 
 pub fn letter_to_three_digit_hash(letter: char) -> String {
     use rand::{Rng, SeedableRng};
@@ -20,23 +18,26 @@ pub fn letter_to_three_digit_hash(letter: char) -> String {
 }
 
 #[component]
-pub fn AccountIcon<F>(user: F) -> impl IntoView
+pub fn AccountIcon<F>(
+    username: F,
+    #[prop(optional)] accent_color: Option<Signal<String>>,
+) -> impl IntoView
 where
-    F: Fn() -> SessionUser + 'static,
+    F: Fn() -> String + 'static,
 {
     let initial = move || {
-        user()
-            .username
+        username()
             .chars()
             .next()
             .map(|c| c.to_uppercase().to_string())
             .unwrap_or_default()
     };
 
-    let preferences = expect_context::<RwSignal<crate::app::Preferences>>();
-    let style = create_read_slice(preferences, |pref| {
-        format!("background-color: {};", pref.accent_color.0)
-    });
+    let button_style = move || {
+        accent_color
+            .map(|ac| format!("background: {};", ac()))
+            .unwrap_or_default()
+    };
 
     let show_overlay = create_rw_signal(false);
     let open_overlay = move |ev: web_sys::MouseEvent| {
@@ -45,15 +46,23 @@ where
     };
 
     view! {
-        <div id="user-icon" style=style on:click=open_overlay>
+        <div id="user-icon" style=button_style on:click=open_overlay>
             <b>{ move || { initial() }}</b>
         </div>
-        <AccountOverlay show_overlay=show_overlay/>
+        <Show
+            when=move || accent_color.is_some()
+            fallback=move || view!{ <AccountOverlay show_overlay/> }
+        >
+            <AccountOverlay show_overlay accent_color=accent_color.unwrap()/>
+        </Show>
     }
 }
 
 #[component]
-pub fn AccountOverlay(show_overlay: RwSignal<bool>) -> impl IntoView {
+pub fn AccountOverlay(
+    show_overlay: RwSignal<bool>,
+    #[prop(optional)] accent_color: Option<Signal<String>>,
+) -> impl IntoView {
     if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>() {
         create_effect(move |_| {
             close_signal.get();
@@ -65,8 +74,11 @@ pub fn AccountOverlay(show_overlay: RwSignal<bool>) -> impl IntoView {
 
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
 
-    let preferences = expect_context::<RwSignal<crate::app::Preferences>>();
-    let border_style = move || format!("border: 2px solid {}", preferences.get().accent_color);
+    let border_style = move || {
+        accent_color
+            .map(|ac| format!("border: 2px solid {};", ac()))
+            .unwrap_or_default()
+    };
 
     let show_about = create_rw_signal(false);
 
@@ -94,7 +106,13 @@ pub fn AccountOverlay(show_overlay: RwSignal<bool>) -> impl IntoView {
                 />
             </div>
         </Show>
-        <AboutDialog open=show_about layout=screen_layout/>
+
+        <Show
+            when=move || accent_color.is_some()
+            fallback=move || view!{ <AboutDialog open=show_about layout=screen_layout/> }
+        >
+            <AboutDialog open=show_about layout=screen_layout accent_color=accent_color.unwrap()/>
+        </Show>
     }
 }
 

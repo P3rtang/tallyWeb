@@ -28,9 +28,9 @@ if you have a request for a feature open an issue
 ### V0.2.*
 - [x] more infobox information
 - [x] sort and search the treeview
-- [ ] progress calculation for more hunting methods (e.g DexNav, Raids...)
 
 ### V0.3
+- [ ] progress calculation for more hunting methods (e.g DexNav, Raids...)
 - [ ] counters can hold subcounters (not just phases)
 - [ ] custom infobox layout with reorderable widgets
 

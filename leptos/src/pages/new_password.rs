@@ -3,7 +3,7 @@ use leptos_router::ActionForm;
 use web_sys::SubmitEvent;
 
 use super::*;
-use crate::elements::{LoadingScreen, Message};
+use components::{LoadingScreen, Message};
 
 #[component]
 pub fn NewPassword() -> impl IntoView {

@@ -1,9 +1,13 @@
 use leptos::{html::Dialog, *};
 
-use crate::elements::ScreenLayout;
+use super::*;
 
 #[component]
-pub fn AboutDialog<F>(open: RwSignal<bool>, layout: F) -> impl IntoView
+pub fn AboutDialog<F>(
+    open: RwSignal<bool>,
+    layout: F,
+    #[prop(optional)] accent_color: Option<Signal<String>>,
+) -> impl IntoView
 where
     F: Fn() -> ScreenLayout + Copy + 'static,
 {
@@ -18,14 +22,17 @@ where
         });
     });
 
-    let preferences = expect_context::<RwSignal<crate::app::Preferences>>();
-    let border_style = create_read_slice(preferences, |pref| {
-        format!("border: 2px solid {};", pref.accent_color.0)
-    });
+    let border_style = move || {
+        accent_color
+            .map(|ac| format!("border: 2px solid {};", ac()))
+            .unwrap_or_default()
+    };
 
-    let button_style = create_read_slice(preferences, |pref| {
-        format!("background: {};", pref.accent_color.0)
-    });
+    let button_style = move || {
+        accent_color
+            .map(|ac| format!("background: {};", ac()))
+            .unwrap_or_default()
+    };
 
     let class = move || match layout() {
         ScreenLayout::Small => format!("overlay"),

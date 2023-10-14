@@ -2,6 +2,7 @@
 #![allow(non_snake_case)]
 
 use chrono::Duration;
+use components::ScreenLayout;
 use leptos::{
     html::{Input, Select},
     *,
@@ -12,7 +13,6 @@ use web_sys::{Event, SubmitEvent};
 use crate::{
     app::{navigate, update_counter, update_phase, Preferences, SessionUser},
     countable::{Countable, Hunttype},
-    elements::ScreenLayout,
 };
 
 #[component]

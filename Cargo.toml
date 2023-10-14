@@ -1,5 +1,5 @@
 [workspace]
-members = [ "leptos", "backend" ]
+members = [ "leptos", "backend", "components" ]
 resolver = "2"
 
 # Defines a size-optimized profile for the WASM bundle in release mode

@@ -1,0 +1,64 @@
+mod about;
+mod account_icon;
+mod loading_screen;
+mod message;
+mod sidebar;
+mod slider;
+mod treeview;
+pub use about::*;
+pub use account_icon::*;
+pub use loading_screen::*;
+pub use message::*;
+pub use sidebar::*;
+pub use slider::*;
+pub use treeview::*;
+
+use leptos::{logging::warn, *};
+
+#[derive(Debug, Clone)]
+pub struct CloseOverlays();
+
+#[component]
+pub fn Overlay(
+    show_overlay: RwSignal<bool>,
+    accent_color: Option<Signal<String>>,
+    location: ReadSignal<(i32, i32)>,
+    children: ChildrenFn,
+) -> impl IntoView
+where {
+    if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>() {
+        create_effect(move |_| {
+            close_signal.get();
+            show_overlay.set(false);
+        });
+    } else {
+        warn!("No `close overlay` signal available");
+    }
+
+    let border_style = move || {
+        format!(
+            "border: 2px solid {};",
+            accent_color.map(|ac| ac()).unwrap_or(String::new())
+        )
+    };
+
+    let location_style = move || {
+        format!(
+            "left: {}px; top: {}px;",
+            location().0 + 10,
+            location().1 + 10
+        )
+    };
+
+    view! {
+        <Show
+            when=move || { show_overlay.get() }
+            fallback=|| ()
+        >
+            <div
+                class="overlay"
+                style={ border_style() + &location_style() }
+            >{ children() }</div>
+        </Show>
+    }
+}

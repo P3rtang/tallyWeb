@@ -1,12 +1,10 @@
 #![allow(unused_braces)]
-use leptos::{html::Input, *};
+use components::{Message, ScreenLayout, Slider, LoadingScreen};
+use leptos::*;
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
 
-use crate::{
-    app::{save_preferences, Preferences, SavePreferences, SessionUser},
-    elements::{ScreenLayout, Slider},
-};
+use crate::app::{save_preferences, Preferences, SavePreferences, SessionUser};
 
 #[component]
 pub fn PreferencesWindow<F>(layout: F) -> impl IntoView
@@ -15,13 +13,10 @@ where
 {
     let pref_resource = expect_context::<Resource<Option<SessionUser>, Preferences>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
-
+    let message = expect_context::<Message>();
     let user = expect_context::<RwSignal<Option<SessionUser>>>();
-    create_effect(move |_| {
-        request_animation_frame(move || {
-            user.set(SessionUser::from_storage());
-        })
-    });
+
+    let action = create_server_action::<SavePreferences>();
 
     let use_default_accent_color = create_slice(
         preferences,
@@ -41,19 +36,20 @@ where
         |pref, new| pref.show_separator = new,
     );
 
-    let action = create_server_action::<SavePreferences>();
-    let message = expect_context::<crate::elements::Message>();
+    let undo_changes = move |_| {
+        pref_resource.refetch();
+    };
 
-    let i_accent_color: NodeRef<Input> = create_node_ref();
-
-    create_effect(move |_| {
-        i_accent_color().map(|i| i.set_value(&accent_color()));
-    });
+    let on_change = move |ev: Event| {
+        let color = event_target_value(&ev);
+        if color.len() == 0 {
+            ev.prevent_default()
+        }
+        set_accent_color(color)
+    };
 
     let on_submit = move |ev: SubmitEvent| {
         ev.prevent_default();
-        set_accent_color(i_accent_color().map(|i| i.value()).unwrap_or_default());
-
         let action = create_action(async move |_: &()| -> Result<(), ServerFnError> {
             let user = user.get_untracked().unwrap();
 
@@ -68,31 +64,12 @@ where
     };
 
     let border_style = move || format!("border: 2px solid {};", accent_color.get());
-
-    let on_change = move |ev: Event| {
-        let color = event_target_value(&ev);
-        if color.len() == 0 {
-            ev.prevent_default()
-        }
-        set_accent_color(color)
-    };
-
-    let confirm_style = create_read_slice(preferences, move |pref| {
-        format!("background-color: {}", pref.accent_color.0)
-    });
-
-    let undo_changes = move |_| {
-        pref_resource.refetch();
-    };
+    let confirm_style = move || format!("background-color: {}", accent_color.get());
 
     view! {
-        <Suspense
-            fallback=|| ()
-        >
-        {
-            pref_resource();
-        }
-        <Show when=move || user().is_some() fallback=|| ()>
+        <Suspense fallback=LoadingScreen> { pref_resource(); }
+        <Show when=move || user().is_some() fallback=LoadingScreen>
+
         <ActionForm action=action on:submit=on_submit class="parent-form">
             <div class={ move || String::from("editing-form ") + layout().get_class() } style=border_style>
                 <div class="content">
@@ -105,7 +82,6 @@ where
                                       p.accent_color
                                           .set_user(&user.get_untracked().unwrap_or_default())
                                   });
-                                  i_accent_color().map(|i| i.set_value(&accent_color()));
                               }
                           })
                     }}
@@ -116,9 +92,9 @@ where
                         name="accent_color"
                         id="accent_color"
                         class="edit"
-                        node_ref=i_accent_color
                         on:input=on_change
                         prop:disabled=move || use_default_accent_color.0()
+                        prop:value=accent_color
                     />
 
                     <label for="show_separator" class="title">Show Treeview Separator</label>
@@ -143,6 +119,7 @@ where
                 </div>
             </div>
         </ActionForm>
+
         </Show>
         </Suspense>
     }
