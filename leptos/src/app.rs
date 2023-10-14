@@ -1,9 +1,6 @@
-#![allow(unused_braces)]
-#![allow(elided_lifetimes_in_associated_constant)]
-#![allow(non_snake_case)]
-
 use crate::countable::*;
 use chrono::Duration;
+use components::*;
 use gloo_storage::{LocalStorage, Storage};
 use js_sys::Date;
 use leptos::{ev::MouseEvent, logging::log, *};
@@ -837,6 +834,8 @@ where
 fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView {
     let user = expect_context::<Memo<Option<SessionUser>>>();
     let data = expect_context::<Resource<Option<SessionUser>, Vec<SerCounter>>>();
+    let preferences = expect_context::<RwSignal<Preferences>>();
+    let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
 
     let countable = create_read_slice(node, |node| node.row.clone());
 
@@ -927,6 +926,7 @@ fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView 
         counters_resource=data
         countable_id=id
         is_phase=!has_children
+        accent_color
     />
     }
 }

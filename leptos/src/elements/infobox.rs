@@ -1,12 +1,12 @@
 #![allow(non_snake_case)]
 
 use chrono::Duration;
+use components::ScreenLayout;
 use leptos::*;
 
 use crate::{
     app::{CounterList, Progressbar},
     countable::ArcCountable,
-    elements::ScreenLayout,
 };
 
 #[component]

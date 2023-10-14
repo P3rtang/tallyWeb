@@ -6,7 +6,7 @@ use crate::{
     countable::SerCounter,
 };
 
-use super::*;
+use components::{CloseOverlays, Overlay};
 use leptos::*;
 use leptos_router::A;
 use web_sys::MouseEvent;
@@ -18,6 +18,7 @@ pub fn CountableContextMenu(
     counters_resource: Resource<Option<SessionUser>, Vec<SerCounter>>,
     countable_id: i32,
     is_phase: bool,
+    #[prop(optional)] accent_color: Option<Signal<String>>,
 ) -> impl IntoView {
     let edit_location = format!(
         "/edit/{}/{}",
@@ -48,15 +49,13 @@ pub fn CountableContextMenu(
                     )
                     .await;
                 }
-                create_effect(move |_| {
-                    counters_resource.refetch()
-                });
+                create_effect(move |_| counters_resource.refetch());
             });
         }
     };
 
     view! {
-        <Overlay show_overlay=show_overlay location=location>
+        <Overlay show_overlay=show_overlay location=location accent_color>
             <ContextMenuNav href=edit_location.clone()>
                 <span>Edit</span>
             </ContextMenuNav>
