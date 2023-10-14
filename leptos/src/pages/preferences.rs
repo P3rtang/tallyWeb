@@ -1,14 +1,11 @@
 #![allow(unused_braces)]
-
-use std::time::Duration;
-
 use leptos::{html::Input, *};
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
 
 use crate::{
     app::{save_preferences, Preferences, SavePreferences, SessionUser},
-    elements::ScreenLayout,
+    elements::{ScreenLayout, Slider},
 };
 
 #[component]
@@ -26,7 +23,7 @@ where
         })
     });
 
-    let (use_default, set_default) = create_slice(
+    let use_default_accent_color = create_slice(
         preferences,
         |pref| pref.use_default_accent_color,
         |pref, new| pref.use_default_accent_color = new,
@@ -38,62 +35,36 @@ where
         |pref, new| pref.accent_color.0 = new,
     );
 
-    let (show_sep, set_sep) = create_slice(
+    let separator = create_slice(
         preferences,
         |pref| pref.show_separator,
         |pref, new| pref.show_separator = new,
     );
 
     let action = create_server_action::<SavePreferences>();
-    let message = create_rw_signal(None::<&'static str>);
+    let message = expect_context::<crate::elements::Message>();
 
-    let i_use_default: NodeRef<Input> = create_node_ref();
     let i_accent_color: NodeRef<Input> = create_node_ref();
-    let i_show_separator: NodeRef<Input> = create_node_ref();
 
     create_effect(move |_| {
         i_accent_color().map(|i| i.set_value(&accent_color()));
-        i_show_separator().map(|i| i.set_checked(show_sep()))
     });
 
     let on_submit = move |ev: SubmitEvent| {
         ev.prevent_default();
-        match accent_color().split('#').collect::<Vec<_>>()[..] {
-            ["", num]
-                if (num.len() == 3 || num.len() == 6) && i32::from_str_radix(num, 16).is_ok() => {}
-            [_] => message.set(Some("Color should start with `#`")),
-            ["", _] => message.set(Some("Color should be 3 or 6 characters in hexadecimal")),
-            [..] => message.set(Some("Invalid Color")),
-        }
-        set_timeout(
-            move || {
-                message.try_set(None);
-            },
-            Duration::from_secs(5),
-        );
-
-        set_default(i_use_default().map(|i| i.checked()).unwrap_or_default());
         set_accent_color(i_accent_color().map(|i| i.value()).unwrap_or_default());
-        set_sep(i_show_separator().map(|i| i.checked()).unwrap_or_default());
 
         let action = create_action(async move |_: &()| -> Result<(), ServerFnError> {
-            let user = user
-                .get_untracked()
-                .ok_or(ServerFnError::MissingArg(String::from(
-                    "User not available",
-                )))?;
+            let user = user.get_untracked().unwrap();
 
-            save_preferences(user.username, user.token, preferences.get_untracked()).await?;
-            message.set(Some("Settings Saved"));
-            set_timeout(
-                move || {
-                    message.try_set(None);
-                },
-                Duration::from_secs(3),
-            );
+            match save_preferences(user.username, user.token, preferences.get_untracked()).await {
+                Ok(_) => message.set_message("Settings Saved"),
+                Err(err) => message.set_server_err(&err.to_string()),
+            };
             return Ok(());
         });
         action.dispatch(());
+        message.without_timeout().set_message("saving...")
     };
 
     let border_style = move || format!("border: 2px solid {};", accent_color.get());
@@ -105,27 +76,6 @@ where
         }
         set_accent_color(color)
     };
-
-    let on_toggle = move |_| {
-        if use_default() {
-            set_default(false);
-        } else {
-            set_default(true);
-            preferences.update(|p| {
-                p.accent_color
-                    .set_user(&user.get_untracked().unwrap_or_default())
-            });
-            i_accent_color().map(|i| i.set_value(&accent_color()));
-        }
-    };
-
-    let slider_style = create_read_slice(preferences, move |pref| {
-        if use_default() {
-            format!("background-color: {}", pref.accent_color.0)
-        } else {
-            String::new()
-        }
-    });
 
     let confirm_style = create_read_slice(preferences, move |pref| {
         format!("background-color: {}", pref.accent_color.0)
@@ -147,35 +97,33 @@ where
             <div class={ move || String::from("editing-form ") + layout().get_class() } style=border_style>
                 <div class="content">
                     <label for="use_default_accent_color" class="title">Use Default Accent Color</label>
-                    <label class="switch">
-                        <input
-                            type="checkbox"
-                            prop:checked=use_default
-                            name="use_default_accent_color"
-                            id="use_default_accent_color"
-                            class="edit"
-                            node_ref=i_use_default
-                            on:input=on_toggle/>
-                        <span class="slider" style=slider_style/>
-                    </label>
+                    <Slider checked=use_default_accent_color accent_color/>
+                    { move || {
+                          use_default_accent_color.0.with(|b| {
+                              if *b {
+                                  preferences.update(|p| {
+                                      p.accent_color
+                                          .set_user(&user.get_untracked().unwrap_or_default())
+                                  });
+                                  i_accent_color().map(|i| i.set_value(&accent_color()));
+                              }
+                          })
+                    }}
+
                     <label for="accent_color" class="title">Accent Color</label>
                     <input
                         type="color"
-                        // name="accent_color"
+                        name="accent_color"
                         id="accent_color"
                         class="edit"
                         node_ref=i_accent_color
                         on:input=on_change
-                        prop:disabled=use_default
+                        prop:disabled=move || use_default_accent_color.0()
                     />
+
                     <label for="show_separator" class="title">Show Treeview Separator</label>
-                    <input
-                        type="checkbox"
-                        name="show_separator"
-                        id="show_separator"
-                        class="edit"
-                        node_ref=i_show_separator
-                    />
+                    <Slider checked=separator accent_color/>
+
                     <label class="title">Change Username</label>
                     <A class="edit" href="/change-username">
                         <i class="fa-solid fa-arrow-right"></i>
@@ -197,11 +145,5 @@ where
         </ActionForm>
         </Show>
         </Suspense>
-        <Show
-            when=move || { message().is_some() }
-            fallback=|| ()
-        >
-            <b class="notification-box" style=border_style>{ move || { message().unwrap() } }</b>
-        </Show>
     }
 }

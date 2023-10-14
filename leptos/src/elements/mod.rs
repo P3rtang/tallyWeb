@@ -6,6 +6,7 @@ mod loading_screen;
 mod message;
 mod navbar;
 mod sidebar;
+mod slider;
 mod sort_search;
 mod treeview;
 pub use about::*;
@@ -16,6 +17,7 @@ pub use loading_screen::*;
 pub use message::*;
 pub use navbar::*;
 pub use sidebar::*;
+pub use slider::*;
 pub use sort_search::*;
 pub use treeview::*;
 

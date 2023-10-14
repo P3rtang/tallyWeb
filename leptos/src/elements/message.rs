@@ -4,14 +4,29 @@ use leptos::*;
 #[derive(Debug, Clone, Copy)]
 pub struct Message {
     msg: RwSignal<Notification>,
-    reset_time: Duration,
+    reset_time: Option<Duration>,
 }
 
+#[allow(dead_code)]
 impl Message {
     pub fn new(reset_time: Duration) -> Self {
         Self {
             msg: Notification::None.into(),
-            reset_time,
+            reset_time: Some(reset_time),
+        }
+    }
+
+    pub fn without_timeout(self) -> Self {
+        Self {
+            msg: self.msg,
+            reset_time: None,
+        }
+    }
+
+    pub fn with_timeout(self, reset_time: Duration) -> Self {
+        Self {
+            msg: self.msg,
+            reset_time: Some(reset_time),
         }
     }
 
@@ -22,17 +37,41 @@ impl Message {
     pub fn set_message<'a>(&'a self, msg: &'a str) {
         self.msg.set(Notification::Message(msg.to_string()));
         let msg = self.msg.clone();
-        let reset_time = self.reset_time.clone();
-        create_effect(move |_| {
-            set_timeout(
-                move || msg.set(Notification::None),
-                reset_time.to_std().unwrap(),
-            )
-        });
+        if let Some(reset_time) = self.reset_time {
+            create_effect(move |_| {
+                set_timeout(
+                    move || msg.set(Notification::None),
+                    reset_time.to_std().unwrap(),
+                )
+            });
+        }
+    }
+
+    pub fn set_server_err<'a>(&self, err: &'a str) {
+        let err_msg = err.split_once(": ").map(|s| s.1).unwrap_or(err);
+        self.msg.set(Notification::Error(err_msg.to_string()));
+        let msg = self.msg.clone();
+        if let Some(reset_time) = self.reset_time {
+            create_effect(move |_| {
+                set_timeout(
+                    move || msg.set(Notification::None),
+                    reset_time.to_std().unwrap(),
+                )
+            });
+        }
     }
 
     pub fn set_error<'a>(&self, err: &'a str) {
         self.msg.set(Notification::Error(err.to_string()));
+        let msg = self.msg.clone();
+        if let Some(reset_time) = self.reset_time {
+            create_effect(move |_| {
+                set_timeout(
+                    move || msg.set(Notification::None),
+                    reset_time.to_std().unwrap(),
+                )
+            });
+        }
     }
 }
 
