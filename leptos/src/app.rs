@@ -622,7 +622,9 @@ fn connect_keys(
             state.try_update(|s| s.start());
         }),
         "KeyP" => {
-            state.try_update(|s| s.toggle_paused());
+            if active.get_untracked().len() > 0 {
+                state.try_update(|s| s.toggle_paused());
+            }
         }
         _ => {}
     });
@@ -654,10 +656,7 @@ pub fn HomePage() -> impl IntoView {
     let preferences = expect_context::<RwSignal<Preferences>>();
     let accent_color = create_read_slice(preferences, |prefs| prefs.accent_color.0.clone());
 
-    let selection = SelectionModel::<ArcCountable, String>::new(
-        Some(accent_color),
-        create_rw_signal(Vec::new()),
-    );
+    let selection = SelectionModel::<ArcCountable, String>::new(create_rw_signal(Vec::new()));
 
     let on_click_new_counter = move |_| {
         let user = expect_context::<RwSignal<Option<SessionUser>>>();
@@ -714,11 +713,9 @@ pub fn HomePage() -> impl IntoView {
         );
     };
 
+    let selection_signal = create_rw_signal(selection);
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
-
-    let selection_signal = create_rw_signal(selection);
-    provide_context(selection_signal);
 
     connect_keys(
         state,
@@ -769,6 +766,7 @@ pub fn HomePage() -> impl IntoView {
                         }
                         show_separator=show_sep
                         selection_model=selection_signal
+                        selection_color=accent_color
                     />
                     <button on:click=on_click_new_counter class="new-counter">New Counter</button>
                 </Sidebar>

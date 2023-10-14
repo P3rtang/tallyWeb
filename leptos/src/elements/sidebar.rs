@@ -51,7 +51,7 @@ where
     let sidebar_style = move || {
         layout().get_position()
             + if !display().0 {
-                "transform: TranslateX(-25em); position: fixed;"
+                "transform: TranslateX(-25.2em); position: fixed;"
             } else {
                 ""
             }
