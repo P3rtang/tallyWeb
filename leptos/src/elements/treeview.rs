@@ -16,7 +16,6 @@ where
     items: HashMap<S, TreeNode<T, S>>,
     selection: HashMap<S, bool>,
     pub selected: RwSignal<Vec<RwSignal<T>>>,
-    accent_color: Option<Signal<String>>,
 }
 
 impl<T, S> SelectionModel<T, S>
@@ -24,12 +23,11 @@ where
     T: Clone + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
-    pub fn new(accent_color: Option<Signal<String>>, selected: RwSignal<Vec<RwSignal<T>>>) -> Self {
+    pub fn new(selected: RwSignal<Vec<RwSignal<T>>>) -> Self {
         return Self {
             items: HashMap::new(),
             selection: HashMap::new(),
             selected,
-            accent_color,
         };
     }
 
@@ -85,6 +83,7 @@ pub fn TreeViewWidget<T, F, S, FS>(
     view: fn(RwSignal<TreeNode<T, S>>) -> View,
     selection_model: RwSignal<SelectionModel<T, S>>,
     show_separator: FS,
+    #[prop(optional, into)] selection_color: Option<Signal<String>>,
 ) -> impl IntoView
 where
     T: Clone + PartialEq + 'static + Debug,
@@ -111,6 +110,7 @@ where
                         selection_model=selection_model
                         view=view
                         each_child=each_child
+                        selection_color
                     > {
                         view(create_rw_signal(item))
                     }</TreeViewRow>
@@ -135,6 +135,7 @@ fn TreeViewRow<T, S>(
     each_child: fn(&T) -> Vec<T>,
     view: fn(RwSignal<TreeNode<T, S>>) -> View,
     selection_model: RwSignal<SelectionModel<T, S>>,
+    selection_color: Option<Signal<String>>,
 ) -> impl IntoView
 where
     T: Clone + PartialEq + 'static + Debug,
@@ -174,9 +175,8 @@ where
         if selection_model().is_selected(&node().get_key()) {
             format!(
                 "background: {};",
-                selection_model()
-                    .accent_color
-                    .map(|ac| ac.get())
+                selection_color
+                    .map(|ac| ac())
                     .unwrap_or(String::from("#8BE9FD"))
             )
         } else {
@@ -219,6 +219,7 @@ where
                         selection_model=selection_model
                         each_child=each_child
                         view=view
+                        selection_color
                     > {
                         view(create_rw_signal(item))
                     }</TreeViewRow>
