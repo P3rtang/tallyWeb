@@ -2,7 +2,7 @@
 #![allow(non_snake_case)]
 
 use chrono::Duration;
-use components::{LoadingScreen, Message, ScreenLayout, Slider};
+use components::{LoadingScreen, Message, SavingScreen, ScreenLayout, Slider};
 use leptos::{
     html::{Input, Select},
     *,
@@ -298,7 +298,10 @@ where
             return Ok(());
         });
         action.dispatch(());
-        message.without_timeout().set_msg("Saving...")
+        message
+            .without_timeout()
+            .as_modal()
+            .set_msg_view(view! {<SavingScreen/>})
     };
 
     let on_mins_input = move |ev: Event| {

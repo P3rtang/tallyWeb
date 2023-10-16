@@ -528,9 +528,10 @@ form {
 }
 
 .notification-box {
-    position: fixed;
+    position: absolute;
     top: 64px;
     right: 16px;
+    left: auto;
     margin: 0px;
     padding: 24px;
     border-radius: 16px;
