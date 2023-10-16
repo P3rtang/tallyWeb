@@ -17,18 +17,18 @@ pub fn NewPassword() -> impl IntoView {
 
     let on_submit = move |ev: SubmitEvent| {
         if new_pass_ref().unwrap().value() != new_pass_repeat_ref().unwrap().value() {
-            message.set_error("Passwords do not match");
+            message.set_err("Passwords do not match");
             ev.prevent_default();
         } else if new_pass_ref().unwrap().value().len() < 8 {
-            message.set_error("Password should be longer than 8 characters");
+            message.set_err("Password should be longer than 8 characters");
             ev.prevent_default();
         }
 
         create_effect(move |_| {
             if let Some(Ok(_)) = action.value()() {
-                message.set_message("Password succesfully changed")
+                message.set_msg("Password succesfully changed")
             } else if let Some(Err(_)) = action.value()() {
-                message.set_error("An error occurred")
+                message.set_err("An error occurred")
             }
         });
     };

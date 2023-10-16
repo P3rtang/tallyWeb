@@ -34,7 +34,7 @@ impl Message {
         self.msg
     }
 
-    pub fn set_message<'a>(&'a self, msg: &'a str) {
+    pub fn set_msg<'a>(&'a self, msg: &'a str) {
         self.msg.set(Notification::Message(msg.to_string()));
         let msg = self.msg.clone();
         if let Some(reset_time) = self.reset_time {
@@ -61,7 +61,7 @@ impl Message {
         }
     }
 
-    pub fn set_error<'a>(&self, err: &'a str) {
+    pub fn set_err<'a>(&self, err: &'a str) {
         self.msg.set(Notification::Error(err.to_string()));
         let msg = self.msg.clone();
         if let Some(reset_time) = self.reset_time {

@@ -21,9 +21,9 @@ pub struct CloseOverlays();
 #[component]
 pub fn Overlay(
     show_overlay: RwSignal<bool>,
-    accent_color: Option<Signal<String>>,
     location: ReadSignal<(i32, i32)>,
     children: ChildrenFn,
+    #[prop(optional)] accent_color: Option<Signal<String>>,
 ) -> impl IntoView
 where {
     if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>() {

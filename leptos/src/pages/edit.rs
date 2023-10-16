@@ -2,7 +2,7 @@
 #![allow(non_snake_case)]
 
 use chrono::Duration;
-use components::ScreenLayout;
+use components::{LoadingScreen, Message, ScreenLayout, Slider};
 use leptos::{
     html::{Input, Select},
     *,
@@ -12,7 +12,7 @@ use web_sys::{Event, SubmitEvent};
 
 use crate::{
     app::{navigate, update_counter, update_phase, Preferences, SessionUser},
-    countable::{Countable, Hunttype},
+    countable::{Countable, CountableKind, Hunttype},
 };
 
 #[component]
@@ -32,7 +32,7 @@ where
 
     view! {
     <Show
-        when=move || user().is_some()
+        when=move || user().is_some() && params().is_ok()
         fallback=|| ()
     > { move || {
             let counter_rsrc = create_resource(params, async move |param| {
@@ -46,7 +46,13 @@ where
                 }
             });
 
-            view! { <EditCounterBox layout=layout is_phase=false counter_rsrc=counter_rsrc/> }
+            view! {
+                <EditCounterBox
+                    layout=layout
+                    countable_kind=CountableKind::Counter(params().unwrap().id)
+                    counter_rsrc=counter_rsrc
+                />
+            }
         }}
     </Show>
     }
@@ -62,7 +68,7 @@ where
 
     view! {
     <Show
-        when=move || user().is_some()
+        when=move || user().is_some() && params().is_ok()
         fallback=|| ()>
         { move || {
             let phase_rsrc = create_resource(params, async move |param| {
@@ -76,7 +82,13 @@ where
                 }
             });
 
-            view! { <EditCounterBox layout=layout is_phase=true counter_rsrc=phase_rsrc/> }
+            view! {
+                <EditCounterBox
+                    layout=layout
+                    countable_kind=CountableKind::Phase(params().unwrap().id)
+                    counter_rsrc=phase_rsrc
+                />
+            }
         }}
     </Show>
     }
@@ -98,7 +110,7 @@ impl std::ops::Deref for CountableId {
 #[component]
 fn EditCounterBox<F, T>(
     layout: F,
-    is_phase: bool,
+    countable_kind: CountableKind,
     counter_rsrc: Resource<Result<CountableId, ParamsError>, Result<T, String>>,
 ) -> impl IntoView
 where
@@ -106,12 +118,12 @@ where
     T: Countable + Clone,
 {
     let user = expect_context::<Memo<Option<SessionUser>>>();
-    let preferences = expect_context::<Memo<Preferences>>();
+    let preferences = expect_context::<RwSignal<Preferences>>();
+    let message = expect_context::<Message>();
 
-    let message = create_rw_signal(None::<String>);
-
-    let border_style = move || format!("border: 2px solid {}", preferences().accent_color.0);
-    let confirm_style = move || format!("background-color: {}", preferences().accent_color.0);
+    let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
+    let border_style = move || format!("border: 2px solid {}", accent_color());
+    let confirm_style = move || format!("background-color: {}", accent_color());
 
     let counter = create_rw_signal(None::<T>);
 
@@ -172,7 +184,7 @@ where
         },
     );
 
-    let (has_charm, set_charm) = create_slice(
+    let has_charm = create_slice(
         counter,
         |c| c.as_ref().map(|c| c.has_charm()).unwrap_or_default(),
         |c, new| {
@@ -185,12 +197,10 @@ where
     let hours_input: NodeRef<Input> = create_node_ref();
     let mins_input: NodeRef<Input> = create_node_ref();
     let hunt_type_dropdown: NodeRef<Select> = create_node_ref();
-    let charm_toggle: NodeRef<Input> = create_node_ref();
 
     create_effect(move |_| {
         let hunt: String = hunt_type().into();
         hunt_type_dropdown().map(|d| d.set_value(&hunt));
-        charm_toggle().map(|t| t.set_checked(has_charm()));
     });
 
     let undo_changes = move |_| {
@@ -229,11 +239,9 @@ where
         {
             set_hunt_type(hunt_type);
         } else {
-            message.set(Some(String::from("Could not save selected Hunttype")));
+            message.set_err("Could not save selected Hunttype");
             return;
         }
-
-        set_charm(charm_toggle().expect("Defined above").checked());
 
         let action = create_action(async move |_: &()| -> Result<(), ServerFnError> {
             let user = user
@@ -242,7 +250,7 @@ where
                     "User not available",
                 )))
                 .map_err(|err| {
-                    message.set(Some(String::from("Failed to Save, Could not get user")));
+                    message.set_err("Failed to Save, Could not get user");
                     err
                 })?;
             let counter = counter
@@ -251,38 +259,46 @@ where
                     "Could not find Counter",
                 )))
                 .map_err(|err| {
-                    message.set(Some(String::from("Failed to Save, Could not get Counter")));
+                    message.set_msg("Failed to Save, Could not get Counter");
                     err
                 })?;
 
-            if is_phase {
-                update_phase(
-                    user.username,
-                    user.token,
-                    counter.as_any().downcast_ref().cloned().unwrap(),
-                )
-                .await
-                .map_err(|err| {
-                    message.set(Some(format!("Failed to update Phase\nGot error {}", err)));
-                    err
-                })?;
-            } else {
-                update_counter(
-                    user.username,
-                    user.token,
-                    counter.as_any().downcast_ref().cloned().unwrap(),
-                )
-                .await
-                .map_err(|err| {
-                    message.set(Some(format!("Failed to update Counter\nGot error {}", err)));
-                    err
-                })?;
+            match countable_kind {
+                CountableKind::Counter(_) => {
+                    update_counter(
+                        user.username,
+                        user.token,
+                        counter.as_any().downcast_ref().cloned().unwrap(),
+                    )
+                    .await
+                    .map_err(|err| {
+                        message.set_err(
+                            format!("Failed to update Counter\nGot error {}", err).as_str(),
+                        );
+                        err
+                    })?;
+                }
+                CountableKind::Phase(_) => {
+                    update_phase(
+                        user.username,
+                        user.token,
+                        counter.as_any().downcast_ref().cloned().unwrap(),
+                    )
+                    .await
+                    .map_err(|err| {
+                        message
+                            .set_err(format!("Failed to update Phase\nGot error {}", err).as_str());
+                        err
+                    })?;
+                }
             }
+            message.set_msg("Saved succesfully");
 
             navigate("/");
             return Ok(());
         });
         action.dispatch(());
+        message.without_timeout().set_msg("Saving...")
     };
 
     let on_mins_input = move |ev: Event| {
@@ -295,10 +311,10 @@ where
         }
     };
 
-    view! {         <Transition
-            fallback=|| ()
-        >
+    view! {
+        <Transition fallback=LoadingScreen>
             { move || { counter.set(counter_rsrc.get().map(|c| c.ok()).flatten()); } }
+
             <Form action="/" on:submit=on_submit class="parent-form">
                 <div class={ move || String::from("editing-form ") + layout().get_class() } style=border_style>
                     <div class="content">
@@ -339,7 +355,7 @@ where
                             <option value="MasudaGenVI">Masuda GenVI+</option>
                         </select>
                         <label for="charm" class="title">Shiny Charm</label>
-                        <input type="checkbox" id="charm" node_ref=charm_toggle prop:checked=has_charm.get_untracked() class="edit"/>
+                        <Slider checked=has_charm accent_color/>
                     </div>
                     <div  class="action-buttons">
                         <button type="button" on:click=undo_changes>
@@ -352,11 +368,5 @@ where
                 </div>
             </Form>
         </Transition>
-        <Show
-            when=move || { message().is_some() }
-            fallback=|| ()
-        >
-            <b class="notification-box" style=border_style>{ move || { message().unwrap() } }</b>
-        </Show>
     }
 }

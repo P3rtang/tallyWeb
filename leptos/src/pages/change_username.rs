@@ -30,7 +30,7 @@ pub fn ChangeAccountInfo(user: RwSignal<Option<SessionUser>>) -> impl IntoView {
     let on_submit = move |_| {
         create_effect(move |_| {
             if let Some(Ok(session_user)) = action.value()() {
-                message.set_message("Username succesfully changed");
+                message.set_msg("Username succesfully changed");
                 if let Ok(_) = LocalStorage::set("user_session", session_user.clone()) {
                     expect_context::<RwSignal<Option<SessionUser>>>()
                         .set(Some(session_user.clone()));
@@ -39,7 +39,7 @@ pub fn ChangeAccountInfo(user: RwSignal<Option<SessionUser>>) -> impl IntoView {
             } else if let Some(Err(err)) = action.value()() {
                 let err_str = err.to_string();
                 let err_msg = err_str.split(": ").last().unwrap();
-                message.set_error(err_msg)
+                message.set_err(err_msg)
             }
         });
     };

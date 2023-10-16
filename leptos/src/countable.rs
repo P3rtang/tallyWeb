@@ -110,7 +110,7 @@ impl ArcCountable {
         for child in self.get_children() {
             has_child |= child.has_child_starts_with(pat)
         }
-        return has_child
+        return has_child;
     }
 
     pub fn has_child_contains(&self, pat: &str) -> bool {
@@ -118,7 +118,7 @@ impl ArcCountable {
         for child in self.get_children() {
             contains |= child.has_child_contains(pat)
         }
-        return contains
+        return contains;
     }
 }
 
@@ -765,6 +765,12 @@ impl Countable for Phase {
     fn as_any(&self) -> &dyn Any {
         self
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum CountableKind {
+    Counter(usize),
+    Phase(usize),
 }
 
 #[derive(Debug, Clone, PartialEq)]

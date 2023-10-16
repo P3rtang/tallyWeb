@@ -1,5 +1,5 @@
 #![allow(unused_braces)]
-use components::{Message, ScreenLayout, Slider, LoadingScreen};
+use components::{LoadingScreen, Message, ScreenLayout, Slider};
 use leptos::*;
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
@@ -54,13 +54,13 @@ where
             let user = user.get_untracked().unwrap();
 
             match save_preferences(user.username, user.token, preferences.get_untracked()).await {
-                Ok(_) => message.set_message("Settings Saved"),
+                Ok(_) => message.set_msg("Settings Saved"),
                 Err(err) => message.set_server_err(&err.to_string()),
             };
             return Ok(());
         });
         action.dispatch(());
-        message.without_timeout().set_message("saving...")
+        message.without_timeout().set_msg("saving...")
     };
 
     let border_style = move || format!("border: 2px solid {};", accent_color.get());
