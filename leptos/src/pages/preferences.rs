@@ -1,5 +1,5 @@
 #![allow(unused_braces)]
-use components::{LoadingScreen, Message, ScreenLayout, Slider};
+use components::{LoadingScreen, Message, SavingScreen, ScreenLayout, Slider};
 use leptos::*;
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
@@ -60,7 +60,10 @@ where
             return Ok(());
         });
         action.dispatch(());
-        message.without_timeout().set_msg("saving...")
+        message
+            .without_timeout()
+            .as_modal()
+            .set_msg_view(view! {<SavingScreen/>})
     };
 
     let border_style = move || format!("border: 2px solid {};", accent_color.get());
