@@ -344,10 +344,7 @@ pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
 
-    let user = create_rw_signal(None::<SessionUser>);
-    create_effect(move |_| {
-        user.set(SessionUser::from_storage());
-    });
+    let user = SessionUser::from_storage();
 
     let msg = Message::new(Duration::seconds(5));
     provide_context(msg);
@@ -440,9 +437,7 @@ pub fn App() -> impl IntoView {
         <Title text="TallyWeb"/>
 
         <Router>
-            <Transition
-                fallback= || ()
-            >
+            <Transition fallback=move || view! { <LoadingScreen/> }>
                 { move || {
                     preferences.set(pref_resources.get().unwrap_or_default());
                 }}
@@ -631,7 +626,6 @@ fn connect_keys(
 #[component]
 pub fn HomePage() -> impl IntoView {
     let session_user = expect_context::<Memo<Option<SessionUser>>>();
-    let user = expect_context::<RwSignal<Option<SessionUser>>>();
     let change_flags = expect_context::<RwSignal<Vec<ChangeFlag>>>();
 
     let data = create_local_resource(session_user, move |user| async move {
@@ -730,14 +724,7 @@ pub fn HomePage() -> impl IntoView {
     view! {
         <Show
             when=move || session_user().is_some() && data.get().is_some()
-            fallback=move || {
-                create_effect(move |_| {
-                    request_animation_frame(move || {
-                        user.set(SessionUser::from_storage());
-                    })
-                });
-                view!{ <LoadingScreen/> }
-            }
+            fallback=move || view!{ <LoadingScreen/> }
         >
             { move || {
                 let list = match data.get() {
@@ -1067,24 +1054,30 @@ pub struct SessionUser {
 }
 
 impl SessionUser {
-    pub fn from_storage() -> Option<Self> {
-        if let Ok(Some(user)) = LocalStorage::get::<Option<SessionUser>>("user_session") {
-            let (user, _) = create_signal(user);
-            create_blocking_resource(user, move |user| async move {
-                if get_id_from_username(user.username, user.token)
-                    .await
-                    .is_err()
-                {
-                    navigate("/login");
-                }
-            });
+    pub fn from_storage() -> RwSignal<Option<SessionUser>> {
+        let user_signal = create_rw_signal(None::<SessionUser>);
 
-            return Some(user.get_untracked());
-        } else {
-            let _ = LocalStorage::set("user_session", None::<SessionUser>);
-            navigate("/login");
-            return None;
-        }
+        create_effect(move |_| {
+            if let Ok(Some(user)) = LocalStorage::get::<Option<SessionUser>>("user_session") {
+                let action = create_action(move |user: &SessionUser| {
+                    get_id_from_username(user.username.clone(), user.token.clone())
+                });
+                action.dispatch(user.clone());
+
+                create_effect(move |_| {
+                    if let Some(Ok(id)) = action.value()() && id > 0 {
+                        user_signal.set(Some(user.clone()))
+                    } else if let Some(Err(_)) = action.value()() {
+                        navigate("/login")
+                    }
+                });
+            } else {
+                let _ = LocalStorage::set("user_session", None::<SessionUser>);
+                navigate("/login");
+            }
+        });
+
+        return user_signal;
     }
 
     pub fn has_value(&self) -> bool {

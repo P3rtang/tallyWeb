@@ -17,7 +17,7 @@ cfg_if::cfg_if! {
             // Generate the list of routes in your Leptos App
             let routes = generate_route_list(|| view! { <App/> });
 
-            backend::migrate().await.unwrap();
+            let _ = backend::migrate().await.map_err(|err| println!("{err}"));
 
             HttpServer::new(move || {
                 let leptos_options = &conf.leptos_options;

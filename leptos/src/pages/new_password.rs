@@ -36,7 +36,7 @@ pub fn NewPassword() -> impl IntoView {
     view! {
         <Show
             when=move || user().is_some()
-            fallback=LoadingScreen
+            fallback=move || view!{ <LoadingScreen/> }
         >
             <ActionForm action on:submit=on_submit>
                 <div class="container login-form">

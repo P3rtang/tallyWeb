@@ -44,9 +44,12 @@ impl Message {
     }
 
     pub fn set_msg<'a>(&'a self, msg: &'a str) {
+        let msg_lines = msg.lines();
         self.msg.set(Notification::Message(
             self.as_modal,
-            view! { <b>{ msg.to_string() }</b> }.into_view(),
+            msg_lines
+                .map(|l| view! { <b>{ l.to_string() }</b> })
+                .collect_view(),
         ));
         let msg = self.msg.clone();
         if let Some(reset_time) = self.reset_time {
@@ -91,9 +94,12 @@ impl Message {
     }
 
     pub fn set_err<'a>(&self, err: &'a str) {
+        let msg_lines = err.lines();
         self.msg.set(Notification::Error(
             self.as_modal,
-            view! { <b>{ err.to_string() }</b> }.into_view(),
+            msg_lines
+                .map(|l| view! { <b>{ l.to_string() }</b> })
+                .collect_view(),
         ));
         let msg = self.msg.clone();
         if let Some(reset_time) = self.reset_time {
