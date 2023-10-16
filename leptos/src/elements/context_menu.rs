@@ -20,11 +20,11 @@ pub fn CountableContextMenu(
     is_phase: bool,
     #[prop(optional)] accent_color: Option<Signal<String>>,
 ) -> impl IntoView {
-    let edit_location = format!(
+    let (edit_location, _) = create_signal(format!(
         "/edit/{}/{}",
         if is_phase { "phase" } else { "counter" },
         countable_id
-    );
+    ));
 
     let on_del_click = move |ev: MouseEvent| {
         ev.stop_propagation();
@@ -55,14 +55,28 @@ pub fn CountableContextMenu(
     };
 
     view! {
-        <Overlay show_overlay=show_overlay location=location accent_color>
-            <ContextMenuNav href=edit_location.clone()>
-                <span>Edit</span>
-            </ContextMenuNav>
-            <ContextMenuRow on:click=on_del_click>
-                <span>Delete</span>
-            </ContextMenuRow>
-        </Overlay>
+        <Show
+            when=move || accent_color.is_some()
+            fallback=move || view! {
+                <Overlay show_overlay=show_overlay location=location>
+                    <ContextMenuNav href=edit_location.get()>
+                        <span>Edit</span>
+                    </ContextMenuNav>
+                    <ContextMenuRow on:click=on_del_click>
+                        <span>Delete</span>
+                    </ContextMenuRow>
+                </Overlay>
+            }
+        >
+            <Overlay show_overlay=show_overlay location=location accent_color=accent_color.unwrap()>
+                <ContextMenuNav href=edit_location.get()>
+                    <span>Edit</span>
+                </ContextMenuNav>
+                <ContextMenuRow on:click=on_del_click>
+                    <span>Delete</span>
+                </ContextMenuRow>
+            </Overlay>
+        </Show>
     }
 }
 

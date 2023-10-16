@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use crate::countable::*;
 use chrono::Duration;
 use components::*;
@@ -363,7 +364,7 @@ pub fn App() -> impl IntoView {
 
     create_effect(move |_| {
         if let Some(Err(_err)) = save_all.value().get() {
-            msg.set_message("Token Expired");
+            msg.set_msg("Token Expired");
             navigate("/login")
         }
     });
