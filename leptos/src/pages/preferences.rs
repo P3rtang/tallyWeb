@@ -1,5 +1,5 @@
 #![allow(unused_braces)]
-use components::{LoadingScreen, Message, SavingScreen, ScreenLayout, Slider};
+use components::{LoadingScreen, Message, SavingMessage, ScreenLayout, Slider};
 use leptos::*;
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
@@ -63,15 +63,19 @@ where
         message
             .without_timeout()
             .as_modal()
-            .set_msg_view(SavingScreen)
+            .set_msg_view(SavingMessage)
     };
 
     let border_style = move || format!("border: 2px solid {};", accent_color.get());
     let confirm_style = move || format!("background-color: {}", accent_color.get());
 
     view! {
-        <Suspense fallback=LoadingScreen> { pref_resource(); }
-        <Show when=move || user().is_some() fallback=LoadingScreen>
+        <Transition fallback=move || view!{ <LoadingScreen/> }>
+        { pref_resource(); }
+        <Show
+            when=move || user().is_some()
+            fallback=move || view!{ <LoadingScreen/> }
+        >
 
         <ActionForm action=action on:submit=on_submit class="parent-form">
             <div class={ move || String::from("editing-form ") + layout().get_class() } style=border_style>
@@ -124,6 +128,6 @@ where
         </ActionForm>
 
         </Show>
-        </Suspense>
+        </Transition>
     }
 }

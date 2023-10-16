@@ -7,11 +7,6 @@ use leptos_router::ActionForm;
 pub fn LoginPage() -> impl IntoView {
     let action = create_server_action::<crate::app::LoginUser>();
 
-    expect_context::<RwSignal<Option<SessionUser>>>().set(None);
-    create_render_effect(move |_| {
-        LocalStorage::set("user_session", None::<SessionUser>).unwrap();
-    });
-
     let message = create_rw_signal(None::<String>);
     let border_style = move || {
         "color: tomato;

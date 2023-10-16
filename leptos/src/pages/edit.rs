@@ -2,7 +2,7 @@
 #![allow(non_snake_case)]
 
 use chrono::Duration;
-use components::{LoadingScreen, Message, SavingScreen, ScreenLayout, Slider};
+use components::{LoadingScreen, Message, SavingMessage, ScreenLayout, Slider};
 use leptos::{
     html::{Input, Select},
     *,
@@ -239,69 +239,48 @@ where
         {
             set_hunt_type(hunt_type);
         } else {
-            message.set_err("Could not save selected Hunttype");
+            message.set_err("Could not save\nselected Hunttype");
             return;
         }
 
-        let action = create_action(async move |_: &()| -> Result<(), ServerFnError> {
-            let user = user
-                .get_untracked()
-                .ok_or(ServerFnError::MissingArg(String::from(
-                    "User not available",
-                )))
-                .map_err(|err| {
-                    message.set_err("Failed to Save, Could not get user");
-                    err
-                })?;
-            let counter = counter
-                .get_untracked()
-                .ok_or(ServerFnError::MissingArg(String::from(
-                    "Could not find Counter",
-                )))
-                .map_err(|err| {
-                    message.set_msg("Failed to Save, Could not get Counter");
-                    err
-                })?;
-
-            match countable_kind {
-                CountableKind::Counter(_) => {
+        let action = match countable_kind {
+            CountableKind::Counter(_) => {
+                create_action(move |(user, countable): &(SessionUser, T)| {
                     update_counter(
-                        user.username,
-                        user.token,
-                        counter.as_any().downcast_ref().cloned().unwrap(),
+                        user.username.clone(),
+                        user.token.clone(),
+                        countable.as_any().downcast_ref().cloned().unwrap(),
                     )
-                    .await
-                    .map_err(|err| {
-                        message.set_err(
-                            format!("Failed to update Counter\nGot error {}", err).as_str(),
-                        );
-                        err
-                    })?;
-                }
-                CountableKind::Phase(_) => {
-                    update_phase(
-                        user.username,
-                        user.token,
-                        counter.as_any().downcast_ref().cloned().unwrap(),
-                    )
-                    .await
-                    .map_err(|err| {
-                        message
-                            .set_err(format!("Failed to update Phase\nGot error {}", err).as_str());
-                        err
-                    })?;
-                }
+                })
             }
-            message.set_msg("Saved succesfully");
+            CountableKind::Phase(_) => {
+                create_action(move |(user, countable): &(SessionUser, T)| {
+                    update_phase(
+                        user.username.clone(),
+                        user.token.clone(),
+                        countable.as_any().downcast_ref().cloned().unwrap(),
+                    )
+                })
+            }
+        };
 
-            navigate("/");
-            return Ok(());
+        action.dispatch((user().unwrap(), counter().unwrap()));
+
+        create_effect(move |_| {
+            match action.value()() {
+                Some(Ok(_)) => {
+                    message.set_msg("Saved succesfully");
+                    navigate("/")
+                }
+                Some(Err(err)) => message.set_server_err(&err.to_string()),
+                _ => {}
+            };
         });
-        action.dispatch(());
+
         message
             .without_timeout()
             .as_modal()
-            .set_msg_view(SavingScreen)
+            .set_msg_view(SavingMessage)
     };
 
     let on_mins_input = move |ev: Event| {
@@ -315,7 +294,11 @@ where
     };
 
     view! {
-        <Transition fallback=LoadingScreen>
+        <Show
+            when=move || user().is_some()
+            fallback=move || view! { <LoadingScreen/> }
+        >
+        <Transition fallback=move || view!{ <LoadingScreen/> }>
             { move || { counter.set(counter_rsrc.get().map(|c| c.ok()).flatten()); } }
 
             <Form action="/" on:submit=on_submit class="parent-form">
@@ -371,5 +354,6 @@ where
                 </div>
             </Form>
         </Transition>
+        </Show>
     }
 }
