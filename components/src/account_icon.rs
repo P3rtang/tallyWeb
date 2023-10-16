@@ -65,7 +65,7 @@ pub fn AccountOverlay(
 ) -> impl IntoView {
     if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>() {
         create_effect(move |_| {
-            close_signal.get();
+            close_signal.track();
             show_overlay.set(false);
         });
     } else {
@@ -84,7 +84,7 @@ pub fn AccountOverlay(
 
     view! {
         <Show
-            when=move || { show_overlay.get() }
+            when=show_overlay
             fallback=|| ()
         >
             <div id="account-overlay" style=border_style on:click=move |ev: web_sys::MouseEvent| { ev.stop_propagation() }>

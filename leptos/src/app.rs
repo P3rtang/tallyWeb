@@ -373,11 +373,11 @@ pub fn App() -> impl IntoView {
     provide_context(user);
     provide_context(user_memo);
 
-    let close_overlay_signal = create_rw_signal(CloseOverlays());
-    provide_context(close_overlay_signal);
-
     let change_flag_buffer = create_rw_signal(Vec::<ChangeFlag>::new());
     provide_context(change_flag_buffer);
+
+    let close_overlay_signal = create_rw_signal(CloseOverlays());
+    provide_context(close_overlay_signal);
 
     let close_overlays = move |_| {
         close_overlay_signal.update(|_| ());
@@ -447,7 +447,7 @@ pub fn App() -> impl IntoView {
                     preferences.set(pref_resources.get().unwrap_or_default());
                 }}
             </Transition>
-            <Navbar on:click=close_overlays/>
+            <Navbar/>
 
             <main on:click=close_overlays>
                 <Routes>

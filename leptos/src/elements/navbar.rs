@@ -1,4 +1,4 @@
-use components::{AccountIcon, ShowSidebar};
+use components::{AccountIcon, CloseOverlays, ShowSidebar};
 use leptos::*;
 use leptos_router::A;
 
@@ -13,8 +13,13 @@ pub fn Navbar() -> impl IntoView {
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let toggle_sidebar = move |_| show_sidebar.update(|s| s.0 = !s.0);
 
+    let close_overlay_signal = expect_context::<RwSignal<CloseOverlays>>();
+    let close_overlays = move |_| {
+        close_overlay_signal.update(|_| ());
+    };
+
     view! {
-        <nav>
+        <nav on:click=close_overlays>
             <button id="toggle-sidebar" on:click=toggle_sidebar>
                 <i class="fa-solid fa-bars"></i>
             </button>

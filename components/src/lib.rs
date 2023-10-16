@@ -32,7 +32,7 @@ pub fn Overlay(
 where {
     if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>() {
         create_effect(move |_| {
-            close_signal.get();
+            close_signal.track();
             show_overlay.set(false);
         });
     } else {
