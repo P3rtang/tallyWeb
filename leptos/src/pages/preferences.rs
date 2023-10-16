@@ -63,7 +63,7 @@ where
         message
             .without_timeout()
             .as_modal()
-            .set_msg_view(view! {<SavingScreen/>})
+            .set_msg_view(SavingScreen)
     };
 
     let border_style = move || format!("border: 2px solid {};", accent_color.get());

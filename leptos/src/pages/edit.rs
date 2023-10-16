@@ -301,7 +301,7 @@ where
         message
             .without_timeout()
             .as_modal()
-            .set_msg_view(view! {<SavingScreen/>})
+            .set_msg_view(SavingScreen)
     };
 
     let on_mins_input = move |ev: Event| {
