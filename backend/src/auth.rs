@@ -187,7 +187,6 @@ pub async fn change_username(
     };
 
     return Ok(user);
-
 }
 pub async fn check_pass(
     pool: &PgPool,
