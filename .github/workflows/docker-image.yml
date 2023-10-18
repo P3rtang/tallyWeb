@@ -19,8 +19,7 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
     - name: create .env-docker
       run: echo "${{ secrets.DATABASE_URL }}" >> .env-docker
-    - name: Build and push
-      uses: docker/build-push-action@v2
-      with:
-        push: true
-        tags: p3rtang/tallyweb
+    - name: Build docker
+      run: docker build . --tag p3rtang/tallyweb
+    - name: Push docker
+      run: docker push p3rtang/tallyweb
