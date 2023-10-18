@@ -282,7 +282,7 @@ where
                 })
             }
         };
-      
+
         action.dispatch((user().unwrap(), counter().unwrap()));
 
         create_effect(move |_| {
