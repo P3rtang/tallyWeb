@@ -282,7 +282,7 @@ where
                 })
             }
         };
-
+      
         action.dispatch((user().unwrap(), counter().unwrap()));
 
         create_effect(move |_| {
@@ -315,6 +315,7 @@ where
     view! {
         <Suspense fallback=move || view!{ <LoadingScreen/> }>
             { move || { counter.set(counter_rsrc.get().flatten()); } }
+
             <Form action="/" on:submit=on_submit class="parent-form">
                 <div class={ move || String::from("editing-form ") + layout().get_class() } style=border_style>
                     <div class="content">
