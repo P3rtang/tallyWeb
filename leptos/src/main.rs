@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 use leptos::*;
 use tally_web::app::*;
+mod log;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "ssr")] {
@@ -12,8 +13,11 @@ cfg_if::cfg_if! {
 
         #[actix_web::main]
         async fn main() -> std::io::Result<()> {
+            unsafe { log::LOG_LEVEL = log::LogLevel::Debug; }
+
             let conf = get_configuration(None).await.unwrap();
             let addr = conf.leptos_options.site_addr;
+            server_log!(info, "server listening on {}", addr);
             // Generate the list of routes in your Leptos App
             let routes = generate_route_list(|| view! { <App/> });
 

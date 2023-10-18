@@ -16,7 +16,7 @@ pub fn LoadingMessage() -> impl IntoView {
 pub fn LoadingScreen(#[prop(optional)] accent_color: Option<Signal<String>>) -> impl IntoView {
     let border_style = move || {
         format!(
-            "2px solid {};",
+            "2px solid {}",
             accent_color
                 .map(|ac| ac())
                 .unwrap_or(String::from("#ffe135"))

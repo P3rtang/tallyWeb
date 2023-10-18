@@ -446,6 +446,11 @@ pub fn App() -> impl IntoView {
             <Navbar/>
 
             <main on:click=close_overlays>
+                // on navigation clear any messages or errors from the message box
+                { move || {
+                    let location = use_location();
+                    location.state.with(|_| msg.clear())
+                }}
                 <Routes>
                     <Route path="" view=HomePage/>
                     <Route path="/preferences" view=move || view! {

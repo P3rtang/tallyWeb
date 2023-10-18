@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            select * from preferences\n            where user_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "use_default_accent_color",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "accent_color",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "show_separator",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "1391ff47d3d297e32b108dcd828046b09b7b56ded607e6ea5bbf9b9009698b0f"
+}

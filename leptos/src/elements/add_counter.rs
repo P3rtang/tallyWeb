@@ -1,4 +1,4 @@
-use crate::{app::*, countable::Hunttype};
+use crate::app::*;
 use components::{Message, Spinner};
 use leptos::*;
 
@@ -9,7 +9,7 @@ async fn add_counter(username: String, token: String, name: String) -> Result<()
         username.clone(),
         token.clone(),
         String::from("Phase 1"),
-        Hunttype::NewOdds,
+        crate::countable::Hunttype::NewOdds,
     )
     .await?;
     assign_phase(username, token, counter_id, phase_id).await?;
@@ -33,8 +33,8 @@ pub fn NewCounterButton(state_len: Signal<usize>) -> impl IntoView {
     create_effect(move |_| {
         match add_counter_action.value()() {
             Some(Ok(_)) => {
-                message.clear();
                 expect_context::<StateResource>().refetch();
+                message.clear();
             }
             Some(Err(err)) => message.set_server_err(&err.to_string()),
             None => {}

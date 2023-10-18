@@ -6,6 +6,9 @@ mod countable;
 mod elements;
 mod pages;
 
+#[cfg(feature = "ssr")]
+pub mod log;
+
 use cfg_if::cfg_if;
 
 cfg_if! {
