@@ -12,6 +12,7 @@ use std::fmt::Display;
 
 use crate::{elements::*, pages::*};
 
+pub type StateResource = Resource<Option<SessionUser>, Vec<SerCounter>>;
 pub type SelectionSignal = RwSignal<SelectionModel<ArcCountable, String>>;
 pub type SaveAllAction = Action<(SessionUser, CounterList), Result<(), ServerFnError>>;
 
@@ -144,7 +145,7 @@ pub async fn get_phase_by_id(
 }
 
 #[server(CreateCounter, "/api")]
-async fn create_counter(
+pub async fn create_counter(
     username: String,
     token: String,
     name: String,
@@ -200,7 +201,7 @@ pub async fn remove_phase(
 }
 
 #[server(CreatePhase, "/api")]
-async fn create_phase(
+pub async fn create_phase(
     username: String,
     token: String,
     name: String,
@@ -215,7 +216,7 @@ async fn create_phase(
 }
 
 #[server(AssignPhase, "/api")]
-async fn assign_phase(
+pub async fn assign_phase(
     username: String,
     token: String,
     counter_id: i32,
@@ -445,6 +446,11 @@ pub fn App() -> impl IntoView {
             <Navbar/>
 
             <main on:click=close_overlays>
+                // on navigation clear any messages or errors from the message box
+                { move || {
+                    let location = use_location();
+                    location.state.with(|_| msg.clear())
+                }}
                 <Routes>
                     <Route path="" view=HomePage/>
                     <Route path="/preferences" view=move || view! {
@@ -650,61 +656,6 @@ pub fn HomePage() -> impl IntoView {
 
     let selection = SelectionModel::<ArcCountable, String>::new(create_rw_signal(Vec::new()));
 
-    let on_click_new_counter = move |_| {
-        let user = expect_context::<RwSignal<Option<SessionUser>>>();
-        if user().is_none() {
-            return;
-        }
-        create_local_resource(
-            || (),
-            async move |_| {
-                let name = format!("Counter {}", state.get_untracked().list.len() + 1);
-                let phase_name = String::from("Phase 1");
-                let counter_id = create_counter(
-                    user.get_untracked().unwrap().username,
-                    user.get_untracked().unwrap().token,
-                    name.clone(),
-                )
-                .await
-                .map_err(|err| match err {
-                    ServerFnError::ServerError(msg) => {
-                        if msg == "Provided Token is Invalid" {
-                            navigate("/login")
-                        }
-                    }
-                    _ => {}
-                })
-                .unwrap();
-
-                let phase_id = create_phase(
-                    user.get_untracked().unwrap().username,
-                    user.get_untracked().unwrap().token,
-                    phase_name.clone(),
-                    Hunttype::NewOdds,
-                )
-                .await
-                .map_err(|err| {
-                    log!("Count not create Phase, Got: {err}");
-                })
-                .unwrap();
-                assign_phase(
-                    user.get_untracked().unwrap().username,
-                    user.get_untracked().unwrap().token,
-                    counter_id,
-                    phase_id,
-                )
-                .await
-                .map_err(|err| log!("Could not assign phase to Counter, Got: {err}"))
-                .expect("Could not assign phase to Counter");
-
-                state.update(|list| {
-                    let counter = list.new_counter(counter_id, name.clone()).unwrap();
-                    counter.try_lock().unwrap().new_phase(phase_id, phase_name);
-                });
-            },
-        );
-    };
-
     let selection_signal = create_rw_signal(selection);
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
@@ -720,6 +671,7 @@ pub fn HomePage() -> impl IntoView {
 
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
     let show_sort_search = create_rw_signal(true);
+    let state_len = create_read_slice(state, |s| s.list.len());
 
     view! {
         <Show
@@ -753,7 +705,7 @@ pub fn HomePage() -> impl IntoView {
                         selection_model=selection_signal
                         selection_color=accent_color
                     />
-                    <button on:click=on_click_new_counter class="new-counter">New Counter</button>
+                    <NewCounterButton state_len/>
                 </Sidebar>
                 <InfoBox countable_list=selection_signal.get_untracked().get_selected()/>
             </div>
@@ -938,12 +890,6 @@ impl CounterList {
             sort: SortCountable::Name(false),
             is_paused: true,
         };
-    }
-
-    fn new_counter(&mut self, id: i32, name: impl ToString) -> Result<ArcCountable, String> {
-        let arc_counter = ArcCountable::new(Box::new(Counter::new(id, name)?));
-        self.list.push(arc_counter.clone());
-        return Ok(arc_counter);
     }
 
     pub fn toggle_paused(&mut self) {

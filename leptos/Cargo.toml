@@ -29,6 +29,8 @@ rand = "0.8.5"
 chrono = { version = "0.4.31", features = ["serde"] }
 serde_with = { version = "3.3.0", features = ["chrono"] }
 leptos-use = { version = "0.7.1", features = ["ssr", "serde", "serde_json", "storage"] }
+termion = { version = "2.0.1", optional = true }
+thiserror = { version = "1.0.49", optional = true }
 
 [features]
 csr = ["leptos/csr", "leptos_meta/csr", "leptos_router/csr"]
@@ -38,6 +40,8 @@ ssr = [
     "dep:actix-web",
     "dep:leptos_actix",
     "dep:backend",
+    "dep:termion",
+    "dep:thiserror",
     "leptos/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",

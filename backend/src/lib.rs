@@ -65,6 +65,8 @@ impl DatabaseError for AuthorizationError {}
 pub enum DataError {
     #[error("Uninitialized Data")]
     Uninitialized,
+    #[error("Unauthorized")]
+    Unauthorized,
     #[error("Internal Server error when loading data")]
     Internal(#[from] sqlx::Error),
 }
@@ -102,18 +104,26 @@ pub async fn get_counter_by_id(
     pool: &PgPool,
     user_id: i32,
     id: i32,
-) -> Result<DbCounter, sqlx::error::Error> {
-    let counter = sqlx::query_as!(
+) -> Result<DbCounter, DataError> {
+    let counter = match sqlx::query_as!(
         DbCounter,
         r#"
         SELECT * FROM counters
-        WHERE id = $1 AND user_id = $2
+        WHERE id = $1
         "#,
         id,
-        user_id
     )
     .fetch_one(pool)
-    .await?;
+    .await
+    {
+        Ok(counter) => counter,
+        Err(sqlx::Error::RowNotFound) => Err(DataError::Uninitialized)?,
+        Err(err) => Err(err)?,
+    };
+
+    if counter.user_id != user_id {
+        Err(DataError::Unauthorized)?;
+    }
 
     return Ok(counter);
 }
@@ -186,7 +196,7 @@ pub async fn assign_phase(
     user_id: i32,
     counter_id: i32,
     phase_id: i32,
-) -> Result<(), sqlx::error::Error> {
+) -> Result<(), DataError> {
     let counter = get_counter_by_id(pool, user_id, counter_id).await?;
     let mut phases = counter.phases;
     phases.push(phase_id);
@@ -297,5 +307,5 @@ pub async fn migrate() -> Result<(), sqlx::Error> {
 
     sqlx::migrate!("../migrations").run(&pool).await?;
 
-    return Ok(())
+    return Ok(());
 }

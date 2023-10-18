@@ -1,4 +1,3 @@
-#![allow(unused_braces)]
 #![allow(non_snake_case)]
 
 use chrono::Duration;
@@ -7,7 +6,7 @@ use leptos::{
     html::{Input, Select},
     *,
 };
-use leptos_router::{use_params, Form, IntoParam, Outlet, Params, ParamsError};
+use leptos_router::{use_params, Form, IntoParam, Outlet, Params};
 use web_sys::{Event, SubmitEvent};
 
 use crate::{
@@ -28,33 +27,47 @@ where
     F: Fn() -> ScreenLayout + Copy + 'static,
 {
     let user = expect_context::<Memo<Option<SessionUser>>>();
+    let message = expect_context::<Message>();
     let params = use_params::<CountableId>();
 
-    view! {
-    <Show
-        when=move || user().is_some() && params().is_ok()
-        fallback=|| ()
-    > { move || {
-            let counter_rsrc = create_resource(params, async move |param| {
-                let user = user.get_untracked().unwrap_or_default();
-                if let Ok(id) = param.map(|p| p.id as i32) {
-                    crate::app::get_counter_by_id(user.username, user.token, id).await.map_err(|_| {
-                        String::from("Could not access Counter")
-                    })
-                } else {
-                    Err(String::from("Could not get Id"))
+    let counter_rsrc = create_resource(user, async move |user| {
+        if let Ok(id) = params.get_untracked().map(|p| p.id as i32) && let Some(user) = user {
+            match crate::app::get_counter_by_id(user.username, user.token, id).await {
+                Ok(counter) => Some(counter),
+                Err(ServerFnError::ServerError(err)) if &err == "Uninitialized Data" => {
+                    message.without_timeout().set_err("Counter does not exist");
+                    None
                 }
-            });
+                Err(ServerFnError::ServerError(err)) if &err == "Unauthorized" => {
+                    message.without_timeout().set_err("Unauthorized to edit Counter");
+                    None
+                }
+                Err(err) => {
+                    message.set_server_err(&err.to_string());
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    });
 
-            view! {
+    view! {
+        <Show
+            when=move || user().is_some()
+            fallback=|| view! { <LoadingScreen/> }
+        >
+            <Show
+                when=move || params().is_ok()
+                fallback=move || message.without_timeout().set_err("Invalid Counter id")
+            >
                 <EditCounterBox
-                    layout=layout
+                    layout
                     countable_kind=CountableKind::Counter(params().unwrap().id)
                     counter_rsrc=counter_rsrc
                 />
-            }
-        }}
-    </Show>
+            </Show>
+        </Show>
     }
 }
 
@@ -64,33 +77,39 @@ where
     F: Fn() -> ScreenLayout + Copy + 'static,
 {
     let user = expect_context::<Memo<Option<SessionUser>>>();
+    let message = expect_context::<Message>();
     let params = use_params::<CountableId>();
 
-    view! {
-    <Show
-        when=move || user().is_some() && params().is_ok()
-        fallback=|| ()>
-        { move || {
-            let phase_rsrc = create_resource(params, async move |param| {
-                let user = user.get_untracked().unwrap_or_default();
-                if let Ok(id) = param.map(|p| p.id as i32) {
-                    crate::app::get_phase_by_id(user.username, user.token, id).await.map_err(|_| {
-                        String::from("Could not access Phase")
-                    })
-                } else {
-                    Err(String::from("Could not get Id"))
+    let phase_rsrc = create_resource(user, async move |user| {
+        if let Ok(id) = params.get_untracked().map(|p| p.id as i32) && let Some(user) = user {
+            match crate::app::get_phase_by_id(user.username, user.token, id).await {
+                Ok(counter) => Some(counter),
+                Err(_) => {
+                    message.without_timeout().set_err("Unauthorized to edit Phase");
+                    None
                 }
-            });
+            }
+        } else {
+            None
+        }
+    });
 
-            view! {
+    view! {
+        <Show
+            when=move || user().is_some()
+            fallback=|| view! { <LoadingScreen/> }
+        >
+            <Show
+                when=move || params().is_ok()
+                fallback=move || message.without_timeout().set_err("Invalid Counter id")
+            >
                 <EditCounterBox
                     layout=layout
                     countable_kind=CountableKind::Phase(params().unwrap().id)
                     counter_rsrc=phase_rsrc
                 />
-            }
-        }}
-    </Show>
+            </Show>
+        </Show>
     }
 }
 
@@ -111,7 +130,7 @@ impl std::ops::Deref for CountableId {
 fn EditCounterBox<F, T>(
     layout: F,
     countable_kind: CountableKind,
-    counter_rsrc: Resource<Result<CountableId, ParamsError>, Result<T, String>>,
+    counter_rsrc: Resource<Option<SessionUser>, Option<T>>,
 ) -> impl IntoView
 where
     F: Fn() -> ScreenLayout + Copy + 'static,
@@ -263,7 +282,7 @@ where
                 })
             }
         };
-
+      
         action.dispatch((user().unwrap(), counter().unwrap()));
 
         create_effect(move |_| {
@@ -294,12 +313,8 @@ where
     };
 
     view! {
-        <Show
-            when=move || user().is_some()
-            fallback=move || view! { <LoadingScreen/> }
-        >
-        <Transition fallback=move || view!{ <LoadingScreen/> }>
-            { move || { counter.set(counter_rsrc.get().map(|c| c.ok()).flatten()); } }
+        <Suspense fallback=move || view!{ <LoadingScreen/> }>
+            { move || { counter.set(counter_rsrc.get().flatten()); } }
 
             <Form action="/" on:submit=on_submit class="parent-form">
                 <div class={ move || String::from("editing-form ") + layout().get_class() } style=border_style>
@@ -353,7 +368,6 @@ where
                     </div>
                 </div>
             </Form>
-        </Transition>
-        </Show>
+        </Suspense>
     }
 }

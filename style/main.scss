@@ -531,6 +531,7 @@ form {
     &:open {
         display: block;
     }
+    outline: none;
     position: fixed;
     top: 64px;
     right: 16px;

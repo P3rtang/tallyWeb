@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            insert into preferences (user_id, use_default_accent_color, accent_color, show_separator)\n            values ($1, $2, $3, $4)\n            on conflict (user_id)\n            do update set use_default_accent_color = $2, accent_color = $3, show_separator = $4\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Bool",
+        "Varchar",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "17ca08c3eb829b0c56435422ab0cdd0ba70aaa093e3508d2ed9dd6f086926f25"
+}

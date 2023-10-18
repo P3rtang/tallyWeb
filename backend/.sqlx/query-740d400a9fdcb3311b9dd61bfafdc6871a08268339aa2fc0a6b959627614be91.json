@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        delete from counters\n        where user_id = $1 AND id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "740d400a9fdcb3311b9dd61bfafdc6871a08268339aa2fc0a6b959627614be91"
+}

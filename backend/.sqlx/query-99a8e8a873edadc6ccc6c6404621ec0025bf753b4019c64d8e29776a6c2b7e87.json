@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE counters\n        SET phases = array_remove(phases, $1)\n        WHERE $1 = ANY(phases);\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "99a8e8a873edadc6ccc6c6404621ec0025bf753b4019c64d8e29776a6c2b7e87"
+}

@@ -18,6 +18,10 @@ impl Message {
         }
     }
 
+    pub fn clear(&self) {
+        self.msg.set(Notification::None)
+    }
+
     pub fn without_timeout(self) -> Self {
         Self {
             reset_time: None,
