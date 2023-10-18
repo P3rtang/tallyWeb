@@ -11,10 +11,31 @@ env:
   RUSTFLAGS: -D warnings
 
 jobs:
-  build:
-
+  fmt:
+    name: Rustfmt
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+      - name: Enforce formatting
+        run: cargo fmt --check
 
+#   clippy:
+#   name: Clippy
+#   runs-on: ubuntu-latest
+#   steps:
+#     - uses: actions/checkout@v3
+#     - uses: dtolnay/rust-toolchain@nightly
+#       with:
+#         components: clippy
+#     - uses: Swatinem/rust-cache@v2
+#     - name: Linting
+#       run: cargo clippy -- -D warnings
+        
+  build:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Build
