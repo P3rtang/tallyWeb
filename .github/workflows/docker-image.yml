@@ -3,6 +3,7 @@ name: Docker Image CI
 on:
   push:
     branches: [ "main" ]
+  pull_request:
 
 jobs:
 
@@ -12,6 +13,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - run: ls -al
     - name: Login to DockerHub
       uses: docker/login-action@v1
       with:
