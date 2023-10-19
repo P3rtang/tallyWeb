@@ -125,13 +125,13 @@ pub fn AccountOverlayButton<F>(
     #[prop(optional)] text: Option<&'static str>,
 ) -> impl IntoView
 where
-    F: Fn() -> () + 'static,
+    F: Fn() + 'static,
 {
     view! {
         <button
             class="overlay-button"
             on:click=move |_| { if close_overlay {
-                use_context::<RwSignal<CloseOverlays>>().map(|t| t.update(|_| ()));
+                if let Some(t) = use_context::<RwSignal<CloseOverlays>>() { t.update(|_| ()) }
                 on_click()
             }}
         >
@@ -174,7 +174,7 @@ pub fn AccountOverlayNavigate(
             <button
                 class="overlay-button"
                 on:click=move |_| { if close_overlay {
-                    use_context::<RwSignal<CloseOverlays>>().map(|t| t.update(|_| ()));
+                    if let Some(t) = use_context::<RwSignal<CloseOverlays>>() { t.update(|_| ()) }
                 }}>
                 <Show
                     when=move || fa_icon.is_some()

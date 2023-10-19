@@ -53,7 +53,7 @@ fn format_time(dur: Duration) -> String {
 }
 
 fn short_format_time(dur: Duration) -> String {
-    return match dur {
+    match dur {
         dur if dur.num_hours() > 0 => {
             format!("{:02}h {:02}m", dur.num_hours(), dur.num_minutes() % 60)
         }
@@ -67,7 +67,7 @@ fn short_format_time(dur: Duration) -> String {
                 dur.num_milliseconds() % 1000
             )
         }
-    };
+    }
 }
 
 #[component]
@@ -146,7 +146,7 @@ where
 {
     // TODO: just use the duration from the counter itself instead of system time
     let format_time = |millis: Option<Duration>| match millis {
-        None => return format!("---"),
+        None => format!("---"),
         Some(m) => short_format_time(m),
     };
 

@@ -93,7 +93,7 @@ impl ArcCountable {
             .try_lock()
             .map_or_else(
                 |_| Vec::new(),
-                |c| c.get_phases().into_iter().map(|p| p.clone()).collect(),
+                |c| c.get_phases().into_iter().cloned().collect(),
             )
             .clone()
     }
@@ -110,7 +110,7 @@ impl ArcCountable {
         for child in self.get_children() {
             has_child |= child.has_child_starts_with(pat)
         }
-        return has_child;
+        has_child
     }
 
     pub fn has_child_contains(&self, pat: &str) -> bool {
@@ -118,7 +118,7 @@ impl ArcCountable {
         for child in self.get_children() {
             contains |= child.has_child_contains(pat)
         }
-        return contains;
+        contains
     }
 }
 
@@ -132,10 +132,11 @@ impl std::ops::Deref for ArcCountable {
     type Target = Mutex<Box<dyn Countable>>;
 
     fn deref(&self) -> &Self::Target {
-        return &*self.0;
+        &self.0
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Hunttype {
     #[default]
@@ -158,7 +159,11 @@ impl Hunttype {
     fn get_rolls(&self, count: i32, has_charm: bool) -> i32 {
         match self {
             Hunttype::OldOdds | Hunttype::NewOdds => {
-                return if has_charm { count * 3 } else { count }
+                if has_charm {
+                    count * 3
+                } else {
+                    count
+                }
             }
             Hunttype::SOS => {
                 let mut rolls = if count < 10 {
@@ -174,28 +179,38 @@ impl Hunttype {
                 if has_charm {
                     rolls += count * 2
                 }
-                return rolls;
+                rolls
             }
             Hunttype::DexNav(_) => todo!(),
             Hunttype::Masuda(Masuda::GenIV) => {
-                return if has_charm { count * 7 } else { count * 5 }
+                if has_charm {
+                    count * 7
+                } else {
+                    count * 5
+                }
             }
-            Hunttype::Masuda(_) => return if has_charm { count * 8 } else { count * 6 },
+            Hunttype::Masuda(_) => {
+                if has_charm {
+                    count * 8
+                } else {
+                    count * 6
+                }
+            }
         }
     }
 
     fn get_odds(&self) -> i32 {
-        return match self {
+        match self {
             Hunttype::OldOdds => 8192,
             Hunttype::Masuda(Masuda::GenIV | Masuda::GenV) => 8192,
             _ => 4096,
-        };
+        }
     }
 }
 
-impl Into<String> for Hunttype {
-    fn into(self) -> String {
-        match self {
+impl From<Hunttype> for String {
+    fn from(val: Hunttype) -> Self {
+        match val {
             Hunttype::OldOdds => String::from("OldOdds"),
             Hunttype::NewOdds => String::from("NewOdds"),
             Hunttype::SOS => String::from("SOS"),
@@ -287,12 +302,12 @@ impl From<Counter> for SerCounter {
                 phase_list.push(phase.clone())
             }
         }
-        return SerCounter {
+        SerCounter {
             id: value.id,
             name: value.name,
             phase_list,
             created_at: value.created_at,
-        };
+        }
     }
 }
 
@@ -372,9 +387,9 @@ impl Countable for SerCounter {
     }
 
     fn add_time(&mut self, dur: Duration) {
-        self.phase_list.last_mut().map(|p| {
+        if let Some(p) = self.phase_list.last_mut() {
             p.add_time(dur);
-        });
+        }
     }
 
     fn is_active(&self) -> bool {
@@ -457,18 +472,18 @@ pub struct Counter {
 #[allow(dead_code)]
 impl Counter {
     pub fn new(id: i32, name: impl ToString) -> Result<Self, String> {
-        return Ok(Counter {
+        Ok(Counter {
             id,
             name: name.to_string(),
             phase_list: Vec::new(),
             created_at: chrono::Utc::now().naive_utc(),
-        });
+        })
     }
 }
 
 impl Countable for Counter {
     fn get_id(&self) -> i32 {
-        return self.id;
+        self.id
     }
 
     fn get_uuid(&self) -> String {
@@ -496,9 +511,9 @@ impl Countable for Counter {
     }
 
     fn add_count(&mut self, count: i32) {
-        self.phase_list.last_mut().map(|p| {
+        if let Some(p) = self.phase_list.last_mut() {
             let _ = p.0.try_lock().map(|mut p| p.add_count(count));
-        });
+        }
     }
 
     fn get_rolls(&self) -> i32 {
@@ -527,9 +542,9 @@ impl Countable for Counter {
     }
 
     fn add_time(&mut self, dur: Duration) {
-        self.phase_list.last_mut().map(|p| {
+        if let Some(p) = self.phase_list.last_mut() {
             let _ = p.0.try_lock().map(|mut p| p.add_time(dur));
-        });
+        }
     }
 
     fn is_active(&self) -> bool {
@@ -538,7 +553,7 @@ impl Countable for Counter {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     fn toggle_active(&mut self) {
@@ -554,18 +569,13 @@ impl Countable for Counter {
             self.phase_list.iter().for_each(|p| {
                 let _ = p.0.lock().map(|mut p| p.set_active(false));
             });
-        } else {
-            self.phase_list
-                .last_mut()
-                .map(|p| p.try_lock().ok())
-                .flatten()
-                .map(|mut p| p.set_active(active));
+        } else if let Some(mut p) = self.phase_list.last_mut().and_then(|p| p.try_lock().ok()) {
+            p.set_active(active)
         }
     }
 
     fn get_progress(&self) -> f64 {
-        return 1.0
-            - (1.0 - 1.0_f64 / self.get_hunt_type().get_odds() as f64).powi(self.get_rolls());
+        1.0 - (1.0 - 1.0_f64 / self.get_hunt_type().get_odds() as f64).powi(self.get_rolls())
     }
 
     fn get_hunt_type(&self) -> Hunttype {
@@ -589,7 +599,7 @@ impl Countable for Counter {
     }
 
     fn set_charm(&mut self, set: bool) {
-        let _ = self.phase_list.iter_mut().for_each(|c| c.set_charm(set));
+        self.phase_list.iter_mut().for_each(|c| c.set_charm(set));
     }
 
     fn created_at(&self) -> chrono::NaiveDateTime {
@@ -608,7 +618,7 @@ impl Countable for Counter {
     fn new_counter(&mut self, id: i32, name: String) -> Result<ArcCountable, String> {
         let arc_counter = ArcCountable::new(Box::new(Counter::new(id, name)?));
         self.phase_list.push(arc_counter.clone());
-        return Ok(arc_counter);
+        Ok(arc_counter)
     }
 
     fn get_phases(&self) -> Vec<&ArcCountable> {
@@ -644,7 +654,7 @@ pub struct Phase {
 
 impl Phase {
     fn new(id: i32, name: impl ToString, hunt_type: Hunttype, has_charm: bool) -> Self {
-        return Phase {
+        Phase {
             id,
             name: name.to_string(),
             count: 0,
@@ -653,13 +663,13 @@ impl Phase {
             hunt_type,
             has_charm,
             created_at: chrono::Utc::now().naive_utc(),
-        };
+        }
     }
 }
 
 impl Countable for Phase {
     fn get_id(&self) -> i32 {
-        return self.id;
+        self.id
     }
 
     fn get_uuid(&self) -> String {
@@ -675,7 +685,7 @@ impl Countable for Phase {
     }
 
     fn get_count(&self) -> i32 {
-        return self.count;
+        self.count
     }
 
     fn set_count(&mut self, count: i32) {
@@ -695,7 +705,7 @@ impl Countable for Phase {
     }
 
     fn get_time(&self) -> Duration {
-        return self.time;
+        self.time
     }
 
     fn set_time(&mut self, dur: Duration) {
@@ -707,7 +717,7 @@ impl Countable for Phase {
     }
 
     fn is_active(&self) -> bool {
-        return self.is_active;
+        self.is_active
     }
 
     fn toggle_active(&mut self) {
@@ -719,7 +729,7 @@ impl Countable for Phase {
     }
 
     fn get_progress(&self) -> f64 {
-        return 1.0 - (1.0 - 1.0_f64 / self.hunt_type.get_odds() as f64).powi(self.get_rolls());
+        1.0 - (1.0 - 1.0_f64 / self.hunt_type.get_odds() as f64).powi(self.get_rolls())
     }
 
     fn get_hunt_type(&self) -> Hunttype {
@@ -742,20 +752,18 @@ impl Countable for Phase {
         self.created_at
     }
 
-    fn new_phase(&mut self, _: i32, _: String) {
-        return ();
-    }
+    fn new_phase(&mut self, _: i32, _: String) {}
 
     fn new_counter(&mut self, _: i32, _: String) -> Result<ArcCountable, String> {
-        return Err(String::from("Can not add counter to phase"));
+        Err(String::from("Can not add counter to phase"))
     }
 
     fn get_phases(&self) -> Vec<&ArcCountable> {
-        return vec![];
+        vec![]
     }
 
     fn get_phases_mut(&mut self) -> Vec<&mut ArcCountable> {
-        return vec![];
+        vec![]
     }
 
     fn has_children(&self) -> bool {
@@ -784,7 +792,7 @@ pub enum SortCountable {
 
 impl SortCountable {
     pub fn sort_by(&self) -> impl Fn(&ArcCountable, &ArcCountable) -> Ordering {
-        return match self {
+        match self {
             SortCountable::Id(false) => {
                 |a: &ArcCountable, b: &ArcCountable| a.get_id().cmp(&b.get_id())
             }
@@ -815,7 +823,7 @@ impl SortCountable {
             SortCountable::CreatedAt(true) => {
                 |a: &ArcCountable, b: &ArcCountable| b.created_at().cmp(&a.created_at())
             }
-        };
+        }
     }
 
     pub fn toggle(&self) -> Self {
@@ -852,9 +860,9 @@ impl From<String> for SortCountable {
     }
 }
 
-impl Into<&str> for SortCountable {
-    fn into(self) -> &'static str {
-        match self {
+impl From<SortCountable> for &str {
+    fn from(val: SortCountable) -> Self {
+        match val {
             SortCountable::Id(_) => "Id",
             SortCountable::Name(_) => "Name",
             SortCountable::Count(_) => "Count",

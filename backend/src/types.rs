@@ -96,7 +96,7 @@ impl DbUser {
 
         self.token = Some(token.id.clone());
 
-        return Ok(token);
+        Ok(token)
     }
     pub async fn get_token(&self, pool: &PgPool) -> Result<DbAuthToken, sqlx::error::Error> {
         let token = query_as!(
@@ -110,18 +110,18 @@ impl DbUser {
         )
         .fetch_one(pool)
         .await?;
-        return Ok(token);
+        Ok(token)
     }
 
     pub async fn token_status(&self, pool: &PgPool) -> TokenStatus {
         if let Ok(token) = self.get_token(pool).await {
             if token.expire_on.and_utc() > chrono::Utc::now() {
-                return TokenStatus::Valid;
+                TokenStatus::Valid
             } else {
-                return TokenStatus::Expired;
+                TokenStatus::Expired
             }
         } else {
-            return TokenStatus::Invalid;
+            TokenStatus::Invalid
         }
     }
 
@@ -137,7 +137,7 @@ impl DbUser {
         .fetch_all(pool)
         .await?;
 
-        return Ok(data);
+        Ok(data)
     }
 }
 
@@ -179,7 +179,7 @@ impl DbPreferences {
             Err(err) => return Err(DataError::Internal(err)),
         };
 
-        return Ok(data);
+        Ok(data)
     }
 
     pub async fn db_set(self, pool: &PgPool, user_id: i32) -> Result<(), sqlx::error::Error> {
@@ -198,6 +198,6 @@ impl DbPreferences {
         .execute(pool)
         .await?;
 
-        return Ok(());
+        Ok(())
     }
 }

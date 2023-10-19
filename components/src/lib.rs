@@ -42,7 +42,7 @@ where {
     let border_style = move || {
         format!(
             "border: 2px solid {};",
-            accent_color.map(|ac| ac()).unwrap_or(String::new())
+            accent_color.map(|ac| ac()).unwrap_or_default()
         )
     };
 

@@ -150,7 +150,7 @@ where
         counter,
         |c| c.clone().map(|c| c.get_name()).unwrap_or_default(),
         |c, new| {
-            c.as_mut().map(|c| c.set_name(new));
+            if let Some(c) = c.as_mut() { c.set_name(new) }
         },
     );
 
@@ -158,7 +158,7 @@ where
         counter,
         |c| c.clone().map(|c| c.get_count()).unwrap_or_default(),
         |c, new| {
-            c.as_mut().map(|c| c.set_count(new));
+            if let Some(c) = c.as_mut() { c.set_count(new) }
         },
     );
 
@@ -175,7 +175,7 @@ where
                 .map(|c| c.get_time().num_hours())
                 .unwrap_or_default();
             let diff = Duration::hours(old_h - new);
-            c.as_mut().map(|c| c.set_time(c.get_time() - diff));
+            if let Some(c) = c.as_mut() { c.set_time(c.get_time() - diff) }
         },
     );
     let (mins, set_mins) = create_slice(
@@ -191,7 +191,7 @@ where
                 .map(|c| c.get_time().num_minutes() % 60)
                 .unwrap_or_default();
             let diff = Duration::minutes(old_m - new);
-            c.as_mut().map(|c| c.set_time(c.get_time() - diff));
+            if let Some(c) = c.as_mut() { c.set_time(c.get_time() - diff) }
         },
     );
 
@@ -207,7 +207,7 @@ where
         counter,
         |c| c.as_ref().map(|c| c.has_charm()).unwrap_or_default(),
         |c, new| {
-            c.as_mut().map(|c| c.set_charm(new));
+            if let Some(c) = c.as_mut() { c.set_charm(new) }
         },
     );
 
@@ -219,15 +219,15 @@ where
 
     create_effect(move |_| {
         let hunt: String = hunt_type().into();
-        hunt_type_dropdown().map(|d| d.set_value(&hunt));
+        if let Some(d) = hunt_type_dropdown() { d.set_value(&hunt) }
     });
 
     let undo_changes = move |_| {
         counter_rsrc.refetch();
-        name_input().map(|v| v.set_value(&name()));
-        count_input().map(|v| v.set_value_as_number(count() as f64));
-        hours_input().map(|v| v.set_value_as_number(hours() as f64));
-        mins_input().map(|v| v.set_value_as_number(mins() as f64));
+        if let Some(v) = name_input() { v.set_value(&name()) }
+        if let Some(v) = count_input() { v.set_value_as_number(count() as f64) }
+        if let Some(v) = hours_input() { v.set_value_as_number(hours() as f64) }
+        if let Some(v) = mins_input() { v.set_value_as_number(mins() as f64) }
     };
 
     let on_submit = move |ev: SubmitEvent| {

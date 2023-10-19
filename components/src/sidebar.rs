@@ -27,10 +27,10 @@ impl ScreenLayout {
     }
 
     pub fn get_class(&self) -> &str {
-        return match self {
+        match self {
             ScreenLayout::Small => "small",
             ScreenLayout::Big => "big",
-        };
+        }
     }
 }
 
@@ -71,7 +71,7 @@ where
 }
 
 pub fn connect_on_window_resize(f: Box<dyn FnMut()>) {
-    let closure = Closure::wrap(f as Box<dyn FnMut() -> ()>);
+    let closure = Closure::wrap(f as Box<dyn FnMut()>);
     leptos_dom::window().set_onresize(Some(closure.as_ref().unchecked_ref()));
     closure.forget();
 }

@@ -14,8 +14,8 @@ pub fn LoginPage() -> impl IntoView {
     };
 
     create_effect(move |_| {
-        if let Some(login) = action.value().get().map(|v| v.ok()).flatten() {
-            if let Ok(_) = LocalStorage::set("user_session", login.clone()) {
+        if let Some(login) = action.value().get().and_then(|v| v.ok()) {
+            if LocalStorage::set("user_session", login.clone()).is_ok() {
                 expect_context::<RwSignal<Option<SessionUser>>>().set(Some(login));
                 crate::app::navigate("/")
             }

@@ -16,7 +16,7 @@ pub fn SavingScreen(#[prop(optional)] accent_color: Option<Signal<String>>) -> i
     let border_style = move || {
         format!(
             "2px solid {};",
-            accent_color.map(|ac| ac()).unwrap_or(String::new())
+            accent_color.map(|ac| ac()).unwrap_or_default()
         )
     };
 

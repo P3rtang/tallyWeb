@@ -30,7 +30,7 @@ pub async fn login_user(
         token: user.token.unwrap(),
     };
 
-    return Ok(session_user);
+    Ok(session_user)
 }
 
 #[server(CreateAccount, "/api", "Url", "create_account")]
@@ -51,7 +51,7 @@ pub async fn create_account(
         token: user.token.unwrap(),
     };
 
-    return Ok(session_user);
+    Ok(session_user)
 }
 
 #[server(ChangePassword, "/api")]
@@ -68,7 +68,7 @@ pub async fn change_password(
     let pool = backend::create_pool().await?;
     let _ = backend::auth::change_password(&pool, username, old_pass, new_pass).await?;
 
-    return Ok(());
+    Ok(())
 }
 
 #[server(GetUserIdFromName, "/api")]
@@ -76,7 +76,7 @@ async fn get_id_from_username(username: String, token: String) -> Result<i32, Se
     let pool = backend::create_pool().await?;
     let db_user = backend::auth::get_user(&pool, username, token).await?;
 
-    return Ok(db_user.id);
+    Ok(db_user.id)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -116,7 +116,7 @@ async fn get_counters_by_user_name(
         )
     }
 
-    return Ok(CounterResponse::Counters(counters));
+    Ok(CounterResponse::Counters(counters))
 }
 
 #[server(GetCounterById, "/api")]
@@ -129,7 +129,7 @@ pub async fn get_counter_by_id(
     let user = backend::auth::get_user(&pool, username.clone(), token.clone()).await?;
     let data = backend::get_counter_by_id(&pool, user.id, counter_id).await?;
 
-    return Ok(SerCounter::from_db(username, token, data).await);
+    Ok(SerCounter::from_db(username, token, data).await)
 }
 
 #[server(GetPhaseById, "/api")]
@@ -141,7 +141,7 @@ pub async fn get_phase_by_id(
     let pool = backend::create_pool().await?;
     let user = backend::auth::get_user(&pool, username, token).await?;
     let data = backend::get_phase_by_id(&pool, user.id, phase_id).await?;
-    return Ok(data.into());
+    Ok(data.into())
 }
 
 #[server(CreateCounter, "/api")]
@@ -154,7 +154,7 @@ pub async fn create_counter(
     let user = backend::auth::get_user(&pool, username, token).await?;
     let counter_id = backend::create_counter(&pool, user.id, name).await?;
 
-    return Ok(counter_id);
+    Ok(counter_id)
 }
 
 #[server(UpdateCounter, "/api")]
@@ -171,7 +171,7 @@ pub async fn update_counter(
         backend::update_phase(&pool, user.id, phase.to_db(user.id).await).await?;
     }
 
-    return Ok(());
+    Ok(())
 }
 
 #[server(RemoveCounter, "/api")]
@@ -184,7 +184,7 @@ pub async fn remove_counter(
     let user = backend::auth::get_user(&pool, username, token).await?;
     backend::remove_counter(&pool, user.id, counter_id).await?;
 
-    return Ok(());
+    Ok(())
 }
 
 #[server(RemovePhase, "/api")]
@@ -197,7 +197,7 @@ pub async fn remove_phase(
     let _ = backend::auth::get_user(&pool, username, token).await?;
     backend::remove_phase(&pool, phase_id).await?;
 
-    return Ok(());
+    Ok(())
 }
 
 #[server(CreatePhase, "/api")]
@@ -212,7 +212,7 @@ pub async fn create_phase(
     let user = backend::auth::get_user(&pool, username, token).await?;
     let id = backend::create_phase(&pool, user.id, name, hunt_type.into()).await?;
 
-    return Ok(id);
+    Ok(id)
 }
 
 #[server(AssignPhase, "/api")]
@@ -227,7 +227,7 @@ pub async fn assign_phase(
     let user = backend::auth::get_user(&pool, username, token).await?;
     backend::assign_phase(&pool, user.id, counter_id, phase_id).await?;
 
-    return Ok(());
+    Ok(())
 }
 
 #[server(SavePhase, "/api")]
@@ -241,7 +241,7 @@ pub async fn update_phase(
     let user = backend::auth::get_user(&pool, username, token).await?;
     backend::update_phase(&pool, user.id, phase.to_db(user.id).await).await?;
 
-    return Ok(());
+    Ok(())
 }
 
 #[server(SaveAll, "/api")]
@@ -267,7 +267,7 @@ async fn save_all(
         backend::update_phase(&pool, user.id, phase.to_db(user.id).await).await?;
     }
 
-    return Ok(());
+    Ok(())
 }
 
 #[server(GetUserPreferences, "/api")]
@@ -296,7 +296,7 @@ async fn get_user_preferences(
         Err(err) => return Err(err)?,
     };
 
-    return Ok(Preferences::from(prefs));
+    Ok(Preferences::from(prefs))
 }
 
 #[server(SavePreferences, "/api")]
@@ -322,7 +322,7 @@ pub async fn save_preferences(
     };
     db_prefs.db_set(&pool, user.id).await?;
 
-    return Ok(());
+    Ok(())
 }
 
 impl Display for AccountAccentColor {
@@ -407,8 +407,7 @@ pub fn App() -> impl IntoView {
         if let Some(width) = leptos_dom::window()
             .inner_width()
             .ok()
-            .map(|v| v.as_f64())
-            .flatten()
+            .and_then(|v| v.as_f64())
         {
             if width < 1200.0 {
                 screen_layout.set(ScreenLayout::Small)
@@ -553,11 +552,11 @@ fn timer(active: RwSignal<Vec<RwSignal<ArcCountable>>>) {
     let time = create_signal(0_u32);
 
     let calc_interval = |now: u32, old: u32| -> Duration {
-        return if now < old {
+        if now < old {
             Duration::milliseconds((1000 + now - old).into())
         } else {
             Duration::milliseconds((now - old).into())
-        };
+        }
     };
 
     let state = use_context::<RwSignal<CounterList>>();
@@ -595,7 +594,7 @@ pub fn navigate(page: impl ToString) {
         let page = page.clone();
         request_animation_frame(move || {
             let navigate = leptos_router::use_navigate();
-            let _ = navigate(page.as_str(), Default::default());
+            navigate(page.as_str(), Default::default());
         });
     });
 }
@@ -621,7 +620,7 @@ fn connect_keys(
             state.try_update(|s| s.start());
         }),
         "KeyP" => {
-            if active.get_untracked().len() > 0 {
+            if !active.get_untracked().is_empty() {
                 state.try_update(|s| s.toggle_paused());
             }
         }
@@ -732,13 +731,11 @@ where
                 justify-content: center
                 align-items: center">
             <div
-                style={ format!("
+                style={ "
                     font-size: 1.4rem;
                     color: #BBB;
                     padding: 0px 12px;
-                    margin: auto;",
-                    // accent_color().0,
-                )}>
+                    margin: auto;".to_string()}>
                 { children() }
             </div>
             <div
@@ -883,7 +880,7 @@ impl CounterList {
     fn new(counters: &[Counter]) -> Self {
         return CounterList {
             list: counters
-                .into_iter()
+                .iter()
                 .map(|c| ArcCountable::new(Box::new(c.clone())))
                 .collect(),
             search: None,
@@ -910,7 +907,7 @@ impl CounterList {
 
     pub fn get_filtered_list(&mut self) -> Vec<ArcCountable> {
         self.list.sort_by(self.sort.sort_by());
-        return if let Some(search) = &self.search {
+        if let Some(search) = &self.search {
             let mut list_starts_with = Vec::new();
             let mut child_starts_with = Vec::new();
             let mut list_contains = Vec::new();
@@ -933,10 +930,10 @@ impl CounterList {
             list_starts_with.append(&mut list_contains);
             list_starts_with.append(&mut child_contains);
 
-            return list_starts_with;
+            list_starts_with
         } else {
             self.list.clone()
-        };
+        }
     }
 }
 
@@ -959,19 +956,19 @@ impl From<Vec<SerCounter>> for CounterList {
                 ArcCountable::new(Box::new(counter))
             })
             .collect();
-        return Self {
+        Self {
             list,
             search: None,
             sort: SortCountable::Name(false),
             is_paused: true,
-        };
+        }
     }
 }
 
-impl Into<Vec<SerCounter>> for CounterList {
-    fn into(self) -> Vec<SerCounter> {
+impl From<CounterList> for Vec<SerCounter> {
+    fn from(val: CounterList) -> Self {
         let mut rtrn_list = Vec::new();
-        for arc_c in self.list {
+        for arc_c in val.list {
             if let Some(counter) = arc_c
                 .lock()
                 .map(|c| c.as_any().downcast_ref::<Counter>().cloned())
@@ -982,7 +979,7 @@ impl Into<Vec<SerCounter>> for CounterList {
             }
         }
 
-        return rtrn_list;
+        rtrn_list
     }
 }
 
@@ -1023,16 +1020,12 @@ impl SessionUser {
             }
         });
 
-        return user_signal;
+        user_signal
     }
 
     pub fn has_value(&self) -> bool {
         // TODO: make this function check the backend for validity
-        if self.username == "" || self.token.len() != 32 {
-            return false;
-        } else {
-            return true;
-        }
+        !(self.username.is_empty() || self.token.len() != 32)
     }
 }
 
@@ -1043,7 +1036,7 @@ impl AccountAccentColor {
     fn new(user: &SessionUser) -> Self {
         let mut this = Self(String::new());
         this.set_user(user);
-        return this;
+        this
     }
 
     pub fn set_user(&mut self, user: &SessionUser) {
@@ -1068,25 +1061,25 @@ pub struct Preferences {
 impl Preferences {
     fn new(user: &SessionUser) -> Self {
         let accent_color = AccountAccentColor::new(user);
-        return Self {
+        Self {
             use_default_accent_color: true,
             accent_color,
             show_separator: false,
-        };
+        }
     }
 }
 
 #[cfg(feature = "ssr")]
 impl Preferences {
     fn from_db(user: &SessionUser, value: backend::DbPreferences) -> Self {
-        return Self {
+        Self {
             use_default_accent_color: value.use_default_accent_color,
             accent_color: value
                 .accent_color
                 .map(|c| AccountAccentColor(c))
                 .unwrap_or(AccountAccentColor::new(user)),
             show_separator: value.show_separator,
-        };
+        }
     }
 }
 

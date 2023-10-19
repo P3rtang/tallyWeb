@@ -13,13 +13,13 @@ where
 {
     let about_node = create_node_ref::<Dialog>();
     create_effect(move |_| {
-        about_node().map(|a| {
+        if let Some(a) = about_node() {
             if open() {
                 let _ = a.show_modal();
             } else {
-                let _ = a.close();
+                a.close()
             }
-        });
+        };
     });
 
     let border_style = move || {
@@ -54,7 +54,7 @@ where
             <div class="actionbuttons">
                 <button
                     style=button_style
-                    on:click=move |_| { about_node().map(|a| a.close()); }
+                    on:click=move |_| { if let Some(a) = about_node() { a.close() } }
                 >
                     Close
                 </button>
