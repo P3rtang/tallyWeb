@@ -1,0 +1,19 @@
+services:
+  tallyweb:
+    restart: always
+    image: "p3rtang/tallyweb"
+    network: tallyweb
+    ports:
+      - 3000:3000
+    volumes:
+      - ./db-backup:./db-backup
+  postgres_tallyweb:
+    restart: always
+    env_file:
+      - .env
+    image: "postgres"
+    network: tallyweb
+    ports: 
+      - 5442:5432
+    volumes:
+      - ./postgresql:/var/lib/postgresql
