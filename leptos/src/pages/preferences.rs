@@ -42,7 +42,7 @@ where
 
     let on_change = move |ev: Event| {
         let color = event_target_value(&ev);
-        if color.len() == 0 {
+        if color.is_empty() {
             ev.prevent_default()
         }
         set_accent_color(color)
@@ -57,7 +57,8 @@ where
                 Ok(_) => message.set_msg("Settings Saved"),
                 Err(err) => message.set_server_err(&err.to_string()),
             };
-            return Ok(());
+
+            Ok(())
         });
         action.dispatch(());
         message

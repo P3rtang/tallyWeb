@@ -16,8 +16,10 @@ pub async fn insert_user(
 ) -> Result<DbUser, SignupError> {
     // generate salt
     let salt = SaltString::generate(&mut OsRng);
-    let mut params = pbkdf2::Params::default();
-    params.rounds = 100_000;
+    let params = pbkdf2::Params {
+        rounds: 100_000,
+        ..Default::default()
+    };
 
     // Hash password to PHC string ($pbkdf2-sha256$...
     let hashed_password = Pbkdf2
@@ -48,7 +50,7 @@ pub async fn insert_user(
 
     user.new_token(pool, None).await?;
 
-    return Ok(user);
+    Ok(user)
 }
 
 pub async fn login_user(
@@ -90,7 +92,7 @@ pub async fn login_user(
         err
     })?;
 
-    return Ok(user);
+    Ok(user)
 }
 
 pub async fn change_password(
@@ -123,8 +125,10 @@ pub async fn change_password(
 
     // generate salt
     let salt = SaltString::generate(&mut OsRng);
-    let mut params = pbkdf2::Params::default();
-    params.rounds = 100_000;
+    let params = pbkdf2::Params {
+        rounds: 100_000,
+        ..Default::default()
+    };
 
     // Hash password to PHC string ($pbkdf2-sha256$...
     let hashed_password = Pbkdf2
@@ -153,7 +157,7 @@ pub async fn change_password(
         Err(err) => Err(err)?,
     };
 
-    return Ok(user);
+    Ok(user)
 }
 
 pub async fn change_username(
@@ -186,7 +190,7 @@ pub async fn change_username(
         Err(err) => Err(err)?,
     };
 
-    return Ok(user);
+    Ok(user)
 }
 pub async fn check_pass(
     pool: &PgPool,
@@ -207,11 +211,11 @@ pub async fn check_pass(
     let parsed_hash = PasswordHash::new(&user.password).unwrap();
     // Trait objects for algorithms to support
     let algs: &[&dyn PasswordVerifier] = &[&Pbkdf2];
-    if let Err(_err) = parsed_hash.verify_password(algs, &password) {
+    if let Err(_err) = parsed_hash.verify_password(algs, password) {
         Err(AuthorizationError::InvalidPassword)?;
     };
 
-    return Ok(());
+    Ok(())
 }
 
 pub async fn get_user(
@@ -246,5 +250,5 @@ pub async fn get_user(
         TokenStatus::Valid => {}
     };
 
-    return Ok(user);
+    Ok(user)
 }

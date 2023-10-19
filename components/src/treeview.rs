@@ -24,11 +24,11 @@ where
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
     pub fn new(selected: RwSignal<Vec<RwSignal<T>>>) -> Self {
-        return Self {
+        Self {
             items: HashMap::new(),
             selection: HashMap::new(),
             selected,
-        };
+        }
     }
 
     pub fn select(&mut self, key: &S) {
@@ -151,7 +151,7 @@ where
         if node().is_expanded.get() {
             class += "active "
         }
-        return class;
+        class
     };
 
     let caret_class = move || {
@@ -168,7 +168,7 @@ where
             class += " selected"
         }
 
-        return class;
+        class
     };
 
     let selection_style = move || {
@@ -201,7 +201,7 @@ where
     <li>
         <div style={ move || { depth_style() + &selection_style() } } class=div_class on:click=on_click>
             <Show
-                when= move || { each_child(&node.get_untracked().row).len() > 0 }
+                when= move || { !each_child(&node.get_untracked().row).is_empty() }
                 fallback= move || {}
             >
                 <span class=caret_class on:click=on_caret_click/>
@@ -279,7 +279,7 @@ where
                 .collect(),
         );
 
-        return this;
+        this
     }
 
     pub fn get_key(&self) -> S {

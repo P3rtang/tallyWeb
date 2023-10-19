@@ -16,11 +16,9 @@ pub fn CreateAccount() -> impl IntoView {
     };
 
     create_effect(move |_| {
-        if let Some(login) = action.value().get().map(|v| v.ok()).flatten() {
-            if let Ok(_) = LocalStorage::set("user_session", login.clone()) {
-                if action.value().get().is_some() && action.value().get().unwrap().is_ok() {
-                    crate::app::navigate("/")
-                }
+        if let Some(login) = action.value().get().and_then(|v| v.ok()) {
+            if LocalStorage::set("user_session", login.clone()).is_ok() && action.value().get().is_some() && action.value().get().unwrap().is_ok() {
+                crate::app::navigate("/")
             }
         }
     });

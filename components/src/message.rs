@@ -37,10 +37,10 @@ impl Message {
     }
 
     pub fn as_modal(self) -> Self {
-        return Self {
+        Self {
             as_modal: true,
             ..self
-        };
+        }
     }
 
     pub fn get(&self) -> RwSignal<Notification> {
@@ -55,7 +55,7 @@ impl Message {
                 .map(|l| view! { <b>{ l.to_string() }</b> })
                 .collect_view(),
         ));
-        let msg = self.msg.clone();
+        let msg = self.msg;
         if let Some(reset_time) = self.reset_time {
             create_effect(move |_| {
                 set_timeout(
@@ -69,7 +69,7 @@ impl Message {
     pub fn set_msg_view(&self, msg: impl IntoView) {
         self.msg
             .set(Notification::Message(self.as_modal, msg.into_view()));
-        let msg = self.msg.clone();
+        let msg = self.msg;
         if let Some(reset_time) = self.reset_time {
             create_effect(move |_| {
                 set_timeout(
@@ -80,13 +80,13 @@ impl Message {
         }
     }
 
-    pub fn set_server_err<'a>(&self, err: &'a str) {
+    pub fn set_server_err(&self, err: &str) {
         let err_msg = err.split_once(": ").map(|s| s.1).unwrap_or(err);
         self.msg.set(Notification::Error(
             self.as_modal,
             view! { <b>{ err_msg.to_string() }</b> }.into_view(),
         ));
-        let msg = self.msg.clone();
+        let msg = self.msg;
         if let Some(reset_time) = self.reset_time {
             create_effect(move |_| {
                 set_timeout(
@@ -97,7 +97,7 @@ impl Message {
         }
     }
 
-    pub fn set_err<'a>(&self, err: &'a str) {
+    pub fn set_err(&self, err: &str) {
         let msg_lines = err.lines();
         self.msg.set(Notification::Error(
             self.as_modal,
@@ -105,7 +105,7 @@ impl Message {
                 .map(|l| view! { <b>{ l.to_string() }</b> })
                 .collect_view(),
         ));
-        let msg = self.msg.clone();
+        let msg = self.msg;
         if let Some(reset_time) = self.reset_time {
             create_effect(move |_| {
                 set_timeout(
@@ -119,7 +119,7 @@ impl Message {
     pub fn set_err_view(&self, err: impl IntoView) {
         self.msg
             .set(Notification::Error(self.as_modal, err.into_view()));
-        let msg = self.msg.clone();
+        let msg = self.msg;
         if let Some(reset_time) = self.reset_time {
             create_effect(move |_| {
                 set_timeout(
@@ -169,15 +169,21 @@ pub fn MessageBox(msg: Message) -> impl IntoView {
 
     create_effect(move |_| match msg.get()() {
         Notification::None => {
-            dialog_ref().map(|d| d.close());
+            if let Some(d) = dialog_ref() {
+                d.close()
+            }
         }
         _ if is_modal() => {
-            dialog_ref().map(|d| d.close());
-            dialog_ref().map(|d| d.show_modal());
+            if let Some(d) = dialog_ref() {
+                d.close();
+                let _ = d.show_modal();
+            }
         }
         _ => {
-            dialog_ref().map(|d| d.close());
-            dialog_ref().map(|d| d.show());
+            if let Some(d) = dialog_ref() {
+                d.close();
+                d.show();
+            }
         }
     });
 

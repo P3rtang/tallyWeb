@@ -82,22 +82,22 @@ pub async fn create_pool() -> Result<PgPool, sqlx::error::Error> {
         .connect(&database_url)
         .await?;
 
-    return Ok(pool);
+    Ok(pool)
 }
 
 pub async fn recreate_db() -> Result<(), sqlx::error::Error> {
     let pool = create_pool().await?;
     execute_multi_file(&pool, "../../postgres/00-recreate-db.sql").await?;
     execute_multi_file(&pool, "../../postgres/01-create-schema.sql").await?;
-    return Ok(());
+    Ok(())
 }
 
 pub async fn execute_multi_file(pool: &PgPool, _path: &str) -> Result<(), sqlx::error::Error> {
     let file = include_str!("../../postgres/00-recreate-db.sql");
-    for line in file.split(";") {
+    for line in file.split(';') {
         sqlx::query(line).execute(pool).await?;
     }
-    return Ok(());
+    Ok(())
 }
 
 pub async fn get_counter_by_id(
@@ -125,7 +125,7 @@ pub async fn get_counter_by_id(
         Err(DataError::Unauthorized)?;
     }
 
-    return Ok(counter);
+    Ok(counter)
 }
 
 pub async fn get_phase_by_id(
@@ -139,7 +139,7 @@ pub async fn get_phase_by_id(
         .fetch_one(pool)
         .await?;
 
-    return Ok(phase);
+    Ok(phase)
 }
 
 pub async fn create_counter(
@@ -163,7 +163,7 @@ pub async fn create_counter(
     .fetch_one(pool)
     .await?;
 
-    return Ok(record.id);
+    Ok(record.id)
 }
 
 pub async fn create_phase(
@@ -188,7 +188,7 @@ pub async fn create_phase(
     .bind(hunt_type)
     .fetch_one(pool)
     .await?;
-    return Ok(id.0);
+    Ok(id.0)
 }
 
 pub async fn assign_phase(
@@ -212,7 +212,7 @@ pub async fn assign_phase(
     )
     .execute(pool)
     .await?;
-    return Ok(());
+    Ok(())
 }
 
 pub async fn update_phase(
@@ -237,7 +237,7 @@ pub async fn update_phase(
     .execute(pool)
     .await?;
 
-    return Ok(());
+    Ok(())
 }
 
 pub async fn update_counter(pool: &PgPool, counter: DbCounter) -> Result<(), sqlx::error::Error> {
@@ -255,7 +255,7 @@ pub async fn update_counter(pool: &PgPool, counter: DbCounter) -> Result<(), sql
     .execute(pool)
     .await?;
 
-    return Ok(());
+    Ok(())
 }
 
 pub async fn remove_counter(
@@ -274,7 +274,7 @@ pub async fn remove_counter(
     .execute(pool)
     .await?;
 
-    return Ok(());
+    Ok(())
 }
 
 pub async fn remove_phase(pool: &PgPool, phase_id: i32) -> Result<(), sqlx::error::Error> {
@@ -299,7 +299,7 @@ pub async fn remove_phase(pool: &PgPool, phase_id: i32) -> Result<(), sqlx::erro
     .execute(pool)
     .await?;
 
-    return Ok(());
+    Ok(())
 }
 
 pub async fn migrate() -> Result<(), sqlx::Error> {
@@ -307,5 +307,5 @@ pub async fn migrate() -> Result<(), sqlx::Error> {
 
     sqlx::migrate!("../migrations").run(&pool).await?;
 
-    return Ok(());
+    Ok(())
 }

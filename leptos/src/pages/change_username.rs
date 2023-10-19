@@ -31,7 +31,7 @@ pub fn ChangeAccountInfo(user: RwSignal<Option<SessionUser>>) -> impl IntoView {
         create_effect(move |_| {
             if let Some(Ok(session_user)) = action.value()() {
                 message.set_msg("Username succesfully changed");
-                if let Ok(_) = LocalStorage::set("user_session", session_user.clone()) {
+                if LocalStorage::set("user_session", session_user.clone()).is_ok() {
                     expect_context::<RwSignal<Option<SessionUser>>>()
                         .set(Some(session_user.clone()));
                     user.set(Some(session_user));

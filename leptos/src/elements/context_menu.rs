@@ -28,9 +28,8 @@ pub fn CountableContextMenu(
 
     let on_del_click = move |ev: MouseEvent| {
         ev.stop_propagation();
-        if let Some(_) = use_context::<Memo<Option<SessionUser>>>()
-            .map(|s| s.get_untracked())
-            .flatten()
+        if use_context::<Memo<Option<SessionUser>>>()
+            .and_then(|s| s.get_untracked()).is_some()
         {
             let user = expect_context::<Memo<Option<SessionUser>>>();
             spawn_local(async move {
@@ -90,7 +89,7 @@ pub fn ContextMenuRow(children: Children) -> impl IntoView {
 #[component]
 pub fn ContextMenuNav(href: String, children: Children) -> impl IntoView {
     let on_click = move |_| {
-        use_context::<RwSignal<CloseOverlays>>().map(|t| t.update(|_| ()));
+        if let Some(t) = use_context::<RwSignal<CloseOverlays>>() { t.update(|_| ()) }
     };
 
     view! {
