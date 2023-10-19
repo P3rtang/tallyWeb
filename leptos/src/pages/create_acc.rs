@@ -43,7 +43,7 @@ pub fn CreateAccount() -> impl IntoView {
             ev.prevent_default()
         }
         if password_input().unwrap().value() != password_repeat().unwrap().value() {
-            message.set(Some(format!("passwords do not match")));
+            message.set(Some(String::from("passwords do not match")));
             ev.prevent_default();
         }
     };
