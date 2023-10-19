@@ -1,4 +1,8 @@
 #![allow(unused_imports)]
+use std::io::Write;
+use std::process::Command;
+use std::thread;
+
 use leptos::*;
 use tally_web::app::*;
 
@@ -18,6 +22,30 @@ cfg_if::cfg_if! {
             let routes = generate_route_list(|| view! { <App/> });
 
             let _ = backend::migrate().await.map_err(|err| println!("{err}"));
+
+            #[cfg(not(debug_assertions))]
+            thread::spawn(|| {
+                std::fs::create_dir_all("db-backup").unwrap();
+                loop {
+                    let time = chrono::Utc::now();
+                    let file_name = format!("db-backup/pgdump.{}", time.format("%d-%m-%Y_%H-%M"));
+                    let output = Command::new("docker")
+                        .arg("exec")
+                        .arg("postgres_tallyWeb")
+                        .args(["pg_dump", "-U", "p3rtang", "-d", "tally_web"])
+                        .output()
+                        .expect("Failed to run pgdump");
+
+                    if output.stderr.len() > 0 {
+                        println!("{}", std::str::from_utf8(&output.stderr[..]).unwrap());
+                    } else {
+                        let mut f = std::fs::File::create(file_name).unwrap();
+                        f.write_all(&output.stdout[..]).unwrap();
+                    }
+
+                    thread::sleep(std::time::Duration::from_secs(3600));
+                }
+            });
 
             HttpServer::new(move || {
                 let leptos_options = &conf.leptos_options;
