@@ -14,7 +14,7 @@ pub fn InfoBox(countable_list: RwSignal<Vec<RwSignal<ArcCountable>>>) -> impl In
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
     let show_title = move || {
         if screen_layout() == ScreenLayout::Small {
-            format!("display: none")
+            String::from("display: none")
         } else {
             String::new()
         }
@@ -146,7 +146,7 @@ where
 {
     // TODO: just use the duration from the counter itself instead of system time
     let format_time = |millis: Option<Duration>| match millis {
-        None => format!("---"),
+        None => String::from("---"),
         Some(m) => short_format_time(m),
     };
 
