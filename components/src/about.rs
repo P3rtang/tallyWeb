@@ -35,8 +35,8 @@ where
     };
 
     let class = move || match layout() {
-        ScreenLayout::Small => format!("overlay"),
-        ScreenLayout::Big => format!("overlay big"),
+        ScreenLayout::Small => String::from("overlay"),
+        ScreenLayout::Big => String::from("overlay big"),
     };
 
     view! {
