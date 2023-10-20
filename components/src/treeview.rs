@@ -7,7 +7,7 @@ use std::{collections::HashMap, hash::Hash};
 
 use leptos::{ev::MouseEvent, *};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct SelectionModel<S, T>
 where
     S: Clone + PartialEq + Eq + Hash + 'static,
@@ -56,7 +56,7 @@ where
         self.selection
             .iter()
             .filter(|(_, b)| **b)
-            .map(|(k, _)| &self.items.get(&k).unwrap().row)
+            .map(|(k, _)| &self.items.get(k).unwrap().row)
             .cloned()
             .collect::<Vec<_>>()
     }
