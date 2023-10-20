@@ -13,10 +13,11 @@ use crate::{
 pub fn InfoBox(countable_list: Signal<Vec<ArcCountable>>) -> impl IntoView {
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
     let show_multiple = move || countable_list().len() > 1;
-    let show_title = move || screen_layout() != ScreenLayout::Narrow && !show_multiple();
+    let show_title = move || !(screen_layout() == ScreenLayout::Narrow || show_multiple());
+    let multi_narrow = move || !(show_multiple() && ScreenLayout::Narrow == screen_layout());
 
     view! {
-        <div id="infobox" style:display="flex">
+        <div id="infobox" style:display=move || if !multi_narrow() { "block" } else { "flex" }>
             <For
                 each=countable_list
                 key=|countable| countable.get_uuid()
@@ -24,16 +25,16 @@ pub fn InfoBox(countable_list: Signal<Vec<ArcCountable>>) -> impl IntoView {
                     let key = create_signal(countable.get_uuid()).0;
                     view! {
                         <div class="row">
-                            <Show
-                                when=show_multiple
-                            >
+                            <Show when=show_multiple>
                                 <Title key/>
                             </Show>
                             <Count expand=show_multiple key show_title/>
-                            <Time expand=show_multiple key show_title/>
-                            <Progress expand=show_multiple key show_title/>
-                            <LastStep expand=show_multiple key show_title/>
-                            <AverageStep expand=show_multiple key show_title/>
+                            <Show when=multi_narrow>
+                                <Time expand=show_multiple key show_title/>
+                                <Progress expand=show_multiple key show_title/>
+                                <LastStep expand=show_multiple key show_title/>
+                                <AverageStep expand=show_multiple key show_title/>
+                            </Show>
                         </div>
                     }
                 }
