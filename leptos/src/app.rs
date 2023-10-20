@@ -369,35 +369,27 @@ pub fn App() -> impl IntoView {
         async move {
             let _ = match countable.kind() {
                 CountableKind::Counter(_) => {
-                    update_counter(
-                        user.username.clone(),
-                        user.token.clone(),
-                        countable
-                            .0
-                            .try_lock()
-                            .unwrap()
-                            .as_any()
-                            .downcast_ref::<Counter>()
-                            .unwrap()
-                            .clone()
-                            .into(),
-                    )
-                    .await
+                    let counter = countable
+                        .0
+                        .try_lock()
+                        .unwrap()
+                        .as_any()
+                        .downcast_ref::<Counter>()
+                        .unwrap()
+                        .clone()
+                        .into();
+                    update_counter(user.username.clone(), user.token.clone(), counter).await
                 }
                 CountableKind::Phase(_) => {
-                    update_phase(
-                        user.username.clone(),
-                        user.token.clone(),
-                        countable
-                            .0
-                            .try_lock()
-                            .unwrap()
-                            .as_any()
-                            .downcast_ref::<Phase>()
-                            .unwrap()
-                            .clone(),
-                    )
-                    .await
+                    let phase = countable
+                        .0
+                        .try_lock()
+                        .unwrap()
+                        .as_any()
+                        .downcast_ref::<Phase>()
+                        .unwrap()
+                        .clone();
+                    update_phase(user.username.clone(), user.token.clone(), phase).await
                 }
             };
         }
