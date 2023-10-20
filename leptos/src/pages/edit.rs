@@ -63,7 +63,7 @@ where
             >
                 <EditCounterBox
                     layout
-                    countable_kind=CountableKind::Counter(params().unwrap().id)
+                    countable_kind=CountableKind::Counter(params().unwrap().id as i32)
                     counter_rsrc=counter_rsrc
                 />
             </Show>
@@ -105,7 +105,7 @@ where
             >
                 <EditCounterBox
                     layout=layout
-                    countable_kind=CountableKind::Phase(params().unwrap().id)
+                    countable_kind=CountableKind::Phase(params().unwrap().id as i32)
                     counter_rsrc=phase_rsrc
                 />
             </Show>

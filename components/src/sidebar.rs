@@ -3,6 +3,7 @@ use wasm_bindgen::{prelude::Closure, JsCast};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScreenLayout {
+    Narrow,
     Small,
     Big,
 }
@@ -10,6 +11,7 @@ pub enum ScreenLayout {
 impl ScreenLayout {
     fn get_position(&self) -> String {
         let position = match self {
+            ScreenLayout::Narrow => "fixed",
             ScreenLayout::Small => "fixed",
             ScreenLayout::Big => "relative",
         };
@@ -19,6 +21,7 @@ impl ScreenLayout {
 
     fn get_background(&self) -> String {
         let background = match self {
+            ScreenLayout::Narrow => "#242424F8",
             ScreenLayout::Small => "#242424F8",
             ScreenLayout::Big => "none",
         };
@@ -28,6 +31,7 @@ impl ScreenLayout {
 
     pub fn get_class(&self) -> &str {
         match self {
+            ScreenLayout::Narrow => "small",
             ScreenLayout::Small => "small",
             ScreenLayout::Big => "big",
         }

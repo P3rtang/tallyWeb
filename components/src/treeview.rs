@@ -7,55 +7,58 @@ use std::{collections::HashMap, hash::Hash};
 
 use leptos::{ev::MouseEvent, *};
 
-#[derive(Debug, Clone)]
-pub struct SelectionModel<T, S>
+#[derive(Debug, Clone, PartialEq)]
+pub struct SelectionModel<S, T>
 where
-    T: Clone + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
+    T: Clone + 'static + Debug + PartialEq,
 {
-    items: HashMap<S, TreeNode<T, S>>,
+    pub items: HashMap<S, TreeNode<T, S>>,
     selection: HashMap<S, bool>,
-    pub selected: RwSignal<Vec<RwSignal<T>>>,
+    multi_select: bool,
 }
 
-impl<T, S> SelectionModel<T, S>
+impl<S, T> SelectionModel<S, T>
 where
-    T: Clone + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
+    T: Clone + 'static + Debug + PartialEq,
 {
-    pub fn new(selected: RwSignal<Vec<RwSignal<T>>>) -> Self {
+    pub fn new() -> Self {
         Self {
             items: HashMap::new(),
             selection: HashMap::new(),
-            selected,
+            multi_select: false,
         }
+    }
+
+    pub fn set_multi_select(&mut self, multi_select: bool) {
+        self.multi_select = multi_select
+    }
+
+    pub fn get(&self, key: &S) -> &T {
+        &self.items[key].row
+    }
+
+    pub fn get_mut(&mut self, key: &S) -> &mut T {
+        &mut self.items.get_mut(key).unwrap().row
     }
 
     pub fn select(&mut self, key: &S) {
         let current_value = self.selection.get(key).cloned().unwrap_or_default();
-        self.selection.clear();
-        self.selection.insert(key.clone(), !current_value);
+        if !self.multi_select {
+            self.selection.clear();
+        }
 
-        self.selected.update(|s| {
-            *s = self
-                .selection()
-                .into_iter()
-                .map(|t| create_rw_signal(t))
-                .collect()
-        })
+        self.selection.insert(key.clone(), !current_value);
     }
 
     pub fn selection(&self) -> Vec<T> {
         self.selection
-            .clone()
-            .into_iter()
-            .filter(|(_, b)| *b)
-            .map(|(k, _)| self.items.get(&k).cloned().unwrap().row)
-            .collect()
-    }
-
-    pub fn get_selected(&self) -> RwSignal<Vec<RwSignal<T>>> {
-        self.selected
+            .iter()
+            .filter(|(_, b)| **b)
+            .map(|(k, _)| &self.items.get(&k).unwrap().row)
+            .cloned()
+            .collect::<Vec<_>>()
     }
 
     pub fn get_selected_keys(&self) -> Vec<&S> {
@@ -81,7 +84,7 @@ pub fn TreeViewWidget<T, F, S, FS>(
     key: fn(&T) -> S,
     each_child: fn(&T) -> Vec<T>,
     view: fn(RwSignal<TreeNode<T, S>>) -> View,
-    selection_model: RwSignal<SelectionModel<T, S>>,
+    selection_model: RwSignal<SelectionModel<S, T>>,
     show_separator: FS,
     #[prop(optional, into)] selection_color: Option<Signal<String>>,
 ) -> impl IntoView
@@ -134,7 +137,7 @@ fn TreeViewRow<T, S>(
     node: TreeNode<T, S>,
     each_child: fn(&T) -> Vec<T>,
     view: fn(RwSignal<TreeNode<T, S>>) -> View,
-    selection_model: RwSignal<SelectionModel<T, S>>,
+    selection_model: RwSignal<SelectionModel<S, T>>,
     selection_color: Option<Signal<String>>,
 ) -> impl IntoView
 where
@@ -234,7 +237,7 @@ where
 #[derive(Debug, Clone, PartialEq)]
 pub struct TreeNode<T, S>
 where
-    T: Clone + 'static + Debug,
+    T: Clone + 'static + Debug + PartialEq,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
     pub key: fn(&T) -> S,
@@ -248,14 +251,14 @@ where
 
 impl<T, S> TreeNode<T, S>
 where
-    T: Clone + 'static + Debug,
+    T: Clone + 'static + Debug + PartialEq,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
     pub fn new(
         key: fn(&T) -> S,
         item: T,
         each_child: fn(&T) -> Vec<T>,
-        selection_model: RwSignal<SelectionModel<T, S>>,
+        selection_model: RwSignal<SelectionModel<S, T>>,
         depth: usize,
     ) -> Self {
         let this = Self {
@@ -286,7 +289,7 @@ where
         (self.key)(&self.row)
     }
 
-    pub fn insert_child(&self, item: T, selection_model: RwSignal<SelectionModel<T, S>>) {
+    pub fn insert_child(&self, item: T, selection_model: RwSignal<SelectionModel<S, T>>) {
         let node = TreeNode::new(
             self.key,
             item,

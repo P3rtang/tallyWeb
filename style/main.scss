@@ -344,15 +344,15 @@ ul {
     margin: 0px;
 }
 
-#InfoBox {
+#infobox {
+    display: flex;
+    align-items: flex-start;
+    overflow-x: auto;
     padding: 8px;
     font-size: 36px;
     color: white;
     white-space: nowrap;
     width: 100%;
-    margin-left: auto;
-    max-width: 1200px;
-    margin-right: auto;
 
     p {
         padding: 0px;
@@ -362,6 +362,9 @@ ul {
     .row {
         display: flex;
         flex-wrap: wrap;
+        max-width: 1200px;
+        margin-left: auto;
+        margin-right: auto;
 
         .rowbox {
             user-select: none;
@@ -375,7 +378,27 @@ ul {
             margin: 8px;
 
             &.rowexpand {
+                flex-grow: 0;
                 min-width: 95%;
+            }
+
+            &.progress {
+                min-width: 95%;
+            }
+
+            .info {
+                display: flex;
+                justify-content: center;
+                // min-width: 3.2em;
+                min-height: 2em;
+                padding: 0.75em;
+                flex-flow: wrap;
+                align-content: center;
+                margin: auto;
+            }
+            
+            .time {
+                min-width: 4em;
             }
         }
 
@@ -383,17 +406,6 @@ ul {
             font-size: 0.75em;
             padding: 0.5em;
             padding-left: 1em;
-        }
-
-        .info {
-            display: flex;
-            justify-content: center;
-            // min-width: 3.2em;
-            min-height: 2em;
-            padding: 0.75em;
-            flex-flow: wrap;
-            align-content: center;
-            margin: auto;
         }
 
         .progress-bar {
@@ -408,10 +420,6 @@ ul {
                 border-top-left-radius: 24px;
                 border-bottom-left-radius: 24px;
             }
-        }
-
-        .longtime {
-            flex-grow: 2;
         }
     }
 }
