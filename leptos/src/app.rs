@@ -8,13 +8,14 @@ use leptos::{ev::MouseEvent, logging::log, *};
 use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use crate::{elements::*, pages::*};
 
 pub type StateResource = Resource<Option<SessionUser>, Vec<SerCounter>>;
-pub type SelectionSignal = RwSignal<SelectionModel<ArcCountable, String>>;
-pub type SaveAllAction = Action<(SessionUser, CounterList), Result<(), ServerFnError>>;
+pub type SelectionSignal = RwSignal<SelectionModel<String, ArcCountable>>;
+pub type SaveAllAction = Action<(SessionUser, Vec<SerCounter>), Result<(), ServerFnError>>;
+pub type SaveCountableAction = Action<(SessionUser, ArcCountable), Result<(), ServerFnError>>;
 
 #[server(LoginUser, "/api", "Url", "login_user")]
 pub async fn login_user(
@@ -319,6 +320,7 @@ pub async fn save_preferences(
         use_default_accent_color: preferences.use_default_accent_color,
         accent_color,
         show_separator: preferences.show_separator,
+        multi_select: preferences.multi_select,
     };
     db_prefs.db_set(&pool, user.id).await?;
 
@@ -350,15 +352,58 @@ pub fn App() -> impl IntoView {
     let msg = Message::new(Duration::seconds(5));
     provide_context(msg);
 
-    let save_all = create_action(move |(user, list): &(SessionUser, CounterList)| {
+    let save_all = create_action(move |(user, list): &(SessionUser, Vec<SerCounter>)| {
         save_all(
             user.username.clone(),
             user.token.clone(),
-            list.clone().into(),
+            list.clone(),
             None,
         )
     });
     provide_context(save_all);
+
+    let save_countable = create_action(|(user, countable): &(SessionUser, ArcCountable)| {
+        let user = user.clone();
+        let countable = countable.clone();
+
+        async move {
+            return match countable.kind() {
+                CountableKind::Counter(_) => {
+                    update_counter(
+                        user.username.clone(),
+                        user.token.clone(),
+                        countable
+                            .0
+                            .try_lock()
+                            .unwrap()
+                            .as_any()
+                            .downcast_ref::<Counter>()
+                            .unwrap()
+                            .clone()
+                            .into(),
+                    )
+                    .await
+                }
+                CountableKind::Phase(_) => {
+                    update_phase(
+                        user.username.clone(),
+                        user.token.clone(),
+                        countable
+                            .0
+                            .try_lock()
+                            .unwrap()
+                            .as_any()
+                            .downcast_ref::<Phase>()
+                            .unwrap()
+                            .clone(),
+                    )
+                    .await
+                }
+            };
+        }
+    });
+
+    provide_context(save_countable);
 
     create_effect(move |_| {
         if let Some(Err(_err)) = save_all.value().get() {
@@ -409,7 +454,9 @@ pub fn App() -> impl IntoView {
             .ok()
             .and_then(|v| v.as_f64())
         {
-            if width < 1200.0 {
+            if width < 600.0 {
+                screen_layout.set(ScreenLayout::Narrow)
+            } else if width < 1200.0 {
                 screen_layout.set(ScreenLayout::Small)
             } else {
                 screen_layout.set(ScreenLayout::Big);
@@ -417,6 +464,17 @@ pub fn App() -> impl IntoView {
             }
         }
     };
+
+    let selection = SelectionModel::<String, ArcCountable>::new();
+    let selection_signal = create_rw_signal(selection);
+    provide_context(selection_signal);
+
+    create_effect(move |_| {
+        preferences
+            .with(|pref| selection_signal.update(|sel| sel.set_multi_select(pref.multi_select)))
+    });
+
+    timer(selection_signal);
 
     create_effect(move |_| {
         handle_resize();
@@ -533,7 +591,7 @@ fn save_timer(
                 }
 
                 if do_save {
-                    expect_context::<SaveAllAction>().dispatch((user().unwrap(), state()));
+                    expect_context::<SaveAllAction>().dispatch((user().unwrap(), state().into()));
                 }
 
                 save_flags.update(|s| s.clear());
@@ -545,11 +603,12 @@ fn save_timer(
     });
 }
 
-fn timer(active: RwSignal<Vec<RwSignal<ArcCountable>>>) {
+fn timer(selection_signal: SelectionSignal) {
     const FRAMERATE: i64 = 30;
     const INTERVAL: Duration = Duration::milliseconds(1000 / FRAMERATE);
 
     let time = create_signal(0_u32);
+    provide_context(time);
 
     let calc_interval = |now: u32, old: u32| -> Duration {
         if now < old {
@@ -559,31 +618,27 @@ fn timer(active: RwSignal<Vec<RwSignal<ArcCountable>>>) {
         }
     };
 
-    let state = use_context::<RwSignal<CounterList>>();
-
     create_effect(move |_| {
         set_interval(
             move || {
-                if state.is_none() {
-                    return;
-                }
-                if state
-                    .unwrap()
-                    .try_get()
-                    .map(|s| !s.is_paused)
-                    .unwrap_or_default()
-                {
-                    let interval = calc_interval(Date::new_0().get_milliseconds(), time.0.get());
-                    active.with(|list| {
-                        list.iter().for_each(|c| c.update(|c| c.add_time(interval)));
-                    })
-                }
+                let interval = calc_interval(
+                    Date::new_0().get_milliseconds(),
+                    time.0.try_get().unwrap_or_default(),
+                );
+
+                selection_signal.update(|s| {
+                    s.get_selected_keys()
+                        .iter()
+                        .map(|key| s.get(key))
+                        .filter(|c| c.is_active())
+                        .for_each(|c| c.add_time(interval))
+                });
                 time.1.try_set(Date::new_0().get_milliseconds());
             },
             INTERVAL
                 .to_std()
                 .unwrap_or(std::time::Duration::from_millis(30)),
-        )
+        );
     });
 }
 
@@ -599,31 +654,28 @@ pub fn navigate(page: impl ToString) {
     });
 }
 
-fn connect_keys(
-    state: RwSignal<CounterList>,
-    active: RwSignal<Vec<RwSignal<ArcCountable>>>,
-    save_flags: RwSignal<Vec<ChangeFlag>>,
-) {
+fn connect_keys(model: SelectionSignal, save_flags: RwSignal<Vec<ChangeFlag>>) {
     window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
-        "Equal" => active.with(|list| {
-            list.iter().for_each(|c| {
-                c.update(|c| c.add_count(1));
-                save_flags.update(|s| s.push(ChangeFlag::ChangeCountable(c.get_untracked())));
-            });
-            state.try_update(|s| s.start());
+        "Equal" => model.update(|m| {
+            m.selection().into_iter().for_each(|c| {
+                c.set_active(true);
+                c.add_count(1);
+                save_flags.update(|list| list.push(ChangeFlag::ChangeCountable(c)))
+            })
         }),
-        "Minus" => active.with(|list| {
-            list.iter().for_each(|c| {
-                c.update(|c| c.add_count(-1));
-                save_flags.update(|s| s.push(ChangeFlag::ChangeCountable(c.get_untracked())));
-            });
-            state.try_update(|s| s.start());
+        "Minus" => model.update(|m| {
+            m.selection().into_iter().for_each(|c| {
+                c.set_active(true);
+                c.add_count(-1);
+                save_flags.update(|list| list.push(ChangeFlag::ChangeCountable(c)))
+            })
         }),
-        "KeyP" => {
-            if !active.get_untracked().is_empty() {
-                state.try_update(|s| s.toggle_paused());
-            }
-        }
+        "KeyP" => model.update(|list| {
+            list.selection().into_iter().for_each(|c| {
+                c.set_active(!c.is_active());
+                save_flags.update(|list| list.push(ChangeFlag::ChangeCountable(c)))
+            })
+        }),
         _ => {}
     });
 }
@@ -653,24 +705,28 @@ pub fn HomePage() -> impl IntoView {
     let preferences = expect_context::<RwSignal<Preferences>>();
     let accent_color = create_read_slice(preferences, |prefs| prefs.accent_color.0.clone());
 
-    let selection = SelectionModel::<ArcCountable, String>::new(create_rw_signal(Vec::new()));
+    let selection_signal = expect_context::<SelectionSignal>();
 
-    let selection_signal = create_rw_signal(selection);
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
 
-    connect_keys(
-        state,
-        selection_signal.get_untracked().get_selected(),
-        change_flags,
-    );
+    connect_keys(selection_signal, change_flags);
 
     save_timer(session_user, change_flags, state);
-    timer(selection_signal.get_untracked().get_selected());
 
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
     let show_sort_search = create_rw_signal(true);
     let state_len = create_read_slice(state, |s| s.list.len());
+
+    let active = create_read_slice(selection_signal, move |sel| {
+        let mut slc = sel
+            .get_selected_keys()
+            .iter()
+            .map(|key| sel.get(*key).clone())
+            .collect::<Vec<_>>();
+        slc.sort_by(state().sort.sort_by());
+        return slc;
+    });
 
     view! {
         <Show
@@ -706,7 +762,7 @@ pub fn HomePage() -> impl IntoView {
                     />
                     <NewCounterButton state_len/>
                 </Sidebar>
-                <InfoBox countable_list=selection_signal.get_untracked().get_selected()/>
+                <InfoBox countable_list=active/>
             </div>
         </Show>
     }
@@ -769,6 +825,7 @@ where
 
 #[component]
 fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView {
+    let selection = expect_context::<SelectionSignal>();
     let user = expect_context::<Memo<Option<SessionUser>>>();
     let data = expect_context::<Resource<Option<SessionUser>, Vec<SerCounter>>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
@@ -796,7 +853,7 @@ fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView 
                     user.get_untracked().unwrap().username,
                     user.get_untracked().unwrap().token,
                     name.clone(),
-                    countable().get_hunt_type(),
+                    countable.get_untracked().get_hunt_type(),
                 )
                 .await
                 .expect("Could not create Phase");
@@ -809,11 +866,10 @@ fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView 
                 .await
                 .expect("Could not assign phase to Counter");
 
-                expect_context::<RwSignal<CounterList>>().update(|_| {
-                    let phase = countable.get_untracked().new_phase(phase_id, name);
-                    node.get_untracked().set_expand(true);
-                    node.get_untracked()
-                        .insert_child(phase, expect_context::<SelectionSignal>());
+                node.update(|n| {
+                    let phase = n.row.new_phase(phase_id, name);
+                    n.set_expand(true);
+                    n.insert_child(phase, selection);
                 });
             },
         );
@@ -870,10 +926,9 @@ fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView 
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CounterList {
-    pub list: Vec<ArcCountable>,
+    pub list: HashMap<String, ArcCountable>,
     search: Option<String>,
     pub sort: SortCountable,
-    is_paused: bool,
 }
 
 impl CounterList {
@@ -881,24 +936,11 @@ impl CounterList {
         return CounterList {
             list: counters
                 .iter()
-                .map(|c| ArcCountable::new(Box::new(c.clone())))
+                .map(|c| (c.get_uuid(), ArcCountable::new(Box::new(c.clone()))))
                 .collect(),
             search: None,
             sort: SortCountable::Name(false),
-            is_paused: true,
         };
-    }
-
-    pub fn toggle_paused(&mut self) {
-        self.is_paused = !self.is_paused;
-        let user = expect_context::<Memo<Option<SessionUser>>>();
-        expect_context::<SaveAllAction>().dispatch((user().unwrap(), self.clone()))
-    }
-
-    pub fn start(&mut self) {
-        self.is_paused = false;
-        let user = expect_context::<Memo<Option<SessionUser>>>();
-        expect_context::<SaveAllAction>().dispatch((user().unwrap(), self.clone()))
     }
 
     pub fn search(&mut self, value: &str) {
@@ -906,14 +948,17 @@ impl CounterList {
     }
 
     pub fn get_filtered_list(&mut self) -> Vec<ArcCountable> {
-        self.list.sort_by(self.sort.sort_by());
+        let mut list = self.list.values().cloned().collect::<Vec<_>>();
+
+        list.sort_by(self.sort.sort_by());
+
         if let Some(search) = &self.search {
             let mut list_starts_with = Vec::new();
             let mut child_starts_with = Vec::new();
             let mut list_contains = Vec::new();
             let mut child_contains = Vec::new();
 
-            for counter in self.list.iter() {
+            for counter in list.iter() {
                 let name = counter.get_name().to_lowercase();
                 if name.starts_with(search) {
                     list_starts_with.push(counter.clone())
@@ -932,8 +977,20 @@ impl CounterList {
 
             list_starts_with
         } else {
-            self.list.clone()
+            list
         }
+    }
+
+    pub fn get_items(
+        &self,
+        model: SelectionModel<String, ArcCountable>,
+    ) -> HashMap<String, ArcCountable> {
+        model
+            .items
+            .clone()
+            .into_iter()
+            .map(|(k, v)| (k, v.row))
+            .collect()
     }
 }
 
@@ -953,22 +1010,26 @@ impl From<Vec<SerCounter>> for CounterList {
                     phase_list,
                     created_at: sc.created_at,
                 };
-                ArcCountable::new(Box::new(counter))
+                (counter.get_uuid(), ArcCountable::new(Box::new(counter)))
             })
             .collect();
         Self {
             list,
-            search: None,
-            sort: SortCountable::Name(false),
-            is_paused: true,
+            ..Default::default()
         }
+    }
+}
+
+impl Default for CounterList {
+    fn default() -> Self {
+        Self::new(&[])
     }
 }
 
 impl From<CounterList> for Vec<SerCounter> {
     fn from(val: CounterList) -> Self {
         let mut rtrn_list = Vec::new();
-        for arc_c in val.list {
+        for arc_c in val.list.values() {
             if let Some(counter) = arc_c
                 .lock()
                 .map(|c| c.as_any().downcast_ref::<Counter>().cloned())
@@ -983,13 +1044,6 @@ impl From<CounterList> for Vec<SerCounter> {
     }
 }
 
-impl std::ops::Index<usize> for CounterList {
-    type Output = ArcCountable;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.list[index]
-    }
-}
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SessionUser {
     pub username: String,
@@ -1056,6 +1110,7 @@ pub struct Preferences {
     pub use_default_accent_color: bool,
     pub accent_color: AccountAccentColor,
     pub show_separator: bool,
+    pub multi_select: bool,
 }
 
 impl Preferences {
@@ -1065,6 +1120,7 @@ impl Preferences {
             use_default_accent_color: true,
             accent_color,
             show_separator: false,
+            multi_select: false,
         }
     }
 }
@@ -1079,6 +1135,7 @@ impl Preferences {
                 .map(|c| AccountAccentColor(c))
                 .unwrap_or(AccountAccentColor::new(user)),
             show_separator: value.show_separator,
+            multi_select: value.multi_select,
         }
     }
 }

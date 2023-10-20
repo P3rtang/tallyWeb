@@ -14,6 +14,21 @@ impl ArcCountable {
         Self(Arc::new(Mutex::new(countable)))
     }
 
+    pub fn kind(&self) -> CountableKind {
+        self.0
+            .try_lock()
+            .map(|c| c.kind())
+            .unwrap_or(CountableKind::Counter(0))
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.0.try_lock().map(|c| c.is_active()).unwrap_or_default()
+    }
+
+    pub fn set_active(&self, set: bool) {
+        let _ = self.0.try_lock().map(|mut c| c.set_active(set));
+    }
+
     pub fn get_uuid(&self) -> String {
         self.0.try_lock().map(|c| c.get_uuid()).unwrap_or_default()
     }
@@ -136,6 +151,12 @@ impl std::ops::Deref for ArcCountable {
     }
 }
 
+impl Default for ArcCountable {
+    fn default() -> Self {
+        Self(Arc::new(Mutex::new(Box::new(Counter::default()))))
+    }
+}
+
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Hunttype {
@@ -244,6 +265,7 @@ impl TryFrom<String> for Hunttype {
 pub trait Countable: std::fmt::Debug + Send + Any {
     fn get_id(&self) -> i32;
     fn get_uuid(&self) -> String;
+    fn kind(&self) -> CountableKind;
 
     fn get_name(&self) -> String;
     fn set_name(&mut self, name: String);
@@ -318,6 +340,10 @@ impl Countable for SerCounter {
 
     fn get_uuid(&self) -> String {
         format!("c{}", self.id)
+    }
+
+    fn kind(&self) -> CountableKind {
+        CountableKind::Counter(self.id)
     }
 
     fn get_name(&self) -> String {
@@ -461,7 +487,7 @@ impl Countable for SerCounter {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Counter {
     pub id: i32,
     pub name: String,
@@ -488,6 +514,10 @@ impl Countable for Counter {
 
     fn get_uuid(&self) -> String {
         format!("c{}", self.id)
+    }
+
+    fn kind(&self) -> CountableKind {
+        CountableKind::Counter(self.id)
     }
 
     fn get_name(&self) -> String {
@@ -676,6 +706,10 @@ impl Countable for Phase {
         format!("p{}", self.id)
     }
 
+    fn kind(&self) -> CountableKind {
+        CountableKind::Phase(self.id)
+    }
+
     fn get_name(&self) -> String {
         self.name.clone()
     }
@@ -777,8 +811,8 @@ impl Countable for Phase {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CountableKind {
-    Counter(usize),
-    Phase(usize),
+    Counter(i32),
+    Phase(i32),
 }
 
 #[derive(Debug, Clone, PartialEq)]

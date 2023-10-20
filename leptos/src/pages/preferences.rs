@@ -36,6 +36,12 @@ where
         |pref, new| pref.show_separator = new,
     );
 
+    let multi_select = create_slice(
+        preferences,
+        |pref| pref.multi_select,
+        |pref, new| pref.multi_select = new,
+    );
+
     let undo_changes = move |_| {
         pref_resource.refetch();
     };
@@ -72,7 +78,7 @@ where
 
     view! {
         <Transition fallback=move || view!{ <LoadingScreen/> }>
-        { pref_resource(); }
+            { pref_resource(); }
         <Show
             when=move || user().is_some()
             fallback=move || view!{ <LoadingScreen/> }
@@ -107,6 +113,9 @@ where
 
                     <label for="show_separator" class="title">Show Treeview Separator</label>
                     <Slider checked=separator accent_color/>
+
+                    <label class="title">Use Multi Select (experimental)</label>
+                    <Slider checked=multi_select accent_color/>
 
                     <label class="title">Change Username</label>
                     <A class="edit" href="/change-username">

@@ -159,6 +159,7 @@ pub struct DbPreferences {
     pub use_default_accent_color: bool,
     pub accent_color: Option<String>,
     pub show_separator: bool,
+    pub multi_select: bool,
 }
 
 impl DbPreferences {
@@ -185,15 +186,16 @@ impl DbPreferences {
     pub async fn db_set(self, pool: &PgPool, user_id: i32) -> Result<(), sqlx::error::Error> {
         query!(
             r#"
-            insert into preferences (user_id, use_default_accent_color, accent_color, show_separator)
-            values ($1, $2, $3, $4)
+            insert into preferences (user_id, use_default_accent_color, accent_color, show_separator, multi_select)
+            values ($1, $2, $3, $4, $5)
             on conflict (user_id)
-            do update set use_default_accent_color = $2, accent_color = $3, show_separator = $4
+            do update set use_default_accent_color = $2, accent_color = $3, show_separator = $4, multi_select = $5
             "#,
             user_id,
             self.use_default_accent_color,
             self.accent_color,
             self.show_separator,
+            self.multi_select,
         )
         .execute(pool)
         .await?;

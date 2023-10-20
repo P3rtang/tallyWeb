@@ -5,40 +5,41 @@ use components::ScreenLayout;
 use leptos::*;
 
 use crate::{
-    app::{CounterList, Progressbar},
+    app::{Progressbar, SelectionSignal},
     countable::ArcCountable,
 };
 
 #[component]
-pub fn InfoBox(countable_list: RwSignal<Vec<RwSignal<ArcCountable>>>) -> impl IntoView {
+pub fn InfoBox(countable_list: Signal<Vec<ArcCountable>>) -> impl IntoView {
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
-    let show_title = move || {
-        if screen_layout() == ScreenLayout::Small {
-            String::from("display: none")
-        } else {
-            String::new()
-        }
-    };
+    let show_multiple = move || countable_list().len() > 1;
+    let show_title = move || screen_layout() != ScreenLayout::Narrow && !show_multiple();
 
     view! {
-        <ul id="InfoBox">
-        <For
-            each=countable_list
-            key=|countable| countable().get_uuid()
-            children=move |countable| {
-                view! {
-                <li class="row">
-                    <Count countable show_title/>
-                    <Time countable show_title/>
-                    <Progress countable show_title/>
-                    <LastStep countable show_title/>
-                    <AverageStep countable show_title/>
-                </li>
+        <div id="infobox" style:display="flex">
+            <For
+                each=countable_list
+                key=|countable| countable.get_uuid()
+                children=move |countable| {
+                    let key = create_signal(countable.get_uuid()).0;
+                    view! {
+                        <div class="row">
+                            <Show
+                                when=move || show_multiple()
+                            >
+                                <Title key/>
+                            </Show>
+                            <Count expand=show_multiple key show_title/>
+                            <Time expand=show_multiple key show_title/>
+                            <Progress expand=show_multiple key show_title/>
+                            <LastStep expand=show_multiple key show_title/>
+                            <AverageStep expand=show_multiple key show_title/>
+                        </div>
+                    }
                 }
-            }
-        >
-        </For>
-        </ul>
+            >
+            </For>
+        </div>
     }
 }
 
@@ -71,65 +72,97 @@ fn short_format_time(dur: Duration) -> String {
 }
 
 #[component]
-fn Count<T>(countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
-where
-    T: Fn() -> String + 'static,
-{
-    let state = expect_context::<RwSignal<CounterList>>();
-
-    let on_count_click = move |_| {
-        countable.update(|c| c.add_count(1));
-        state.update(|s| s.start())
-    };
-
-    let name = create_read_slice(countable, |c| c.get_name());
-    let count = create_read_slice(countable, |c| c.get_count());
-
-    view! {
-        <div class="rowbox" on:click=on_count_click>
-            <p class="title" style=show_title>{ name }</p>
-            <p class="info">{ count }</p>
-        </div>
-    }
-}
-
-#[component]
-fn Time<T>(countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
-where
-    T: Fn() -> String + 'static,
-{
-    let state = expect_context::<RwSignal<CounterList>>();
-    let on_time_click = move |_| state.update(|s| s.toggle_paused());
-
-    let time = create_read_slice(countable, |c| format_time(c.get_time()));
-
-    view! {
-        <div class="rowbox" on:click=on_time_click>
-            <p class="title" style=show_title>Time</p>
-            <p class="info longtime">{ time }</p>
-        </div>
-    }
-}
-
-#[component]
-fn Progress<T>(countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
-where
-    T: Fn() -> String + 'static,
-{
-    let progress = create_read_slice(countable, |c| c.get_progress());
-
-    let color = create_read_slice(countable, |c| match c.get_progress() {
-        num if num < 0.5 => "#50fa7b",
-        num if num < 0.75 && c.get_rolls() < c.get_odds() => "#fcff10",
-        num if num < 0.75 => "#ffb86c",
-        _ => "#ff9580",
-    });
+fn Title(#[prop(into)] key: Signal<String>) -> impl IntoView {
+    let state = expect_context::<SelectionSignal>();
+    let get_name = create_read_slice(state, move |state| state.get(&key()).get_name());
 
     view! {
         <div class="rowbox rowexpand">
-            <p class="title" style=show_title>Progress</p>
+            <p class="info" style:min-height="0em" style:padding="0.5em" style:font-size="28px">{ get_name }</p>
+        </div>
+    }
+}
+
+#[component]
+fn Count<T, E>(#[prop(into)] key: Signal<String>, expand: E, show_title: T) -> impl IntoView
+where
+    E: Fn() -> bool + Copy + 'static,
+    T: Fn() -> bool + Copy + 'static,
+{
+    let state = expect_context::<SelectionSignal>();
+    let get_name = create_read_slice(state, move |state| state.get(&key()).get_name());
+
+    let toggle_paused = create_write_slice(state, move |s, _| {
+        s.get_mut(&key()).set_active(true);
+    });
+
+    let (get_count, add_count) = create_slice(
+        state,
+        move |state| state.get(&key()).get_count(),
+        move |state, count| state.get(&key()).add_count(count),
+    );
+
+    let on_count_click = move |_| {
+        toggle_paused(());
+        add_count(1);
+    };
+
+    view! {
+        <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox" } on:click=on_count_click>
+            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>
+                { get_name }
+            </p>
+            <p class="info">{ get_count }</p>
+        </div>
+    }
+}
+
+#[component]
+fn Time<T, E>(#[prop(into)] key: Signal<String>, expand: E, show_title: T) -> impl IntoView
+where
+    E: Fn() -> bool + Copy + 'static,
+    T: Fn() -> bool + Copy + 'static,
+{
+    let state = expect_context::<SelectionSignal>();
+    let toggle_paused = create_write_slice(state, move |s, _| {
+        let active = s.get(&key()).is_active();
+        s.get_mut(&key()).set_active(!active);
+    });
+    let get_time = create_read_slice(state, move |state| {
+        format_time(state.get(&key()).get_time())
+    });
+
+    view! {
+        <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox" } on:click=toggle_paused>
+            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>Time</p>
+            <p class="info" style:min-width="7em">{ get_time }</p>
+        </div>
+    }
+}
+
+#[component]
+fn Progress<T, E>(#[prop(into)] key: Signal<String>, expand: E, show_title: T) -> impl IntoView
+where
+    E: Fn() -> bool + Copy + 'static,
+    T: Fn() -> bool + Copy + 'static,
+{
+    let state = expect_context::<SelectionSignal>();
+    let progress = create_read_slice(state, move |state| state.get(&key()).get_progress());
+    let rolls = create_read_slice(state, move |state| state.get(&key()).get_rolls());
+    let odds = create_read_slice(state, move |state| state.get(&key()).get_odds());
+
+    let color = move || match progress() {
+        num if num < 0.5 => "#50fa7b",
+        num if num < 0.75 && rolls() < odds() => "#fcff10",
+        num if num < 0.75 => "#ffb86c",
+        _ => "#ff9580",
+    };
+
+    view! {
+        <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox progress" }>
+            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>Progress</p>
             <Progressbar
-                progress=progress
+                progress
                 class="info"
                 color
             >
@@ -140,50 +173,53 @@ where
 }
 
 #[component]
-fn LastStep<T>(countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
+fn LastStep<E, T>(#[prop(into)] key: Signal<String>, expand: E, show_title: T) -> impl IntoView
 where
-    T: Fn() -> String + 'static,
+    E: Fn() -> bool + Copy + 'static,
+    T: Fn() -> bool + Copy + 'static,
 {
-    // TODO: just use the duration from the counter itself instead of system time
+    let state = expect_context::<SelectionSignal>();
+
     let format_time = |millis: Option<Duration>| match millis {
         None => String::from("---"),
         Some(m) => short_format_time(m),
     };
 
-    let on_count = create_read_slice(countable, |c| c.get_count());
-    let time = create_read_slice(countable, |c| c.get_time());
+    let on_count = create_read_slice(state, move |state| state.get(&key()).get_count());
+    let time = create_read_slice(state, move |state| state.get(&key()).get_time());
     let last_interaction = create_rw_signal(None::<i64>);
 
     view! {
-        <div class="rowbox">
-            <p class="title" style=show_title>Last Step</p>
-            <p class="info">{ move || {
+        <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox" }>
+            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>Last Step</p>
+            <p class="info time">{ move || {
                 on_count.with(|_| {
                     let time_str = format_time(last_interaction.get_untracked().map(|t| {
                         time.get_untracked() - Duration::milliseconds(t)
                     }));
                     last_interaction.set(Some(time.get_untracked().num_milliseconds()));
                     time_str
-                })}
-            }</p>
+                })
+            }}</p>
         </div>
     }
 }
 
 #[component]
-fn AverageStep<T>(countable: RwSignal<ArcCountable>, show_title: T) -> impl IntoView
+fn AverageStep<E, T>(#[prop(into)] key: Signal<String>, expand: E, show_title: T) -> impl IntoView
 where
-    T: Fn() -> String + 'static,
+    E: Fn() -> bool + Copy + 'static,
+    T: Fn() -> bool + Copy + 'static,
 {
-    let count = create_read_slice(countable, |c| c.get_count());
-    let step = create_read_slice(countable, move |c| {
-        Duration::milliseconds(c.get_time().num_milliseconds() / count() as i64)
-    });
+    let state = expect_context::<SelectionSignal>();
+    let count = create_read_slice(state, move |state| state.get(&key()).get_count());
+    let time = create_read_slice(state, move |state| state.get(&key()).get_time());
+    let step = move || Duration::milliseconds(time().num_milliseconds() / count() as i64);
 
     view! {
-        <div class="rowbox">
-            <p class="title" style=show_title>Avg Step Time</p>
-            <p class="info"> { move || {
+        <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox" }>
+            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>Avg Step Time</p>
+            <p class="info time"> { move || {
                 if count() == 0 {
                     String::from("---")
                 } else {
