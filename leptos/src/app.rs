@@ -367,7 +367,7 @@ pub fn App() -> impl IntoView {
         let countable = countable.clone();
 
         async move {
-            return match countable.kind() {
+            let _ = match countable.kind() {
                 CountableKind::Counter(_) => {
                     update_counter(
                         user.username.clone(),
@@ -725,7 +725,8 @@ pub fn HomePage() -> impl IntoView {
             .map(|key| sel.get(*key).clone())
             .collect::<Vec<_>>();
         slc.sort_by(state().sort.sort_by());
-        return slc;
+
+        slc
     });
 
     view! {

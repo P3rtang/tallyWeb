@@ -153,7 +153,7 @@ impl std::ops::Deref for ArcCountable {
 
 impl Default for ArcCountable {
     fn default() -> Self {
-        Self(Arc::new(Mutex::new(Box::new(Counter::default()))))
+        Self(Arc::new(Mutex::new(Box::<Counter>::default())))
     }
 }
 

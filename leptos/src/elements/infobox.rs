@@ -25,7 +25,7 @@ pub fn InfoBox(countable_list: Signal<Vec<ArcCountable>>) -> impl IntoView {
                     view! {
                         <div class="row">
                             <Show
-                                when=move || show_multiple()
+                                when=show_multiple
                             >
                                 <Title key/>
                             </Show>
