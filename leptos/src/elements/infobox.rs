@@ -3,6 +3,7 @@
 use chrono::Duration;
 use components::ScreenLayout;
 use leptos::*;
+use web_sys::MouseEvent;
 
 use crate::{
     app::{Progressbar, SelectionSignal},
@@ -29,8 +30,8 @@ pub fn InfoBox(countable_list: Signal<Vec<ArcCountable>>) -> impl IntoView {
                                 <Title key/>
                             </Show>
                             <Count expand=show_multiple key show_title/>
+                            <Time expand=show_multiple key show_title/>
                             <Show when=multi_narrow>
-                                <Time expand=show_multiple key show_title/>
                                 <Progress expand=show_multiple key show_title/>
                                 <LastStep expand=show_multiple key show_title/>
                                 <AverageStep expand=show_multiple key show_title/>
@@ -108,8 +109,14 @@ where
         add_count(1);
     };
 
+    let on_minus_click = move |ev: MouseEvent| {
+        ev.stop_propagation();
+        add_count(-1);
+    };
+
     view! {
         <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox" } on:click=on_count_click>
+            <button class="count_minus" on:click=on_minus_click>-</button>
             <p class="title" style:display=move || if show_title() { "block" } else { "none" }>
                 { get_name }
             </p>

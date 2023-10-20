@@ -400,6 +400,16 @@ ul {
             .time {
                 min-width: 4em;
             }
+
+            .count_minus {
+                width: 15%;
+                height: 80%;
+                background: none;
+                border: none;
+                color: white;
+                font-size: 32px;
+                border-right: 1px solid white;
+            }
         }
 
         .title {
