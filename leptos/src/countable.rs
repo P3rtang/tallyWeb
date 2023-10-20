@@ -674,7 +674,7 @@ pub struct Phase {
     pub id: i32,
     pub name: String,
     pub count: i32,
-    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde_as(as = "serde_with::DurationMilliSeconds<i64>")]
     pub time: Duration,
     pub is_active: bool,
     pub hunt_type: Hunttype,
