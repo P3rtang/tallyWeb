@@ -649,23 +649,23 @@ pub fn navigate(page: impl ToString) {
 fn connect_keys(model: SelectionSignal, save_flags: RwSignal<Vec<ChangeFlag>>) {
     window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
         "Equal" => model.update(|m| {
-            m.selection().into_iter().for_each(|c| {
+            m.selection_mut().into_iter().for_each(|c| {
                 c.set_active(true);
                 c.add_count(1);
-                save_flags.update(|list| list.push(ChangeFlag::ChangeCountable(c)))
+                save_flags.update(|list| list.push(ChangeFlag::ChangeCountable(c.clone())))
             })
         }),
         "Minus" => model.update(|m| {
-            m.selection().into_iter().for_each(|c| {
+            m.selection_mut().into_iter().for_each(|c| {
                 c.set_active(true);
                 c.add_count(-1);
-                save_flags.update(|list| list.push(ChangeFlag::ChangeCountable(c)))
+                save_flags.update(|list| list.push(ChangeFlag::ChangeCountable(c.clone())))
             })
         }),
         "KeyP" => model.update(|list| {
-            list.selection().into_iter().for_each(|c| {
+            list.selection_mut().into_iter().for_each(|c| {
                 c.set_active(!c.is_active());
-                save_flags.update(|list| list.push(ChangeFlag::ChangeCountable(c)))
+                save_flags.update(|list| list.push(ChangeFlag::ChangeCountable(c.clone())))
             })
         }),
         _ => {}
@@ -736,8 +736,8 @@ pub fn HomePage() -> impl IntoView {
             <div id="HomeGrid">
                 { move || {
                     if screen_layout() == ScreenLayout::Small {
-                        let sel_memo = create_read_slice(selection_signal, |sel| sel.selection());
-                        sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(sel.is_empty())));
+                        let sel_memo = create_read_slice(selection_signal, |sel| sel.is_empty());
+                        sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(*sel)));
                     }
                 }}
                 <Sidebar class="sidebar" display=show_sidebar layout=screen_layout>
@@ -972,18 +972,6 @@ impl CounterList {
         } else {
             list
         }
-    }
-
-    pub fn get_items(
-        &self,
-        model: SelectionModel<String, ArcCountable>,
-    ) -> HashMap<String, ArcCountable> {
-        model
-            .items
-            .clone()
-            .into_iter()
-            .map(|(k, v)| (k, v.row))
-            .collect()
     }
 }
 
