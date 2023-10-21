@@ -7,15 +7,25 @@ use std::{collections::HashMap, hash::Hash};
 
 use leptos::{ev::MouseEvent, *};
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SelectionModel<S, T>
 where
     S: Clone + PartialEq + Eq + Hash + 'static,
     T: Clone + 'static + Debug + PartialEq,
 {
-    pub items: HashMap<S, TreeNode<T, S>>,
+    items: HashMap<S, TreeNode<T, S>>,
     selection: HashMap<S, bool>,
     multi_select: bool,
+}
+
+impl<S, T> Default for SelectionModel<S, T>
+where
+    S: Clone + PartialEq + Eq + Hash + 'static,
+    T: Clone + 'static + Debug + PartialEq,
+{
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<S, T> SelectionModel<S, T>
@@ -44,7 +54,7 @@ where
     }
 
     pub fn select(&mut self, key: &S) {
-        let current_value = self.selection.get(key).cloned().unwrap_or_default();
+        let current_value = self.is_selected(key);
         if !self.multi_select {
             self.selection.clear();
         }
@@ -52,12 +62,20 @@ where
         self.selection.insert(key.clone(), !current_value);
     }
 
-    pub fn selection(&self) -> Vec<T> {
+    pub fn selection_mut(&mut self) -> Vec<&mut T> {
+        let selected = self.selection.clone();
+        self.items
+            .iter_mut()
+            .filter(|(key, _)| selected.get(*key).cloned().unwrap_or_default())
+            .map(|(_, item)| &mut item.row)
+            .collect()
+    }
+
+    pub fn selection(&self) -> Vec<&T> {
         self.selection
             .iter()
             .filter(|(_, b)| **b)
             .map(|(k, _)| &self.items.get(k).unwrap().row)
-            .cloned()
             .collect::<Vec<_>>()
     }
 
@@ -79,25 +97,28 @@ where
 }
 
 #[component]
-pub fn TreeViewWidget<T, F, S, FS>(
+pub fn TreeViewWidget<T, F, S, FV, IV>(
     each: F,
     key: fn(&T) -> S,
     each_child: fn(&T) -> Vec<T>,
-    view: fn(RwSignal<TreeNode<T, S>>) -> View,
-    selection_model: RwSignal<SelectionModel<S, T>>,
-    show_separator: FS,
+    view: FV,
+    #[prop(default=create_signal(false).0.into(), into)] show_separator: Signal<bool>,
+    #[prop(default=create_rw_signal(SelectionModel::default()), into)] selection_model: RwSignal<
+        SelectionModel<S, T>,
+    >,
     #[prop(optional, into)] selection_color: Option<Signal<String>>,
 ) -> impl IntoView
 where
     T: Clone + PartialEq + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
     F: Fn() -> Vec<T> + Copy + 'static,
-    FS: Fn() -> bool + Copy + 'static,
+    FV: Fn(RwSignal<TreeNode<T, S>>) -> IV + Copy + 'static,
+    IV: IntoView,
 {
     let tree_nodes = move || {
         each()
-            .iter()
-            .map(|c| TreeNode::<T, S>::new(key, c.clone(), each_child, selection_model, 0))
+            .into_iter()
+            .map(|c| TreeNode::<T, S>::new(key, c, each_child, selection_model, 0))
             .collect::<Vec<_>>()
     };
 
@@ -132,17 +153,19 @@ where
 }
 
 #[component]
-fn TreeViewRow<T, S>(
+fn TreeViewRow<T, S, FV, IV>(
     children: Children,
     node: TreeNode<T, S>,
     each_child: fn(&T) -> Vec<T>,
-    view: fn(RwSignal<TreeNode<T, S>>) -> View,
+    view: FV,
     selection_model: RwSignal<SelectionModel<S, T>>,
     selection_color: Option<Signal<String>>,
 ) -> impl IntoView
 where
     T: Clone + PartialEq + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
+    FV: Fn(RwSignal<TreeNode<T, S>>) -> IV + Copy + 'static,
+    IV: IntoView,
 {
     let (key, _) = create_signal(node.get_key().clone());
     let node = create_read_slice(selection_model, move |sm| {
