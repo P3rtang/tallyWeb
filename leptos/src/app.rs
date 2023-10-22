@@ -746,8 +746,8 @@ pub fn HomePage() -> impl IntoView {
                         each=move || { state.get().get_filtered_list() }
                         key=|countable| countable.get_uuid()
                         each_child=|countable| countable.get_children()
-                        view=|node| {
-                            view! { <TreeViewRow node=node/> }
+                        view=|key| {
+                            view! { <TreeViewRow key/> }
                         }
                         show_separator=show_sep
                         selection_model=selection_signal
@@ -817,14 +817,35 @@ where
 }
 
 #[component]
-fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView {
+fn TreeViewRow(key: String) -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
     let user = expect_context::<Memo<Option<SessionUser>>>();
     let data = expect_context::<Resource<Option<SessionUser>, Vec<SerCounter>>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
 
-    let countable = create_read_slice(node, |node| node.row.clone());
+    let (key, _) = create_signal(key);
+
+    let countable = create_read_slice(selection, move |model| {
+        model.get(&key.get_untracked()).clone()
+    });
+
+    let (node, _) = create_signal(
+        selection
+            .get_untracked()
+            .get_node(&key.get_untracked())
+            .cloned(),
+    );
+
+    let insert_child = create_write_slice(selection, move |model, item| {
+        node.get_untracked().map(|n| n.insert_child(item, model));
+    });
+
+    let expand_node = create_write_slice(selection, move |model, _| {
+        model
+            .get_node_mut(&key.get_untracked())
+            .map(|n| n.is_expanded = true);
+    });
 
     let click_new_phase = move |e: MouseEvent| {
         e.stop_propagation();
@@ -859,11 +880,9 @@ fn TreeViewRow(node: RwSignal<TreeNode<ArcCountable, String>>) -> impl IntoView 
                 .await
                 .expect("Could not assign phase to Counter");
 
-                node.update(|n| {
-                    let phase = n.row.new_phase(phase_id, name);
-                    n.set_expand(true);
-                    n.insert_child(phase, selection);
-                });
+                let phase = countable.get_untracked().new_phase(phase_id, name);
+                insert_child(phase);
+                expand_node(());
             },
         );
     };
