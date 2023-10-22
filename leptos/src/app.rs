@@ -621,7 +621,7 @@ fn timer(selection_signal: SelectionSignal) {
                 selection_signal.update(|s| {
                     s.get_selected_keys()
                         .iter()
-                        .map(|key| s.get(key))
+                        .filter_map(|key| s.get(key))
                         .filter(|c| c.is_active())
                         .for_each(|c| c.add_time(interval))
                 });
@@ -714,7 +714,7 @@ pub fn HomePage() -> impl IntoView {
         let mut slc = sel
             .get_selected_keys()
             .iter()
-            .map(|key| sel.get(*key).clone())
+            .filter_map(|key| sel.get(*key).cloned())
             .collect::<Vec<_>>();
         slc.sort_by(state().sort.sort_by());
 
@@ -827,7 +827,7 @@ fn TreeViewRow(key: String) -> impl IntoView {
     let (key, _) = create_signal(key);
 
     let countable = create_read_slice(selection, move |model| {
-        model.get(&key.get_untracked()).clone()
+        model.get(&key.get_untracked()).cloned()
     });
 
     let (node, _) = create_signal(
@@ -838,13 +838,15 @@ fn TreeViewRow(key: String) -> impl IntoView {
     );
 
     let insert_child = create_write_slice(selection, move |model, item| {
-        node.get_untracked().map(|n| n.insert_child(item, model));
+        if let Some(node) = node.get_untracked() {
+            node.insert_child(item, model)
+        }
     });
 
     let expand_node = create_write_slice(selection, move |model, _| {
-        model
-            .get_node_mut(&key.get_untracked())
-            .map(|n| n.is_expanded = true);
+        if let Some(node) = model.get_node_mut(&key.get_untracked()) {
+            node.is_expanded = true;
+        }
     });
 
     let click_new_phase = move |e: MouseEvent| {
@@ -858,29 +860,33 @@ fn TreeViewRow(key: String) -> impl IntoView {
                 let n_phase = countable
                     .get_untracked()
                     .clone()
-                    .0
-                    .try_lock()
-                    .map(|c| c.get_phases().len() + 1)
+                    .and_then(|c| c.0.try_lock().map(|c| c.get_phases().len() + 1).ok())
                     .unwrap_or(1);
                 let name = format!("Phase {n_phase}");
                 let phase_id = create_phase(
                     user.get_untracked().unwrap().username,
                     user.get_untracked().unwrap().token,
                     name.clone(),
-                    countable.get_untracked().get_hunt_type(),
+                    countable
+                        .get_untracked()
+                        .map(|c| c.get_hunt_type())
+                        .unwrap_or_default(),
                 )
                 .await
                 .expect("Could not create Phase");
                 assign_phase(
                     user.get_untracked().unwrap().username,
                     user.get_untracked().unwrap().token,
-                    countable.get_untracked().get_id(),
+                    countable
+                        .get_untracked()
+                        .map(|c| c.get_id())
+                        .unwrap_or_default(),
                     phase_id,
                 )
                 .await
                 .expect("Could not assign phase to Counter");
 
-                let phase = countable.get_untracked().new_phase(phase_id, name);
+                let phase = countable.get_untracked().unwrap().new_phase(phase_id, name);
                 insert_child(phase);
                 expand_node(());
             },
@@ -898,15 +904,11 @@ fn TreeViewRow(key: String) -> impl IntoView {
 
     let has_children = countable
         .get_untracked()
-        .0
-        .try_lock()
-        .map(|i| i.has_children())
+        .and_then(|c| c.0.try_lock().map(|i| i.has_children()).ok())
         .unwrap_or_default();
     let id = countable
         .get_untracked()
-        .0
-        .try_lock()
-        .map(|i| i.get_id())
+        .and_then(|c| c.0.try_lock().map(|i| i.get_id()).ok())
         .unwrap_or(-1);
 
     view! {
@@ -914,13 +916,8 @@ fn TreeViewRow(key: String) -> impl IntoView {
         class="row-body"
         on:contextmenu=on_right_click
         >
-        <span> { move || countable().get_name() } </span>
-        <Show
-            when= move || {
-                countable.get().0.try_lock().map(|c| c.has_children()).unwrap_or_default()
-            }
-            fallback=||()
-        >
+        <span> { move || countable().map(|c| c.get_name()).unwrap_or_default() } </span>
+        <Show when=move || has_children>
             <button on:click=click_new_phase>+</button>
         </Show>
 

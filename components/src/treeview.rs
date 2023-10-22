@@ -45,12 +45,12 @@ where
         self.multi_select = multi_select
     }
 
-    pub fn get(&self, key: &S) -> &T {
-        &self.items[key].row
+    pub fn get(&self, key: &S) -> Option<&T> {
+        Some(&self.items.get(key)?.row)
     }
 
-    pub fn get_mut(&mut self, key: &S) -> &mut T {
-        &mut self.items.get_mut(key).unwrap().row
+    pub fn get_mut(&mut self, key: &S) -> Option<&mut T> {
+        Some(&mut self.items.get_mut(key)?.row)
     }
 
     pub fn get_node(&self, key: &S) -> Option<&TreeNode<T, S>> {
