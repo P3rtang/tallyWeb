@@ -76,7 +76,9 @@ fn short_format_time(dur: Duration) -> String {
 #[component]
 fn Title(#[prop(into)] key: Signal<String>) -> impl IntoView {
     let state = expect_context::<SelectionSignal>();
-    let get_name = create_read_slice(state, move |state| state.get(&key()).get_name());
+    let get_name = create_read_slice(state, move |state| {
+        state.get(&key()).map(|c| c.get_name()).unwrap_or_default()
+    });
 
     view! {
         <div class="rowbox rowexpand">
@@ -92,20 +94,28 @@ where
     T: Fn() -> bool + Copy + 'static,
 {
     let state = expect_context::<SelectionSignal>();
-    let get_name = create_read_slice(state, move |state| state.get(&key()).get_name());
+    let get_name = create_read_slice(state, move |state| {
+        state.get(&key()).map(|c| c.get_name()).unwrap_or_default()
+    });
 
-    let toggle_paused = create_write_slice(state, move |s, _| {
-        s.get_mut(&key()).set_active(true);
+    let unpause = create_write_slice(state, move |s, _| {
+        if let Some(item) = s.get_mut(&key()) {
+            item.set_active(true)
+        };
     });
 
     let (get_count, add_count) = create_slice(
         state,
-        move |state| state.get(&key()).get_count(),
-        move |state, count| state.get(&key()).add_count(count),
+        move |state| state.get(&key()).map(|c| c.get_count()).unwrap_or_default(),
+        move |state, count| {
+            if let Some(c) = state.get(&key()) {
+                c.add_count(count)
+            }
+        },
     );
 
     let on_count_click = move |_| {
-        toggle_paused(());
+        unpause(());
         add_count(1);
     };
 
@@ -132,18 +142,26 @@ where
     T: Fn() -> bool + Copy + 'static,
 {
     let state = expect_context::<SelectionSignal>();
+
     let toggle_paused = create_write_slice(state, move |s, _| {
-        let active = s.get(&key()).is_active();
-        s.get_mut(&key()).set_active(!active);
+        if let Some(item) = s.get_mut(&key()) {
+            item.set_active(!item.is_active())
+        }
     });
-    let get_time = create_read_slice(state, move |state| {
-        format_time(state.get(&key()).get_time())
+
+    let time = create_read_slice(state, move |state| {
+        format_time(
+            state
+                .get(&key())
+                .map(|c| c.get_time())
+                .unwrap_or(Duration::zero()),
+        )
     });
 
     view! {
         <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox" } on:click=toggle_paused>
             <p class="title" style:display=move || if show_title() { "block" } else { "none" }>Time</p>
-            <p class="info" style:min-width="7em">{ get_time }</p>
+            <p class="info" style:min-width="7em">{ time }</p>
         </div>
     }
 }
@@ -155,9 +173,21 @@ where
     T: Fn() -> bool + Copy + 'static,
 {
     let state = expect_context::<SelectionSignal>();
-    let progress = create_read_slice(state, move |state| state.get(&key()).get_progress());
-    let rolls = create_read_slice(state, move |state| state.get(&key()).get_rolls());
-    let odds = create_read_slice(state, move |state| state.get(&key()).get_odds());
+
+    let progress = create_read_slice(state, move |state| {
+        state
+            .get(&key())
+            .map(|c| c.get_progress())
+            .unwrap_or_default()
+    });
+
+    let rolls = create_read_slice(state, move |state| {
+        state.get(&key()).map(|c| c.get_rolls()).unwrap_or_default()
+    });
+
+    let odds = create_read_slice(state, move |state| {
+        state.get(&key()).map(|c| c.get_odds()).unwrap_or_default()
+    });
 
     let color = move || match progress() {
         num if num < 0.5 => "#50fa7b",
@@ -193,8 +223,17 @@ where
         Some(m) => short_format_time(m),
     };
 
-    let on_count = create_read_slice(state, move |state| state.get(&key()).get_count());
-    let time = create_read_slice(state, move |state| state.get(&key()).get_time());
+    let on_count = create_read_slice(state, move |state| {
+        state.get(&key()).map(|c| c.get_count()).unwrap_or_default()
+    });
+
+    let time = create_read_slice(state, move |state| {
+        state
+            .get(&key())
+            .map(|c| c.get_time())
+            .unwrap_or(Duration::zero())
+    });
+
     let last_interaction = create_rw_signal(None::<i64>);
 
     view! {
@@ -220,8 +259,18 @@ where
     T: Fn() -> bool + Copy + 'static,
 {
     let state = expect_context::<SelectionSignal>();
-    let count = create_read_slice(state, move |state| state.get(&key()).get_count());
-    let time = create_read_slice(state, move |state| state.get(&key()).get_time());
+
+    let count = create_read_slice(state, move |state| {
+        state.get(&key()).map(|c| c.get_count()).unwrap_or_default()
+    });
+
+    let time = create_read_slice(state, move |state| {
+        state
+            .get(&key())
+            .map(|c| c.get_time())
+            .unwrap_or(Duration::zero())
+    });
+
     let step = move || Duration::milliseconds(time().num_milliseconds() / count() as i64);
 
     view! {
