@@ -53,6 +53,14 @@ where
         &mut self.items.get_mut(key).unwrap().row
     }
 
+    pub fn get_node(&self, key: &S) -> Option<&TreeNode<T, S>> {
+        self.items.get(key)
+    }
+
+    pub fn get_node_mut(&mut self, key: &S) -> Option<&mut TreeNode<T, S>> {
+        self.items.get_mut(key)
+    }
+
     pub fn select(&mut self, key: &S) {
         let current_value = self.is_selected(key);
         if !self.multi_select {
@@ -112,7 +120,7 @@ where
     T: Clone + PartialEq + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
     F: Fn() -> Vec<T> + Copy + 'static,
-    FV: Fn(RwSignal<TreeNode<T, S>>) -> IV + Copy + 'static,
+    FV: Fn(S) -> IV + Copy + 'static,
     IV: IntoView,
 {
     let tree_nodes = move || {
@@ -130,13 +138,13 @@ where
             children=move |item| {
                 view! {
                     <TreeViewRow
-                        node=item.clone()
+                        key=item.get_key()
                         selection_model=selection_model
                         view=view
                         each_child=each_child
                         selection_color
                     > {
-                        view(create_rw_signal(item))
+                        view(item.get_key())
                     }</TreeViewRow>
                     <Show
                         when=show_separator
@@ -155,7 +163,7 @@ where
 #[component]
 fn TreeViewRow<T, S, FV, IV>(
     children: Children,
-    node: TreeNode<T, S>,
+    key: S,
     each_child: fn(&T) -> Vec<T>,
     view: FV,
     selection_model: RwSignal<SelectionModel<S, T>>,
@@ -164,24 +172,30 @@ fn TreeViewRow<T, S, FV, IV>(
 where
     T: Clone + PartialEq + 'static + Debug,
     S: Clone + PartialEq + Eq + Hash + 'static,
-    FV: Fn(RwSignal<TreeNode<T, S>>) -> IV + Copy + 'static,
+    FV: Fn(S) -> IV + Copy + 'static,
     IV: IntoView,
 {
-    let (key, _) = create_signal(node.get_key().clone());
+    let (key, _) = create_signal(key);
     let node = create_read_slice(selection_model, move |sm| {
         sm.items.get(&key()).unwrap().clone()
     });
 
+    let (is_expanded, toggle_expand) = create_slice(
+        selection_model,
+        move |model| model.items.get(&key()).unwrap().is_expanded,
+        move |model, _| model.items.get_mut(&key()).unwrap().toggle_expand(),
+    );
+
     let child_class = move || {
         let mut class = String::from("nested ");
-        if node().is_expanded.get() {
+        if is_expanded() {
             class += "active "
         }
         class
     };
 
     let caret_class = move || {
-        if node().is_expanded.get() {
+        if is_expanded() {
             "caret fa-solid fa-caret-right caret-down"
         } else {
             "caret fa-solid fa-caret-right"
@@ -214,7 +228,7 @@ where
 
     let on_caret_click = move |e: MouseEvent| {
         e.stop_propagation();
-        node().toggle_expand()
+        toggle_expand(())
     };
 
     let depth_style = move || {
@@ -222,6 +236,14 @@ where
         let style = format!("padding-left:{};", margin);
         style
     };
+
+    let node_children = create_read_slice(selection_model, move |model| {
+        model
+            .items
+            .get(&node().get_key())
+            .unwrap()
+            .get_node_children(model)
+    });
 
     view! {
     <li>
@@ -236,18 +258,18 @@ where
         </div>
         <ul class=child_class>
         <For
-            each=move || { node().children.get() }
+            each=node_children
             key=|c| c.get_key()
             children=move |item| {
                 view! {
                     <TreeViewRow
-                        node=item.clone()
+                        key=item.get_key()
                         selection_model=selection_model
                         each_child=each_child
                         view=view
                         selection_color
                     > {
-                        view(create_rw_signal(item))
+                        view(item.get_key())
                     }</TreeViewRow>
                 }
             }
@@ -266,9 +288,7 @@ where
     pub key: fn(&T) -> S,
     pub row: T,
     pub depth: usize,
-    pub is_expanded: RwSignal<bool>,
-    pub update: Trigger,
-    pub children: RwSignal<Vec<TreeNode<T, S>>>,
+    pub is_expanded: bool,
     pub each_child: fn(&T) -> Vec<T>,
 }
 
@@ -288,9 +308,7 @@ where
             key,
             row: item.clone(),
             depth,
-            is_expanded: create_rw_signal(false),
-            update: create_trigger(),
-            children: create_rw_signal(Vec::new()),
+            is_expanded: false,
             each_child,
         };
 
@@ -298,12 +316,9 @@ where
             map.items.insert(key(&this.row), this.clone());
         });
 
-        this.children.set(
-            each_child(&item)
-                .iter()
-                .map(|c| TreeNode::new(key, c.clone(), each_child, selection_model, depth + 1))
-                .collect(),
-        );
+        each_child(&item).iter().for_each(|c| {
+            TreeNode::new(key, c.clone(), each_child, selection_model, depth + 1);
+        });
 
         this
     }
@@ -312,22 +327,37 @@ where
         (self.key)(&self.row)
     }
 
-    pub fn insert_child(&self, item: T, selection_model: RwSignal<SelectionModel<S, T>>) {
-        let node = TreeNode::new(
-            self.key,
-            item,
-            self.each_child,
-            selection_model,
-            self.depth + 1,
-        );
-        self.children.update(|children| children.push(node))
+    pub fn insert_child(&self, item: T, selection_model: &mut SelectionModel<S, T>) {
+        let node = TreeNode {
+            key: self.key,
+            row: item.clone(),
+            depth: self.depth + 1,
+            is_expanded: false,
+            each_child: self.each_child,
+        };
+
+        selection_model.items.insert((self.key)(&item), node);
     }
 
-    pub fn set_expand(&self, do_expand: bool) {
-        self.is_expanded.set(do_expand)
+    pub fn get_children_keys(&self) -> Vec<S> {
+        (self.each_child)(&self.row)
+            .iter()
+            .map(|i| (self.key)(i))
+            .collect()
     }
 
-    pub fn toggle_expand(&self) {
-        self.is_expanded.set(!self.is_expanded.get())
+    pub fn get_node_children(&self, model: &SelectionModel<S, T>) -> Vec<TreeNode<T, S>> {
+        self.get_children_keys()
+            .iter()
+            .filter_map(|key| model.items.get(key).cloned())
+            .collect::<Vec<_>>()
+    }
+
+    pub fn set_expand(&mut self, do_expand: bool) {
+        self.is_expanded = do_expand
+    }
+
+    pub fn toggle_expand(&mut self) {
+        self.is_expanded = !self.is_expanded
     }
 }
