@@ -1,3 +1,5 @@
+#![feature(let_chains)]
+
 mod about;
 mod account_icon;
 mod loading_screen;
