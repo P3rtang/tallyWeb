@@ -820,7 +820,6 @@ where
 fn TreeViewRow(key: String) -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
     let user = expect_context::<Memo<Option<SessionUser>>>();
-    let data = expect_context::<Resource<Option<SessionUser>, Vec<SerCounter>>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
 
@@ -906,30 +905,28 @@ fn TreeViewRow(key: String) -> impl IntoView {
         .get_untracked()
         .and_then(|c| c.0.try_lock().map(|i| i.has_children()).ok())
         .unwrap_or_default();
-    let id = countable
-        .get_untracked()
-        .and_then(|c| c.0.try_lock().map(|i| i.get_id()).ok())
-        .unwrap_or(-1);
 
     view! {
-    <div
-        class="row-body"
-        on:contextmenu=on_right_click
-        >
-        <span> { move || countable().map(|c| c.get_name()).unwrap_or_default() } </span>
-        <Show when=move || has_children>
-            <button on:click=click_new_phase>+</button>
-        </Show>
+        <div
+            class="row-body"
+            on:contextmenu=on_right_click
+            >
+            <span> { move || countable.get_untracked().map(|c| c.get_name()).unwrap_or_default() } </span>
+            <Show when=move || has_children>
+                <button on:click=click_new_phase>+</button>
+            </Show>
 
-    </div>
-    <CountableContextMenu
-        show_overlay=show_context_menu
-        location=click_location
-        counters_resource=data
-        countable_id=id
-        is_phase=!has_children
-        accent_color
-    />
+        </div>
+        <Show
+            when=move || countable.get_untracked().is_some()
+        >
+            <CountableContextMenu
+                show_overlay=show_context_menu
+                location=click_location
+                key
+                accent_color
+            />
+        </Show>
     }
 }
 

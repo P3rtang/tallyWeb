@@ -29,6 +29,7 @@ rand = "0.8.5"
 chrono = { version = "0.4.31", features = ["serde"] }
 serde_with = { version = "3.3.0", features = ["chrono"] }
 leptos-use = { version = "0.7.1", features = ["ssr", "serde", "serde_json", "storage"] }
+thiserror = "1.0.50"
 
 [features]
 csr = ["leptos/csr", "leptos_meta/csr", "leptos_router/csr"]

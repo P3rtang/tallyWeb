@@ -95,6 +95,10 @@ where
             .collect()
     }
 
+    pub fn remove_item(&mut self, key: &S) -> Option<T> {
+        Some(self.items.remove(key)?.row)
+    }
+
     pub fn is_selected(&self, key: &S) -> bool {
         return self.selection.get(key).cloned().unwrap_or_default();
     }
@@ -162,7 +166,7 @@ where
 
 #[component]
 fn TreeViewRow<T, S, FV, IV>(
-    children: Children,
+    children: ChildrenFn,
     key: S,
     each_child: fn(&T) -> Vec<T>,
     view: FV,
@@ -176,14 +180,27 @@ where
     IV: IntoView,
 {
     let (key, _) = create_signal(key);
-    let node = create_read_slice(selection_model, move |sm| {
-        sm.items.get(&key()).unwrap().clone()
-    });
+
+    let node = create_read_slice(selection_model, move |sm| sm.items.get(&key()).cloned());
 
     let (is_expanded, toggle_expand) = create_slice(
         selection_model,
-        move |model| model.items.get(&key()).unwrap().is_expanded,
-        move |model, _| model.items.get_mut(&key()).unwrap().toggle_expand(),
+        move |model| {
+            model
+                .items
+                .get(&key())
+                .map(|n| n.is_expanded)
+                .unwrap_or_default()
+        },
+        move |model, _| {
+            model.items.get_mut(&key()).map(|n| n.toggle_expand());
+        },
+    );
+
+    let (is_selected, set_selected) = create_slice(
+        selection_model,
+        move |model| model.is_selected(&key()),
+        move |model, _| model.select(&key()),
     );
 
     let child_class = move || {
@@ -204,7 +221,7 @@ where
 
     let div_class = move || {
         let mut class = String::from("selectable row");
-        if selection_model().is_selected(&node().get_key()) {
+        if is_selected() {
             class += " selected"
         }
 
@@ -212,7 +229,7 @@ where
     };
 
     let selection_style = move || {
-        if selection_model().is_selected(&node().get_key()) {
+        if is_selected() {
             format!(
                 "background: {};",
                 selection_color
@@ -224,7 +241,7 @@ where
         }
     };
 
-    let on_click = move |_: MouseEvent| selection_model.update(|map| map.select(&node().get_key()));
+    let on_click = move |_: MouseEvent| set_selected(());
 
     let on_caret_click = move |e: MouseEvent| {
         e.stop_propagation();
@@ -232,24 +249,28 @@ where
     };
 
     let depth_style = move || {
-        let margin = format!("{}em", 2.0 * node().depth as f64);
+        let margin = format!(
+            "{}em",
+            2.0 * node().map(|n| n.depth).unwrap_or_default() as f64
+        );
         let style = format!("padding-left:{};", margin);
         style
     };
 
     let node_children = create_read_slice(selection_model, move |model| {
-        model
-            .items
-            .get(&node().get_key())
-            .unwrap()
-            .get_node_children(model)
+        node()
+            .map(|n| n.get_node_children(model))
+            .unwrap_or_default()
     });
 
     view! {
+    <Show
+        when=move || node().is_some()
+    >
     <li>
         <div style={ move || { depth_style() + &selection_style() } } class=div_class on:click=on_click>
             <Show
-                when= move || { !each_child(&node.get_untracked().row).is_empty() }
+                when= move || { !each_child(&node.get_untracked().unwrap().row).is_empty() }
                 fallback= move || {}
             >
                 <span class=caret_class on:click=on_caret_click/>
@@ -276,6 +297,7 @@ where
         />
         </ul>
     </li>
+    </Show>
     }
 }
 

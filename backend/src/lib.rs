@@ -263,6 +263,22 @@ pub async fn remove_counter(
     user_id: i32,
     counter_id: i32,
 ) -> Result<(), sqlx::error::Error> {
+    let counter = sqlx::query_as!(
+        DbCounter,
+        r#"
+        select * from counters
+        where user_id = $1 AND id = $2
+        "#,
+        user_id,
+        counter_id,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    for phase in counter.phases {
+        remove_phase(pool, phase).await?;
+    }
+
     sqlx::query!(
         r#"
         delete from counters
@@ -278,21 +294,22 @@ pub async fn remove_counter(
 }
 
 pub async fn remove_phase(pool: &PgPool, phase_id: i32) -> Result<(), sqlx::error::Error> {
+    let _: DbPhase = sqlx::query_as(
+        r#"
+        delete from phases
+        where id = $1
+        RETURNING *
+        "#,
+    )
+    .bind(phase_id)
+    .fetch_one(pool)
+    .await?;
+
     sqlx::query!(
         r#"
         UPDATE counters
         SET phases = array_remove(phases, $1)
         WHERE $1 = ANY(phases);
-        "#,
-        phase_id,
-    )
-    .execute(pool)
-    .await?;
-
-    sqlx::query!(
-        r#"
-        delete from phases
-        where id = $1
         "#,
         phase_id,
     )

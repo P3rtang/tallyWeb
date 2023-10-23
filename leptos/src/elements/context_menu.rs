@@ -2,11 +2,11 @@
 #![allow(non_snake_case)]
 
 use crate::{
-    app::{remove_counter, remove_phase, SessionUser},
-    countable::SerCounter,
+    app::{remove_counter, remove_phase, SelectionSignal, SessionUser},
+    countable::CountableKind,
 };
 
-use components::{CloseOverlays, Overlay};
+use components::{CloseOverlays, Overlay, Message};
 use leptos::*;
 use leptos_router::A;
 use web_sys::MouseEvent;
@@ -15,43 +15,64 @@ use web_sys::MouseEvent;
 pub fn CountableContextMenu(
     show_overlay: RwSignal<bool>,
     location: ReadSignal<(i32, i32)>,
-    counters_resource: Resource<Option<SessionUser>, Vec<SerCounter>>,
-    countable_id: i32,
-    is_phase: bool,
+    #[prop(into)] key: Signal<String>,
     #[prop(optional)] accent_color: Option<Signal<String>>,
 ) -> impl IntoView {
-    let (edit_location, _) = create_signal(format!(
-        "/edit/{}/{}",
-        if is_phase { "phase" } else { "counter" },
-        countable_id
-    ));
+    let message = expect_context::<Message>();
+    let selection_model = expect_context::<SelectionSignal>();
+
+    let countable_kind = move || CountableKind::try_from(key.get_untracked());
+
+    let (edit_location, _) = create_signal(if let Ok(kind) = countable_kind() {
+        format!(
+            "/edit/{}/{}",
+            if key.get_untracked().starts_with('p') {
+                "phase"
+            } else {
+                "counter"
+            },
+            kind.id()
+        )
+    } else {
+        "/edit".to_string()
+    });
 
     let on_del_click = move |ev: MouseEvent| {
         ev.stop_propagation();
-        if use_context::<Memo<Option<SessionUser>>>()
-            .and_then(|s| s.get_untracked())
-            .is_some()
-        {
-            let user = expect_context::<Memo<Option<SessionUser>>>();
-            spawn_local(async move {
-                if is_phase {
-                    let _ = remove_phase(
+        let user = expect_context::<Memo<Option<SessionUser>>>();
+        spawn_local(async move {
+            match countable_kind() {
+                Ok(CountableKind::Counter(id)) => {
+                    if let Ok(_) = remove_counter(
                         user.get_untracked().unwrap().username,
                         user.get_untracked().unwrap().token,
-                        countable_id,
+                        id,
                     )
-                    .await;
-                } else {
-                    let _ = remove_counter(
-                        user.get_untracked().unwrap().username,
-                        user.get_untracked().unwrap().token,
-                        countable_id,
-                    )
-                    .await;
+                    .await
+                    {
+                        selection_model.update(|model| {
+                            model.remove_item(&key.get_untracked());
+                        })
+                    }
                 }
-                create_effect(move |_| counters_resource.refetch());
-            });
-        }
+                Ok(CountableKind::Phase(id)) => {
+                    if let Ok(_) = remove_phase(
+                        user.get_untracked().unwrap().username,
+                        user.get_untracked().unwrap().token,
+                        id,
+                    )
+                    .await
+                    {
+                        selection_model.update(|model| {
+                            model.remove_item(&key.get_untracked());
+                        })
+                    }
+                }
+                Err(_) => {
+                    message.set_err("Could not convert counter Id")
+                }
+            }
+        });
     };
 
     view! {
