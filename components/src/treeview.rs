@@ -5,7 +5,7 @@
 use core::fmt::Debug;
 use std::{collections::HashMap, hash::Hash};
 
-use leptos::{ev::MouseEvent, logging::log, *};
+use leptos::{ev::MouseEvent, *};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SelectionModel<S, T>
@@ -130,10 +130,6 @@ where
     let tree_nodes = move || {
         each()
             .into_iter()
-            .map(|c| {
-                log!("{:?}", key(&c));
-                c
-            })
             .map(|c| TreeNode::<T, S>::new(key, c, each_child, selection_model, 0))
             .collect::<Vec<_>>()
     };
