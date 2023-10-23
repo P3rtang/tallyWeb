@@ -1,5 +1,6 @@
 #![feature(async_closure)]
 #![feature(let_chains)]
+#![feature(half_open_range_patterns_in_slices)]
 
 pub mod app;
 mod countable;

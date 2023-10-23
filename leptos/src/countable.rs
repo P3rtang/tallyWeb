@@ -5,6 +5,13 @@ use std::{
     cmp::Ordering,
     sync::{Arc, Mutex},
 };
+use thiserror;
+
+#[derive(Debug, thiserror::Error)]
+pub enum CountableError {
+    #[error("Invalid UUID format for countable")]
+    Conversion,
+}
 
 #[derive(Debug, Clone)]
 pub struct ArcCountable(pub Arc<Mutex<Box<dyn Countable>>>);
@@ -813,6 +820,31 @@ impl Countable for Phase {
 pub enum CountableKind {
     Counter(i32),
     Phase(i32),
+}
+
+impl CountableKind {
+    pub fn id(&self) -> i32 {
+        match self {
+            CountableKind::Counter(id) => *id,
+            CountableKind::Phase(id) => *id,
+        }
+    }
+}
+
+impl TryFrom<String> for CountableKind {
+    type Error = CountableError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        return match value {
+            v if v.chars().next() == Some('c') && v['c'.len_utf8()..].parse::<i32>().is_ok() => Ok(
+                CountableKind::Counter(v['c'.len_utf8()..].parse::<i32>().unwrap()),
+            ),
+            v if v.chars().next() == Some('p') && v['p'.len_utf8()..].parse::<i32>().is_ok() => Ok(
+                CountableKind::Phase(v['p'.len_utf8()..].parse::<i32>().unwrap()),
+            ),
+            _ => Err(CountableError::Conversion),
+        };
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
