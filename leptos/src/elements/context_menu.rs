@@ -2,7 +2,7 @@
 #![allow(non_snake_case)]
 
 use crate::{
-    app::{remove_counter, remove_phase, SelectionSignal, SessionUser},
+    app::{remove_counter, remove_phase, SessionUser},
     countable::{CountableKind, SerCounter},
 };
 
