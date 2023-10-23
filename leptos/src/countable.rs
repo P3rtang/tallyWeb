@@ -5,7 +5,6 @@ use std::{
     cmp::Ordering,
     sync::{Arc, Mutex},
 };
-use thiserror;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CountableError {
@@ -835,15 +834,15 @@ impl TryFrom<String> for CountableKind {
     type Error = CountableError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        return match value {
-            v if v.chars().next() == Some('c') && v['c'.len_utf8()..].parse::<i32>().is_ok() => Ok(
+        match value {
+            v if v.starts_with('c') && v['c'.len_utf8()..].parse::<i32>().is_ok() => Ok(
                 CountableKind::Counter(v['c'.len_utf8()..].parse::<i32>().unwrap()),
             ),
-            v if v.chars().next() == Some('p') && v['p'.len_utf8()..].parse::<i32>().is_ok() => Ok(
+            v if v.starts_with('p') && v['p'.len_utf8()..].parse::<i32>().is_ok() => Ok(
                 CountableKind::Phase(v['p'.len_utf8()..].parse::<i32>().unwrap()),
             ),
             _ => Err(CountableError::Conversion),
-        };
+        }
     }
 }
 
