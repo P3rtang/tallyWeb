@@ -822,24 +822,13 @@ fn TreeViewRow(key: String) -> impl IntoView {
     let user = expect_context::<Memo<Option<SessionUser>>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
+    let data_resource = expect_context::<Resource<Option<SessionUser>, Vec<SerCounter>>>();
+    let counter_list = expect_context::<RwSignal<CounterList>>();
 
     let (key, _) = create_signal(key);
 
     let countable = create_read_slice(selection, move |model| {
         model.get(&key.get_untracked()).cloned()
-    });
-
-    let (node, _) = create_signal(
-        selection
-            .get_untracked()
-            .get_node(&key.get_untracked())
-            .cloned(),
-    );
-
-    let insert_child = create_write_slice(selection, move |model, item| {
-        if let Some(node) = node.get_untracked() {
-            node.insert_child(item, model)
-        }
     });
 
     let expand_node = create_write_slice(selection, move |model, _| {
@@ -885,8 +874,10 @@ fn TreeViewRow(key: String) -> impl IntoView {
                 .await
                 .expect("Could not assign phase to Counter");
 
-                let phase = countable.get_untracked().unwrap().new_phase(phase_id, name);
-                insert_child(phase);
+                counter_list.update(|_| {
+                    let _ = countable.get_untracked().unwrap().new_phase(phase_id, name);
+                });
+                data_resource.refetch();
                 expand_node(());
             },
         );

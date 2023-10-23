@@ -3,7 +3,7 @@
 
 use crate::{
     app::{remove_counter, remove_phase, SelectionSignal, SessionUser},
-    countable::CountableKind,
+    countable::{CountableKind, SerCounter},
 };
 
 use components::{CloseOverlays, Message, Overlay};
@@ -19,7 +19,7 @@ pub fn CountableContextMenu(
     #[prop(optional)] accent_color: Option<Signal<String>>,
 ) -> impl IntoView {
     let message = expect_context::<Message>();
-    let selection_model = expect_context::<SelectionSignal>();
+    let data = expect_context::<Resource<Option<SessionUser>, Vec<SerCounter>>>();
 
     let countable_kind = move || CountableKind::try_from(key.get_untracked());
 
@@ -51,9 +51,7 @@ pub fn CountableContextMenu(
                     .await
                     .is_ok()
                     {
-                        selection_model.update(|model| {
-                            model.remove_item(&key.get_untracked());
-                        })
+                        data.refetch()
                     }
                 }
                 Ok(CountableKind::Phase(id)) => {
@@ -65,9 +63,7 @@ pub fn CountableContextMenu(
                     .await
                     .is_ok()
                     {
-                        selection_model.update(|model| {
-                            model.remove_item(&key.get_untracked());
-                        })
+                        data.refetch()
                     }
                 }
                 Err(_) => message.set_err("Could not convert counter Id"),

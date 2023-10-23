@@ -300,7 +300,7 @@ pub trait Countable: std::fmt::Debug + Send + Any {
     fn created_at(&self) -> chrono::NaiveDateTime;
 
     fn new_phase(&mut self, id: i32, name: String);
-    fn new_counter(&mut self, id: i32, name: String) -> Result<ArcCountable, String>;
+    fn new_counter(&mut self, id: i32, name: String) -> Option<ArcCountable>;
 
     fn get_phases(&self) -> Vec<&ArcCountable>;
     fn get_phases_mut(&mut self) -> Vec<&mut ArcCountable>;
@@ -472,7 +472,7 @@ impl Countable for SerCounter {
         todo!()
     }
 
-    fn new_counter(&mut self, _id: i32, _name: String) -> Result<ArcCountable, String> {
+    fn new_counter(&mut self, _id: i32, _name: String) -> Option<ArcCountable> {
         todo!()
     }
 
@@ -503,13 +503,13 @@ pub struct Counter {
 
 #[allow(dead_code)]
 impl Counter {
-    pub fn new(id: i32, name: impl ToString) -> Result<Self, String> {
-        Ok(Counter {
+    pub fn new(id: i32, name: impl ToString) -> Self {
+        Counter {
             id,
             name: name.to_string(),
             phase_list: Vec::new(),
             created_at: chrono::Utc::now().naive_utc(),
-        })
+        }
     }
 }
 
@@ -651,10 +651,10 @@ impl Countable for Counter {
         ))))
     }
 
-    fn new_counter(&mut self, id: i32, name: String) -> Result<ArcCountable, String> {
-        let arc_counter = ArcCountable::new(Box::new(Counter::new(id, name)?));
+    fn new_counter(&mut self, id: i32, name: String) -> Option<ArcCountable> {
+        let arc_counter = ArcCountable::new(Box::new(Counter::new(id, name)));
         self.phase_list.push(arc_counter.clone());
-        Ok(arc_counter)
+        Some(arc_counter)
     }
 
     fn get_phases(&self) -> Vec<&ArcCountable> {
@@ -794,8 +794,8 @@ impl Countable for Phase {
 
     fn new_phase(&mut self, _: i32, _: String) {}
 
-    fn new_counter(&mut self, _: i32, _: String) -> Result<ArcCountable, String> {
-        Err(String::from("Can not add counter to phase"))
+    fn new_counter(&mut self, _: i32, _: String) -> Option<ArcCountable> {
+        None
     }
 
     fn get_phases(&self) -> Vec<&ArcCountable> {

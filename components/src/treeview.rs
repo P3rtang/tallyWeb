@@ -5,7 +5,7 @@
 use core::fmt::Debug;
 use std::{collections::HashMap, hash::Hash};
 
-use leptos::{ev::MouseEvent, *};
+use leptos::{ev::MouseEvent, logging::log, *};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SelectionModel<S, T>
@@ -122,7 +122,7 @@ pub fn TreeViewWidget<T, F, S, FV, IV>(
 ) -> impl IntoView
 where
     T: Clone + PartialEq + 'static + Debug,
-    S: Clone + PartialEq + Eq + Hash + 'static,
+    S: Clone + PartialEq + Eq + Hash + 'static + Debug,
     F: Fn() -> Vec<T> + Copy + 'static,
     FV: Fn(S) -> IV + Copy + 'static,
     IV: IntoView,
@@ -130,6 +130,10 @@ where
     let tree_nodes = move || {
         each()
             .into_iter()
+            .map(|c| {
+                log!("{:?}", key(&c));
+                c
+            })
             .map(|c| TreeNode::<T, S>::new(key, c, each_child, selection_model, 0))
             .collect::<Vec<_>>()
     };
@@ -142,14 +146,15 @@ where
             children=move |item| {
                 view! {
                     <TreeViewRow
-                        key=item.get_key()
+                        item=item.row.clone()
+                        key
                         selection_model=selection_model
                         view=view
                         each_child=each_child
                         selection_color
-                    > {
-                        view(item.get_key())
-                    }</TreeViewRow>
+                    >
+                        { view(item.get_key()) }
+                    </TreeViewRow>
                     <Show
                         when=show_separator
                         fallback=|| ()
@@ -167,7 +172,8 @@ where
 #[component]
 fn TreeViewRow<T, S, FV, IV>(
     children: ChildrenFn,
-    key: S,
+    item: T,
+    key: fn(&T) -> S,
     each_child: fn(&T) -> Vec<T>,
     view: FV,
     selection_model: RwSignal<SelectionModel<S, T>>,
@@ -179,21 +185,23 @@ where
     FV: Fn(S) -> IV + Copy + 'static,
     IV: IntoView,
 {
-    let (key, _) = create_signal(key);
+    let (key_sign, _) = create_signal(key(&item));
 
-    let node = create_read_slice(selection_model, move |sm| sm.items.get(&key()).cloned());
+    let node = create_read_slice(selection_model, move |sm| {
+        sm.items.get(&key_sign()).cloned()
+    });
 
     let (is_expanded, toggle_expand) = create_slice(
         selection_model,
         move |model| {
             model
                 .items
-                .get(&key())
+                .get(&key_sign())
                 .map(|n| n.is_expanded)
                 .unwrap_or_default()
         },
         move |model, _| {
-            if let Some(node) = model.items.get_mut(&key()) {
+            if let Some(node) = model.items.get_mut(&key_sign()) {
                 node.toggle_expand()
             };
         },
@@ -201,8 +209,8 @@ where
 
     let (is_selected, set_selected) = create_slice(
         selection_model,
-        move |model| model.is_selected(&key()),
-        move |model, _| model.select(&key()),
+        move |model| model.is_selected(&key_sign()),
+        move |model, _| model.select(&key_sign()),
     );
 
     let child_class = move || {
@@ -286,7 +294,8 @@ where
             children=move |item| {
                 view! {
                     <TreeViewRow
-                        key=item.get_key()
+                        key
+                        item=item.row.clone()
                         selection_model=selection_model
                         each_child=each_child
                         view=view
@@ -328,12 +337,22 @@ where
         selection_model: RwSignal<SelectionModel<S, T>>,
         depth: usize,
     ) -> Self {
-        let this = Self {
-            key,
-            row: item.clone(),
-            depth,
-            is_expanded: false,
-            each_child,
+        let this = if let Some(node) = selection_model.get_untracked().items.get(&key(&item)) {
+            Self {
+                key,
+                row: item.clone(),
+                depth,
+                is_expanded: node.is_expanded,
+                each_child,
+            }
+        } else {
+            Self {
+                key,
+                row: item.clone(),
+                depth,
+                is_expanded: false,
+                each_child,
+            }
         };
 
         selection_model.update(|map| {
