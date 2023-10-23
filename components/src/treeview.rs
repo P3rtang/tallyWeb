@@ -193,7 +193,9 @@ where
                 .unwrap_or_default()
         },
         move |model, _| {
-            model.items.get_mut(&key()).map(|n| n.toggle_expand());
+            if let Some(node) = model.items.get_mut(&key()) {
+                node.toggle_expand()
+            };
         },
     );
 

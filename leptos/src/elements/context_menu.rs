@@ -6,7 +6,7 @@ use crate::{
     countable::CountableKind,
 };
 
-use components::{CloseOverlays, Overlay, Message};
+use components::{CloseOverlays, Message, Overlay};
 use leptos::*;
 use leptos_router::A;
 use web_sys::MouseEvent;
@@ -43,12 +43,13 @@ pub fn CountableContextMenu(
         spawn_local(async move {
             match countable_kind() {
                 Ok(CountableKind::Counter(id)) => {
-                    if let Ok(_) = remove_counter(
+                    if remove_counter(
                         user.get_untracked().unwrap().username,
                         user.get_untracked().unwrap().token,
                         id,
                     )
                     .await
+                    .is_ok()
                     {
                         selection_model.update(|model| {
                             model.remove_item(&key.get_untracked());
@@ -56,21 +57,20 @@ pub fn CountableContextMenu(
                     }
                 }
                 Ok(CountableKind::Phase(id)) => {
-                    if let Ok(_) = remove_phase(
+                    if remove_phase(
                         user.get_untracked().unwrap().username,
                         user.get_untracked().unwrap().token,
                         id,
                     )
                     .await
+                    .is_ok()
                     {
                         selection_model.update(|model| {
                             model.remove_item(&key.get_untracked());
                         })
                     }
                 }
-                Err(_) => {
-                    message.set_err("Could not convert counter Id")
-                }
+                Err(_) => message.set_err("Could not convert counter Id"),
             }
         });
     };
