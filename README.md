@@ -1,4 +1,5 @@
 # TallyWeb
+[![Docker Image CI](https://github.com/P3rtang/tallyWeb/actions/workflows/docker-image.yml/badge.svg)](https://github.com/P3rtang/tallyWeb/actions/workflows/docker-image.yml)
 
 ## About
 ### website
