@@ -37,9 +37,7 @@ where
             match crate::app::get_counter_by_id(user.username, user.token, id).await {
                 Ok(counter) => Some(counter),
                 Err(ServerFnError::ServerError(err)) if &err == "Uninitialized Data" => {
-                    message
-                        .without_timeout()
-                        .set_err("Counter does not exist");
+                    message.without_timeout().set_err("Counter does not exist");
                     None
                 }
                 Err(ServerFnError::ServerError(err)) if &err == "Unauthorized" => {
