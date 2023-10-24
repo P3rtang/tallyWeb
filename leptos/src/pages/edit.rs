@@ -31,15 +31,21 @@ where
     let params = use_params::<CountableId>();
 
     let counter_rsrc = create_resource(user, async move |user| {
-        if let Ok(id) = params.get_untracked().map(|p| p.id as i32) && let Some(user) = user {
+        if let Ok(id) = params.get_untracked().map(|p| p.id as i32)
+            && let Some(user) = user
+        {
             match crate::app::get_counter_by_id(user.username, user.token, id).await {
                 Ok(counter) => Some(counter),
                 Err(ServerFnError::ServerError(err)) if &err == "Uninitialized Data" => {
-                    message.without_timeout().set_err("Counter does not exist");
+                    message
+                        .without_timeout()
+                        .set_err("Counter does not exist");
                     None
                 }
                 Err(ServerFnError::ServerError(err)) if &err == "Unauthorized" => {
-                    message.without_timeout().set_err("Unauthorized to edit Counter");
+                    message
+                        .without_timeout()
+                        .set_err("Unauthorized to edit Counter");
                     None
                 }
                 Err(err) => {
@@ -81,11 +87,15 @@ where
     let params = use_params::<CountableId>();
 
     let phase_rsrc = create_resource(user, async move |user| {
-        if let Ok(id) = params.get_untracked().map(|p| p.id as i32) && let Some(user) = user {
+        if let Ok(id) = params.get_untracked().map(|p| p.id as i32)
+            && let Some(user) = user
+        {
             match crate::app::get_phase_by_id(user.username, user.token, id).await {
                 Ok(counter) => Some(counter),
                 Err(_) => {
-                    message.without_timeout().set_err("Unauthorized to edit Phase");
+                    message
+                        .without_timeout()
+                        .set_err("Unauthorized to edit Phase");
                     None
                 }
             }

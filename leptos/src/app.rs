@@ -1047,7 +1047,9 @@ impl SessionUser {
                 action.dispatch(user.clone());
 
                 create_effect(move |_| {
-                    if let Some(Ok(id)) = action.value()() && id > 0 {
+                    if let Some(Ok(id)) = action.value()()
+                        && id > 0
+                    {
                         user_signal.set(Some(user.clone()))
                     } else if let Some(Err(_)) = action.value()() {
                         navigate("/login")
