@@ -15,7 +15,7 @@ use crate::{elements::*, pages::*};
 pub type StateResource = Resource<Option<SessionUser>, Vec<SerCounter>>;
 pub type SelectionSignal = RwSignal<SelectionModel<String, ArcCountable>>;
 pub type SaveAllAction = Action<(SessionUser, Vec<SerCounter>), Result<(), ServerFnError>>;
-pub type SaveCountableAction = Action<(SessionUser, ArcCountable), Result<(), ServerFnError>>;
+pub type SaveCountableAction = Action<(SessionUser, ArcCountable), Result<(), ()>>;
 
 #[server(LoginUser, "/api", "Url", "login_user")]
 pub async fn login_user(
@@ -327,6 +327,40 @@ pub async fn save_preferences(
     Ok(())
 }
 
+async fn save_countable(user: SessionUser, countable: ArcCountable) -> Result<(), ()> {
+    match countable.kind() {
+        CountableKind::Counter(_) => {
+            let counter = countable
+                .0
+                .try_lock()
+                .map_err(|_| ())?
+                .as_any()
+                .downcast_ref::<Counter>()
+                .ok_or(())?
+                .clone()
+                .into();
+            update_counter(user.username.clone(), user.token.clone(), counter)
+                .await
+                .map_err(|_| ())?
+        }
+        CountableKind::Phase(_) => {
+            let phase = countable
+                .0
+                .try_lock()
+                .map_err(|_| ())?
+                .as_any()
+                .downcast_ref::<Phase>()
+                .ok_or(())?
+                .clone();
+            update_phase(user.username.clone(), user.token.clone(), phase)
+                .await
+                .map_err(|_| ())?
+        }
+    };
+
+    return Ok(());
+}
+
 impl Display for AccountAccentColor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -365,34 +399,7 @@ pub fn App() -> impl IntoView {
     let save_countable = create_action(|(user, countable): &(SessionUser, ArcCountable)| {
         let user = user.clone();
         let countable = countable.clone();
-
-        async move {
-            let _ = match countable.kind() {
-                CountableKind::Counter(_) => {
-                    let counter = countable
-                        .0
-                        .try_lock()
-                        .unwrap()
-                        .as_any()
-                        .downcast_ref::<Counter>()
-                        .unwrap()
-                        .clone()
-                        .into();
-                    update_counter(user.username.clone(), user.token.clone(), counter).await
-                }
-                CountableKind::Phase(_) => {
-                    let phase = countable
-                        .0
-                        .try_lock()
-                        .unwrap()
-                        .as_any()
-                        .downcast_ref::<Phase>()
-                        .unwrap()
-                        .clone();
-                    update_phase(user.username.clone(), user.token.clone(), phase).await
-                }
-            };
-        }
+        save_countable(user, countable)
     });
 
     provide_context(save_countable);
