@@ -358,7 +358,7 @@ async fn save_countable(user: SessionUser, countable: ArcCountable) -> Result<()
         }
     };
 
-    return Ok(());
+    Ok(())
 }
 
 impl Display for AccountAccentColor {
