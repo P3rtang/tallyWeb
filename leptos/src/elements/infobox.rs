@@ -6,7 +6,7 @@ use leptos::*;
 use web_sys::MouseEvent;
 
 use crate::{
-    app::{Progressbar, SelectionSignal},
+    app::{Progressbar, SaveCountableAction, SelectionSignal, SessionUser},
     countable::ArcCountable,
 };
 
@@ -109,7 +109,10 @@ where
         move |state| state.get(&key()).map(|c| c.get_count()).unwrap_or_default(),
         move |state, count| {
             if let Some(c) = state.get(&key()) {
-                c.add_count(count)
+                c.add_count(count);
+                let save_countable = expect_context::<SaveCountableAction>();
+                let user = expect_context::<Memo<Option<SessionUser>>>();
+                save_countable.dispatch((user.get().unwrap(), c.clone()));
             }
         },
     );
@@ -145,7 +148,10 @@ where
 
     let toggle_paused = create_write_slice(state, move |s, _| {
         if let Some(item) = s.get_mut(&key()) {
-            item.set_active(!item.is_active())
+            item.set_active(!item.is_active());
+            let save_countable = expect_context::<SaveCountableAction>();
+            let user = expect_context::<Memo<Option<SessionUser>>>();
+            save_countable.dispatch((user.get().unwrap(), item.clone()));
         }
     });
 
