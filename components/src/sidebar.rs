@@ -60,7 +60,6 @@ where
                 ""
             }
             + layout().get_background().as_str()
-            + "height: inherit;"
             + "max-width: 25rem;"
             + "width: 100%;"
             + "transition: 0.35s;"
