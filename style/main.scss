@@ -24,6 +24,8 @@ input[type=number]{
 }
 
 nav {
+    position: sticky;
+    top: 0px;
     display: flex;
     box-shadow: 0px 0px 2px 0px;
     background: #303030;
@@ -86,16 +88,16 @@ nav {
     }
 }
 
+main {
+    height: 100vh;
+}
+
 body {
     display: flex;
     flex-flow: column;
     margin: 0px;
     background: $body-bg-color-dark;
-    height: 98vh;
-}
-
-main {
-    flex: 1 0 auto;
+    height: 100vh;
 }
 
 button {
@@ -108,9 +110,9 @@ button {
 }
 
 #HomeGrid {
-    height: calc(100vh - 52px);
     display: flex;
     overflow-y: auto;
+    height: 100%;
 }
 
 .sidebar {
@@ -120,6 +122,7 @@ button {
     border-right: 1px solid $border-color-dark;
     scrollbar-width: thin;
     scroll-snap-align: start;
+    height: calc(100% - 52px);
 
     &::-webkit-scrollbar {
         width: 7px;
@@ -299,7 +302,7 @@ button {
         .title {
             width: 8em;
         }
-        
+
         .info {
             width: 12em;
         }
@@ -396,7 +399,7 @@ ul {
                 align-content: center;
                 margin: auto;
             }
-            
+
             .time {
                 min-width: 4em;
             }
@@ -571,7 +574,7 @@ form {
 }
 
 #user-icon {
-    cursor: pointer; 
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -694,7 +697,7 @@ form {
         height: 3rem;
         padding-left: 12px;
         min-width: 0px;
-        
+
         border-radius: 12px;
         border: none;
         outline: none;
@@ -928,7 +931,7 @@ input:checked + .slider:before {
             border-radius: 100px;
             min-width: 0px;
             height: 100%;
-            
+
             border-radius: 12px;
             border: none;
             outline: none;
