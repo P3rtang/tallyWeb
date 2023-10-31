@@ -161,16 +161,6 @@ button {
             margin: 6px;
         }
 
-        .selected {
-            color: black !important;
-
-            &:hover {
-                color: black;
-                // opacity: 0.85;
-                // background: $select-color-hover-dark;
-            }
-        }
-
         ul {
             padding: 0px;
             margin: 0px;
@@ -193,6 +183,16 @@ button {
             margin-top: 2px;
             margin-bottom: 2px;
             min-height: 1.6em;
+
+            &.selected {
+                color: black !important;
+
+                &:hover {
+                    color: black;
+                    // opacity: 0.85;
+                    // background: $select-color-hover-dark;
+                }
+            }
         }
 
         .row-body {

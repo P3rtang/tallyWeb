@@ -1,12 +1,13 @@
 #![allow(non_snake_case)]
 
+use crate::SaveHandler;
 use chrono::Duration;
 use components::ScreenLayout;
 use leptos::*;
 use web_sys::MouseEvent;
 
 use crate::{
-    app::{Progressbar, SaveCountableAction, SelectionSignal, SessionUser},
+    app::{Progressbar, SelectionSignal},
     countable::ArcCountable,
 };
 
@@ -110,9 +111,8 @@ where
         move |state, count| {
             if let Some(c) = state.get(&key()) {
                 c.add_count(count);
-                let save_countable = expect_context::<SaveCountableAction>();
-                let user = expect_context::<Memo<Option<SessionUser>>>();
-                save_countable.dispatch((user.get().unwrap(), c.clone()));
+                let save_handler = expect_context::<SaveHandler>();
+                save_handler.add_countable(c.clone());
             }
         },
     );
@@ -149,9 +149,9 @@ where
     let toggle_paused = create_write_slice(state, move |s, _| {
         if let Some(item) = s.get_mut(&key()) {
             item.set_active(!item.is_active());
-            let save_countable = expect_context::<SaveCountableAction>();
-            let user = expect_context::<Memo<Option<SessionUser>>>();
-            save_countable.dispatch((user.get().unwrap(), item.clone()));
+            let save_handler = expect_context::<SaveHandler>();
+            save_handler.add_countable(item.clone());
+            save_handler.save()
         }
     });
 
