@@ -6,6 +6,10 @@ pub mod app;
 mod countable;
 mod elements;
 mod pages;
+mod saving;
+
+use countable::*;
+use saving::*;
 
 use cfg_if::cfg_if;
 
@@ -26,4 +30,14 @@ cfg_if! {
             });
         }
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum AppError {
+    #[error("Internal server Error")]
+    Internal,
+    #[error("Failed to write to browser LocalStorage")]
+    SetLocalStorage(#[from] gloo_storage::errors::StorageError),
+    #[error("Failed to lock a Countable Mutex")]
+    LockMutex,
 }

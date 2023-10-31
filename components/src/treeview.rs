@@ -274,11 +274,12 @@ where
         when=move || node().is_some()
     >
     <li>
-        <div style={ move || { depth_style() + &selection_style() } } class=div_class on:click=on_click>
-            <Show
-                when= move || { !each_child(&node.get_untracked().unwrap().row).is_empty() }
-                fallback= move || {}
-            >
+        <div
+            style={ move || { depth_style() + &selection_style() } }
+            class=div_class
+            on:click=on_click
+        >
+            <Show when=move || { !each_child(&node.get_untracked().unwrap().row).is_empty() }>
                 <span class=caret_class on:click=on_caret_click/>
             </Show>
             { children() }

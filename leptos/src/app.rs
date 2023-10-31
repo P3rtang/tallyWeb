@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+use super::*;
 use crate::countable::*;
 use chrono::Duration;
 use components::*;
@@ -14,8 +15,6 @@ use crate::{elements::*, pages::*};
 
 pub type StateResource = Resource<Option<SessionUser>, Vec<SerCounter>>;
 pub type SelectionSignal = RwSignal<SelectionModel<String, ArcCountable>>;
-pub type SaveAllAction = Action<(SessionUser, Vec<SerCounter>), Result<(), ServerFnError>>;
-pub type SaveCountableAction = Action<(SessionUser, ArcCountable), Result<(), ()>>;
 
 #[server(LoginUser, "/api", "Url", "login_user")]
 pub async fn login_user(
@@ -245,32 +244,6 @@ pub async fn update_phase(
     Ok(())
 }
 
-#[server(SaveAll, "/api")]
-async fn save_all(
-    username: String,
-    token: String,
-    counters: Vec<SerCounter>,
-    phases: Option<Vec<Phase>>,
-) -> Result<(), ServerFnError> {
-    let pool = backend::create_pool().await?;
-    let phases = phases.unwrap_or_default();
-
-    let user = backend::auth::get_user(&pool, username, token).await?;
-
-    for counter in counters {
-        backend::update_counter(&pool, counter.to_db(user.id).await).await?;
-        for phase in counter.phase_list {
-            backend::update_phase(&pool, user.id, phase.to_db(user.id).await).await?;
-        }
-    }
-
-    for phase in phases {
-        backend::update_phase(&pool, user.id, phase.to_db(user.id).await).await?;
-    }
-
-    Ok(())
-}
-
 #[server(GetUserPreferences, "/api")]
 async fn get_user_preferences(
     username: String,
@@ -327,40 +300,6 @@ pub async fn save_preferences(
     Ok(())
 }
 
-async fn save_countable(user: SessionUser, countable: ArcCountable) -> Result<(), ()> {
-    match countable.kind() {
-        CountableKind::Counter(_) => {
-            let counter = countable
-                .0
-                .try_lock()
-                .map_err(|_| ())?
-                .as_any()
-                .downcast_ref::<Counter>()
-                .ok_or(())?
-                .clone()
-                .into();
-            update_counter(user.username.clone(), user.token.clone(), counter)
-                .await
-                .map_err(|_| ())?
-        }
-        CountableKind::Phase(_) => {
-            let phase = countable
-                .0
-                .try_lock()
-                .map_err(|_| ())?
-                .as_any()
-                .downcast_ref::<Phase>()
-                .ok_or(())?
-                .clone();
-            update_phase(user.username.clone(), user.token.clone(), phase)
-                .await
-                .map_err(|_| ())?
-        }
-    };
-
-    Ok(())
-}
-
 impl Display for AccountAccentColor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -386,37 +325,15 @@ pub fn App() -> impl IntoView {
     let msg = Message::new(Duration::seconds(5));
     provide_context(msg);
 
-    let save_all = create_action(move |(user, list): &(SessionUser, Vec<SerCounter>)| {
-        save_all(
-            user.username.clone(),
-            user.token.clone(),
-            list.clone(),
-            None,
-        )
-    });
-    provide_context(save_all);
-
-    let save_countable = create_action(|(user, countable): &(SessionUser, ArcCountable)| {
-        let user = user.clone();
-        let countable = countable.clone();
-        save_countable(user, countable)
+    let save_countable = create_action(|(user, countables): &(SessionUser, Vec<ArcCountable>)| {
+        save_countables(user.clone(), countables.clone())
     });
 
     provide_context(save_countable);
 
-    create_effect(move |_| {
-        if let Some(Err(_err)) = save_all.value().get() {
-            msg.set_msg("Token Expired");
-            navigate("/login")
-        }
-    });
-
     let user_memo = create_memo(move |_| user());
     provide_context(user);
     provide_context(user_memo);
-
-    let change_flag_buffer = create_rw_signal(Vec::<ChangeFlag>::new());
-    provide_context(change_flag_buffer);
 
     let close_overlay_signal = create_rw_signal(CloseOverlays());
     provide_context(close_overlay_signal);
@@ -467,6 +384,13 @@ pub fn App() -> impl IntoView {
     let selection = SelectionModel::<String, ArcCountable>::new();
     let selection_signal = create_rw_signal(selection);
     provide_context(selection_signal);
+
+    let save_handler = SaveHandler::new(user_memo);
+    provide_context(save_handler);
+
+    create_effect(move |_| save_handler.init_timer());
+
+    connect_keys(selection_signal, save_handler);
 
     create_effect(move |_| {
         preferences
@@ -561,47 +485,6 @@ fn NotFound() -> impl IntoView {
     }
 }
 
-fn save_timer(
-    user: Memo<Option<SessionUser>>,
-    save_flags: RwSignal<Vec<ChangeFlag>>,
-    state: RwSignal<CounterList>,
-) {
-    // only the milliseconds function is a const function
-    const INTERVAL: Duration = Duration::milliseconds(10 * 1000);
-
-    create_effect(move |_| {
-        set_interval(
-            move || {
-                let mut do_save = false;
-                for change in save_flags.get_untracked() {
-                    match change {
-                        ChangeFlag::ChangeCountable(_) => do_save = true,
-                        ChangeFlag::ChangePreferences(preferences) => {
-                            create_action(move |_: &()| {
-                                save_preferences(
-                                    user.get_untracked().unwrap_or_default().username,
-                                    user.get_untracked().unwrap_or_default().token,
-                                    preferences.clone(),
-                                )
-                            })
-                            .dispatch(());
-                        }
-                    }
-                }
-
-                if do_save {
-                    expect_context::<SaveAllAction>().dispatch((user().unwrap(), state().into()));
-                }
-
-                save_flags.update(|s| s.clear());
-            },
-            INTERVAL
-                .to_std()
-                .unwrap_or(std::time::Duration::from_millis(30)),
-        )
-    });
-}
-
 fn timer(selection_signal: SelectionSignal) {
     const FRAMERATE: i64 = 30;
     const INTERVAL: Duration = Duration::milliseconds(1000 / FRAMERATE);
@@ -653,26 +536,27 @@ pub fn navigate(page: impl ToString) {
     });
 }
 
-fn connect_keys(model: SelectionSignal, save_flags: RwSignal<Vec<ChangeFlag>>) {
+fn connect_keys(model: SelectionSignal, save_handler: SaveHandler) {
     window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
         "Equal" => model.update(|m| {
             m.selection_mut().into_iter().for_each(|c| {
                 c.set_active(true);
                 c.add_count(1);
-                save_flags.update(|list| list.push(ChangeFlag::ChangeCountable(c.clone())))
+                save_handler.add_countable(c.clone());
             })
         }),
         "Minus" => model.update(|m| {
             m.selection_mut().into_iter().for_each(|c| {
                 c.set_active(true);
                 c.add_count(-1);
-                save_flags.update(|list| list.push(ChangeFlag::ChangeCountable(c.clone())))
+                save_handler.add_countable(c.clone());
             })
         }),
         "KeyP" => model.update(|list| {
             list.selection_mut().into_iter().for_each(|c| {
                 c.set_active(!c.is_active());
-                save_flags.update(|list| list.push(ChangeFlag::ChangeCountable(c.clone())))
+                save_handler.add_countable(c.clone());
+                save_handler.save();
             })
         }),
         _ => {}
@@ -682,7 +566,6 @@ fn connect_keys(model: SelectionSignal, save_flags: RwSignal<Vec<ChangeFlag>>) {
 #[component]
 pub fn HomePage() -> impl IntoView {
     let session_user = expect_context::<Memo<Option<SessionUser>>>();
-    let change_flags = expect_context::<RwSignal<Vec<ChangeFlag>>>();
 
     let data = create_local_resource(session_user, move |user| async move {
         if let Some(user) = user {
@@ -708,10 +591,6 @@ pub fn HomePage() -> impl IntoView {
 
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
-
-    connect_keys(selection_signal, change_flags);
-
-    save_timer(session_user, change_flags, state);
 
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
     let show_sort_search = create_rw_signal(true);
@@ -1132,10 +1011,4 @@ impl Preferences {
             multi_select: value.multi_select,
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum ChangeFlag {
-    ChangeCountable(ArcCountable),
-    ChangePreferences(Preferences),
 }
