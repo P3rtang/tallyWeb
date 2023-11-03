@@ -134,7 +134,7 @@ impl SaveHandler {
                     LocalStorage::delete("save_data");
                 }
                 Some(Err(err)) if !is_offline() => {
-                    let err = err.clone();
+                    let err = *err;
                     message
                         .without_timeout()
                         .set_err_view(move || view! { <SavingError err is_offline/> });

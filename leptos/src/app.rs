@@ -584,12 +584,10 @@ pub fn HomePage() -> impl IntoView {
                     _ => Vec::new(),
                 }
             }
+        } else if let Ok(offline_data) = LocalStorage::get::<Vec<SerCounter>>("save_data") {
+            offline_data
         } else {
-            if let Ok(offline_data) = LocalStorage::get::<Vec<SerCounter>>("save_data") {
-                offline_data
-            } else {
-                Vec::new()
-            }
+            Vec::new()
         }
     });
 
