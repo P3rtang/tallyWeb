@@ -37,6 +37,7 @@ cfg_if::cfg_if! {
                     // serve other assets from the `assets` directory
                     .service(Files::new("/assets", site_root))
                     .service(Files::new("/fa", format!("{site_root}/font_awesome")))
+                    .service(Files::new("/icons", format!("{site_root}/icons")))
                     // serve the favicon from /favicon.ico
                     .service(favicon)
                     .leptos_routes(

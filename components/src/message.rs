@@ -47,7 +47,7 @@ impl Message {
         self.msg
     }
 
-    pub fn set_msg<'a>(&'a self, msg: &'a str) {
+    pub fn set_msg(&self, msg: &str) {
         let msg_lines = msg.lines();
         self.msg.set(Notification::Message(
             self.as_modal,
@@ -69,6 +69,39 @@ impl Message {
     pub fn set_msg_view(&self, msg: impl IntoView) {
         self.msg
             .set(Notification::Message(self.as_modal, msg.into_view()));
+        let msg = self.msg;
+        if let Some(reset_time) = self.reset_time {
+            create_effect(move |_| {
+                set_timeout(
+                    move || msg.set(Notification::None),
+                    reset_time.to_std().unwrap(),
+                )
+            });
+        }
+    }
+
+    pub fn set_success(&self, msg: &str) {
+        let msg_lines = msg.lines();
+        self.msg.set(Notification::Success(
+            self.as_modal,
+            msg_lines
+                .map(|l| view! { <b>{ l.to_string() }</b> })
+                .collect_view(),
+        ));
+        let msg = self.msg;
+        if let Some(reset_time) = self.reset_time {
+            create_effect(move |_| {
+                set_timeout(
+                    move || msg.set(Notification::None),
+                    reset_time.to_std().unwrap(),
+                )
+            });
+        }
+    }
+
+    pub fn set_success_view(&self, msg: impl IntoView) {
+        self.msg
+            .set(Notification::Success(self.as_modal, msg.into_view()));
         let msg = self.msg;
         if let Some(reset_time) = self.reset_time {
             create_effect(move |_| {
@@ -136,6 +169,7 @@ pub enum Notification {
     None,
     Message(bool, View),
     Error(bool, View),
+    Success(bool, View),
 }
 
 impl Notification {
@@ -144,6 +178,7 @@ impl Notification {
             Notification::None => None,
             Notification::Message(_, msg) => Some(msg.clone()),
             Notification::Error(_, msg) => Some(msg.clone()),
+            Notification::Success(_, msg) => Some(msg.clone()),
         }
     }
 }
@@ -157,11 +192,16 @@ pub fn MessageBox(msg: Message) -> impl IntoView {
             "color: tomato;
             border: 2px solid tomato;"
         }
+        Notification::Success(_, _) => {
+            "color: #28a745;
+            border: 2px solid #28a745;"
+        }
     };
 
     let is_modal = move || match msg.get()() {
         Notification::Message(is_modal, _) => is_modal,
         Notification::Error(is_modal, _) => is_modal,
+        Notification::Success(is_modal, _) => is_modal,
         _ => false,
     };
 
@@ -188,8 +228,15 @@ pub fn MessageBox(msg: Message) -> impl IntoView {
     });
 
     view! {
-        <dialog node_ref=dialog_ref class="notification-box" style=border_style>
-            { move || { msg.get()().get_view().unwrap_or(view! {}.into_view()) } }
+        <dialog
+            on:click=|ev| ev.stop_propagation()
+            node_ref=dialog_ref
+            class="notification-box"
+            style=border_style
+        >
+            <div class="content">
+                { move || { msg.get()().get_view().unwrap_or(view! {}.into_view()) } }
+            </div>
         </dialog>
     }
 }

@@ -13,6 +13,10 @@ pub fn LoginPage() -> impl IntoView {
         border: 2px solid tomato;"
     };
 
+    if let Some(signal) = use_context::<RwSignal<crate::app::CounterList>>() {
+        signal.update(|l| l.list.clear());
+    }
+
     create_effect(move |_| {
         if let Some(login) = action.value().get().and_then(|v| v.ok()) {
             if LocalStorage::set("user_session", login.clone()).is_ok() {

@@ -325,18 +325,15 @@ pub fn App() -> impl IntoView {
     let msg = Message::new(Duration::seconds(5));
     provide_context(msg);
 
-    let save_countable = create_action(|(user, countables): &(SessionUser, Vec<ArcCountable>)| {
-        save_countables(user.clone(), countables.clone())
-    });
-
-    provide_context(save_countable);
-
     let user_memo = create_memo(move |_| user());
     provide_context(user);
     provide_context(user_memo);
 
     let close_overlay_signal = create_rw_signal(CloseOverlays());
     provide_context(close_overlay_signal);
+
+    let state = create_rw_signal(CounterList::new(&[]));
+    provide_context(state);
 
     let close_overlays = move |_| {
         close_overlay_signal.update(|_| ());
@@ -405,13 +402,12 @@ pub fn App() -> impl IntoView {
     });
 
     view! {
-        // injects a stylesheet into the document <head>
-        <Stylesheet href="/pkg/tally_web.css"/>
-        // <Stylesheet href="/stylers.css"/>
-        // <Script src="https://kit.fontawesome.com/7173474e94.js" crossorigin="anonymous"/>
-        <Link href="https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet"/>
-        <Link href="/fa/css/all.css" rel="stylesheet"/>
+        <Stylesheet href="/pkg/tally_web_v0-2-5.css"/>
+        <Stylesheet href="/fa/css/all.css"/>
+
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg"/>
+        <Link href="https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet"/>
+
         <Meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <Meta name="apple-mobile-web-app-capable" content="yes"/>
 
@@ -566,23 +562,39 @@ fn connect_keys(model: SelectionSignal, save_handler: SaveHandler) {
 #[component]
 pub fn HomePage() -> impl IntoView {
     let session_user = expect_context::<Memo<Option<SessionUser>>>();
+    let message = expect_context::<Message>();
+    let save_handler = expect_context::<SaveHandler>();
 
     let data = create_local_resource(session_user, move |user| async move {
         if let Some(user) = user {
-            match get_counters_by_user_name(user.username.clone(), user.token.clone()).await {
-                Ok(CounterResponse::Counters(counters)) => counters,
-                _ => Vec::new(),
+            if let Ok(offline_data) = LocalStorage::get::<Vec<SerCounter>>("save_data") {
+                match get_counters_by_user_name(user.username.clone(), user.token.clone()).await {
+                    Ok(CounterResponse::Counters(counters)) => {
+                        save_handler.set_offline(false);
+                        message
+                            .without_timeout()
+                            .set_msg_view(view! { <AskOfflineData data=offline_data.clone()/> });
+                        counters
+                    }
+                    _ => offline_data,
+                }
+            } else {
+                match get_counters_by_user_name(user.username.clone(), user.token.clone()).await {
+                    Ok(CounterResponse::Counters(counters)) => counters,
+                    _ => Vec::new(),
+                }
             }
         } else {
-            Vec::new()
+            if let Ok(offline_data) = LocalStorage::get::<Vec<SerCounter>>("save_data") {
+                offline_data
+            } else {
+                Vec::new()
+            }
         }
     });
 
     provide_context(data);
-    let list = CounterList::new(&[]);
-    let state = create_rw_signal(list);
-
-    provide_context(state);
+    let state = expect_context::<RwSignal<CounterList>>();
 
     let preferences = expect_context::<RwSignal<Preferences>>();
     let accent_color = create_read_slice(preferences, |prefs| prefs.accent_color.0.clone());
@@ -608,14 +620,11 @@ pub fn HomePage() -> impl IntoView {
     });
 
     view! {
-        <Show
-            when=move || session_user().is_some() && data.get().is_some()
-            fallback=move || view!{ <LoadingScreen/> }
-        >
+        <Transition fallback=move || view!{ <LoadingScreen/> }>
             { move || {
                 let list = match data.get() {
-                    None => state.get(),
-                    Some(data_list) => data_list.into(),
+                    Some(data_list) if !save_handler.is_offline() => data_list.into(),
+                    _ => state.get(),
                 };
                 state.set(list)
             }}
@@ -628,22 +637,38 @@ pub fn HomePage() -> impl IntoView {
                 }}
                 <Sidebar class="sidebar" display=show_sidebar layout=screen_layout>
                     <SortSearch list=state shown=show_sort_search/>
-                    <TreeViewWidget
-                        each=move || { state.get().get_filtered_list() }
-                        key=|countable| countable.get_uuid()
-                        each_child=|countable| countable.get_children()
-                        view=|key| {
-                            view! { <TreeViewRow key/> }
+                    <Show
+                        when=move || session_user().is_some()
+                        fallback=move || view! {
+                            <TreeViewWidget
+                                each=move || { state.get().get_filtered_list() }
+                                key=|countable| countable.get_uuid()
+                                each_child=|countable| countable.get_children()
+                                view=|key| {
+                                    view! { <TreeViewRow key/> }
+                                }
+                                show_separator=show_sep
+                                selection_model=selection_signal
+                            />
                         }
-                        show_separator=show_sep
-                        selection_model=selection_signal
-                        selection_color=accent_color
-                    />
+                    >
+                        <TreeViewWidget
+                            each=move || { state.get().get_filtered_list() }
+                            key=|countable| countable.get_uuid()
+                            each_child=|countable| countable.get_children()
+                            view=|key| {
+                                view! { <TreeViewRow key/> }
+                            }
+                            show_separator=show_sep
+                            selection_model=selection_signal
+                            selection_color=accent_color
+                        />
+                    </Show>
                     <NewCounterButton state_len/>
                 </Sidebar>
                 <InfoBox countable_list=active/>
             </div>
-        </Show>
+        </Transition>
     }
 }
 
@@ -794,9 +819,7 @@ fn TreeViewRow(key: String) -> impl IntoView {
             </Show>
 
         </div>
-        <Show
-            when=move || countable.get_untracked().is_some()
-        >
+        <Show when=move || countable.get_untracked().is_some()>
             <CountableContextMenu
                 show_overlay=show_context_menu
                 location=click_location
@@ -828,6 +851,10 @@ impl CounterList {
 
     pub fn search(&mut self, value: &str) {
         self.search = Some(value.to_lowercase().to_string())
+    }
+
+    pub fn get_items(&mut self) -> Vec<ArcCountable> {
+        self.list.values().cloned().collect()
     }
 
     pub fn get_filtered_list(&mut self) -> Vec<ArcCountable> {
@@ -862,6 +889,11 @@ impl CounterList {
         } else {
             list
         }
+    }
+
+    pub fn load_offline(&mut self, data: Vec<SerCounter>) {
+        let list: CounterList = data.into();
+        self.list = list.list;
     }
 }
 
@@ -937,13 +969,14 @@ impl SessionUser {
                         && id > 0
                     {
                         user_signal.set(Some(user.clone()))
-                    } else if let Some(Err(_)) = action.value()() {
-                        navigate("/login")
+                    } else {
+                        // TODO: set the user but inform that the token is expired or an error
+                        // occured
+                        user_signal.set(None)
                     }
                 });
             } else {
                 let _ = LocalStorage::set("user_session", None::<SessionUser>);
-                navigate("/login");
             }
         });
 

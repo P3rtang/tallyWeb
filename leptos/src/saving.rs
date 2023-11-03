@@ -5,6 +5,7 @@ use super::*;
 use components::Message;
 use gloo_storage::{LocalStorage, Storage};
 use leptos::*;
+use leptos_router::A;
 
 pub type SaveCountableAction = Action<(app::SessionUser, Vec<ArcCountable>), Result<(), AppError>>;
 
@@ -84,15 +85,20 @@ pub async fn save_countables(
     )
     .await
     {
-        expect_context::<Message>().set_server_err(&err.to_string());
-        save_to_browser().await?
+        return match err {
+            ServerFnError::Request(_) => Err(AppError::Connection),
+            ServerFnError::ServerError(_) => Err(AppError::Authentication),
+            _ => Err(AppError::Internal),
+        };
     }
 
     Ok(())
 }
 
-async fn save_to_browser() -> Result<(), gloo_storage::errors::StorageError> {
-    let save_data: Vec<SerCounter> = expect_context::<RwSignal<app::CounterList>>()().into();
+pub fn save_to_browser() -> Result<(), gloo_storage::errors::StorageError> {
+    let save_data: Vec<SerCounter> = expect_context::<RwSignal<app::CounterList>>()
+        .get_untracked()
+        .into();
     LocalStorage::set("save_data", save_data)
 }
 
@@ -100,16 +106,56 @@ async fn save_to_browser() -> Result<(), gloo_storage::errors::StorageError> {
 pub struct SaveHandler {
     data: RwSignal<Vec<ChangeFlag>>,
     user: Memo<Option<app::SessionUser>>,
+    save_action: SaveCountableAction,
     interval: chrono::Duration,
+    is_offline: RwSignal<bool>,
 }
 
 impl SaveHandler {
     pub fn new(user: Memo<Option<app::SessionUser>>) -> Self {
-        return Self {
+        let message = expect_context::<Message>();
+
+        let save_action = create_action(
+            |(user, countables): &(app::SessionUser, Vec<ArcCountable>)| {
+                save_countables(user.clone(), countables.clone())
+            },
+        );
+
+        let is_offline = create_rw_signal(false);
+
+        create_effect(move |_| {
+            save_action.value().with(|v| match v {
+                Some(Ok(_)) if !is_offline() => message
+                    .with_timeout(chrono::Duration::seconds(2))
+                    .set_success_view(components::SavingSuccess),
+                Some(Ok(_)) => {
+                    is_offline.set(false);
+                    message.set_success("Connection Restored");
+                    LocalStorage::delete("save_data");
+                }
+                Some(Err(err)) if !is_offline() => {
+                    let err = err.clone();
+                    message
+                        .without_timeout()
+                        .set_err_view(move || view! { <SavingError err is_offline/> });
+                }
+                Some(Err(_)) => {
+                    let _ = save_to_browser();
+                }
+                None if save_action.pending().get_untracked() => message
+                    .without_timeout()
+                    .set_msg_view(components::SavingMessage),
+                _ => {}
+            })
+        });
+
+        Self {
             data: Vec::new().into(),
             user,
+            save_action,
             interval: chrono::Duration::minutes(2),
-        };
+            is_offline,
+        }
     }
 
     pub fn change_save_interval(self, interval: chrono::Duration) -> Self {
@@ -140,16 +186,79 @@ impl SaveHandler {
             }
 
             if !counters.is_empty() {
-                expect_context::<SaveCountableAction>()
-                    .dispatch((user, counters.values().cloned().collect()))
+                self.save_action
+                    .dispatch((user, counters.values().cloned().collect()));
             }
 
             self.data.update(|d| d.clear());
+        } else {
+            let _ = save_to_browser();
         }
     }
 
     pub fn add_countable(&self, countable: ArcCountable) {
         self.data
             .update(|d| d.push(ChangeFlag::ChangeCountable(countable)))
+    }
+
+    pub fn is_offline(&self) -> bool {
+        (self.is_offline).get_untracked()
+    }
+
+    pub fn set_offline(&self, offline: bool) {
+        self.is_offline.set(offline)
+    }
+}
+
+#[component]
+pub fn SavingError(err: AppError, is_offline: RwSignal<bool>) -> impl IntoView {
+    let message = expect_context::<Message>();
+
+    let on_offline = move |_| {
+        message.clear();
+        is_offline.set(true);
+        let _ = save_to_browser();
+    };
+
+    view! {
+        <b>{ err.to_string() }</b>
+        <button on:click=on_offline>Go Offline</button>
+        <Show
+            when=move || err != AppError::Connection
+        >
+            <A href="/login"><button>Login</button></A>
+        </Show>
+    }
+}
+
+#[component]
+pub fn AskOfflineData(data: Vec<SerCounter>) -> impl IntoView {
+    let state = expect_context::<RwSignal<app::CounterList>>();
+    let message = expect_context::<Message>();
+    let user = expect_context::<Memo<Option<app::SessionUser>>>();
+    let save_handler = expect_context::<SaveHandler>();
+
+    let load_data = move |_| {
+        state.update(|list| list.load_offline(data.clone()));
+        message.clear();
+
+        if let Some(user) = user() {
+            save_handler
+                .save_action
+                .dispatch((user, state().get_items()))
+        }
+    };
+
+    let delete = move |_| {
+        message.clear();
+        LocalStorage::delete("save_data");
+    };
+
+    view! {
+        <b>Offline data found</b>
+
+        <button on:click=load_data>Load data</button>
+        <button on:click=move |_| message.clear()>Ignore</button>
+        <button on:click=delete>Delete</button>
     }
 }

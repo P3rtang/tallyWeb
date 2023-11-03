@@ -32,12 +32,22 @@ cfg_if! {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum AppError {
     #[error("Internal server Error")]
     Internal,
     #[error("Failed to write to browser LocalStorage")]
-    SetLocalStorage(#[from] gloo_storage::errors::StorageError),
+    SetLocalStorage,
+    #[error("Connection Error")]
+    Connection,
+    #[error("Authentication Error")]
+    Authentication,
     #[error("Failed to lock a Countable Mutex")]
     LockMutex,
+}
+
+impl From<gloo_storage::errors::StorageError> for AppError {
+    fn from(_: gloo_storage::errors::StorageError) -> Self {
+        Self::SetLocalStorage
+    }
 }
