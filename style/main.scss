@@ -124,23 +124,6 @@ button {
     scroll-snap-align: start;
     height: calc(100% - 52px);
 
-    &::-webkit-scrollbar {
-        width: 7px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        background-color: rgba(155, 155, 155, 0.5);
-        border-radius: 20px;
-    }
-
-    &::-webkit-scrollbar-thumb:hover {
-        background: $interactable-bg-color-dark;
-    }
-
-    &::-webkit-scrollbar-thumb:active {
-        background: $select-color-dark;
-    }
-
     .new-counter {
         border: none;
         border-radius: 0.5em;
