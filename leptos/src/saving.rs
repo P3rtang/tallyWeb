@@ -108,6 +108,7 @@ pub struct SaveHandler {
     save_action: SaveCountableAction,
     interval: chrono::Duration,
     is_offline: RwSignal<bool>,
+    has_task: RwSignal<bool>,
 }
 
 impl SaveHandler {
@@ -157,6 +158,7 @@ impl SaveHandler {
             save_action,
             interval: chrono::Duration::minutes(2),
             is_offline,
+            has_task: false.into(),
         }
     }
 
@@ -169,8 +171,20 @@ impl SaveHandler {
     }
 
     pub fn init_timer(self) -> Self {
-        self.data
-            .with(|_| set_timeout(move || self.save(), self.interval.to_std().unwrap()));
+        if self.has_task.get_untracked() {
+            return self;
+        }
+
+        self.has_task.set(true);
+        self.data.with(|_| {
+            set_timeout(
+                move || {
+                    self.save();
+                    self.has_task.set(false)
+                },
+                self.interval.to_std().unwrap(),
+            )
+        });
 
         self
     }
