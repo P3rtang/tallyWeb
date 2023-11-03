@@ -42,25 +42,29 @@ pub fn NewCounterButton(state_len: Signal<usize>) -> impl IntoView {
     });
 
     let on_click = move |_| {
-        add_counter_action.dispatch((user().unwrap(), format!("Counter {}", state_len() + 1)));
-        message.set_msg_view(view! {
-            <div style="display: flex; align-items: center;">
-                <Spinner/>
-                <b style="font-size: 20px; padding-left: 24px;">Creating Counter</b>
-            </div>
-        })
+        if user.get_untracked().is_some() {
+            add_counter_action.dispatch((
+                user.get_untracked().unwrap(),
+                format!("Counter {}", state_len() + 1),
+            ));
+
+            message.set_msg_view(view! {
+                <div style="display: flex; align-items: center;">
+                    <Spinner/>
+                    <b style="font-size: 20px; padding-left: 24px;">Creating Counter</b>
+                </div>
+            })
+        } else {
+            message.set_msg("Login to create a new counter\nOffline support coming...")
+        }
     };
 
     view! {
-        <Show
-            when=move || user().is_some()
+        <button
+            on:click=on_click
+            class="new-counter"
         >
-            <button
-                on:click=on_click
-                class="new-counter"
-            >
-                New Counter
-            </button>
-        </Show>
+            New Counter
+        </button>
     }
 }

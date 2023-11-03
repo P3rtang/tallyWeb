@@ -12,6 +12,16 @@ pub fn SavingMessage() -> impl IntoView {
 }
 
 #[component]
+pub fn SavingSuccess() -> impl IntoView {
+    view! {
+        <div style="display: flex; align-items: center; font-size: 20px">
+            <i class="fa-solid fa-check"></i>
+            <b style="padding-left: 24px;">Saved</b>
+        </div>
+    }
+}
+
+#[component]
 pub fn SavingScreen(#[prop(optional)] accent_color: Option<Signal<String>>) -> impl IntoView {
     let border_style = move || {
         format!(
