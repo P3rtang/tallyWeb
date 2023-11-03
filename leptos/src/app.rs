@@ -402,7 +402,7 @@ pub fn App() -> impl IntoView {
     });
 
     view! {
-        <Stylesheet href="/pkg/tally_web_v0-2-5.css"/>
+        <Stylesheet href="/pkg/tally_web_v0-2-5_1.css"/>
         <Stylesheet href="/fa/css/all.css"/>
 
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg"/>

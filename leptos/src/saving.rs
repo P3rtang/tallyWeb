@@ -1,11 +1,10 @@
 #![allow(dead_code)]
-use std::collections::HashMap;
-
 use super::*;
 use components::Message;
 use gloo_storage::{LocalStorage, Storage};
 use leptos::*;
 use leptos_router::A;
+use std::collections::HashMap;
 
 pub type SaveCountableAction = Action<(app::SessionUser, Vec<ArcCountable>), Result<(), AppError>>;
 
@@ -125,9 +124,12 @@ impl SaveHandler {
 
         create_effect(move |_| {
             save_action.value().with(|v| match v {
-                Some(Ok(_)) if !is_offline() => message
-                    .with_timeout(chrono::Duration::seconds(2))
-                    .set_success_view(components::SavingSuccess),
+                Some(Ok(_)) if !is_offline() => {
+                    message
+                        .with_timeout(chrono::Duration::seconds(2))
+                        .set_success_view(components::SavingSuccess);
+                    LocalStorage::delete("save_data");
+                }
                 Some(Ok(_)) => {
                     is_offline.set(false);
                     message.set_success("Connection Restored");
@@ -202,11 +204,11 @@ impl SaveHandler {
     }
 
     pub fn is_offline(&self) -> bool {
-        (self.is_offline).get_untracked()
+        (self.is_offline)()
     }
 
-    pub fn set_offline(&self, offline: bool) {
-        self.is_offline.set(offline)
+    pub fn set_offline(&self, is_offline: bool) {
+        self.is_offline.set(is_offline)
     }
 }
 
@@ -215,8 +217,8 @@ pub fn SavingError(err: AppError, is_offline: RwSignal<bool>) -> impl IntoView {
     let message = expect_context::<Message>();
 
     let on_offline = move |_| {
-        message.clear();
         is_offline.set(true);
+        message.clear();
         let _ = save_to_browser();
     };
 
