@@ -3,23 +3,35 @@
 
 ## About
 ### website
-visit [tallyWeb](https://tally-web.com) for a public version of the site
+visit [tallyWeb](https://tally-web.com) for a public version of the site.
+It should work for both desktop browsers and phones.
 
 ### Shiny Pokemon
 Meant to keep track of hunting shiny pokemon,
-but can be used for anything that a counter with timer is useful for
-
-this is the web version in a sense of tallyGo,
-features are almost the same but sometimes differ slightly
+but can be used for anything that a counter with timer is useful for.
 
 ### leptos
 TallyWeb is a website build using the leptos.rs framework
 
 ### build information
-TODO
+For now it's not possible to run your own locally hosted version of the site with docker compose, though this is almost ready,
+The only thing holding me back is settings up the database which will be looked into...
+
+To run and build yourself clone the git repo and run
+```
+make dev
+```
+Prerequisites are running on linux and installing
+- docker
+- make
+- cargo
+This should set up the database for you and then run
+```
+cargo leptos serve --release
+```
 
 ### requests
-if you have a request for a feature open an issue
+if you have a request for a feature open a github issue
 
 ## Roadmap
 ### V0.1
@@ -38,5 +50,5 @@ if you have a request for a feature open an issue
 ### V0.4
 - [ ] your own server with a docker image
 - [ ] without account support
-- [ ] offline support
+- [x] offline support
 - [ ] ...
