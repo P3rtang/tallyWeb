@@ -171,12 +171,12 @@ impl SaveHandler {
     }
 
     pub fn init_timer(self) -> Self {
-        if self.has_task.get_untracked() {
-            return self;
-        }
-
-        self.has_task.set(true);
         self.data.with(|_| {
+            if self.has_task.get_untracked() {
+                return;
+            }
+
+            self.has_task.set(true);
             set_timeout(
                 move || {
                     self.save();
