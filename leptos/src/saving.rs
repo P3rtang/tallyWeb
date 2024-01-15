@@ -174,7 +174,8 @@ impl SaveHandler {
                 if !self.data.get_untracked().is_empty() {
                     self.save()
                 }
-            }, self.interval.to_std().unwrap()
+            },
+            self.interval.to_std().unwrap(),
         );
         self
     }
