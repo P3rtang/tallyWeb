@@ -22,8 +22,7 @@ WORKDIR /app
 COPY . .
 
 # Build the app
-
-RUN cargo leptos build --release -vv
+RUN LEPTOS_OUTPUT_NAME="tallyweb_$(tr -dc a-z0-9 </dev/urandom | head -c 10)" cargo leptos build -r -P -vv
 
 FROM rustlang/rust:nightly-bullseye as runner
 # Copy the server binary to the /app directory
