@@ -17,7 +17,6 @@ RUN cargo binstall cargo-leptos -y
 
 # Add the WASM target
 RUN rustup target add wasm32-unknown-unknown
-RUN cargo update -p wasm-bindgen --precise 0.2.89
 
 # Make an /app dir, which everything will eventually live in
 RUN mkdir -p /app
@@ -25,6 +24,7 @@ WORKDIR /app
 COPY . .
 
 # Build the app
+RUN cargo update -p wasm-bindgen --precise 0.2.89
 RUN cargo leptos build --release -vv
 
 
