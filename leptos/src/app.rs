@@ -13,6 +13,8 @@ use std::{collections::HashMap, fmt::Display};
 
 use crate::{elements::*, pages::*};
 
+pub const LEPTOS_OUTPUT_NAME: &str = env!("LEPTOS_OUTPUT_NAME");
+
 pub type StateResource = Resource<Option<SessionUser>, Vec<SerCounter>>;
 pub type SelectionSignal = RwSignal<SelectionModel<String, ArcCountable>>;
 
@@ -402,7 +404,7 @@ pub fn App() -> impl IntoView {
     });
 
     view! {
-        <Stylesheet href="/pkg/tally_web_v0-2-5_1.css"/>
+        <Stylesheet href=format!("/pkg/{LEPTOS_OUTPUT_NAME}.css")/>
         <Stylesheet href="/fa/css/all.css"/>
 
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg"/>
