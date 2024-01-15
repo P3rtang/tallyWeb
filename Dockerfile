@@ -1,10 +1,8 @@
-FROM ubuntu:jammy as runner
-
 # Get started with a build env with Rust nightly
 FROM rustlang/rust:nightly-bullseye as builder
 
 # If you’re using stable, use this instead
-# FROM rust:1.70-bullseye as builder
+# FROM rust:1.74-bullseye as builder
 
 # Install cargo-binstall, which makes it easier to install other
 # cargo extensions like cargo-leptos
@@ -24,9 +22,8 @@ WORKDIR /app
 COPY . .
 
 # Build the app
-RUN cargo update -p wasm-bindgen --precise 0.2.89
-RUN cargo leptos build --release -vv
 
+RUN cargo leptos build --release -vv
 
 FROM rustlang/rust:nightly-bullseye as runner
 # Copy the server binary to the /app directory
