@@ -109,10 +109,10 @@ where
 }
 
 #[component]
-pub fn TreeViewWidget<T, F, S, FV, IV>(
+pub fn TreeViewWidget<T, F, S, FV, IV, EC>(
     each: F,
     key: fn(&T) -> S,
-    each_child: fn(&T) -> Vec<T>,
+    each_child: EC,
     view: FV,
     #[prop(default=create_signal(false).0.into(), into)] show_separator: Signal<bool>,
     #[prop(default=create_rw_signal(SelectionModel::default()), into)] selection_model: RwSignal<
@@ -126,6 +126,7 @@ where
     F: Fn() -> Vec<T> + Copy + 'static,
     FV: Fn(S) -> IV + Copy + 'static,
     IV: IntoView,
+    EC: Fn(&T) -> Vec<T> + Copy + 'static,
 {
     let tree_nodes = move || {
         each()
@@ -166,11 +167,11 @@ where
 }
 
 #[component]
-fn TreeViewRow<T, S, FV, IV>(
+fn TreeViewRow<T, S, FV, IV, EC>(
     children: ChildrenFn,
     item: T,
     key: fn(&T) -> S,
-    each_child: fn(&T) -> Vec<T>,
+    each_child: EC,
     view: FV,
     selection_model: RwSignal<SelectionModel<S, T>>,
     selection_color: Option<Signal<String>>,
@@ -180,6 +181,7 @@ where
     S: Clone + PartialEq + Eq + Hash + 'static,
     FV: Fn(S) -> IV + Copy + 'static,
     IV: IntoView,
+    EC: Fn(&T) -> Vec<T> + Copy + 'static,
 {
     let (key_sign, _) = create_signal(key(&item));
 
@@ -209,21 +211,7 @@ where
         move |model, _| model.select(&key_sign()),
     );
 
-    let child_class = move || {
-        let mut class = String::from("nested ");
-        if is_expanded() {
-            class += "active "
-        }
-        class
-    };
-
-    let caret_class = move || {
-        if is_expanded() {
-            "caret fa-solid fa-caret-right caret-down"
-        } else {
-            "caret fa-solid fa-caret-right"
-        }
-    };
+    let caret_class = move || "caret fa-solid fa-caret-right";
 
     let div_class = move || {
         let mut class = String::from("selectable row");
@@ -263,9 +251,9 @@ where
         style
     };
 
-    let node_children = create_read_slice(selection_model, move |model| {
+    let node_children = create_read_slice(selection_model, move |_| {
         node()
-            .map(|n| n.get_node_children(model))
+            .map(|n| each_child(&n.row))
             .unwrap_or_default()
     });
 
@@ -279,26 +267,31 @@ where
             class=div_class
             on:click=on_click
         >
-            <Show when=move || { !each_child(&node.get_untracked().unwrap().row).is_empty() }>
-                <span class=caret_class on:click=on_caret_click/>
+            <Show when=move || { node.try_get_untracked().flatten().is_some_and(|c| !each_child(&c.row).is_empty()) }>
+                <span
+                    class=caret_class
+                    style:transform=if is_expanded() { "rotate(90deg)" } else { "" }
+                    style:cursor="pointer"
+                    on:click=on_caret_click
+                ></span>
             </Show>
             { children() }
         </div>
-        <ul class=child_class>
+        <ul style:display=if is_expanded() { "block" } else { "none" }>
         <For
             each=node_children
-            key=|c| c.get_key()
+            key=move |c| key(&c)
             children=move |item| {
                 view! {
                     <TreeViewRow
                         key
-                        item=item.row.clone()
+                        item=item.clone()
                         selection_model=selection_model
                         each_child=each_child
                         view=view
                         selection_color
                     > {
-                        view(item.get_key())
+                        view(key(&item))
                     }</TreeViewRow>
                 }
             }
@@ -319,7 +312,6 @@ where
     pub row: T,
     pub depth: usize,
     pub is_expanded: bool,
-    pub each_child: fn(&T) -> Vec<T>,
 }
 
 impl<T, S> TreeNode<T, S>
@@ -327,20 +319,21 @@ where
     T: Clone + 'static + Debug + PartialEq,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
-    pub fn new(
+    pub fn new<EC>(
         key: fn(&T) -> S,
         item: T,
-        each_child: fn(&T) -> Vec<T>,
+        each_child: EC,
         selection_model: RwSignal<SelectionModel<S, T>>,
         depth: usize,
-    ) -> Self {
+    ) -> Self
+    where EC: Fn(&T) -> Vec<T> + Copy + 'static
+    {
         let this = if let Some(node) = selection_model.get_untracked().items.get(&key(&item)) {
             Self {
                 key,
                 row: item.clone(),
                 depth,
                 is_expanded: node.is_expanded,
-                each_child,
             }
         } else {
             Self {
@@ -348,7 +341,6 @@ where
                 row: item.clone(),
                 depth,
                 is_expanded: false,
-                each_child,
             }
         };
 
@@ -356,7 +348,7 @@ where
             map.items.insert(key(&this.row), this.clone());
         });
 
-        each_child(&item).iter().for_each(|c| {
+        each_child(&item).iter().for_each(move |c| {
             TreeNode::new(key, c.clone(), each_child, selection_model, depth + 1);
         });
 
@@ -373,24 +365,9 @@ where
             row: item.clone(),
             depth: self.depth + 1,
             is_expanded: false,
-            each_child: self.each_child,
         };
 
         selection_model.items.insert((self.key)(&item), node);
-    }
-
-    pub fn get_children_keys(&self) -> Vec<S> {
-        (self.each_child)(&self.row)
-            .iter()
-            .map(|i| (self.key)(i))
-            .collect()
-    }
-
-    pub fn get_node_children(&self, model: &SelectionModel<S, T>) -> Vec<TreeNode<T, S>> {
-        self.get_children_keys()
-            .iter()
-            .filter_map(|key| model.items.get(key).cloned())
-            .collect::<Vec<_>>()
     }
 
     pub fn set_expand(&mut self, do_expand: bool) {

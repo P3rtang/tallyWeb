@@ -1,22 +1,19 @@
 #![allow(non_snake_case)]
-
 use chrono::Duration;
 use components::{LoadingScreen, Message, SavingMessage, ScreenLayout, Slider};
 use leptos::{
     html::{Input, Select},
     *,
 };
-use leptos_router::{use_params, Form, IntoParam, Outlet, Params};
+use leptos_router::{use_params, Form, Outlet, Params};
 use web_sys::{Event, SubmitEvent};
 
-use crate::{
-    app::{navigate, update_counter, update_phase, Preferences, SessionUser},
-    countable::{Countable, CountableKind, Hunttype},
-};
+use super::*;
 
 #[component]
 pub fn EditWindow() -> impl IntoView {
     view! {
+        <elements::Navbar/>
         <Outlet/>
     }
 }
@@ -26,136 +23,68 @@ pub fn EditCounterWindow<F>(layout: F) -> impl IntoView
 where
     F: Fn() -> ScreenLayout + Copy + 'static,
 {
-    let user = expect_context::<Memo<Option<SessionUser>>>();
-    let message = expect_context::<Message>();
     let params = use_params::<CountableId>();
 
-    let counter_rsrc = create_resource(user, async move |user| {
-        if let Ok(id) = params.get_untracked().map(|p| p.id as i32)
-            && let Some(user) = user
-        {
-            match crate::app::get_counter_by_id(user.username, user.token, id).await {
-                Ok(counter) => Some(counter),
-                Err(ServerFnError::ServerError(err)) if &err == "Uninitialized Data" => {
-                    message.without_timeout().set_err("Counter does not exist");
-                    None
-                }
-                Err(ServerFnError::ServerError(err)) if &err == "Unauthorized" => {
-                    message
-                        .without_timeout()
-                        .set_err("Unauthorized to edit Counter");
-                    None
-                }
-                Err(err) => {
-                    message.set_server_err(&err.to_string());
-                    None
-                }
-            }
-        } else {
-            None
-        }
+    let valid_key = params.get_untracked()
+            .map(|p| uuid::Uuid::parse_str(&p.id).ok())
+            .ok()
+            .flatten();
+
+
+    let key = create_rw_signal(
+        params.get_untracked()
+            .map(|p| uuid::Uuid::parse_str(&p.id).ok())
+            .ok()
+            .flatten().unwrap_or_default(),
+    );
+
+    create_isomorphic_effect(move |_| {
+        params.with(|p| {
+            key.set(p.clone()
+                   .map(|p| uuid::Uuid::parse_str(&p.id).ok())
+                   .ok()
+                   .flatten().unwrap_or_default())
+        });
     });
 
     view! {
-        <Show
-            when=move || user().is_some()
-            fallback=|| view! { <LoadingScreen/> }
-        >
-            <Show
-                when=move || params().is_ok()
-                fallback=move || message.without_timeout().set_err("Invalid Counter id")
-            >
-                <EditCounterBox
-                    layout
-                    countable_kind=CountableKind::Counter(params().unwrap().id as i32)
-                    counter_rsrc=counter_rsrc
-                />
-            </Show>
-        </Show>
-    }
-}
-
-#[component]
-pub fn EditPhaseWindow<F>(layout: F) -> impl IntoView
-where
-    F: Fn() -> ScreenLayout + Copy + 'static,
-{
-    let user = expect_context::<Memo<Option<SessionUser>>>();
-    let message = expect_context::<Message>();
-    let params = use_params::<CountableId>();
-
-    let phase_rsrc = create_resource(user, async move |user| {
-        if let Ok(id) = params.get_untracked().map(|p| p.id as i32)
-            && let Some(user) = user
-        {
-            match crate::app::get_phase_by_id(user.username, user.token, id).await {
-                Ok(counter) => Some(counter),
-                Err(_) => {
-                    message
-                        .without_timeout()
-                        .set_err("Unauthorized to edit Phase");
-                    None
-                }
-            }
-        } else {
-            None
-        }
-    });
-
-    view! {
-        <Show
-            when=move || user().is_some()
-            fallback=|| view! { <LoadingScreen/> }
-        >
-            <Show
-                when=move || params().is_ok()
-                fallback=move || message.without_timeout().set_err("Invalid Counter id")
-            >
-                <EditCounterBox
-                    layout=layout
-                    countable_kind=CountableKind::Phase(params().unwrap().id as i32)
-                    counter_rsrc=phase_rsrc
-                />
-            </Show>
+        <Show when=move || valid_key.is_some()>
+            <EditCounterBox layout key/>
         </Show>
     }
 }
 
 #[derive(Debug, Clone, Params, PartialEq, Eq, Default)]
 struct CountableId {
-    id: usize,
-}
-
-impl std::ops::Deref for CountableId {
-    type Target = usize;
-
-    fn deref(&self) -> &Self::Target {
-        &self.id
-    }
+    id: String,
 }
 
 #[component]
-fn EditCounterBox<F, T>(
+fn EditCounterBox<F>(
     layout: F,
-    countable_kind: CountableKind,
-    counter_rsrc: Resource<Option<SessionUser>, Option<T>>,
+    key: RwSignal<uuid::Uuid>
 ) -> impl IntoView
 where
     F: Fn() -> ScreenLayout + Copy + 'static,
-    T: Countable + Clone,
 {
-    let user = expect_context::<Memo<Option<SessionUser>>>();
+    let user = expect_context::<RwSignal<UserSession>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
     let message = expect_context::<Message>();
+    let session = expect_context::<RwSignal<UserSession>>();
+
+    let counter_rsrc = create_resource(key, move |id| {
+        api::get_countable_by_id(session.get_untracked(), id)
+    });
+
 
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
     let border_style = move || format!("border: 2px solid {}", accent_color());
     let confirm_style = move || format!("background-color: {}", accent_color());
 
-    let counter = create_rw_signal(None::<T>);
+    let countable = create_rw_signal(None::<ArcCountable>);
 
     let (name, set_name) = create_slice(
-        counter,
+        countable,
         |c| c.clone().map(|c| c.get_name()).unwrap_or_default(),
         |c, new| {
             if let Some(c) = c.as_mut() {
@@ -165,7 +94,7 @@ where
     );
 
     let (count, set_count) = create_slice(
-        counter,
+        countable,
         |c| c.clone().map(|c| c.get_count()).unwrap_or_default(),
         |c, new| {
             if let Some(c) = c.as_mut() {
@@ -175,7 +104,7 @@ where
     );
 
     let (hours, set_hours) = create_slice(
-        counter,
+        countable,
         |c| {
             c.clone()
                 .map(|c| c.get_time().num_hours())
@@ -193,7 +122,7 @@ where
         },
     );
     let (mins, set_mins) = create_slice(
-        counter,
+        countable,
         |c| {
             c.clone()
                 .map(|c| c.get_time().num_minutes() % 60)
@@ -212,15 +141,17 @@ where
     );
 
     let (hunt_type, set_hunt_type) = create_slice(
-        counter,
+        countable,
         |c| c.as_ref().map(|c| c.get_hunt_type()).unwrap_or_default(),
         |c, new| {
             let _ = c.as_mut().map(|c| c.set_hunt_type(new));
         },
     );
 
+    let hunt_type_str = create_read_slice(countable, |c| c.as_ref().map(|c| String::from(c.get_hunt_type())).unwrap_or_default());
+
     let has_charm = create_slice(
-        counter,
+        countable,
         |c| c.as_ref().map(|c| c.has_charm()).unwrap_or_default(),
         |c, new| {
             if let Some(c) = c.as_mut() {
@@ -234,13 +165,6 @@ where
     let hours_input: NodeRef<Input> = create_node_ref();
     let mins_input: NodeRef<Input> = create_node_ref();
     let hunt_type_dropdown: NodeRef<Select> = create_node_ref();
-
-    create_effect(move |_| {
-        let hunt: String = hunt_type().into();
-        if let Some(d) = hunt_type_dropdown() {
-            d.set_value(&hunt)
-        }
-    });
 
     let undo_changes = move |_| {
         counter_rsrc.refetch();
@@ -290,28 +214,14 @@ where
             return;
         }
 
-        let action = match countable_kind {
-            CountableKind::Counter(_) => {
-                create_action(move |(user, countable): &(SessionUser, T)| {
-                    update_counter(
-                        user.username.clone(),
-                        user.token.clone(),
-                        countable.as_any().downcast_ref().cloned().unwrap(),
-                    )
-                })
-            }
-            CountableKind::Phase(_) => {
-                create_action(move |(user, countable): &(SessionUser, T)| {
-                    update_phase(
-                        user.username.clone(),
-                        user.token.clone(),
-                        countable.as_any().downcast_ref().cloned().unwrap(),
-                    )
-                })
-            }
-        };
+        let action = create_action(move |(user, countable): &(UserSession, ArcCountable)| {
+            api::update_countable(
+                user.clone(),
+                countable.clone().try_into().unwrap(),
+            )
+        });
 
-        action.dispatch((user().unwrap(), counter().unwrap()));
+        action.dispatch((user(), countable().unwrap()));
 
         create_effect(move |_| {
             match action.value()() {
@@ -342,10 +252,10 @@ where
 
     view! {
         <Suspense fallback=move || view!{ <LoadingScreen/> }>
-            { move || { counter.set(counter_rsrc.get().flatten()); } }
+            { move || { countable.set(counter_rsrc.get().map(|c| c.ok()).flatten().map(|c| c.into())); } }
 
             <Form action="/" on:submit=on_submit class="parent-form">
-                <div class={ move || String::from("editing-form ") + layout().get_class() } style=border_style>
+                <div class={ move || String::from("editing-form ") + layout().get_widget_class() } style=border_style>
                     <div class="content">
                         <label for="name" class="title">Name</label>
                         <input type="text" id="name" node_ref=name_input value=name class="edit" autocomplete="none"/>
@@ -357,7 +267,7 @@ where
                                 type="number"
                                 id="time_hours"
                                 node_ref=hours_input
-                                prop:value=hours
+                                value=hours
                                 class="edit"
                                 style="width:
                                 7ch"
@@ -367,7 +277,7 @@ where
                                 type="number"
                                 id="time_mins"
                                 node_ref=mins_input
-                                prop:value=mins
+                                value=mins
                                 on:input=on_mins_input
                                 class="edit"
                                 style="width: 5ch"
@@ -375,9 +285,17 @@ where
                             <div style="position: relative; left: -24px;"> M</div>
                         </span>
                         <label for="hunt_type" class="title">Hunting Method</label>
-                        <select node_ref=hunt_type_dropdown class="edit" id="hunt_type">
-                            <option value="OldOdds">Old odds (1/8192)</option>
+                        <select node_ref=hunt_type_dropdown class="edit" id="hunt_type" value=hunt_type_str>
+                        {
+                            create_isomorphic_effect(move |_| {
+                                let hunt: String = hunt_type().into();
+                                if let Some(d) = hunt_type_dropdown() {
+                                    d.set_value(&hunt)
+                                }
+                            });
+                        }
                             <option value="NewOdds">New odds (1/4096)</option>
+                            <option value="OldOdds">Old odds (1/8192)</option>
                             <option value="SOS">SOS hunt</option>
                             <option value="MasudaGenIV">Masuda GenIV</option>
                             <option value="MasudaGenV">Masuda GenV</option>

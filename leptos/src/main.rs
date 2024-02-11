@@ -4,8 +4,9 @@ use std::io::Write;
 use std::process::Command;
 use std::thread;
 
+use tokio;
 use leptos::*;
-use tally_web::app::*;
+use tally_web::*;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "ssr")] {
@@ -15,14 +16,17 @@ cfg_if::cfg_if! {
         use actix_web::http::StatusCode;
         use actix_web::HttpRequest;
 
-        #[actix_web::main]
-        async fn main() -> std::io::Result<()> {
+        #[tokio::main]
+        async fn main() -> Result<(), AppError> {
             let conf = get_configuration(None).await.unwrap();
             let addr = conf.leptos_options.site_addr;
+
             // Generate the list of routes in your Leptos App
-            let routes = generate_route_list(|| view! { <App/> });
+            let routes = generate_route_list(|| view! { <app::App/> });
 
             let _ = backend::migrate().await.map_err(|err| println!("{err}"));
+
+            let pool = backend::create_pool().await.map_err(|err| AppError::DbConnection(err.to_string()))?;
 
             HttpServer::new(move || {
                 let leptos_options = &conf.leptos_options;
@@ -43,14 +47,19 @@ cfg_if::cfg_if! {
                     .leptos_routes(
                         leptos_options.to_owned(),
                         routes.to_owned(),
-                        || view! { <App/> },
+                        || view! { <app::App/> },
                     )
                     .app_data(web::Data::new(leptos_options.to_owned()))
+                    .app_data(web::Data::new(pool.clone()))
                     .service(Files::new("/", site_root))
             })
-            .bind(&addr)?
+            .bind(&addr)
+            .map_err(|err| AppError::ActixError(err.to_string()))?
             .run()
             .await
+            .map_err(|err| AppError::ActixError(err.to_string()))?;
+
+            return Ok(())
         }
 
         #[actix_web::get("/favicon.svg")]

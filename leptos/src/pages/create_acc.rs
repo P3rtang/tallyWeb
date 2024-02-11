@@ -4,10 +4,11 @@ use leptos_router::{ActionForm, A};
 use web_sys::SubmitEvent;
 
 use crate::app::navigate;
+use super::*;
 
 #[component]
 pub fn CreateAccount() -> impl IntoView {
-    let action = create_server_action::<crate::app::CreateAccount>();
+    let action = create_server_action::<api::CreateAccount>();
 
     let message = create_rw_signal(None::<String>);
     let border_style = move || {

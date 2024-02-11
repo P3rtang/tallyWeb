@@ -1,85 +1,19 @@
 #![allow(non_snake_case)]
-use super::*;
-use crate::countable::*;
 use chrono::Duration;
 use components::*;
-use gloo_storage::{LocalStorage, Storage};
 use js_sys::Date;
-use leptos::{ev::MouseEvent, logging::log, *};
+use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Display};
+use std::collections::HashMap;
 
-use crate::{elements::*, pages::*};
+use super::{*, elements::*, pages::*, session::*, preferences::ProvidePreferences};
 
 pub const LEPTOS_OUTPUT_NAME: &str = env!("LEPTOS_OUTPUT_NAME");
 
-pub type StateResource = Resource<Option<SessionUser>, Vec<SerCounter>>;
-pub type SelectionSignal = RwSignal<SelectionModel<String, ArcCountable>>;
-
-#[server(LoginUser, "/api", "Url", "login_user")]
-pub async fn login_user(
-    username: String,
-    password: String,
-    remember: Option<String>,
-) -> Result<SessionUser, ServerFnError> {
-    let pool = backend::create_pool().await?;
-    let user = backend::auth::login_user(&pool, username, password, remember.is_some()).await?;
-
-    let session_user = SessionUser {
-        username: user.username,
-        token: user.token.unwrap(),
-    };
-
-    Ok(session_user)
-}
-
-#[server(CreateAccount, "/api", "Url", "create_account")]
-pub async fn create_account(
-    username: String,
-    password: String,
-    password_repeat: String,
-) -> Result<SessionUser, ServerFnError> {
-    if password != password_repeat {
-        Err(backend::LoginError::InvalidPassword)?;
-    }
-
-    let pool = backend::create_pool().await?;
-    let user = backend::auth::insert_user(&pool, username, password).await?;
-
-    let session_user = SessionUser {
-        username: user.username,
-        token: user.token.unwrap(),
-    };
-
-    Ok(session_user)
-}
-
-#[server(ChangePassword, "/api")]
-pub async fn change_password(
-    username: String,
-    old_pass: String,
-    new_pass: String,
-    new_pass_repeat: String,
-) -> Result<(), ServerFnError> {
-    if new_pass != new_pass_repeat {
-        Err(backend::LoginError::InvalidPassword)?;
-    };
-
-    let pool = backend::create_pool().await?;
-    let _ = backend::auth::change_password(&pool, username, old_pass, new_pass).await?;
-
-    Ok(())
-}
-
-#[server(GetUserIdFromName, "/api")]
-async fn get_id_from_username(username: String, token: String) -> Result<i32, ServerFnError> {
-    let pool = backend::create_pool().await?;
-    let db_user = backend::auth::get_user(&pool, username, token).await?;
-
-    Ok(db_user.id)
-}
+pub type StateResource = Resource<UserSession, Vec<SerCounter>>;
+pub type SelectionSignal = RwSignal<SelectionModel<uuid::Uuid, ArcCountable>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CounterResponse {
@@ -88,248 +22,13 @@ pub enum CounterResponse {
     InvalidToken,
 }
 
-#[server(GetCountersByUserName, "/api")]
-async fn get_counters_by_user_name(
-    username: String,
-    token: String,
-) -> Result<CounterResponse, ServerFnError> {
-    let pool = backend::create_pool().await?;
-
-    let user = match backend::auth::get_user(&pool, username, token).await {
-        Ok(user) => user,
-        Err(backend::AuthorizationError::Internal(err)) => Err(err)?,
-        Err(backend::AuthorizationError::UserNotFound) => {
-            return Ok(CounterResponse::InvalidUsername)
-        }
-        Err(_) => return Ok(CounterResponse::InvalidToken),
-    };
-
-    let data = user.get_counters(&pool).await?;
-
-    let mut counters = Vec::new();
-    for db_counter in data {
-        counters.push(
-            SerCounter::from_db(
-                user.username.clone(),
-                user.token.clone().unwrap_or_default(),
-                db_counter,
-            )
-            .await,
-        )
-    }
-
-    Ok(CounterResponse::Counters(counters))
-}
-
-#[server(GetCounterById, "/api")]
-pub async fn get_counter_by_id(
-    username: String,
-    token: String,
-    counter_id: i32,
-) -> Result<SerCounter, ServerFnError> {
-    let pool = backend::create_pool().await?;
-    let user = backend::auth::get_user(&pool, username.clone(), token.clone()).await?;
-    let data = backend::get_counter_by_id(&pool, user.id, counter_id).await?;
-
-    Ok(SerCounter::from_db(username, token, data).await)
-}
-
-#[server(GetPhaseById, "/api")]
-pub async fn get_phase_by_id(
-    username: String,
-    token: String,
-    phase_id: i32,
-) -> Result<Phase, ServerFnError> {
-    let pool = backend::create_pool().await?;
-    let user = backend::auth::get_user(&pool, username, token).await?;
-    let data = backend::get_phase_by_id(&pool, user.id, phase_id).await?;
-    Ok(data.into())
-}
-
-#[server(CreateCounter, "/api")]
-pub async fn create_counter(
-    username: String,
-    token: String,
-    name: String,
-) -> Result<i32, ServerFnError> {
-    let pool = backend::create_pool().await?;
-    let user = backend::auth::get_user(&pool, username, token).await?;
-    let counter_id = backend::create_counter(&pool, user.id, name).await?;
-
-    Ok(counter_id)
-}
-
-#[server(UpdateCounter, "/api")]
-pub async fn update_counter(
-    username: String,
-    token: String,
-    counter: SerCounter,
-) -> Result<(), ServerFnError> {
-    let pool = backend::create_pool().await?;
-    let user = backend::auth::get_user(&pool, username, token).await?;
-
-    backend::update_counter(&pool, counter.to_db(user.id).await).await?;
-    for phase in counter.phase_list {
-        backend::update_phase(&pool, user.id, phase.to_db(user.id).await).await?;
-    }
-
-    Ok(())
-}
-
-#[server(RemoveCounter, "/api")]
-pub async fn remove_counter(
-    username: String,
-    token: String,
-    counter_id: i32,
-) -> Result<(), ServerFnError> {
-    let pool = backend::create_pool().await?;
-    let user = backend::auth::get_user(&pool, username, token).await?;
-    backend::remove_counter(&pool, user.id, counter_id).await?;
-
-    Ok(())
-}
-
-#[server(RemovePhase, "/api")]
-pub async fn remove_phase(
-    username: String,
-    token: String,
-    phase_id: i32,
-) -> Result<(), ServerFnError> {
-    let pool = backend::create_pool().await?;
-    let _ = backend::auth::get_user(&pool, username, token).await?;
-    backend::remove_phase(&pool, phase_id).await?;
-
-    Ok(())
-}
-
-#[server(CreatePhase, "/api")]
-pub async fn create_phase(
-    username: String,
-    token: String,
-    name: String,
-    hunt_type: Hunttype,
-) -> Result<i32, ServerFnError> {
-    let pool = backend::create_pool().await?;
-
-    let user = backend::auth::get_user(&pool, username, token).await?;
-    let id = backend::create_phase(&pool, user.id, name, hunt_type.into()).await?;
-
-    Ok(id)
-}
-
-#[server(AssignPhase, "/api")]
-pub async fn assign_phase(
-    username: String,
-    token: String,
-    counter_id: i32,
-    phase_id: i32,
-) -> Result<(), ServerFnError> {
-    let pool = backend::create_pool().await?;
-
-    let user = backend::auth::get_user(&pool, username, token).await?;
-    backend::assign_phase(&pool, user.id, counter_id, phase_id).await?;
-
-    Ok(())
-}
-
-#[server(SavePhase, "/api")]
-pub async fn update_phase(
-    username: String,
-    token: String,
-    phase: Phase,
-) -> Result<(), ServerFnError> {
-    let pool = backend::create_pool().await?;
-
-    let user = backend::auth::get_user(&pool, username, token).await?;
-    backend::update_phase(&pool, user.id, phase.to_db(user.id).await).await?;
-
-    Ok(())
-}
-
-#[server(GetUserPreferences, "/api")]
-async fn get_user_preferences(
-    username: String,
-    token: String,
-) -> Result<Preferences, ServerFnError> {
-    let pool = backend::create_pool().await?;
-    let user = match backend::auth::get_user(&pool, username.clone(), token.clone()).await {
-        Ok(user) => user,
-        Err(_) => {
-            return Ok(Preferences::default());
-        }
-    };
-    let session_user = SessionUser {
-        username: user.username,
-        token: user.token.unwrap_or_default(),
-    };
-    let prefs = match backend::DbPreferences::db_get(&pool, user.id).await {
-        Ok(data) => Preferences::from_db(&session_user, data),
-        Err(backend::DataError::Uninitialized) => {
-            let new_prefs = Preferences::new(&session_user);
-            save_preferences(username, token, new_prefs.clone()).await?;
-            new_prefs
-        }
-        Err(err) => return Err(err)?,
-    };
-
-    Ok(Preferences::from(prefs))
-}
-
-#[server(SavePreferences, "/api")]
-pub async fn save_preferences(
-    username: String,
-    token: String,
-    preferences: Preferences,
-) -> Result<(), ServerFnError> {
-    let pool = backend::create_pool().await?;
-    let user = backend::auth::get_user(&pool, username, token).await?;
-
-    let accent_color = if preferences.use_default_accent_color {
-        None
-    } else {
-        Some(preferences.accent_color.0)
-    };
-
-    let db_prefs = backend::DbPreferences {
-        user_id: user.id,
-        use_default_accent_color: preferences.use_default_accent_color,
-        accent_color,
-        show_separator: preferences.show_separator,
-        multi_select: preferences.multi_select,
-    };
-    db_prefs.db_set(&pool, user.id).await?;
-
-    Ok(())
-}
-
-impl Display for AccountAccentColor {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[allow(dead_code)]
-fn set_fullscreen() {
-    create_effect(|_| {
-        log!("{}", document().fullscreen());
-        let _ = document().document_element().unwrap().request_fullscreen();
-        log!("{}", document().fullscreen());
-    });
-}
-
 #[component]
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
 
-    let user = SessionUser::from_storage();
-
     let msg = Message::new(Duration::seconds(5));
     provide_context(msg);
-
-    let user_memo = create_memo(move |_| user());
-    provide_context(user);
-    provide_context(user_memo);
 
     let close_overlay_signal = create_rw_signal(CloseOverlays());
     provide_context(close_overlay_signal);
@@ -340,22 +39,6 @@ pub fn App() -> impl IntoView {
     let close_overlays = move |_| {
         close_overlay_signal.update(|_| ());
     };
-
-    let pref_resources = create_resource(user, async move |user| {
-        if let Some(user) = user {
-            get_user_preferences(user.username.clone(), user.token.clone())
-                .await
-                .unwrap_or(Preferences::new(&user))
-        } else {
-            Preferences::default()
-        }
-    });
-
-    let preferences = create_rw_signal(Preferences::default());
-    let pref_memo = create_memo(move |_| preferences());
-    provide_context(pref_resources);
-    provide_context(pref_memo);
-    provide_context(preferences);
 
     let screen_layout = create_rw_signal(ScreenLayout::Big);
     let show_sidebar = create_rw_signal(ShowSidebar(true));
@@ -380,21 +63,23 @@ pub fn App() -> impl IntoView {
         }
     };
 
-    let selection = SelectionModel::<String, ArcCountable>::new();
+    let selection = SelectionModel::<uuid::Uuid, ArcCountable>::new();
     let selection_signal = create_rw_signal(selection);
     provide_context(selection_signal);
 
-    let save_handler = SaveHandler::new(user_memo);
+    let save_handler = SaveHandlerCountable::new();
     provide_context(save_handler);
 
-    create_effect(move |_| save_handler.init_timer());
+    // create_effect(move |_| if let Some(user) = user.get() {
+    //     save_handler.init_timer(user);
+    // });
 
-    connect_keys(selection_signal, save_handler);
+    // connect_keys(selection_signal, save_handler, user_memo);
 
-    create_effect(move |_| {
-        preferences
-            .with(|pref| selection_signal.update(|sel| sel.set_multi_select(pref.multi_select)))
-    });
+    // create_effect(move |_| {
+    //     preferences
+    //         .with(|pref| selection_signal.update(|sel| sel.set_multi_select(pref.multi_select)))
+    // });
 
     timer(selection_signal);
 
@@ -416,13 +101,6 @@ pub fn App() -> impl IntoView {
         <Title text="TallyWeb"/>
 
         <Router>
-            <Transition fallback=move || view! { <LoadingScreen/> }>
-                { move || {
-                    preferences.set(pref_resources.get().unwrap_or_default());
-                }}
-            </Transition>
-            <Navbar/>
-
             <main on:click=close_overlays>
                 // on navigation clear any messages or errors from the message box
                 { move || {
@@ -430,29 +108,30 @@ pub fn App() -> impl IntoView {
                     location.state.with(|_| msg.clear())
                 }}
                 <Routes>
-                    <Route path="" view=HomePage/>
-                    <Route path="/preferences" view=move || view! {
-                        <PreferencesWindow layout=screen_layout/>
-                    }/>
+                    <Route path="" view=|| view! {
+                        <ProvideSessionSignal>
+                            <ProvidePreferences>
+                                <Outlet/>
+                            </ProvidePreferences>
+                        </ProvideSessionSignal>
+                    }>
+                        <Route path="/" view=HomePage/>
+                        <Route path="/preferences" view=move || view! {
+                            <PreferencesWindow layout=screen_layout/>
+                        }/>
 
-                    <Route path="/edit" view=EditWindow>
-                        <Route path="counter" view=|| view!{ <Outlet/> }>
+                        <Route path="/edit" view=EditWindow>
                             <Route path=":id" view=move || view! {
                                 <EditCounterWindow layout=screen_layout/>
                             }/>
                         </Route>
-                        <Route path="phase" view=|| view!{ <Outlet/> }>
-                            <Route path=":id" view=move || view! {
-                                <EditPhaseWindow layout=screen_layout/>
-                            }/>
-                        </Route>
-                    </Route>
 
-                    <Route path="/login" view=LoginPage/>
-                    <Route path="/create-account" view=CreateAccount/>
-                    <Route path="/change-username" view=move || view!{ <ChangeAccountInfo user/> }/>
-                    <Route path="/change-password" view=NewPassword/>
-                    <Route path="/privacy-policy" view=PrivacyPolicy/>
+                        <Route path="/login" view=LoginPage/>
+                        <Route path="/create-account" view=CreateAccount/>
+                        <Route path="/change-username" view=move || view!{ <ChangeAccountInfo/> }/>
+                        <Route path="/change-password" view=NewPassword/>
+                        <Route path="/privacy-policy" view=PrivacyPolicy/>
+                    </Route>
                     <Route path="/*any" view=NotFound/>
                 </Routes>
             </main>
@@ -534,27 +213,28 @@ pub fn navigate(page: impl ToString) {
     });
 }
 
-fn connect_keys(model: SelectionSignal, save_handler: SaveHandler) {
+#[allow(dead_code)]
+fn connect_keys(model: SelectionSignal, save_handler: SaveHandlerCountable, user: RwSignal<UserSession>) {
     window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
         "Equal" => model.update(|m| {
             m.selection_mut().into_iter().for_each(|c| {
                 c.set_active(true);
                 c.add_count(1);
-                save_handler.add_countable(c.clone());
+                save_handler.add_countable(c.clone().into());
             })
         }),
         "Minus" => model.update(|m| {
             m.selection_mut().into_iter().for_each(|c| {
                 c.set_active(true);
                 c.add_count(-1);
-                save_handler.add_countable(c.clone());
+                save_handler.add_countable(c.clone().into());
             })
         }),
         "KeyP" => model.update(|list| {
             list.selection_mut().into_iter().for_each(|c| {
                 c.set_active(!c.is_active());
-                save_handler.add_countable(c.clone());
-                save_handler.save();
+                save_handler.add_countable(c.clone().into());
+                save_handler.save(user());
             })
         }),
         _ => {}
@@ -563,50 +243,30 @@ fn connect_keys(model: SelectionSignal, save_handler: SaveHandler) {
 
 #[component]
 pub fn HomePage() -> impl IntoView {
-    let session_user = expect_context::<Memo<Option<SessionUser>>>();
-    let message = expect_context::<Message>();
-    let save_handler = expect_context::<SaveHandler>();
+    let session_user = expect_context::<RwSignal<UserSession>>();
+    // let message = expect_context::<Message>();
+    let save_handler = expect_context::<SaveHandlerCountable>();
+    let selection_signal = expect_context::<SelectionSignal>();
+    let state = expect_context::<RwSignal<CounterList>>();
+    let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
+    let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
+    let preferences = expect_context::<RwSignal<Preferences>>();
+    let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
 
-    let data = create_local_resource(session_user, move |user| async move {
-        if let Some(user) = user {
-            if let Ok(offline_data) = LocalStorage::get::<Vec<SerCounter>>("save_data") {
-                match get_counters_by_user_name(user.username.clone(), user.token.clone()).await {
-                    Ok(CounterResponse::Counters(counters)) => {
-                        save_handler.set_offline(false);
-                        message
-                            .without_timeout()
-                            .set_msg_view(view! { <AskOfflineData data=offline_data.clone()/> });
-                        counters
-                    }
-                    _ => offline_data,
-                }
-            } else {
-                match get_counters_by_user_name(user.username.clone(), user.token.clone()).await {
-                    Ok(CounterResponse::Counters(counters)) => counters,
-                    _ => Vec::new(),
-                }
+    let data = create_blocking_resource(session_user, move |user| async move {
+        match api::get_counters_by_user_name(user).await {
+            Ok(api::CounterResponse::Counters(counters)) => {
+                save_handler.set_offline(false);
+                // message
+                //     .without_timeout()
+                //     .set_msg_view(view! { <AskOfflineData data=offline_data.clone()/> });
+                counters
             }
-        } else if let Ok(offline_data) = LocalStorage::get::<Vec<SerCounter>>("save_data") {
-            offline_data
-        } else {
-            Vec::new()
+            _ => Vec::new(),
         }
     });
 
     provide_context(data);
-    let state = expect_context::<RwSignal<CounterList>>();
-
-    let preferences = expect_context::<RwSignal<Preferences>>();
-    let accent_color = create_read_slice(preferences, |prefs| prefs.accent_color.0.clone());
-
-    let selection_signal = expect_context::<SelectionSignal>();
-
-    let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
-    let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
-
-    let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
-    let show_sort_search = create_rw_signal(true);
-    let state_len = create_read_slice(state, |s| s.list.len());
 
     let active = create_read_slice(selection_signal, move |sel| {
         let mut slc = sel
@@ -635,40 +295,48 @@ pub fn HomePage() -> impl IntoView {
                         sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(*sel)));
                     }
                 }}
-                <Sidebar class="sidebar" display=show_sidebar layout=screen_layout>
-                    <SortSearch list=state shown=show_sort_search/>
-                    <Show
-                        when=move || session_user().is_some()
-                        fallback=move || view! {
-                            <TreeViewWidget
-                                each=move || { state.get().get_filtered_list() }
-                                key=|countable| countable.get_uuid()
-                                each_child=|countable| countable.get_children()
-                                view=|key| {
-                                    view! { <TreeViewRow key/> }
-                                }
-                                show_separator=show_sep
-                                selection_model=selection_signal
-                            />
-                        }
-                    >
-                        <TreeViewWidget
-                            each=move || { state.get().get_filtered_list() }
-                            key=|countable| countable.get_uuid()
-                            each_child=|countable| countable.get_children()
-                            view=|key| {
-                                view! { <TreeViewRow key/> }
-                            }
-                            show_separator=show_sep
-                            selection_model=selection_signal
-                            selection_color=accent_color
-                        />
-                    </Show>
-                    <NewCounterButton state_len/>
+                <Sidebar display=show_sidebar layout=screen_layout accent_color=accent_color>
+                    <SidebarContent/>
                 </Sidebar>
-                <InfoBox countable_list=active/>
+                <section style:flex-grow="1" style:transition="width .5s">
+                    <Navbar/>
+                    <InfoBox countable_list=active/>
+                </section>
             </div>
         </Transition>
+    }
+}
+
+#[component]
+fn SidebarContent() -> impl IntoView {
+    let show_sort_search = create_rw_signal(true);
+
+    let selection_signal = expect_context::<SelectionSignal>();
+    let state = expect_context::<RwSignal<CounterList>>();
+    let preferences = expect_context::<RwSignal<Preferences>>();
+
+    let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
+    let state_len = create_read_slice(state, |s| s.list.len());
+    let accent_color = create_read_slice(preferences, |prefs| prefs.accent_color.0.clone());
+
+    view! {
+        <nav>
+            <SortSearch list=state shown=show_sort_search/>
+        </nav>
+        <TreeViewWidget
+            each=move || { state.get().get_filtered_list() }
+            key=|countable| countable.get_uuid()
+            each_child=move |countable| {
+                let mut children = countable.get_children();
+                children.sort_by(state.get().sort.sort_by());
+                children
+            }
+            view=|key| view! { <TreeViewRow key/> }
+            show_separator=show_sep
+            selection_model=selection_signal
+            selection_color=accent_color
+        />
+        <NewCounterButton state_len/>
     }
 }
 
@@ -728,13 +396,12 @@ where
 }
 
 #[component]
-fn TreeViewRow(key: String) -> impl IntoView {
+fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
-    let user = expect_context::<Memo<Option<SessionUser>>>();
+    let user = expect_context::<RwSignal<UserSession>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
-    let data_resource = expect_context::<Resource<Option<SessionUser>, Vec<SerCounter>>>();
-    let counter_list = expect_context::<RwSignal<CounterList>>();
+    let data_resource = expect_context::<StateResource>();
 
     let (key, _) = create_signal(key);
 
@@ -748,46 +415,23 @@ fn TreeViewRow(key: String) -> impl IntoView {
         }
     });
 
-    let click_new_phase = move |e: MouseEvent| {
+    let click_new_phase = move |e: web_sys::MouseEvent| {
         e.stop_propagation();
-        if user().is_none() {
-            return;
-        }
         create_local_resource(
             || (),
             move |_| async move {
                 let n_phase = countable
                     .get_untracked()
                     .clone()
-                    .and_then(|c| c.0.try_lock().map(|c| c.get_phases().len() + 1).ok())
-                    .unwrap_or(1);
+                    .map(|c| c.get_children().len())
+                    .unwrap_or_default();
                 let name = format!("Phase {n_phase}");
-                let phase_id = create_phase(
-                    user.get_untracked().unwrap().username,
-                    user.get_untracked().unwrap().token,
-                    name.clone(),
-                    countable
-                        .get_untracked()
-                        .map(|c| c.get_hunt_type())
-                        .unwrap_or_default(),
-                )
-                .await
-                .expect("Could not create Phase");
-                assign_phase(
-                    user.get_untracked().unwrap().username,
-                    user.get_untracked().unwrap().token,
-                    countable
-                        .get_untracked()
-                        .map(|c| c.get_id())
-                        .unwrap_or_default(),
-                    phase_id,
-                )
-                .await
-                .expect("Could not assign phase to Counter");
+                if let Some(countable) = countable.get_untracked() {
+                    let user = user.get_untracked();
+                    let new_phase = Phase::new(name, countable.get_uuid(), user.user_uuid);
+                    api::update_phase(user, new_phase).await.expect("Could not create Phase");
+                }
 
-                counter_list.update(|_| {
-                    let _ = countable.get_untracked().unwrap().new_phase(phase_id, name);
-                });
                 data_resource.refetch();
                 expand_node(());
             },
@@ -796,7 +440,7 @@ fn TreeViewRow(key: String) -> impl IntoView {
 
     let show_context_menu = create_rw_signal(false);
     let (click_location, set_click_location) = create_signal((0, 0));
-    let on_right_click = move |ev: MouseEvent| {
+    let on_right_click = move |ev: web_sys::MouseEvent| {
         ev.prevent_default();
         expect_context::<RwSignal<CloseOverlays>>().update(|_| ());
         show_context_menu.set(!show_context_menu());
@@ -805,14 +449,11 @@ fn TreeViewRow(key: String) -> impl IntoView {
 
     let has_children = countable
         .get_untracked()
-        .and_then(|c| c.0.try_lock().map(|i| i.has_children()).ok())
+        .map(|c| c.get_children().len() > 0)
         .unwrap_or_default();
 
     view! {
-        <div
-            class="row-body"
-            on:contextmenu=on_right_click
-            >
+        <div class="row-body" on:contextmenu=on_right_click>
             <span> { move || countable.get_untracked().map(|c| c.get_name()).unwrap_or_default() } </span>
             <Show when=move || has_children>
                 <button on:click=click_new_phase>+</button>
@@ -832,7 +473,7 @@ fn TreeViewRow(key: String) -> impl IntoView {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CounterList {
-    pub list: HashMap<String, ArcCountable>,
+    pub list: HashMap<uuid::Uuid, ArcCountable>,
     search: Option<String>,
     pub sort: SortCountable,
 }
@@ -908,7 +549,8 @@ impl From<Vec<SerCounter>> for CounterList {
                     .map(|p| ArcCountable::new(Box::new(p)))
                     .collect();
                 let counter = Counter {
-                    id: sc.id,
+                    uuid: sc.uuid,
+                    owner_uuid: sc.owner_uuid,
                     name: sc.name,
                     phase_list,
                     created_at: sc.created_at,
@@ -944,104 +586,5 @@ impl From<CounterList> for Vec<SerCounter> {
         }
 
         rtrn_list
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SessionUser {
-    pub username: String,
-    pub token: String,
-}
-
-impl SessionUser {
-    pub fn from_storage() -> RwSignal<Option<SessionUser>> {
-        let user_signal = create_rw_signal(None::<SessionUser>);
-
-        create_effect(move |_| {
-            if let Ok(Some(user)) = LocalStorage::get::<Option<SessionUser>>("user_session") {
-                let action = create_action(move |user: &SessionUser| {
-                    get_id_from_username(user.username.clone(), user.token.clone())
-                });
-                action.dispatch(user.clone());
-
-                create_effect(move |_| {
-                    if let Some(Ok(id)) = action.value()()
-                        && id > 0
-                    {
-                        user_signal.set(Some(user.clone()))
-                    } else {
-                        // TODO: set the user but inform that the token is expired or an error
-                        // occured
-                        user_signal.set(None)
-                    }
-                });
-            } else {
-                let _ = LocalStorage::set("user_session", None::<SessionUser>);
-            }
-        });
-
-        user_signal
-    }
-
-    pub fn has_value(&self) -> bool {
-        // TODO: make this function check the backend for validity
-        !(self.username.is_empty() || self.token.len() != 32)
-    }
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct AccountAccentColor(pub String);
-
-impl AccountAccentColor {
-    fn new(user: &SessionUser) -> Self {
-        let mut this = Self(String::new());
-        this.set_user(user);
-        this
-    }
-
-    pub fn set_user(&mut self, user: &SessionUser) {
-        let letter = user
-            .username
-            .to_uppercase()
-            .chars()
-            .next()
-            .unwrap_or_default();
-        let color_hex = letter_to_three_digit_hash(letter);
-        self.0 = format!("#{color_hex}")
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Preferences {
-    pub use_default_accent_color: bool,
-    pub accent_color: AccountAccentColor,
-    pub show_separator: bool,
-    pub multi_select: bool,
-}
-
-impl Preferences {
-    fn new(user: &SessionUser) -> Self {
-        let accent_color = AccountAccentColor::new(user);
-        Self {
-            use_default_accent_color: true,
-            accent_color,
-            show_separator: false,
-            multi_select: false,
-        }
-    }
-}
-
-#[cfg(feature = "ssr")]
-impl Preferences {
-    fn from_db(user: &SessionUser, value: backend::DbPreferences) -> Self {
-        Self {
-            use_default_accent_color: value.use_default_accent_color,
-            accent_color: value
-                .accent_color
-                .map(|c| AccountAccentColor(c))
-                .unwrap_or(AccountAccentColor::new(user)),
-            show_separator: value.show_separator,
-            multi_select: value.multi_select,
-        }
     }
 }

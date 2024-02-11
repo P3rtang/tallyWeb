@@ -1,12 +1,11 @@
 use components::{AccountIcon, CloseOverlays, ShowSidebar};
 use leptos::*;
 use leptos_router::A;
-
-use crate::app::{Preferences, SessionUser};
+use super::*;
 
 #[component]
 pub fn Navbar() -> impl IntoView {
-    let user = expect_context::<Memo<Option<SessionUser>>>();
+    let user = expect_context::<RwSignal<UserSession>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
 
@@ -18,13 +17,13 @@ pub fn Navbar() -> impl IntoView {
         close_overlay_signal.update(|_| ());
     };
 
-    let on_offline_navigate = move |_| {
-        let state = expect_context::<RwSignal<crate::app::CounterList>>();
-        if !state().list.is_empty() {
-            let _ = crate::saving::save_to_browser();
-        }
-        crate::app::navigate("/login");
-    };
+    // let on_offline_navigate = move |_| {
+    //     let state = expect_context::<RwSignal<app::CounterList>>();
+    //     if !state().list.is_empty() {
+    //         let _ = crate::saving::save_to_browser();
+    //     }
+    //     crate::app::navigate("/login");
+    // };
 
     view! {
         <nav on:click=close_overlays>
@@ -37,12 +36,7 @@ pub fn Navbar() -> impl IntoView {
 
             <div style:margin-left="auto" style:display="flex" style:align-items="center">
                 <StatusBar/>
-                <Show
-                    when=move || user().is_some()
-                    fallback=move || view! { <div on:click=on_offline_navigate id="user-icon" style:background="#555555"/> }
-                >
-                    <AccountIcon username=move || user.get().unwrap_or_default().username accent_color/>
-                </Show>
+                <AccountIcon username=move || user.get().username accent_color/>
             </div>
         </nav>
     }
@@ -50,7 +44,7 @@ pub fn Navbar() -> impl IntoView {
 
 #[component]
 pub fn StatusBar() -> impl IntoView {
-    let save_handler = expect_context::<crate::SaveHandler>();
+    let save_handler = expect_context::<super::SaveHandlerCountable>();
 
     let show_statusbar = move || save_handler.is_offline();
 

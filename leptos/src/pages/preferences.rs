@@ -4,19 +4,18 @@ use leptos::*;
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
 
-use crate::app::{save_preferences, Preferences, SavePreferences, SessionUser};
+use super::*;
 
 #[component]
 pub fn PreferencesWindow<F>(layout: F) -> impl IntoView
 where
     F: Fn() -> ScreenLayout + Copy + 'static,
 {
-    let pref_resource = expect_context::<Resource<Option<SessionUser>, Preferences>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
     let message = expect_context::<Message>();
-    let user = expect_context::<RwSignal<Option<SessionUser>>>();
+    let user = expect_context::<RwSignal<UserSession>>();
 
-    let action = create_server_action::<SavePreferences>();
+    let action = create_server_action::<api::SavePreferences>();
 
     let use_default_accent_color = create_slice(
         preferences,
@@ -43,7 +42,7 @@ where
     );
 
     let undo_changes = move |_| {
-        pref_resource.refetch();
+        // pref_resource.refetch();
     };
 
     let on_change = move |ev: Event| {
@@ -56,16 +55,20 @@ where
 
     let on_submit = move |ev: SubmitEvent| {
         ev.prevent_default();
-        let action = create_action(async move |_: &()| -> Result<(), ServerFnError> {
-            let user = user.get_untracked().unwrap();
 
-            match save_preferences(user.username, user.token, preferences.get_untracked()).await {
-                Ok(_) => message.set_msg("Settings Saved"),
-                Err(err) => message.set_server_err(&err.to_string()),
-            };
+        let action = create_action(move |_| {
+            let user = user.get_untracked();
 
-            Ok(())
+            async move {
+                match api::save_preferences(user, preferences.get_untracked()).await {
+                    Ok(_) => message.set_msg("Settings Saved"),
+                    Err(err) => message.set_server_err(&err.to_string()),
+                };
+
+                Ok::<(), ServerFnError>(())
+            }
         });
+
         action.dispatch(());
         message
             .without_timeout()
@@ -77,15 +80,9 @@ where
     let confirm_style = move || format!("background-color: {}", accent_color.get());
 
     view! {
-        <Transition fallback=move || view!{ <LoadingScreen/> }>
-            { pref_resource(); }
-        <Show
-            when=move || user().is_some()
-            fallback=move || view!{ <LoadingScreen/> }
-        >
-
+        <elements::Navbar/>
         <ActionForm action=action on:submit=on_submit class="parent-form">
-            <div class={ move || String::from("editing-form ") + layout().get_class() } style=border_style>
+            <div class={ move || String::from("editing-form ") + layout().get_widget_class() } style=border_style>
                 <div class="content">
                     <label for="use_default_accent_color" class="title">Use Default Accent Color</label>
                     <Slider checked=use_default_accent_color accent_color/>
@@ -94,7 +91,7 @@ where
                               if *b {
                                   preferences.update(|p| {
                                       p.accent_color
-                                          .set_user(&user.get_untracked().unwrap_or_default())
+                                          .set_user(&user.get_untracked())
                                   });
                               }
                           })
@@ -136,8 +133,5 @@ where
                 </div>
             </div>
         </ActionForm>
-
-        </Show>
-        </Transition>
     }
 }

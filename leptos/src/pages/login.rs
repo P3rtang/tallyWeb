@@ -1,11 +1,12 @@
-use crate::app::{navigate, SessionUser};
+use crate::app::navigate;
 use gloo_storage::{LocalStorage, Storage};
 use leptos::{html::Input, *};
 use leptos_router::ActionForm;
+use super::*;
 
 #[component]
 pub fn LoginPage() -> impl IntoView {
-    let action = create_server_action::<crate::app::LoginUser>();
+    let action = create_server_action::<api::LoginUser>();
 
     let message = create_rw_signal(None::<String>);
     let border_style = move || {
@@ -20,7 +21,7 @@ pub fn LoginPage() -> impl IntoView {
     create_effect(move |_| {
         if let Some(login) = action.value().get().and_then(|v| v.ok()) {
             if LocalStorage::set("user_session", login.clone()).is_ok() {
-                expect_context::<RwSignal<Option<SessionUser>>>().set(Some(login));
+                expect_context::<RwSignal<UserSession>>().set(login);
                 crate::app::navigate("/")
             }
         } else if let Some(Err(err)) = action.value().get() {
