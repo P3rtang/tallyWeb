@@ -1,5 +1,5 @@
 #![allow(unused_braces)]
-use components::{LoadingScreen, Message, SavingMessage, ScreenLayout, Slider};
+use components::{LoadingScreen, Message, SavingMessage, SidebarStyle, Slider};
 use leptos::*;
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
@@ -9,7 +9,7 @@ use super::*;
 #[component]
 pub fn PreferencesWindow<F>(layout: F) -> impl IntoView
 where
-    F: Fn() -> ScreenLayout + Copy + 'static,
+    F: Fn() -> SidebarStyle + Copy + 'static,
 {
     let preferences = expect_context::<RwSignal<Preferences>>();
     let message = expect_context::<Message>();

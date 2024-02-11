@@ -40,7 +40,7 @@ pub fn App() -> impl IntoView {
         close_overlay_signal.update(|_| ());
     };
 
-    let screen_layout = create_rw_signal(ScreenLayout::Big);
+    let screen_layout = create_rw_signal(SidebarStyle::Landscape);
     let show_sidebar = create_rw_signal(ShowSidebar(true));
 
     provide_context(screen_layout);
@@ -53,19 +53,15 @@ pub fn App() -> impl IntoView {
             .and_then(|v| v.as_f64())
         {
             if width < 600.0 {
-                screen_layout.set(ScreenLayout::Narrow)
+                screen_layout.set(SidebarStyle::Portrait)
             } else if width < 1200.0 {
-                screen_layout.set(ScreenLayout::Small)
+                screen_layout.set(SidebarStyle::Hover)
             } else {
-                screen_layout.set(ScreenLayout::Big);
+                screen_layout.set(SidebarStyle::Landscape);
                 show_sidebar.update(|s| s.0 = true);
             }
         }
     };
-
-    let selection = SelectionModel::<uuid::Uuid, ArcCountable>::new();
-    let selection_signal = create_rw_signal(selection);
-    provide_context(selection_signal);
 
     let save_handler = SaveHandlerCountable::new();
     provide_context(save_handler);
@@ -80,8 +76,6 @@ pub fn App() -> impl IntoView {
     //     preferences
     //         .with(|pref| selection_signal.update(|sel| sel.set_multi_select(pref.multi_select)))
     // });
-
-    timer(selection_signal);
 
     create_effect(move |_| {
         handle_resize();
@@ -108,14 +102,22 @@ pub fn App() -> impl IntoView {
                     location.state.with(|_| msg.clear())
                 }}
                 <Routes>
-                    <Route path="" view=|| view! {
+                    <Route path="" ssr=SsrMode::Async view=|| view! {
                         <ProvideSessionSignal>
                             <ProvidePreferences>
-                                <Outlet/>
+                                <ProvideSelectionModel>
+                                    <Outlet/>
+                                </ProvideSelectionModel>
                             </ProvidePreferences>
                         </ProvideSessionSignal>
                     }>
-                        <Route path="/" view=HomePage/>
+                        <Route path="/" view=|| view! {
+                            <Outlet/>
+                            <HomePage/>
+                        }>
+                            <Route path="" view=UnsetCountable/>
+                            <Route path=":key" view=SetCountable/>
+                        </Route>
                         <Route path="/preferences" view=move || view! {
                             <PreferencesWindow layout=screen_layout/>
                         }/>
@@ -160,6 +162,18 @@ fn NotFound() -> impl IntoView {
     view! {
         <h1>"Not Found"</h1>
     }
+}
+
+
+#[component(transparent)]
+fn ProvideSelectionModel(children: Children) -> impl IntoView {
+    let selection = SelectionModel::<uuid::Uuid, ArcCountable>::new();
+    let selection_signal = create_rw_signal(selection);
+    provide_context(selection_signal);
+
+    timer(selection_signal);
+
+    children()
 }
 
 fn timer(selection_signal: SelectionSignal) {
@@ -249,7 +263,7 @@ pub fn HomePage() -> impl IntoView {
     let selection_signal = expect_context::<SelectionSignal>();
     let state = expect_context::<RwSignal<CounterList>>();
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
-    let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
+    let screen_layout = expect_context::<RwSignal<SidebarStyle>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
 
@@ -290,7 +304,7 @@ pub fn HomePage() -> impl IntoView {
             }}
             <div id="HomeGrid">
                 { move || {
-                    if screen_layout() == ScreenLayout::Small {
+                    if screen_layout() == SidebarStyle::Hover {
                         let sel_memo = create_read_slice(selection_signal, |sel| sel.is_empty());
                         sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(*sel)));
                     }
@@ -335,6 +349,10 @@ fn SidebarContent() -> impl IntoView {
             show_separator=show_sep
             selection_model=selection_signal
             selection_color=accent_color
+            on_click=|key: &uuid::Uuid, ev: leptos::ev::MouseEvent| { 
+                ev.stop_propagation();
+                leptos_router::use_navigate()(&key.to_string(), Default::default())
+            }
         />
         <NewCounterButton state_len/>
     }
@@ -453,21 +471,22 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
         .unwrap_or_default();
 
     view! {
-        <div class="row-body" on:contextmenu=on_right_click>
-            <span> { move || countable.get_untracked().map(|c| c.get_name()).unwrap_or_default() } </span>
-            <Show when=move || has_children>
-                <button on:click=click_new_phase>+</button>
+        <A href=move || key().to_string() on:click=|ev| ev.prevent_default()>
+            <div class="row-body" on:contextmenu=on_right_click>
+                <span> { move || countable.get_untracked().map(|c| c.get_name()).unwrap_or_default() } </span>
+                <Show when=move || has_children>
+                    <button on:click=click_new_phase>+</button>
+                </Show>
+            </div>
+            <Show when=move || countable.get_untracked().is_some()>
+                <CountableContextMenu
+                    show_overlay=show_context_menu
+                    location=click_location
+                    key
+                    accent_color
+                />
             </Show>
-
-        </div>
-        <Show when=move || countable.get_untracked().is_some()>
-            <CountableContextMenu
-                show_overlay=show_context_menu
-                location=click_location
-                key
-                accent_color
-            />
-        </Show>
+        </A>
     }
 }
 
@@ -587,4 +606,26 @@ impl From<CounterList> for Vec<SerCounter> {
 
         rtrn_list
     }
+}
+
+#[component]
+fn SetCountable() -> impl IntoView {
+    #[derive(Debug, PartialEq, Params, Clone)]
+    struct Key {
+        key: String
+    }
+
+    let selection = expect_context::<SelectionSignal>();
+
+    create_isomorphic_effect(move |_| {
+        if let Some(key) = use_params::<Key>().get().map(|p| uuid::Uuid::parse_str(&p.key).ok()).ok().flatten() {
+            selection.update(|sel| sel.select(&key));
+        }
+    });
+}
+
+#[component]
+fn UnsetCountable() -> impl IntoView {
+    let selection = expect_context::<SelectionSignal>();
+    selection.update(|sel| sel.clear_selection())
 }

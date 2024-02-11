@@ -6,6 +6,8 @@ use core::fmt::Debug;
 use std::{collections::HashMap, hash::Hash};
 
 use leptos::{ev::MouseEvent, *};
+use leptos_router::A;
+
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SelectionModel<S, T>
@@ -59,6 +61,10 @@ where
 
     pub fn get_node_mut(&mut self, key: &S) -> Option<&mut TreeNode<T, S>> {
         self.items.get_mut(key)
+    }
+
+    pub fn clear_selection(&mut self) {
+        self.selection.clear();
     }
 
     pub fn select(&mut self, key: &S) {
@@ -119,10 +125,11 @@ pub fn TreeViewWidget<T, F, S, FV, IV, EC>(
         SelectionModel<S, T>,
     >,
     #[prop(optional, into)] selection_color: Option<Signal<String>>,
+    #[prop(optional)] on_click: Option<fn(&S, MouseEvent)>,
 ) -> impl IntoView
 where
     T: Clone + PartialEq + 'static + Debug,
-    S: Clone + PartialEq + Eq + Hash + 'static + Debug,
+    S: Clone + PartialEq + Eq + Hash + ToString + Debug + 'static,
     F: Fn() -> Vec<T> + Copy + 'static,
     FV: Fn(S) -> IV + Copy + 'static,
     IV: IntoView,
@@ -149,6 +156,7 @@ where
                         view=view
                         each_child=each_child
                         selection_color
+                        on_click
                     >
                         { view(item.get_key()) }
                     </TreeViewRow>
@@ -175,10 +183,11 @@ fn TreeViewRow<T, S, FV, IV, EC>(
     view: FV,
     selection_model: RwSignal<SelectionModel<S, T>>,
     selection_color: Option<Signal<String>>,
+    on_click: Option<fn(&S, MouseEvent)>,
 ) -> impl IntoView
 where
     T: Clone + PartialEq + 'static + Debug,
-    S: Clone + PartialEq + Eq + Hash + 'static,
+    S: Clone + PartialEq + Eq + Hash + ToString + 'static,
     FV: Fn(S) -> IV + Copy + 'static,
     IV: IntoView,
     EC: Fn(&T) -> Vec<T> + Copy + 'static,
@@ -235,10 +244,13 @@ where
         }
     };
 
-    let on_click = move |_: MouseEvent| set_selected(());
+    let on_row_click = move |ev: MouseEvent| {
+        set_selected(());
+    };
 
-    let on_caret_click = move |e: MouseEvent| {
-        e.stop_propagation();
+    let on_caret_click = move |ev: MouseEvent| {
+        ev.stop_propagation();
+        ev.prevent_default();
         toggle_expand(())
     };
 
@@ -257,23 +269,33 @@ where
             .unwrap_or_default()
     });
 
+    let children = store_value(children);
+
     view! {
     <Show
         when=move || node().is_some()
     >
-    <li>
+    <li style:display="block">
         <div
             style={ move || { depth_style() + &selection_style() } }
+            style:display="flex"
             class=div_class
-            on:click=on_click
+            on:click=move |ev| {
+                if let Some(f) = on_click {
+                    f(&key_sign(), ev);
+                } else {
+                    on_row_click(ev);
+                }
+            }
         >
             <Show when=move || { node.try_get_untracked().flatten().is_some_and(|c| !each_child(&c.row).is_empty()) }>
-                <span
+                <div
                     class=caret_class
                     style:transform=if is_expanded() { "rotate(90deg)" } else { "" }
                     style:cursor="pointer"
+                    style:font-size="24px"
                     on:click=on_caret_click
-                ></span>
+                />
             </Show>
             { children() }
         </div>
@@ -290,6 +312,7 @@ where
                         each_child=each_child
                         view=view
                         selection_color
+                        on_click=on_click.clone()
                     > {
                         view(key(&item))
                     }</TreeViewRow>

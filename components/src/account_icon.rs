@@ -72,7 +72,7 @@ pub fn AccountOverlay(
         debug_warn!("No `close overlay` signal available");
     }
 
-    let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
+    let screen_layout = expect_context::<RwSignal<SidebarStyle>>();
 
     let border_style = move || {
         accent_color

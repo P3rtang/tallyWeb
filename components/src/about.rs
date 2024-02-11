@@ -9,7 +9,7 @@ pub fn AboutDialog<F>(
     #[prop(optional)] accent_color: Option<Signal<String>>,
 ) -> impl IntoView
 where
-    F: Fn() -> ScreenLayout + Copy + 'static,
+    F: Fn() -> SidebarStyle + Copy + 'static,
 {
     let about_node = create_node_ref::<Dialog>();
     create_effect(move |_| {
@@ -35,9 +35,9 @@ where
     };
 
     let class = move || match layout() {
-        ScreenLayout::Narrow => String::from("overlay"),
-        ScreenLayout::Small => String::from("overlay big"),
-        ScreenLayout::Big => String::from("overlay big"),
+        SidebarStyle::Portrait => String::from("overlay"),
+        SidebarStyle::Hover => String::from("overlay big"),
+        SidebarStyle::Landscape => String::from("overlay big"),
     };
 
     view! {

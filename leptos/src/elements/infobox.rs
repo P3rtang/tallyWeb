@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use chrono::Duration;
-use components::ScreenLayout;
+use components::SidebarStyle;
 use leptos::*;
 use web_sys::MouseEvent;
 use super::*;
@@ -13,10 +13,10 @@ use crate::{
 
 #[component]
 pub fn InfoBox(countable_list: Signal<Vec<ArcCountable>>) -> impl IntoView {
-    let screen_layout = expect_context::<RwSignal<ScreenLayout>>();
+    let screen_layout = expect_context::<RwSignal<SidebarStyle>>();
     let show_multiple = move || countable_list().len() > 1;
-    let show_title = move || !(screen_layout() == ScreenLayout::Narrow || show_multiple());
-    let multi_narrow = move || !(show_multiple() && ScreenLayout::Narrow == screen_layout());
+    let show_title = move || !(screen_layout() == SidebarStyle::Portrait || show_multiple());
+    let multi_narrow = move || !(show_multiple() && SidebarStyle::Portrait == screen_layout());
 
     view! {
         <div id="infobox" style:display=move || if !multi_narrow() { "block" } else { "flex" }>

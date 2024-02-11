@@ -2,30 +2,30 @@ use leptos::*;
 use wasm_bindgen::{prelude::Closure, JsCast};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ScreenLayout {
-    Narrow,
-    Small,
-    Big,
+pub enum SidebarStyle {
+    Portrait,
+    Hover,
+    Landscape,
 }
 
-impl ScreenLayout {
+impl SidebarStyle {
     pub fn get_widget_class(&self) -> &str {
         match self {
-            ScreenLayout::Narrow => "small",
-            ScreenLayout::Small => "small",
-            ScreenLayout::Big => "big",
+            SidebarStyle::Portrait => "small",
+            SidebarStyle::Hover => "small",
+            SidebarStyle::Landscape => "big",
         }
     }
 
     fn get_navbar_style(&self) -> String {
         match self {
-            ScreenLayout::Narrow => {
+            SidebarStyle::Portrait => {
                 "position: fixed; top: 52px;".to_string()
             },
-            ScreenLayout::Small => {
+            SidebarStyle::Hover => {
                 "position: fixed; top: 52px; bottom: 12px; margin: 12px; height: calc(100vh - 80px); border-radius: 21px;".to_string()
             },
-            ScreenLayout::Big => {
+            SidebarStyle::Landscape => {
                 "position: relative; border-right: 1px solid #FFFFFF80;".to_string()
             },
         }
@@ -45,7 +45,7 @@ pub fn Sidebar<F1, F2>(
 ) -> impl IntoView
 where
     F1: Fn() -> ShowSidebar + 'static,
-    F2: Fn() -> ScreenLayout + 'static,
+    F2: Fn() -> SidebarStyle + 'static,
 {
     let sidebar_style = move || {
         layout().get_navbar_style()
@@ -53,14 +53,14 @@ where
             + "width: 100%;"
             + "transition: transform 0.5s, width 0.5s;"
             + "overflow-y: auto;"
-            + if !display().0 && layout() != ScreenLayout::Small {
+            + if !display().0 && layout() != SidebarStyle::Hover {
                 "width: 0px;"
-            } else if !display().0 && layout() == ScreenLayout::Small {
+            } else if !display().0 && layout() == SidebarStyle::Hover {
                 "transform: TranslateX(-120%);"
             } else {
                 ""
             }
-            + &if layout() == ScreenLayout::Small {
+            + &if layout() == SidebarStyle::Hover {
                 format!("border: solid 2px {};", accent_color())
             } else {
                 "".to_string()
