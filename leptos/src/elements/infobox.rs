@@ -1,10 +1,10 @@
 #![allow(non_snake_case)]
 
-use crate::SaveHandler;
 use chrono::Duration;
 use components::ScreenLayout;
 use leptos::*;
 use web_sys::MouseEvent;
+use super::*;
 
 use crate::{
     app::{Progressbar, SelectionSignal},
@@ -75,7 +75,7 @@ fn short_format_time(dur: Duration) -> String {
 }
 
 #[component]
-fn Title(#[prop(into)] key: Signal<String>) -> impl IntoView {
+fn Title(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
     let state = expect_context::<SelectionSignal>();
     let get_name = create_read_slice(state, move |state| {
         state.get(&key()).map(|c| c.get_name()).unwrap_or_default()
@@ -89,7 +89,7 @@ fn Title(#[prop(into)] key: Signal<String>) -> impl IntoView {
 }
 
 #[component]
-fn Count<T, E>(#[prop(into)] key: Signal<String>, expand: E, show_title: T) -> impl IntoView
+fn Count<T, E>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
 where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
@@ -111,8 +111,8 @@ where
         move |state, count| {
             if let Some(c) = state.get(&key()) {
                 c.add_count(count);
-                let save_handler = expect_context::<SaveHandler>();
-                save_handler.add_countable(c.clone());
+                let save_handler = expect_context::<SaveHandlerCountable>();
+                save_handler.add_countable(c.clone().into());
             }
         },
     );
@@ -139,19 +139,20 @@ where
 }
 
 #[component]
-fn Time<T, E>(#[prop(into)] key: Signal<String>, expand: E, show_title: T) -> impl IntoView
+fn Time<T, E>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
 where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
 {
     let state = expect_context::<SelectionSignal>();
+    let user = expect_context::<RwSignal<UserSession>>();
 
     let toggle_paused = create_write_slice(state, move |s, _| {
         if let Some(item) = s.get_mut(&key()) {
             item.set_active(!item.is_active());
-            let save_handler = expect_context::<SaveHandler>();
-            save_handler.add_countable(item.clone());
-            save_handler.save()
+            let save_handler = expect_context::<SaveHandlerCountable>();
+            save_handler.add_countable(item.clone().into());
+            save_handler.save(user.get_untracked())
         }
     });
 
@@ -173,7 +174,7 @@ where
 }
 
 #[component]
-fn Progress<T, E>(#[prop(into)] key: Signal<String>, expand: E, show_title: T) -> impl IntoView
+fn Progress<T, E>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
 where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
@@ -217,7 +218,7 @@ where
 }
 
 #[component]
-fn LastStep<E, T>(#[prop(into)] key: Signal<String>, expand: E, show_title: T) -> impl IntoView
+fn LastStep<E, T>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
 where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
@@ -259,7 +260,7 @@ where
 }
 
 #[component]
-fn AverageStep<E, T>(#[prop(into)] key: Signal<String>, expand: E, show_title: T) -> impl IntoView
+fn AverageStep<E, T>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
 where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,

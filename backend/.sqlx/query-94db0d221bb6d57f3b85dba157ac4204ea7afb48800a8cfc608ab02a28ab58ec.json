@@ -1,12 +1,12 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        update users\n        set password=$2\n        where username=$1\n\n        returning *\n        ",
+  "query": "\n        select \n            users.uuid as uuid,\n            users.username,\n            tokens.uuid as token,\n            users.email\n        from users join auth_tokens as tokens on users.uuid = tokens.user_uuid\n        where username = $1 and tokens.uuid = $2\n        ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
-        "type_info": "Int4"
+        "name": "uuid",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 1,
@@ -15,16 +15,11 @@
       },
       {
         "ordinal": 2,
-        "name": "password",
-        "type_info": "Varchar"
+        "name": "token",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 3,
-        "name": "token",
-        "type_info": "Varchar"
-      },
-      {
-        "ordinal": 4,
         "name": "email",
         "type_info": "Varchar"
       }
@@ -32,16 +27,15 @@
     "parameters": {
       "Left": [
         "Text",
-        "Varchar"
+        "Uuid"
       ]
     },
     "nullable": [
       false,
       false,
       false,
-      true,
       true
     ]
   },
-  "hash": "44f3f06df4db34bcba6c7f8d0df0f2ed5a69369031d6dbd6bd10464b3e80d6f6"
+  "hash": "94db0d221bb6d57f3b85dba157ac4204ea7afb48800a8cfc608ab02a28ab58ec"
 }

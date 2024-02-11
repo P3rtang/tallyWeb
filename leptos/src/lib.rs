@@ -3,10 +3,17 @@
 #![feature(half_open_range_patterns_in_slices)]
 
 pub mod app;
+
+mod session;
+pub(crate) use session::UserSession;
+mod preferences;
+pub(crate) use preferences::Preferences;
+
 mod countable;
-mod elements;
+pub(crate) mod elements;
 mod pages;
-mod saving;
+pub(crate) mod saving;
+pub(crate) mod api;
 
 use countable::*;
 use saving::*;
@@ -32,7 +39,7 @@ cfg_if! {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum AppError {
     #[error("Internal server Error")]
     Internal,
@@ -44,6 +51,20 @@ pub enum AppError {
     Authentication,
     #[error("Failed to lock a Countable Mutex")]
     LockMutex,
+    #[error("Error connecting to db pool\nGot Error: {0}")]
+    DbConnection(String),
+    #[error("User is missing auth_token")]
+    MissingToken,
+    #[error("Error extracting actix web data\nGot Error: {0}")]
+    Extraction(String),
+    #[error("Could not get data from database\nGot Error: {0}")]
+    DatabaseError(String),
+    #[error("Actix web Error")]
+    ActixError(String),
+    #[error("Missing Session cookie")]
+    MissingSession,
+    #[error("Internal error converting to Any type")]
+    AnyConversion,
 }
 
 impl From<gloo_storage::errors::StorageError> for AppError {
@@ -51,3 +72,4 @@ impl From<gloo_storage::errors::StorageError> for AppError {
         Self::SetLocalStorage
     }
 }
+

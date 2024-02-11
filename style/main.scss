@@ -1,4 +1,4 @@
-$body-bg-color-dark: #242424;
+$body-bg-color-dark: #202020;
 $nav-bg-color-dark: #303030;
 $select-color-dark: 8BE9FD;
 $select-color-hover-dark: #8BE9FDCC;
@@ -31,6 +31,7 @@ nav {
     background: #303030;
     align-items: center;
     height: 52px;
+    padding: 0px 8px;
 
     a {
         margin-left: 1em;
@@ -59,7 +60,6 @@ nav {
         border-radius: 2em;
         height: 42px;
         width: 42px;
-        margin-left: 8px;
         cursor: pointer;
 
         &:hover {
@@ -103,6 +103,7 @@ body {
 
 button {
     color: black;
+    border: none;
     background: #666666;
 
     &:hover {
@@ -115,129 +116,118 @@ button {
     height: 100%;
 }
 
-.sidebar {
-    position: relative;
+aside {
+    background: #2A2A2A;
     display: flex;
     flex-flow: column;
-    border-right: 1px solid $border-color-dark;
     scrollbar-width: thin;
     scroll-snap-align: start;
-    height: calc(100% - 52px);
+    height: 100vh;
 
-    .new-counter {
-        border: none;
-        border-radius: 0.5em;
-        margin: 0em 0.75em 0.75em 0.75em;
-        font-size: 1.5rem;
-        min-height: 1.8em;
+    .content {
+        display: flex;
+        flex-flow: column;
+        overflow-x: hidden;
+        min-width: 200px;
+
+        .new-counter {
+            border: none;
+            border-radius: 0.5em;
+            margin: 0em 0.75em 0.75em 0.75em;
+            font-size: 1.5rem;
+            min-height: 1.8em;
+        }
+    }
+}
+
+.treeview {
+    padding: 8px;
+    padding-top: 12px;
+
+    li {
+        display: grid;
     }
 
-    .treeview {
-        padding: 8px;
-        padding-top: 12px;
+    hr {
+        border: 1px solid $interactable-bg-color-dark;
+        margin: 6px;
+    }
 
-        li {
-            display: grid;
-        }
+    ul {
+        padding: 0px;
+        margin: 0px;
+    }
 
-        hr {
-            border: 1px solid $interactable-bg-color-dark;
-            margin: 6px;
-        }
+    & > span {
+        margin: 0px;
+        padding: 0px;
+        display: flex;
+    }
 
-        ul {
-            padding: 0px;
-            margin: 0px;
-        }
+    .row {
+        color: white;
+        font-size: 1.4rem;
+        border-radius: 1.2rem;
+        cursor: default;
+        display: flex;
+        align-items: center;
+        padding: 2px;
 
-        & > span {
-            margin: 0px;
-            padding: 0px;
-            display: flex;
-        }
+        margin: 3px;
+        min-height: 1.6em;
 
-        .row {
-            color: white;
-            font-size: 1.4rem;
-            border-radius: 0.75em;
-            cursor: default;
-            display: flex;
-            min-width: 10em;
-            padding: 2px;
-            margin-top: 2px;
-            margin-bottom: 2px;
-            min-height: 1.6em;
-
-            &.selected {
-                color: black !important;
-
-                &:hover {
-                    color: black;
-                    // opacity: 0.85;
-                    // background: $select-color-hover-dark;
-                }
-            }
-        }
-
-        .row-body {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            button {
-                height: 36px;
-                width: 36px;
-                font-size: 1.4rem;
-                border-radius: 16px;
-                border: 0px;
-                align-content: center;
-                align-items: center;
-                display: flex;
-                justify-content: center;
-            }
-        }
-
-        .selectable {
-            &:hover {
-                background: #333333;
-            }
+        &.selected {
+            color: black;
         }
 
         .caret {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            padding-right: .4em;
-            padding-left: .6em;
-        }
+            padding: 0px 12px;
 
-        .caret::before {
-            min-width: 10px;
-            padding: 2px;
-            font-size: 1.4rem;
-            cursor: pointer;
-            user-select: none; /* Prevent text selection */
-        }
-
-        .caret-down::before {
-            transform: rotate(90deg);
-            translate: 2px -2px;
-        }
-
-        .nested {
-            display: none;
-            .caret {
-                padding-left: 0em;
+            &::before {
+                height: 100%;
             }
         }
+    }
 
-        .active {
-            display: block;
-        }
+    .row-body {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
 
-        .indent {
-            width: 40px;
+        button {
+            height: 36px;
+            width: 36px;
+            font-size: 1.1rem;
+            border-radius: 1.1rem;
+            border: 0px;
+            align-content: center;
+            align-items: center;
+            display: flex;
+            justify-content: center;
         }
+    }
+
+    .selectable {
+        &:hover {
+            background: #363636;
+        }
+    }
+
+
+    .nested {
+        display: none;
+        .caret {
+            padding-left: 0em;
+        }
+    }
+
+    .active {
+        display: block;
+    }
+
+    .indent {
+        width: 40px;
     }
 }
 
@@ -338,7 +328,6 @@ ul {
     font-size: 36px;
     color: white;
     white-space: nowrap;
-    width: 100%;
 
     p {
         padding: 0px;
@@ -421,7 +410,7 @@ ul {
 }
 
 form {
-    height: 100%;
+    height: calc(100% - 52px);
     display: flex;
     justify-content: center;
     text-align: center;
@@ -595,7 +584,7 @@ dialog:open {
     font-size: 1.8rem;
     height: 42px;
     width: 42px;
-    margin-right: 12px;
+    margin-right: 4px;
     border-radius: 48px;
     user-select: none;
 
@@ -610,7 +599,7 @@ dialog:open {
     top: 52px;
     z-index: 1;
 
-    margin: 16px;
+    margin: 12px;
     padding: 16px;
     width: 16rem;
 
@@ -874,9 +863,11 @@ input:checked + .slider:before {
 }
 
 #sort-search {
-    padding: 8px 8px 0px 8px;
+    // padding: 8px 8px 0px 8px;
     height: 2.4rem;
     display: flex;
+    justify-items: space-between;
+    width: 100%;
 
     #search {
         flex-grow: 1;
@@ -908,6 +899,7 @@ input:checked + .slider:before {
         font-size: 1.1em;
         height: 2.25rem;
         background: transparent;
+        margin-left: auto;
     }
 
     #sort {

@@ -2,18 +2,15 @@ use pbkdf2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Pbkdf2,
 };
-use sqlx::{query_as, PgPool};
+use sqlx::*;
 
-use crate::{
-    AuthorizationError, ChangeUserError, DatabaseError, DbUser, LoginError, SignupError,
-    TokenStatus,
-};
+use super::*;
 
 pub async fn insert_user(
     pool: &PgPool,
     username: String,
     password: String,
-) -> Result<DbUser, SignupError> {
+) -> Result<DbUser, BackendError> {
     // generate salt
     let salt = SaltString::generate(&mut OsRng);
     let params = pbkdf2::Params {
@@ -28,41 +25,85 @@ pub async fn insert_user(
         .unwrap()
         .to_string();
 
-    let mut user = match query_as!(
-        DbUser,
+    match query!(
         r#"
         insert into users (username, password)
         values ($1, $2)
-        returning *
         "#,
         username,
         hashed_password,
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await
     {
-        Ok(user) => user,
+        Ok(_) => {}
         Err(sqlx::Error::Database(error)) if error.constraint() == Some("users_username_key") => {
-            return Err(SignupError::UserExists);
+            return Err(BackendError::UserExists);
         }
-        Err(err) => return Err(SignupError::Internal(err)),
+        Err(err) => return Err(err)?,
     };
 
-    user.new_token(pool, None).await?;
+    let token = new_token(pool, &username, &password).await?;
+    let user = get_user(pool, &username, token.uuid).await?;
 
     Ok(user)
+}
+
+async fn new_token(
+    pool: &PgPool,
+    username: &str,
+    password: &str,
+) -> Result<DbAuthToken, BackendError> {
+    struct UserId {
+        uuid: uuid::Uuid,
+    }
+
+    let token_uuid = uuid::Uuid::new_v4();
+
+    check_pass(pool, username, password).await?;
+
+    let id = query_as!(
+        UserId,
+        r#"
+        select uuid from users
+        where username = $1
+        "#,
+        username,
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|_| BackendError::InvalidSecrets)?;
+
+    let token = query_as!(
+        DbAuthToken,
+        r#"
+        insert into auth_tokens (uuid, user_uuid)
+        values ($1, $2)
+
+        returning *
+        "#,
+        token_uuid,
+        id.uuid,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(token)
 }
 
 pub async fn login_user(
     pool: &PgPool,
     username: String,
     password: String,
-    remember: bool,
-) -> Result<DbUser, impl DatabaseError> {
-    let mut user = match query_as!(
-        DbUser,
+) -> Result<DbUser, BackendError> {
+    struct PassUser {
+        password: String,
+    }
+
+    let pass = match query_as!(
+        PassUser,
         r#"
-        select * from users
+        select users.password from users
         where username = $1
         "#,
         username,
@@ -71,26 +112,18 @@ pub async fn login_user(
     .await
     {
         Ok(user) => user,
-        Err(_) => return Err(LoginError::InvalidUsername),
+        Err(_) => return Err(BackendError::InvalidUsername),
     };
 
-    let parsed_hash = PasswordHash::new(&user.password).unwrap();
+    let parsed_hash = PasswordHash::new(&pass.password).unwrap();
     // Trait objects for algorithms to support
     let algs: &[&dyn PasswordVerifier] = &[&Pbkdf2];
-    if let Err(_err) = parsed_hash.verify_password(algs, password) {
-        return Err(LoginError::InvalidPassword);
+    if let Err(_err) = parsed_hash.verify_password(algs, &password) {
+        return Err(BackendError::InvalidPassword);
     };
 
-    let dur = if remember {
-        Some(chrono::Duration::days(30))
-    } else {
-        None
-    };
-
-    user.new_token(pool, dur).await.map_err(|err| {
-        println!("{err}");
-        err
-    })?;
+    let token = new_token(pool, &username, &password).await?;
+    let user = get_user(pool, &username, token.uuid).await?;
 
     Ok(user)
 }
@@ -100,11 +133,15 @@ pub async fn change_password(
     username: String,
     old_pass: String,
     new_pass: String,
-) -> Result<DbUser, impl DatabaseError> {
+) -> Result<(), impl DatabaseError> {
+    struct PassUser {
+        password: String,
+    }
+
     let user = match query_as!(
-        DbUser,
+        PassUser,
         r#"
-        select * from users
+        select users.password from users
         where username = $1
         "#,
         username,
@@ -113,14 +150,14 @@ pub async fn change_password(
     .await
     {
         Ok(user) => user,
-        Err(_) => return Err(LoginError::InvalidUsername),
+        Err(_) => return Err(AuthorizationError::InvalidUsername),
     };
 
     let parsed_hash = PasswordHash::new(&user.password).unwrap();
     // Trait objects for algorithms to support
     let algs: &[&dyn PasswordVerifier] = &[&Pbkdf2];
     if let Err(_err) = parsed_hash.verify_password(algs, &old_pass) {
-        return Err(LoginError::InvalidPassword);
+        return Err(AuthorizationError::InvalidPassword);
     };
 
     // generate salt
@@ -137,14 +174,11 @@ pub async fn change_password(
         .unwrap()
         .to_string();
 
-    let user = match query_as!(
-        DbUser,
+    match query!(
         r#"
         update users
         set password=$2
         where username=$1
-
-        returning *
         "#,
         username,
         hashed_password,
@@ -152,12 +186,12 @@ pub async fn change_password(
     .fetch_one(pool)
     .await
     {
-        Ok(user) => user,
-        Err(sqlx::Error::RowNotFound) => return Err(LoginError::InvalidPassword),
-        Err(err) => Err(err)?,
+        Ok(_) => {}
+        Err(sqlx::Error::RowNotFound) => return Err(AuthorizationError::InvalidPassword)?,
+        Err(err) => Err(AuthorizationError::Internal(err.to_string()))?,
     };
 
-    Ok(user)
+    Ok(())
 }
 
 pub async fn change_username(
@@ -165,30 +199,40 @@ pub async fn change_username(
     old_username: String,
     new_username: String,
     password: String,
-) -> Result<DbUser, ChangeUserError> {
+) -> Result<DbUser, BackendError> {
     check_pass(pool, &old_username, &password).await?;
 
-    let user = match query_as!(
-        DbUser,
+    let _ = match query!(
         r#"
         update users
         set username=$2
         where username=$1
-
-        returning *
         "#,
         old_username,
         new_username,
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await
     {
-        Ok(user) => user,
+        Ok(_) => {}
         Err(sqlx::Error::Database(err)) if err.constraint() == Some("users_username_key") => {
-            Err(ChangeUserError::UserExists)?
+            Err(BackendError::UserExists)?
         }
         Err(err) => Err(err)?,
     };
+
+    let user = query_as!(
+        DbUser,
+        r#"
+        select users.uuid, users.username, tokens.uuid as token, users.email
+        from users join auth_tokens as tokens on tokens.user_uuid = users.uuid
+        where users.username = $1 and users.password = $2
+        "#,
+        new_username,
+        password,
+    )
+    .fetch_one(pool)
+    .await?;
 
     Ok(user)
 }
@@ -197,23 +241,27 @@ pub async fn check_pass(
     pool: &PgPool,
     username: &str,
     password: &str,
-) -> Result<(), AuthorizationError> {
-    let user = query_as!(
-        DbUser,
+) -> Result<(), BackendError> {
+    struct Pass {
+        password: String,
+    }
+    let pass = query_as!(
+        Pass,
         r#"
-        select * from users
+        select password from users
         where username = $1
         "#,
         username,
     )
     .fetch_one(pool)
-    .await?;
+    .await
+    .map_err(|_| BackendError::InvalidUsername)?;
 
-    let parsed_hash = PasswordHash::new(&user.password).unwrap();
+    let parsed_hash = PasswordHash::new(&pass.password).unwrap();
     // Trait objects for algorithms to support
     let algs: &[&dyn PasswordVerifier] = &[&Pbkdf2];
     if let Err(_err) = parsed_hash.verify_password(algs, password) {
-        Err(AuthorizationError::InvalidPassword)?;
+        return Err(BackendError::InvalidPassword);
     };
 
     Ok(())
@@ -221,35 +269,34 @@ pub async fn check_pass(
 
 pub async fn get_user(
     pool: &PgPool,
-    username: String,
-    token: String,
-) -> Result<DbUser, AuthorizationError> {
+    username: &str,
+    token: uuid::Uuid,
+) -> Result<DbUser, BackendError> {
     let user = match query_as!(
         DbUser,
         r#"
-        select * from users
-        where username = $1
+        select 
+            users.uuid as uuid,
+            users.username,
+            tokens.uuid as token,
+            users.email
+        from users join auth_tokens as tokens on users.uuid = tokens.user_uuid
+        where username = $1 and tokens.uuid = $2
         "#,
         username,
+        token,
     )
     .fetch_one(pool)
     .await
     {
         Ok(user) => user,
-        Err(sqlx::Error::RowNotFound) => return Err(AuthorizationError::UserNotFound),
+        Err(sqlx::Error::RowNotFound) => return Err(BackendError::UserNotFound),
         Err(err) => Err(err)?,
     };
 
-    if user.token != Some(token) {
-        return Err(AuthorizationError::InvalidToken);
-    }
-
-    match user.token_status(pool).await {
-        TokenStatus::Expired => return Err(AuthorizationError::ExpiredToken),
-        // TODO: add logging for invalid token use, user might be suspicious
-        TokenStatus::Invalid => return Err(AuthorizationError::InvalidToken),
-        TokenStatus::Valid => {}
-    };
-
     Ok(user)
+}
+
+pub async fn check_user(pool: &PgPool, username: &str, token: uuid::Uuid) -> Result<(), BackendError> {
+    get_user(pool, username, token).await.map(|_| ())
 }

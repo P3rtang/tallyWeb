@@ -15,5 +15,6 @@ dotenvy = "0.15.7"
 pbkdf2 = { version = "0.12.2", features = ["password-hash", "simple"] }
 rand = "0.8.5"
 serde = { version = "1.0.188", features = ["derive"] }
-sqlx = { version = "0.7.1", features = ["postgres", "chrono", "runtime-tokio-rustls", "macros"] }
+sqlx = { version = "0.7.1", features = ["postgres", "chrono", "runtime-tokio-rustls", "macros", "uuid"] }
 thiserror = "1.0.48"
+uuid = { version = "1.7.0", features = ["v4", "rng", "fast-rng"] }

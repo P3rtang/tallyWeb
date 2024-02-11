@@ -4,44 +4,16 @@ use components::Message;
 use gloo_storage::{LocalStorage, Storage};
 use leptos::*;
 use leptos_router::A;
-use std::collections::HashMap;
 
-pub type SaveCountableAction = Action<(app::SessionUser, Vec<ArcCountable>), Result<(), AppError>>;
+pub type SaveCountableAction = Action<(UserSession, Vec<ArcCountable>), Result<(), AppError>>;
+pub type SaveHandlerCountable = SaveHandler<RwSignal<ArcCountable>>;
 
-#[derive(Debug, Clone)]
-pub enum ChangeFlag {
-    ChangeCountable(ArcCountable),
-    ChangePreferences(app::Preferences),
-}
-
-#[server(SaveMultiple, "/api")]
-pub async fn save_multiple(
-    username: String,
-    token: String,
-    counters: Vec<SerCounter>,
-    phases: Option<Vec<Phase>>,
-) -> Result<(), ServerFnError> {
-    let pool = backend::create_pool().await?;
-    let phases = phases.unwrap_or_default();
-
-    let user = backend::auth::get_user(&pool, username, token).await?;
-
-    for counter in counters {
-        backend::update_counter(&pool, counter.to_db(user.id).await).await?;
-        for phase in counter.phase_list {
-            backend::update_phase(&pool, user.id, phase.to_db(user.id).await).await?;
-        }
-    }
-
-    for phase in phases {
-        backend::update_phase(&pool, user.id, phase.to_db(user.id).await).await?;
-    }
-
-    Ok(())
+pub trait Savable: Clone {
+    fn endpoint() -> Action<(UserSession, Vec<Self>), Result<(), AppError>> where Self:Sized;
 }
 
 pub async fn save_countables(
-    user: app::SessionUser,
+    user: UserSession,
     countables: Vec<ArcCountable>,
 ) -> Result<(), AppError> {
     let mut counters = Vec::<SerCounter>::new();
@@ -50,7 +22,6 @@ pub async fn save_countables(
         match countable.kind() {
             CountableKind::Counter(_) => {
                 let counter = countable
-                    .0
                     .try_lock()
                     .map_err(|_| AppError::LockMutex)?
                     .as_any()
@@ -63,7 +34,6 @@ pub async fn save_countables(
             }
             CountableKind::Phase(_) => {
                 let phase = countable
-                    .0
                     .try_lock()
                     .map_err(|_| AppError::LockMutex)?
                     .as_any()
@@ -76,13 +46,7 @@ pub async fn save_countables(
         }
     }
 
-    if let Err(err) = save_multiple(
-        user.username.clone(),
-        user.token.clone(),
-        counters,
-        Some(phases),
-    )
-    .await
+    if let Err(err) = api::save_multiple(user, Some(counters), Some(phases)).await
     {
         return match err {
             ServerFnError::Request(_) => Err(AppError::Connection),
@@ -102,61 +66,24 @@ pub fn save_to_browser() -> Result<(), gloo_storage::errors::StorageError> {
 }
 
 #[derive(Clone, Copy)]
-pub struct SaveHandler {
-    data: RwSignal<Vec<ChangeFlag>>,
-    user: Memo<Option<app::SessionUser>>,
-    save_action: SaveCountableAction,
+pub struct SaveHandler<S>
+where
+    S: Savable + Copy + 'static,
+{
+    data: RwSignal<Vec<S>>,
     interval: chrono::Duration,
     is_offline: RwSignal<bool>,
 }
 
-impl SaveHandler {
-    pub fn new(user: Memo<Option<app::SessionUser>>) -> Self {
-        let message = expect_context::<Message>();
-
-        let save_action = create_action(
-            |(user, countables): &(app::SessionUser, Vec<ArcCountable>)| {
-                save_countables(user.clone(), countables.clone())
-            },
-        );
-
-        let is_offline = create_rw_signal(false);
-
-        create_effect(move |_| {
-            save_action.value().with(|v| match v {
-                Some(Ok(_)) if !is_offline() => {
-                    message
-                        .with_timeout(chrono::Duration::seconds(2))
-                        .set_success_view(components::SavingSuccess);
-                    LocalStorage::delete("save_data");
-                }
-                Some(Ok(_)) => {
-                    is_offline.set(false);
-                    message.set_success("Connection Restored");
-                    LocalStorage::delete("save_data");
-                }
-                Some(Err(err)) if !is_offline() => {
-                    let err = *err;
-                    message
-                        .without_timeout()
-                        .set_err_view(move || view! { <SavingError err is_offline/> });
-                }
-                Some(Err(_)) => {
-                    let _ = save_to_browser();
-                }
-                None if save_action.pending().get_untracked() => message
-                    .without_timeout()
-                    .set_msg_view(components::SavingMessage),
-                _ => {}
-            })
-        });
-
+impl<S> SaveHandler<S>
+where
+    S: Savable + Copy + 'static,
+{
+    pub fn new() -> Self {
         Self {
             data: Vec::new().into(),
-            user,
-            save_action,
             interval: chrono::Duration::minutes(2),
-            is_offline,
+            is_offline: false.into(),
         }
     }
 
@@ -168,11 +95,11 @@ impl SaveHandler {
         }
     }
 
-    pub fn init_timer(self) -> Self {
+    pub fn init_timer(self, user: UserSession) -> Self {
         set_interval(
             move || {
                 if !self.data.get_untracked().is_empty() {
-                    self.save()
+                    self.save(user.clone())
                 }
             },
             self.interval.to_std().unwrap(),
@@ -180,32 +107,13 @@ impl SaveHandler {
         self
     }
 
-    pub fn save(&self) {
-        if let Some(user) = self.user.get_untracked() {
-            let mut counters = HashMap::<String, ArcCountable>::new();
-            for change in self.data.get_untracked() {
-                match change {
-                    ChangeFlag::ChangeCountable(c) => {
-                        counters.insert(c.get_uuid(), c.clone());
-                    }
-                    ChangeFlag::ChangePreferences(_) => {}
-                }
-            }
-
-            if !counters.is_empty() {
-                self.save_action
-                    .dispatch((user, counters.values().cloned().collect()));
-            }
-
-            self.data.update(|d| d.clear());
-        } else {
-            let _ = save_to_browser();
-        }
+    pub fn save(&self, user: UserSession) {
+        let data = self.data.get_untracked().into_iter().collect::<Vec<_>>();
+        S::endpoint().dispatch((user, data))
     }
 
-    pub fn add_countable(&self, countable: ArcCountable) {
-        self.data
-            .update(|d| d.push(ChangeFlag::ChangeCountable(countable)))
+    pub fn add_countable(&self, savable: S) {
+        self.data.update(|d| d.push(savable.into()))
     }
 
     pub fn is_offline(&self) -> bool {
@@ -242,18 +150,13 @@ pub fn SavingError(err: AppError, is_offline: RwSignal<bool>) -> impl IntoView {
 pub fn AskOfflineData(data: Vec<SerCounter>) -> impl IntoView {
     let state = expect_context::<RwSignal<app::CounterList>>();
     let message = expect_context::<Message>();
-    let user = expect_context::<Memo<Option<app::SessionUser>>>();
-    let save_handler = expect_context::<SaveHandler>();
+    let user = expect_context::<RwSignal<UserSession>>();
+    let save_handler = expect_context::<SaveHandlerCountable>();
 
     let load_data = move |_| {
         state.update(|list| list.load_offline(data.clone()));
         message.clear();
-
-        if let Some(user) = user() {
-            save_handler
-                .save_action
-                .dispatch((user, state().get_items()))
-        }
+        save_handler.save(user.get_untracked())
     };
 
     let delete = move |_| {

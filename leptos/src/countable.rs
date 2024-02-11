@@ -1,3 +1,4 @@
+use super::*;
 use chrono::Duration;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -6,14 +7,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-#[derive(Debug, thiserror::Error)]
-pub enum CountableError {
-    #[error("Invalid UUID format for countable")]
-    Conversion,
-}
-
 #[derive(Debug, Clone)]
-pub struct ArcCountable(pub Arc<Mutex<Box<dyn Countable>>>);
+pub struct ArcCountable(Arc<Mutex<Box<dyn Countable>>>);
 
 impl ArcCountable {
     pub fn new(countable: Box<dyn Countable>) -> Self {
@@ -24,7 +19,7 @@ impl ArcCountable {
         self.0
             .try_lock()
             .map(|c| c.kind())
-            .unwrap_or(CountableKind::Counter(0))
+            .unwrap_or(CountableKind::Counter(self.get_uuid()))
     }
 
     pub fn is_active(&self) -> bool {
@@ -35,20 +30,24 @@ impl ArcCountable {
         let _ = self.0.try_lock().map(|mut c| c.set_active(set));
     }
 
-    pub fn get_uuid(&self) -> String {
+    pub fn get_uuid(&self) -> uuid::Uuid {
         self.0.try_lock().map(|c| c.get_uuid()).unwrap_or_default()
-    }
-
-    pub fn get_id(&self) -> i32 {
-        self.0.try_lock().map(|c| c.get_id()).unwrap_or_default()
     }
 
     pub fn get_name(&self) -> String {
         self.0.try_lock().map(|c| c.get_name()).unwrap_or_default()
     }
 
+    pub fn set_name(&self, name: String) {
+        let _ = self.0.try_lock().map(|mut c| c.set_name(name));
+    }
+
     pub fn get_count(&self) -> i32 {
         self.0.try_lock().map(|c| c.get_count()).unwrap_or_default()
+    }
+
+    pub fn set_count(&self, count: i32) {
+        let _ = self.0.try_lock().map(|mut c| c.set_count(count));
     }
 
     pub fn add_count(&self, count: i32) {
@@ -104,8 +103,8 @@ impl ArcCountable {
         let _ = self.0.try_lock().map(|mut c| c.set_charm(set));
     }
 
-    pub fn new_phase(&self, id: i32, name: String) -> ArcCountable {
-        let _ = self.0.try_lock().map(|mut c| c.new_phase(id, name));
+    pub fn new_phase(&self, name: String) -> ArcCountable {
+        let _ = self.0.try_lock().map(|mut c| c.new_phase(name));
         self.get_children().last().cloned().unwrap()
     }
 
@@ -141,6 +140,11 @@ impl ArcCountable {
         }
         contains
     }
+
+    pub fn as_any(self) -> Result<Box<dyn core::any::Any + 'static>, AppError> {
+        let c = self.0.try_lock().map_err(|_| AppError::LockMutex)?;
+        return Ok(c.box_any())
+    }
 }
 
 impl PartialEq for ArcCountable {
@@ -157,9 +161,39 @@ impl std::ops::Deref for ArcCountable {
     }
 }
 
+impl TryInto<api::Countable> for ArcCountable {
+    type Error = AppError;
+
+    fn try_into(self) -> Result<api::Countable, Self::Error> {
+        match self.kind() {
+            CountableKind::Counter(_) => {
+                Ok(api::Countable::Counter(self.as_any()?.downcast_ref().cloned().ok_or(AppError::AnyConversion)?))
+            },
+            CountableKind::Phase(_) => {
+                Ok(api::Countable::Phase(self.as_any()?.downcast_ref().cloned().ok_or(AppError::AnyConversion)?))
+            },
+        }
+    }
+}
+
 impl Default for ArcCountable {
     fn default() -> Self {
         Self(Arc::new(Mutex::new(Box::<Counter>::default())))
+    }
+}
+
+impl saving::Savable for leptos::RwSignal<ArcCountable> {
+    fn endpoint() -> leptos::Action<(UserSession, Vec<Self>), Result<(), AppError>> {
+        use leptos::SignalGetUntracked;
+        leptos::create_action(|(user, countables): &(UserSession, Vec<Self>)| {
+            save_countables(
+                user.clone(),
+                countables
+                    .into_iter()
+                    .map(|s| (*s).get_untracked())
+                    .collect(),
+            )
+        })
     }
 }
 
@@ -269,8 +303,7 @@ impl TryFrom<String> for Hunttype {
 }
 
 pub trait Countable: std::fmt::Debug + Send + Any {
-    fn get_id(&self) -> i32;
-    fn get_uuid(&self) -> String;
+    fn get_uuid(&self) -> uuid::Uuid;
     fn kind(&self) -> CountableKind;
 
     fn get_name(&self) -> String;
@@ -299,19 +332,21 @@ pub trait Countable: std::fmt::Debug + Send + Any {
 
     fn created_at(&self) -> chrono::NaiveDateTime;
 
-    fn new_phase(&mut self, id: i32, name: String);
-    fn new_counter(&mut self, id: i32, name: String) -> Option<ArcCountable>;
+    fn new_phase(&mut self, name: String);
+    fn new_counter(&mut self, name: String, owner: uuid::Uuid) -> Option<ArcCountable>;
 
     fn get_phases(&self) -> Vec<&ArcCountable>;
     fn get_phases_mut(&mut self) -> Vec<&mut ArcCountable>;
 
     fn has_children(&self) -> bool;
     fn as_any(&self) -> &dyn Any;
+    fn box_any(&self) -> Box<dyn Any>;
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct SerCounter {
-    pub id: i32,
+    pub uuid: uuid::Uuid,
+    pub owner_uuid: uuid::Uuid,
     pub name: String,
     pub phase_list: Vec<Phase>,
     pub created_at: chrono::NaiveDateTime,
@@ -331,7 +366,8 @@ impl From<Counter> for SerCounter {
             }
         }
         SerCounter {
-            id: value.id,
+            uuid: value.uuid,
+            owner_uuid: value.owner_uuid,
             name: value.name,
             phase_list,
             created_at: value.created_at,
@@ -340,16 +376,12 @@ impl From<Counter> for SerCounter {
 }
 
 impl Countable for SerCounter {
-    fn get_id(&self) -> i32 {
-        self.id
-    }
-
-    fn get_uuid(&self) -> String {
-        format!("c{}", self.id)
+    fn get_uuid(&self) -> uuid::Uuid {
+        self.uuid
     }
 
     fn kind(&self) -> CountableKind {
-        CountableKind::Counter(self.id)
+        CountableKind::Counter(self.uuid)
     }
 
     fn get_name(&self) -> String {
@@ -468,11 +500,11 @@ impl Countable for SerCounter {
         todo!()
     }
 
-    fn new_phase(&mut self, _id: i32, _name: String) {
+    fn new_phase(&mut self, _name: String) {
         todo!()
     }
 
-    fn new_counter(&mut self, _id: i32, _name: String) -> Option<ArcCountable> {
+    fn new_counter(&mut self, _name: String, _owner: uuid::Uuid) -> Option<ArcCountable> {
         todo!()
     }
 
@@ -491,11 +523,16 @@ impl Countable for SerCounter {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn box_any(&self) -> Box<dyn Any> {
+        Box::new(self.clone())
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Counter {
-    pub id: i32,
+    pub uuid: uuid::Uuid,
+    pub owner_uuid: uuid::Uuid,
     pub name: String,
     pub phase_list: Vec<ArcCountable>,
     pub created_at: chrono::NaiveDateTime,
@@ -503,9 +540,10 @@ pub struct Counter {
 
 #[allow(dead_code)]
 impl Counter {
-    pub fn new(id: i32, name: impl ToString) -> Self {
+    pub fn new(name: impl ToString, owner_uuid: uuid::Uuid) -> Self {
         Counter {
-            id,
+            uuid: uuid::Uuid::new_v4(),
+            owner_uuid,
             name: name.to_string(),
             phase_list: Vec::new(),
             created_at: chrono::Utc::now().naive_utc(),
@@ -514,16 +552,12 @@ impl Counter {
 }
 
 impl Countable for Counter {
-    fn get_id(&self) -> i32 {
-        self.id
-    }
-
-    fn get_uuid(&self) -> String {
-        format!("c{}", self.id)
+    fn get_uuid(&self) -> uuid::Uuid {
+        self.uuid
     }
 
     fn kind(&self) -> CountableKind {
-        CountableKind::Counter(self.id)
+        CountableKind::Counter(self.uuid)
     }
 
     fn get_name(&self) -> String {
@@ -642,17 +676,16 @@ impl Countable for Counter {
         self.created_at
     }
 
-    fn new_phase(&mut self, id: i32, name: String) {
+    fn new_phase(&mut self, name: String) {
         self.phase_list.push(ArcCountable::new(Box::new(Phase::new(
-            id,
             name,
-            self.get_hunt_type(),
-            self.has_charm(),
+            self.uuid,
+            self.owner_uuid,
         ))))
     }
 
-    fn new_counter(&mut self, id: i32, name: String) -> Option<ArcCountable> {
-        let arc_counter = ArcCountable::new(Box::new(Counter::new(id, name)));
+    fn new_counter(&mut self, name: String, owner: uuid::Uuid) -> Option<ArcCountable> {
+        let arc_counter = ArcCountable::new(Box::new(Counter::new(name, owner)));
         self.phase_list.push(arc_counter.clone());
         Some(arc_counter)
     }
@@ -672,12 +705,18 @@ impl Countable for Counter {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn box_any(&self) -> Box<dyn Any> {
+        Box::new(self.clone())
+    }
 }
 
 #[serde_with::serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Phase {
-    pub id: i32,
+    pub uuid: uuid::Uuid,
+    pub owner_uuid: uuid::Uuid,
+    pub parent_uuid: uuid::Uuid,
     pub name: String,
     pub count: i32,
     #[serde_as(as = "serde_with::DurationMilliSeconds<i64>")]
@@ -689,31 +728,29 @@ pub struct Phase {
 }
 
 impl Phase {
-    fn new(id: i32, name: impl ToString, hunt_type: Hunttype, has_charm: bool) -> Self {
+    pub fn new(name: impl ToString, parent_uuid: uuid::Uuid, owner_uuid: uuid::Uuid) -> Self {
         Phase {
-            id,
+            uuid: uuid::Uuid::new_v4(),
+            owner_uuid,
+            parent_uuid,
             name: name.to_string(),
             count: 0,
             time: Duration::zero(),
             is_active: false,
-            hunt_type,
-            has_charm,
+            hunt_type: Hunttype::NewOdds,
+            has_charm: false,
             created_at: chrono::Utc::now().naive_utc(),
         }
     }
 }
 
 impl Countable for Phase {
-    fn get_id(&self) -> i32 {
-        self.id
-    }
-
-    fn get_uuid(&self) -> String {
-        format!("p{}", self.id)
+    fn get_uuid(&self) -> uuid::Uuid {
+        self.uuid
     }
 
     fn kind(&self) -> CountableKind {
-        CountableKind::Phase(self.id)
+        CountableKind::Phase(self.uuid)
     }
 
     fn get_name(&self) -> String {
@@ -792,9 +829,9 @@ impl Countable for Phase {
         self.created_at
     }
 
-    fn new_phase(&mut self, _: i32, _: String) {}
+    fn new_phase(&mut self, _: String) {}
 
-    fn new_counter(&mut self, _: i32, _: String) -> Option<ArcCountable> {
+    fn new_counter(&mut self, _: String, _: uuid::Uuid) -> Option<ArcCountable> {
         None
     }
 
@@ -813,40 +850,28 @@ impl Countable for Phase {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn box_any(&self) -> Box<dyn Any> {
+        Box::new(self.clone())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CountableKind {
-    Counter(i32),
-    Phase(i32),
+    Counter(uuid::Uuid),
+    Phase(uuid::Uuid),
 }
 
 impl CountableKind {
-    pub fn id(&self) -> i32 {
+    pub fn uuid(self) -> uuid::Uuid {
         match self {
-            CountableKind::Counter(id) => *id,
-            CountableKind::Phase(id) => *id,
+            CountableKind::Counter(id) => id,
+            CountableKind::Phase(id) => id,
         }
     }
 }
 
-impl TryFrom<String> for CountableKind {
-    type Error = CountableError;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value {
-            v if v.starts_with('c') && v['c'.len_utf8()..].parse::<i32>().is_ok() => Ok(
-                CountableKind::Counter(v['c'.len_utf8()..].parse::<i32>().unwrap()),
-            ),
-            v if v.starts_with('p') && v['p'.len_utf8()..].parse::<i32>().is_ok() => Ok(
-                CountableKind::Phase(v['p'.len_utf8()..].parse::<i32>().unwrap()),
-            ),
-            _ => Err(CountableError::Conversion),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SortCountable {
     Id(bool),
     Name(bool),
@@ -859,34 +884,34 @@ impl SortCountable {
     pub fn sort_by(&self) -> impl Fn(&ArcCountable, &ArcCountable) -> Ordering {
         match self {
             SortCountable::Id(false) => {
-                |a: &ArcCountable, b: &ArcCountable| a.get_id().cmp(&b.get_id())
+                |a: &ArcCountable, b: &ArcCountable| a.get_uuid().cmp(&b.get_uuid())
             }
             SortCountable::Id(true) => {
-                |a: &ArcCountable, b: &ArcCountable| b.get_id().cmp(&a.get_id())
+                |a: &ArcCountable, b: &ArcCountable| a.get_uuid().cmp(&b.get_uuid()).reverse()
             }
             SortCountable::Name(false) => {
                 |a: &ArcCountable, b: &ArcCountable| a.get_name().cmp(&b.get_name())
             }
             SortCountable::Name(true) => {
-                |a: &ArcCountable, b: &ArcCountable| b.get_name().cmp(&a.get_name())
+                |a: &ArcCountable, b: &ArcCountable| a.get_name().cmp(&b.get_name()).reverse()
             }
             SortCountable::Count(false) => {
                 |a: &ArcCountable, b: &ArcCountable| a.get_count().cmp(&b.get_count())
             }
             SortCountable::Count(true) => {
-                |a: &ArcCountable, b: &ArcCountable| b.get_count().cmp(&a.get_count())
+                |a: &ArcCountable, b: &ArcCountable| a.get_count().cmp(&b.get_count()).reverse()
             }
             SortCountable::Time(false) => {
                 |a: &ArcCountable, b: &ArcCountable| a.get_time().cmp(&b.get_time())
             }
             SortCountable::Time(true) => {
-                |a: &ArcCountable, b: &ArcCountable| b.get_time().cmp(&a.get_time())
+                |a: &ArcCountable, b: &ArcCountable| a.get_time().cmp(&b.get_time()).reverse()
             }
             SortCountable::CreatedAt(false) => {
                 |a: &ArcCountable, b: &ArcCountable| a.created_at().cmp(&b.created_at())
             }
             SortCountable::CreatedAt(true) => {
-                |a: &ArcCountable, b: &ArcCountable| b.created_at().cmp(&a.created_at())
+                |a: &ArcCountable, b: &ArcCountable| a.created_at().cmp(&b.created_at()).reverse()
             }
         }
     }
@@ -909,6 +934,11 @@ impl SortCountable {
             SortCountable::Time(b) => *b,
             SortCountable::CreatedAt(b) => *b,
         }
+    }
+
+    pub fn apply(&self, mut list: Vec<ArcCountable>) -> Vec<ArcCountable> {
+        list.sort_by(self.sort_by());
+        return list
     }
 }
 
@@ -939,30 +969,28 @@ impl From<SortCountable> for &str {
 
 cfg_if::cfg_if!(
     if #[cfg(feature = "ssr")] {
-        use crate::app::get_phase_by_id;
         use backend::{DbCounter, DbPhase};
+        use leptos_actix::extract;
+        use actix_web::web;
         impl SerCounter {
-            pub async fn from_db(username: String, token: String, value: DbCounter) -> Self {
-                let mut phase_list = Vec::new();
-                for id in value.phases {
-                    if let Ok(phase) = get_phase_by_id(username.clone(), token.clone(), id).await {
-                        phase_list.push(phase)
-                    }
-                }
+            pub async fn from_db(session: &UserSession, value: DbCounter) -> Result<Self, AppError> {
+                let pool = extract::<web::Data<backend::PgPool>>().await.map_err(|err| AppError::Extraction(err.to_string()))?;
 
-                Self {
-                    id: value.id,
+                let phase_list = backend::get_phases_from_parent_uuid(&pool, session.user_uuid, value.uuid).await.map_err(|err| AppError::DatabaseError(err.to_string()))?.into_iter().map(|p| Phase::from(p)).collect();
+
+                Ok( Self {
+                    uuid: value.uuid,
+                    owner_uuid: value.owner_uuid,
                     name: value.name,
                     phase_list,
                     created_at: value.created_at,
-                }
+                })
             }
-            pub async fn to_db(&self, user_id: i32) -> DbCounter {
+            pub async fn to_db(&self) -> DbCounter {
                 DbCounter {
-                    id: self.id,
-                    user_id,
+                    uuid: self.uuid,
+                    owner_uuid: self.owner_uuid,
                     name: self.name.clone(),
-                    phases: self.phase_list.iter().map(|p| p.id).collect(),
                     created_at: self.created_at,
                 }
             }
@@ -971,7 +999,9 @@ cfg_if::cfg_if!(
         impl From<DbPhase> for Phase {
             fn from(value: DbPhase) -> Self {
                 Self {
-                    id: value.id,
+                    uuid: value.uuid,
+                    owner_uuid: value.owner_uuid,
+                    parent_uuid: value.parent_uuid,
                     name: value.name,
                     count: value.count,
                     time: Duration::milliseconds(value.time),
@@ -984,10 +1014,11 @@ cfg_if::cfg_if!(
         }
 
         impl Phase {
-            pub async fn to_db(self, user_id: i32) -> DbPhase {
+            pub fn to_db(self) -> DbPhase {
                 DbPhase {
-                    id: self.id,
-                    user_id,
+                    uuid: self.uuid,
+                    owner_uuid: self.owner_uuid,
+                    parent_uuid: self.parent_uuid,
                     name: self.name.clone(),
                     count: self.count,
                     time: self.time.num_milliseconds(),

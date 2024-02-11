@@ -1,5 +1,5 @@
 use super::*;
-use components::{LoadingScreen, Message};
+use components::Message;
 use gloo_storage::{LocalStorage, Storage};
 use leptos::*;
 use leptos_router::ActionForm;
@@ -9,11 +9,12 @@ async fn change_username(
     old_username: String,
     password: String,
     new_username: String,
-) -> Result<SessionUser, ServerFnError> {
+) -> Result<UserSession, ServerFnError> {
     let pool = backend::create_pool().await?;
     let user = backend::auth::change_username(&pool, old_username, new_username, password).await?;
 
-    let session_user = SessionUser {
+    let session_user = UserSession {
+        user_uuid: user.uuid,
         username: user.username,
         token: user.token.unwrap(),
     };
@@ -22,8 +23,9 @@ async fn change_username(
 }
 
 #[component]
-pub fn ChangeAccountInfo(user: RwSignal<Option<SessionUser>>) -> impl IntoView {
+pub fn ChangeAccountInfo() -> impl IntoView {
     let message = expect_context::<Message>();
+    let user = expect_context::<RwSignal<UserSession>>();
 
     let action = create_server_action::<ServerChangeAccountInfo>();
 
@@ -32,9 +34,7 @@ pub fn ChangeAccountInfo(user: RwSignal<Option<SessionUser>>) -> impl IntoView {
             if let Some(Ok(session_user)) = action.value()() {
                 message.set_msg("Username succesfully changed");
                 if LocalStorage::set("user_session", session_user.clone()).is_ok() {
-                    expect_context::<RwSignal<Option<SessionUser>>>()
-                        .set(Some(session_user.clone()));
-                    user.set(Some(session_user));
+                    user.set(session_user);
                 }
             } else if let Some(Err(err)) = action.value()() {
                 let err_str = err.to_string();
@@ -45,27 +45,22 @@ pub fn ChangeAccountInfo(user: RwSignal<Option<SessionUser>>) -> impl IntoView {
     };
 
     view! {
-        <Show
-            when=move || user().is_some()
-            fallback=move || view!{ <LoadingScreen/> }
-        >
-            <ActionForm action on:submit=on_submit>
-                <div class="container login-form">
-                    <input type="hidden" name="old_username" value=move || user().unwrap().username/>
-                    <input type="text" name="new_username" placeholder="New Username" value=move || user().unwrap().username/>
-                    <input
-                        type="password"
-                        name="password"
-                        id="password"
-                        placeholder="Password"
-                        required
-                    />
-                    <div class="clearfix action-buttons">
-                        <button type="button" on:click=move |_| { navigate( "/preferences") }><i class="fa-solid fa-xmark"></i></button>
-                        <button type="submit" class="signupbtn"><i class="fa-solid fa-right-to-bracket"></i></button>
-                    </div>
+        <ActionForm action on:submit=on_submit>
+            <div class="container login-form">
+                <input type="hidden" name="old_username" value=move || user().username/>
+                <input type="text" name="new_username" placeholder="New Username" value=move || user().username/>
+                <input
+                    type="password"
+                    name="password"
+                    id="password"
+                    placeholder="Password"
+                    required
+                />
+                <div class="clearfix action-buttons">
+                    <button type="button" on:click=move |_| { navigate( "/preferences") }><i class="fa-solid fa-xmark"></i></button>
+                    <button type="submit" class="signupbtn"><i class="fa-solid fa-right-to-bracket"></i></button>
                 </div>
-            </ActionForm>
-        </Show>
+            </div>
+        </ActionForm>
     }
 }

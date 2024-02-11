@@ -3,11 +3,39 @@ use thiserror::Error;
 
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
-use sqlx::PgPool;
+pub use sqlx::PgPool;
 
 pub mod auth;
 mod types;
 pub use types::*;
+mod counter_data;
+pub use counter_data::*;
+
+#[derive(Debug, thiserror::Error)]
+pub enum BackendError {
+    #[error("Invalid Token")]
+    InvalidToken,
+    #[error("Database Error: {0}")]
+    DatabaseError(#[from] sqlx::error::Error),
+    #[error("Counter data not found")]
+    CounterNotFound,
+    #[error("Not authorized to access data")]
+    Unauthorized,
+    #[error("User data not found")]
+    UserNotFound,
+    #[error("Internal Server Error\nGot Error: {0}")]
+    Internal(String),
+    #[error("Username already exists")]
+    UserExists,
+    #[error("Invalid Username or Password")]
+    InvalidSecrets,
+    #[error("Invalid Password provided")]
+    InvalidPassword,
+    #[error("Invalid Username provided")]
+    InvalidUsername,
+    #[error("Could not find {0} data for user")]
+    DataNotFound(String),
+}
 
 pub trait DatabaseError: Error {}
 
@@ -15,8 +43,10 @@ pub trait DatabaseError: Error {}
 pub enum SignupError {
     #[error("Username already exists")]
     UserExists,
-    #[error("Internal Server error when creating user")]
-    Internal(#[from] sqlx::Error),
+    #[error("Internal Server error when creating user\nGot Error: {0}")]
+    Internal(String),
+    #[error("Failed to generate token for new user")]
+    GenerateToken,
 }
 
 impl DatabaseError for SignupError {}
@@ -39,8 +69,10 @@ pub enum LoginError {
     InvalidUsername,
     #[error("User provided the wrong password")]
     InvalidPassword,
-    #[error("Internal Server error when logging in user")]
-    Internal(#[from] sqlx::Error),
+    #[error("Provided username or password was incorrect")]
+    InvalidSecrets,
+    #[error("Internal Server error when logging in user\nGot Error: {0}")]
+    Internal(String),
 }
 
 impl DatabaseError for LoginError {}
@@ -55,23 +87,13 @@ pub enum AuthorizationError {
     UserNotFound,
     #[error("Provided Password is incorrect")]
     InvalidPassword,
-    #[error("Internal Server error when checking AuthToken")]
-    Internal(#[from] sqlx::Error),
+    #[error("Internal Server error when checking AuthToken\nGot Error: {0}")]
+    Internal(String),
+    #[error("Provide Username is Invalid")]
+    InvalidUsername,
 }
 
 impl DatabaseError for AuthorizationError {}
-
-#[derive(Debug, Error)]
-pub enum DataError {
-    #[error("Uninitialized Data")]
-    Uninitialized,
-    #[error("Unauthorized")]
-    Unauthorized,
-    #[error("Internal Server error when loading data")]
-    Internal(#[from] sqlx::Error),
-}
-
-impl DatabaseError for DataError {}
 
 pub async fn create_pool() -> Result<PgPool, sqlx::error::Error> {
     dotenv().ok();
@@ -102,27 +124,31 @@ pub async fn execute_multi_file(pool: &PgPool, _path: &str) -> Result<(), sqlx::
 
 pub async fn get_counter_by_id(
     pool: &PgPool,
-    user_id: i32,
-    id: i32,
-) -> Result<DbCounter, DataError> {
+    username: &str,
+    token: uuid::Uuid,
+    uuid: uuid::Uuid,
+) -> Result<DbCounter, BackendError> {
+    let user = auth::get_user(pool, username, token).await?;
+
     let counter = match sqlx::query_as!(
         DbCounter,
         r#"
         SELECT * FROM counters
-        WHERE id = $1
+        WHERE uuid = $1 AND owner_uuid = $2
         "#,
-        id,
+        uuid,
+        user.uuid,
     )
     .fetch_one(pool)
     .await
     {
         Ok(counter) => counter,
-        Err(sqlx::Error::RowNotFound) => Err(DataError::Uninitialized)?,
+        Err(sqlx::Error::RowNotFound) => Err(BackendError::CounterNotFound)?,
         Err(err) => Err(err)?,
     };
 
-    if counter.user_id != user_id {
-        Err(DataError::Unauthorized)?;
+    if counter.owner_uuid != user.uuid {
+        Err(BackendError::Unauthorized)?;
     }
 
     Ok(counter)
@@ -130,105 +156,44 @@ pub async fn get_counter_by_id(
 
 pub async fn get_phase_by_id(
     pool: &PgPool,
-    user_id: i32,
-    phase_id: i32,
-) -> Result<DbPhase, sqlx::error::Error> {
-    let phase: DbPhase = sqlx::query_as("SELECT * FROM phases WHERE id = $1 AND user_id = $2")
+    username: &str,
+    token: uuid::Uuid,
+    phase_id: uuid::Uuid,
+) -> Result<DbPhase, BackendError> {
+    let user = auth::get_user(pool, username, token).await?;
+
+    let phase: DbPhase = sqlx::query_as("SELECT * FROM phases WHERE uuid = $1 AND owner_uuid = $2")
         .bind(phase_id)
-        .bind(user_id)
+        .bind(user.uuid)
         .fetch_one(pool)
         .await?;
 
     Ok(phase)
 }
 
-pub async fn create_counter(
-    pool: &PgPool,
-    user_id: i32,
-    name: String,
-) -> Result<i32, sqlx::error::Error> {
-    struct Record {
-        id: i32,
-    }
-    let record = sqlx::query_as!(
-        Record,
-        r#"
-        INSERT INTO counters (user_id, name)
-        VALUES ($1, $2)
-        RETURNING id
-        "#,
-        user_id,
-        name,
-    )
-    .fetch_one(pool)
-    .await?;
-
-    Ok(record.id)
-}
-
-pub async fn create_phase(
-    pool: &PgPool,
-    user_id: i32,
-    name: String,
-    hunt_type: Hunttype,
-) -> Result<i32, sqlx::error::Error> {
-    #[derive(sqlx::FromRow)]
-    struct Id(i32);
-    let id: Id = sqlx::query_as(
-        r#"
-        INSERT INTO phases (user_id, name, count, time, hunt_type)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id
-    "#,
-    )
-    .bind(user_id)
-    .bind(name)
-    .bind(0)
-    .bind(0)
-    .bind(hunt_type)
-    .fetch_one(pool)
-    .await?;
-    Ok(id.0)
-}
-
-pub async fn assign_phase(
-    pool: &PgPool,
-    user_id: i32,
-    counter_id: i32,
-    phase_id: i32,
-) -> Result<(), DataError> {
-    let counter = get_counter_by_id(pool, user_id, counter_id).await?;
-    let mut phases = counter.phases;
-    phases.push(phase_id);
-
-    let _ = sqlx::query!(
-        r#"
-            UPDATE counters
-            SET phases = $2
-            WHERE id = $1
-            "#,
-        counter_id,
-        &phases,
-    )
-    .execute(pool)
-    .await?;
-    Ok(())
-}
-
 pub async fn update_phase(
     pool: &PgPool,
-    user_id: i32,
+    username: &str,
+    token: uuid::Uuid,
     phase: DbPhase,
-) -> Result<(), sqlx::error::Error> {
+) -> Result<(), BackendError> {
+    let _ = auth::get_user(pool, username, token).await?;
     let _ = sqlx::query(
         r#"
-            UPDATE phases
-            SET name = $3, count = $4, time = $5, hunt_type = $6, has_charm = $7
-            WHERE id = $1 AND user_id = $2
-            "#,
+        INSERT INTO phases (uuid, owner_uuid, parent_uuid, name, count, time, hunt_type, has_charm)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+
+        ON CONFLICT (uuid) DO UPDATE
+            SET name      = $4,
+                count     = $5,
+                time      = $6,
+                hunt_type = $7,
+                has_charm = $8
+        "#,
     )
-    .bind(phase.id)
-    .bind(user_id)
+    .bind(phase.uuid)
+    .bind(phase.owner_uuid)
+    .bind(phase.parent_uuid)
     .bind(phase.name)
     .bind(phase.count)
     .bind(phase.time)
@@ -240,17 +205,24 @@ pub async fn update_phase(
     Ok(())
 }
 
-pub async fn update_counter(pool: &PgPool, counter: DbCounter) -> Result<(), sqlx::error::Error> {
+pub async fn update_counter(
+    pool: &PgPool,
+    username: &str,
+    token: uuid::Uuid,
+    counter: DbCounter,
+) -> Result<(), BackendError> {
+    let _ = auth::get_user(pool, username, token).await?;
     sqlx::query!(
         r#"
-        UPDATE counters
-        SET name = $3, phases = $4
-        WHERE id = $1 AND user_id = $2
+        INSERT INTO counters (uuid, owner_uuid, name)
+        VALUES ($1, $2, $3)
+
+        ON CONFLICT (uuid) DO UPDATE
+            SET name = $3
         "#,
-        counter.id,
-        counter.user_id,
+        counter.uuid,
+        counter.owner_uuid,
         counter.name,
-        &counter.phases,
     )
     .execute(pool)
     .await?;
@@ -260,32 +232,30 @@ pub async fn update_counter(pool: &PgPool, counter: DbCounter) -> Result<(), sql
 
 pub async fn remove_counter(
     pool: &PgPool,
-    user_id: i32,
-    counter_id: i32,
-) -> Result<(), sqlx::error::Error> {
-    let counter = sqlx::query_as!(
-        DbCounter,
-        r#"
-        select * from counters
-        where user_id = $1 AND id = $2
-        "#,
-        user_id,
-        counter_id,
-    )
-    .fetch_one(pool)
-    .await?;
-
-    for phase in counter.phases {
-        remove_phase(pool, phase).await?;
-    }
+    username: &str,
+    token: uuid::Uuid,
+    counter_uuid: uuid::Uuid,
+) -> Result<(), BackendError> {
+    let user = auth::get_user(pool, username, token).await?;
 
     sqlx::query!(
         r#"
         delete from counters
-        where user_id = $1 AND id = $2
+        where owner_uuid = $1 AND uuid = $2
         "#,
-        user_id,
-        counter_id,
+        user.uuid,
+        counter_uuid,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query!(
+        r#"
+        DELETE FROM phases
+        WHERE owner_uuid = $1 AND parent_uuid = $2
+        "#,
+        user.uuid,
+        counter_uuid,
     )
     .execute(pool)
     .await?;
@@ -293,27 +263,15 @@ pub async fn remove_counter(
     Ok(())
 }
 
-pub async fn remove_phase(pool: &PgPool, phase_id: i32) -> Result<(), sqlx::error::Error> {
-    let _: DbPhase = sqlx::query_as(
-        r#"
-        delete from phases
-        where id = $1
-        RETURNING *
-        "#,
-    )
-    .bind(phase_id)
-    .fetch_one(pool)
-    .await?;
-
+pub async fn remove_phase(pool: &PgPool, phase_id: uuid::Uuid) -> Result<(), sqlx::error::Error> {
     sqlx::query!(
         r#"
-        UPDATE counters
-        SET phases = array_remove(phases, $1)
-        WHERE $1 = ANY(phases);
+        delete from phases
+        where uuid = $1
         "#,
-        phase_id,
+        phase_id
     )
-    .execute(pool)
+    .fetch_one(pool)
     .await?;
 
     Ok(())

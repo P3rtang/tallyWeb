@@ -9,43 +9,38 @@ pub enum ScreenLayout {
 }
 
 impl ScreenLayout {
-    fn get_position(&self) -> String {
-        let position = match self {
-            ScreenLayout::Narrow => "fixed",
-            ScreenLayout::Small => "fixed",
-            ScreenLayout::Big => "relative",
-        };
-
-        format!("position: {position};")
-    }
-
-    fn get_background(&self) -> String {
-        let background = match self {
-            ScreenLayout::Narrow => "#242424F8",
-            ScreenLayout::Small => "#242424F8",
-            ScreenLayout::Big => "none",
-        };
-
-        format!("background: {background};")
-    }
-
-    pub fn get_class(&self) -> &str {
+    pub fn get_widget_class(&self) -> &str {
         match self {
             ScreenLayout::Narrow => "small",
             ScreenLayout::Small => "small",
             ScreenLayout::Big => "big",
         }
     }
+
+    fn get_navbar_style(&self) -> String {
+        match self {
+            ScreenLayout::Narrow => {
+                "position: fixed; top: 52px;".to_string()
+            },
+            ScreenLayout::Small => {
+                "position: fixed; top: 52px; bottom: 12px; margin: 12px; height: calc(100vh - 80px); border-radius: 21px;".to_string()
+            },
+            ScreenLayout::Big => {
+                "position: relative; border-right: 1px solid #FFFFFF80;".to_string()
+            },
+        }
+    }
 }
+
 
 #[derive(Debug, Clone)]
 pub struct ShowSidebar(pub bool);
 
-#[component]
+#[component(transparent)]
 pub fn Sidebar<F1, F2>(
-    class: &'static str,
     display: F1,
     layout: F2,
+    #[prop(optional, default={ create_signal(String::from("#8BE9FD")).0.into() }, into)] accent_color: Signal<String>,
     children: ChildrenFn,
 ) -> impl IntoView
 where
@@ -53,23 +48,31 @@ where
     F2: Fn() -> ScreenLayout + 'static,
 {
     let sidebar_style = move || {
-        layout().get_position()
-            + if !display().0 {
-                "transform: TranslateX(-25.2em); position: fixed;"
+        layout().get_navbar_style()
+            + "max-width: 25rem;"
+            + "width: 100%;"
+            + "transition: transform 0.5s, width 0.5s;"
+            + "overflow-y: auto;"
+            + if !display().0 && layout() != ScreenLayout::Small {
+                "width: 0px;"
+            } else if !display().0 && layout() == ScreenLayout::Small {
+                "transform: TranslateX(-120%);"
             } else {
                 ""
             }
-            + layout().get_background().as_str()
-            + "max-width: 25rem;"
-            + "width: 100%;"
-            + "transition: 0.35s;"
-            + "overflow-y: auto"
+            + &if layout() == ScreenLayout::Small {
+                format!("border: solid 2px {};", accent_color())
+            } else {
+                "".to_string()
+            }
     };
 
     view! {
-        <div style=sidebar_style class=class>
-            { children() }
-        </div>
+        <aside style=sidebar_style>
+            <div class="content">
+                { children() }
+            </div>
+        </aside>
     }
 }
 
@@ -77,4 +80,15 @@ pub fn connect_on_window_resize(f: Box<dyn FnMut()>) {
     let closure = Closure::wrap(f as Box<dyn FnMut()>);
     leptos_dom::window().set_onresize(Some(closure.as_ref().unchecked_ref()));
     closure.forget();
+}
+
+#[component(transparent)]
+pub fn HoverSidebar(children: ChildrenFn) -> impl IntoView {
+    view! {
+        <aside>
+            <div class="content">
+                { children() }
+            </div>
+        </aside>
+    }
 }
