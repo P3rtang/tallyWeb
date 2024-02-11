@@ -27,7 +27,7 @@ pub fn Navbar() -> impl IntoView {
 
     view! {
         <nav on:click=close_overlays>
-            <button id="toggle-sidebar" on:click=toggle_sidebar>
+            <button id="toggle-sidebar" aria-label="toggle sidebar" on:click=toggle_sidebar>
                 <i class="fa-solid fa-bars"></i>
             </button>
             <A href="/"><img src="/favicon.svg" width=48 height=48 alt="Home" class="tooltip-parent"/>

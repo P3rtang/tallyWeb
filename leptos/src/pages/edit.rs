@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use chrono::Duration;
-use components::{LoadingScreen, Message, SavingMessage, ScreenLayout, Slider};
+use components::{LoadingScreen, Message, SavingMessage, SidebarStyle, Slider};
 use leptos::{
     html::{Input, Select},
     *,
@@ -21,7 +21,7 @@ pub fn EditWindow() -> impl IntoView {
 #[component]
 pub fn EditCounterWindow<F>(layout: F) -> impl IntoView
 where
-    F: Fn() -> ScreenLayout + Copy + 'static,
+    F: Fn() -> SidebarStyle + Copy + 'static,
 {
     let params = use_params::<CountableId>();
 
@@ -65,7 +65,7 @@ fn EditCounterBox<F>(
     key: RwSignal<uuid::Uuid>
 ) -> impl IntoView
 where
-    F: Fn() -> ScreenLayout + Copy + 'static,
+    F: Fn() -> SidebarStyle + Copy + 'static,
 {
     let user = expect_context::<RwSignal<UserSession>>();
     let preferences = expect_context::<RwSignal<Preferences>>();

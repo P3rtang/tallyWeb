@@ -73,22 +73,20 @@ pub fn ProvidePreferences(children: ChildrenFn) -> impl IntoView {
     provide_context(pref_signal);
 
     let pref_rsrc = create_blocking_resource(user, move |user| api::get_user_preferences(user));
-    create_effect(move |_| {
+    create_isomorphic_effect(move |_| {
         pref_rsrc.with(|p| {
             if let Some(Ok(p)) = p {
                 pref_signal.set(p.clone())
-            } else {
-                logging::log!("{:?}", p)
             }
         });
     });
 
     view! {
-        <Transition fallback=move || view!{ <components::LoadingScreen/> }>
+        <Suspense fallback=move || view!{ <components::LoadingScreen/> }>
             {
                 pref_rsrc.track();
                 children()
             }
-        </Transition>
+        </Suspense>
     }
 }

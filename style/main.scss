@@ -12,6 +12,11 @@ $border-color-dark: #FFFFFF80;
     font-family: Roboto, Arial, sans-serif;
 }
 
+a {
+    color: unset;
+    text-decoration: none;
+}
+
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -206,6 +211,11 @@ aside {
             display: flex;
             justify-content: center;
         }
+    }
+
+    a {
+        cursor: default;
+        width: 100%;
     }
 
     .selectable {

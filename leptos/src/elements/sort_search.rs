@@ -63,6 +63,7 @@ where
                 fallback=move || view! {
                     <button
                         id="search-button"
+                        aria-label="search treeview"
                         on:click=move |_| {
                             is_searching.set(true);
                         }
@@ -85,7 +86,7 @@ where
                 </div>
             </Show>
             <div id="sort">
-                <button on:click=reverse_order>
+                <button aria-label="reverse treeview order" on:click=reverse_order>
                     <i class=arrow></i>
                 </button>
                 <select node_ref=select_sort on:change=on_sort>
