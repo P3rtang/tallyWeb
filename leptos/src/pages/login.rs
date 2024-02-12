@@ -6,33 +6,16 @@ use super::*;
 
 #[component]
 pub fn LoginPage() -> impl IntoView {
-    let action = create_server_action::<api::LoginUser>();
-
-    let message = create_rw_signal(None::<String>);
-    let border_style = move || {
-        "color: tomato;
-        border: 2px solid tomato;"
-    };
-
-    if let Some(signal) = use_context::<RwSignal<crate::app::CounterList>>() {
-        signal.update(|l| l.list.clear());
-    }
+    let login_action = create_server_action::<api::LoginUser>();
 
     create_effect(move |_| {
-        if let Some(login) = action.value().get().and_then(|v| v.ok()) {
-            if LocalStorage::set("user_session", login.clone()).is_ok() {
-                expect_context::<RwSignal<UserSession>>().set(login);
-                crate::app::navigate("/")
-            }
-        } else if let Some(Err(err)) = action.value().get() {
-            message.set(err.to_string().split_once(": ").map(|s| s.1.to_string()));
+        if login_action.value().get().is_some_and(|v| v.is_ok()) {
+            let _ = window().location().set_href("/");
         }
     });
 
-    let password_input = create_node_ref::<Input>();
-
     view! {
-        <ActionForm action=action on:submit=|_|()>
+        <ActionForm action=login_action on:submit=|_|()>
             <div class="container login-form">
                 <h1>Login</h1>
                 <label for="username"><b>Username</b></label>
@@ -51,7 +34,6 @@ pub fn LoginPage() -> impl IntoView {
                     name="password"
                     id="password"
                     autocomplete="current-password"
-                    node_ref=password_input
                     required
                 />
 
@@ -65,11 +47,11 @@ pub fn LoginPage() -> impl IntoView {
                 </div>
             </div>
         </ActionForm>
-        <Show
-            when=move || { message().is_some() }
-            fallback=|| ()
-        >
-            <b class="notification-box" style=border_style>{ move || { message().unwrap() } }</b>
-        </Show>
+        // <Show
+        //     when=move || { message().is_some() }
+        //     fallback=|| ()
+        // >
+        //     <b class="notification-box" style=border_style>{ move || { message().unwrap() } }</b>
+        // </Show>
     }
 }

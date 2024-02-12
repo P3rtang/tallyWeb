@@ -8,7 +8,7 @@ use leptos_router::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use super::{*, elements::*, pages::*, session::*, preferences::ProvidePreferences};
+use super::{elements::*, pages::*, preferences::ProvidePreferences, session::*, *};
 
 pub const LEPTOS_OUTPUT_NAME: &str = env!("LEPTOS_OUTPUT_NAME");
 
@@ -128,12 +128,12 @@ pub fn App() -> impl IntoView {
                             }/>
                         </Route>
 
-                        <Route path="/login" view=LoginPage/>
                         <Route path="/create-account" view=CreateAccount/>
                         <Route path="/change-username" view=move || view!{ <ChangeAccountInfo/> }/>
                         <Route path="/change-password" view=NewPassword/>
                         <Route path="/privacy-policy" view=PrivacyPolicy/>
                     </Route>
+                    <Route path="/login" view=LoginPage/>
                     <Route path="/*any" view=NotFound/>
                 </Routes>
             </main>
@@ -163,7 +163,6 @@ fn NotFound() -> impl IntoView {
         <h1>"Not Found"</h1>
     }
 }
-
 
 #[component(transparent)]
 fn ProvideSelectionModel(children: Children) -> impl IntoView {
@@ -228,7 +227,11 @@ pub fn navigate(page: impl ToString) {
 }
 
 #[allow(dead_code)]
-fn connect_keys(model: SelectionSignal, save_handler: SaveHandlerCountable, user: RwSignal<UserSession>) {
+fn connect_keys(
+    model: SelectionSignal,
+    save_handler: SaveHandlerCountable,
+    user: RwSignal<UserSession>,
+) {
     window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
         "Equal" => model.update(|m| {
             m.selection_mut().into_iter().for_each(|c| {
@@ -349,7 +352,7 @@ fn SidebarContent() -> impl IntoView {
             show_separator=show_sep
             selection_model=selection_signal
             selection_color=accent_color
-            on_click=|key: &uuid::Uuid, ev: leptos::ev::MouseEvent| { 
+            on_click=|key: &uuid::Uuid, ev: leptos::ev::MouseEvent| {
                 ev.stop_propagation();
                 leptos_router::use_navigate()(&key.to_string(), Default::default())
             }
@@ -447,7 +450,9 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
                 if let Some(countable) = countable.get_untracked() {
                     let user = user.get_untracked();
                     let new_phase = Phase::new(name, countable.get_uuid(), user.user_uuid);
-                    api::update_phase(user, new_phase).await.expect("Could not create Phase");
+                    api::update_phase(user, new_phase)
+                        .await
+                        .expect("Could not create Phase");
                 }
 
                 data_resource.refetch();
@@ -612,13 +617,18 @@ impl From<CounterList> for Vec<SerCounter> {
 fn SetCountable() -> impl IntoView {
     #[derive(Debug, PartialEq, Params, Clone)]
     struct Key {
-        key: String
+        key: String,
     }
 
     let selection = expect_context::<SelectionSignal>();
 
     create_isomorphic_effect(move |_| {
-        if let Some(key) = use_params::<Key>().get().map(|p| uuid::Uuid::parse_str(&p.key).ok()).ok().flatten() {
+        if let Some(key) = use_params::<Key>()
+            .get()
+            .map(|p| uuid::Uuid::parse_str(&p.key).ok())
+            .ok()
+            .flatten()
+        {
             selection.update(|sel| sel.select(&key));
         }
     });
