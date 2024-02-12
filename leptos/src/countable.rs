@@ -141,9 +141,9 @@ impl ArcCountable {
         contains
     }
 
-    pub fn as_any(self) -> Result<Box<dyn core::any::Any + 'static>, AppError> {
+    pub fn as_any(&self) -> Result<Box<dyn core::any::Any + 'static>, AppError> {
         let c = self.0.try_lock().map_err(|_| AppError::LockMutex)?;
-        return Ok(c.box_any());
+        Ok(c.box_any())
     }
 }
 
@@ -194,10 +194,7 @@ impl saving::Savable for leptos::RwSignal<ArcCountable> {
         leptos::create_action(|(user, countables): &(UserSession, Vec<Self>)| {
             save_countables(
                 user.clone(),
-                countables
-                    .into_iter()
-                    .map(|s| (*s).get_untracked())
-                    .collect(),
+                countables.iter().map(|s| (*s).get_untracked()).collect(),
             )
         })
     }
@@ -944,7 +941,7 @@ impl SortCountable {
 
     pub fn apply(&self, mut list: Vec<ArcCountable>) -> Vec<ArcCountable> {
         list.sort_by(self.sort_by());
-        return list;
+        list
     }
 }
 

@@ -6,7 +6,6 @@ use std::thread;
 
 use leptos::*;
 use tally_web::*;
-use tokio;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "ssr")] {

@@ -13,9 +13,9 @@ pub enum Countable {
     Phase(Phase),
 }
 
-impl Into<ArcCountable> for Countable {
-    fn into(self) -> ArcCountable {
-        match self {
+impl From<Countable> for ArcCountable {
+    fn from(val: Countable) -> Self {
+        match val {
             Countable::Counter(c) => ArcCountable::new(Box::new(c)),
             Countable::Phase(p) => ArcCountable::new(Box::new(p)),
         }

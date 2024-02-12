@@ -446,7 +446,7 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
 
     let has_children = countable
         .get_untracked()
-        .map(|c| c.get_children().len() > 0)
+        .map(|c| !c.get_children().is_empty())
         .unwrap_or_default();
 
     view! {

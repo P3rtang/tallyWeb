@@ -43,8 +43,8 @@ pub async fn insert_user(
         Err(err) => return Err(err)?,
     };
 
-    let token = new_token(pool, &username, &password).await?;
-    let user = get_user(pool, &username, token.uuid).await?;
+    let token = new_token(pool, username, password).await?;
+    let user = get_user(pool, username, token.uuid).await?;
 
     Ok(user)
 }

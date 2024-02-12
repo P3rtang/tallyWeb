@@ -298,7 +298,7 @@ where
                 <ul style:display=if is_expanded() { "block" } else { "none" }>
                     <For
                         each=node_children
-                        key=move |c| key(&c)
+                        key=key
                         children=move |item| {
                             view! {
                                 <TreeViewRow
@@ -308,7 +308,7 @@ where
                                     each_child=each_child
                                     view=view
                                     selection_color
-                                    on_click=on_click.clone()
+                                    on_click
                                 >
                                     {view(key(&item))}
                                 </TreeViewRow>

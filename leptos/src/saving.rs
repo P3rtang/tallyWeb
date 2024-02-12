@@ -114,7 +114,7 @@ where
     }
 
     pub fn add_countable(&self, savable: S) {
-        self.data.update(|d| d.push(savable.into()))
+        self.data.update(|d| d.push(savable))
     }
 
     pub fn is_offline(&self) -> bool {
