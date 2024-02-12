@@ -57,14 +57,10 @@ where {
     };
 
     view! {
-        <Show
-            when=move || { show_overlay.get() }
-            fallback=|| ()
-        >
-            <div
-                class="overlay"
-                style={ border_style() + &location_style() }
-            >{ children() }</div>
+        <Show when=move || { show_overlay.get() } fallback=|| ()>
+            <div class="overlay" style=border_style() + &location_style()>
+                {children()}
+            </div>
         </Show>
     }
 }

@@ -271,7 +271,7 @@ pub async fn remove_phase(pool: &PgPool, phase_id: uuid::Uuid) -> Result<(), sql
         "#,
         phase_id
     )
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
     Ok(())

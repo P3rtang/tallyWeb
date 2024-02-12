@@ -1,5 +1,5 @@
 use leptos::*;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use super::*;
 
@@ -67,13 +67,13 @@ impl Preferences {
 }
 
 #[component(transparent)]
-pub fn ProvidePreferences(children: ChildrenFn) -> impl IntoView {
+pub fn ProvidePreferences() -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
     let pref_signal = create_rw_signal(Preferences::new(&user.get_untracked()));
     provide_context(pref_signal);
 
     let pref_rsrc = create_blocking_resource(user, move |user| api::get_user_preferences(user));
-    create_isomorphic_effect(move |_| {
+    let pref_rsrc_memo = create_memo(move |_| {
         pref_rsrc.with(|p| {
             if let Some(Ok(p)) = p {
                 pref_signal.set(p.clone())
@@ -81,12 +81,15 @@ pub fn ProvidePreferences(children: ChildrenFn) -> impl IntoView {
         });
     });
 
+    create_isomorphic_effect(move |_| pref_rsrc_memo.track());
+
     view! {
-        <Suspense fallback=move || view!{ <components::LoadingScreen/> }>
+        <Transition fallback=move || {
+            view! { <components::LoadingScreen></components::LoadingScreen> }
+        }>
             {
                 pref_rsrc.track();
-                children()
             }
-        </Suspense>
+        </Transition>
     }
 }

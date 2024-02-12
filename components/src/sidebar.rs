@@ -32,7 +32,6 @@ impl SidebarStyle {
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub struct ShowSidebar(pub bool);
 
@@ -40,7 +39,8 @@ pub struct ShowSidebar(pub bool);
 pub fn Sidebar<F1, F2>(
     display: F1,
     layout: F2,
-    #[prop(optional, default={ create_signal(String::from("#8BE9FD")).0.into() }, into)] accent_color: Signal<String>,
+    #[prop(optional, default={ create_signal(String::from("#8BE9FD")).0.into() }, into)]
+    accent_color: Signal<String>,
     children: ChildrenFn,
 ) -> impl IntoView
 where
@@ -69,9 +69,7 @@ where
 
     view! {
         <aside style=sidebar_style>
-            <div class="content">
-                { children() }
-            </div>
+            <div class="content">{children()}</div>
         </aside>
     }
 }
@@ -86,9 +84,7 @@ pub fn connect_on_window_resize(f: Box<dyn FnMut()>) {
 pub fn HoverSidebar(children: ChildrenFn) -> impl IntoView {
     view! {
         <aside>
-            <div class="content">
-                { children() }
-            </div>
+            <div class="content">{children()}</div>
         </aside>
     }
 }

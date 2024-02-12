@@ -1,7 +1,11 @@
 use super::*;
 use sqlx::*;
 
-pub async fn get_phases_from_parent_uuid(pool: &PgPool, owner: uuid::Uuid, parent: uuid::Uuid) -> Result<Vec<DbPhase>, BackendError> {
+pub async fn get_phases_from_parent_uuid(
+    pool: &PgPool,
+    owner: uuid::Uuid,
+    parent: uuid::Uuid,
+) -> Result<Vec<DbPhase>, BackendError> {
     let phases = query_as(
         r#"
         SELECT * FROM phases

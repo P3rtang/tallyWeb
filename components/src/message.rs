@@ -52,7 +52,7 @@ impl Message {
         self.msg.set(Notification::Message(
             self.as_modal,
             msg_lines
-                .map(|l| view! { <b>{ l.to_string() }</b> })
+                .map(|l| view! { <b>{l.to_string()}</b> })
                 .collect_view(),
         ));
         let msg = self.msg;
@@ -85,7 +85,7 @@ impl Message {
         self.msg.set(Notification::Success(
             self.as_modal,
             msg_lines
-                .map(|l| view! { <b>{ l.to_string() }</b> })
+                .map(|l| view! { <b>{l.to_string()}</b> })
                 .collect_view(),
         ));
         let msg = self.msg;
@@ -117,7 +117,7 @@ impl Message {
         let err_msg = err.split_once(": ").map(|s| s.1).unwrap_or(err);
         self.msg.set(Notification::Error(
             self.as_modal,
-            view! { <b>{ err_msg.to_string() }</b> }.into_view(),
+            view! { <b>{err_msg.to_string()}</b> }.into_view(),
         ));
         let msg = self.msg;
         if let Some(reset_time) = self.reset_time {
@@ -135,7 +135,7 @@ impl Message {
         self.msg.set(Notification::Error(
             self.as_modal,
             msg_lines
-                .map(|l| view! { <b>{ l.to_string() }</b> })
+                .map(|l| view! { <b>{l.to_string()}</b> })
                 .collect_view(),
         ));
         let msg = self.msg;
@@ -235,7 +235,7 @@ pub fn MessageBox(msg: Message) -> impl IntoView {
             style=border_style
         >
             <div class="content">
-                { move || { msg.get()().get_view().unwrap_or(view! {}.into_view()) } }
+                {move || { msg.get()().get_view().unwrap_or(view! {}.into_view()) }}
             </div>
         </dialog>
     }

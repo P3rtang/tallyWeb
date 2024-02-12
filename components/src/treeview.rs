@@ -6,8 +6,6 @@ use core::fmt::Debug;
 use std::{collections::HashMap, hash::Hash};
 
 use leptos::{ev::MouseEvent, *};
-use leptos_router::A;
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SelectionModel<S, T>
@@ -144,31 +142,29 @@ where
 
     view! {
         <ul class="treeview">
-        <For
-            each=tree_nodes
-            key=move |c| key(&c.row)
-            children=move |item| {
-                view! {
-                    <TreeViewRow
-                        item=item.row.clone()
-                        key
-                        selection_model=selection_model
-                        view=view
-                        each_child=each_child
-                        selection_color
-                        on_click
-                    >
-                        { view(item.get_key()) }
-                    </TreeViewRow>
-                    <Show
-                        when=show_separator
-                        fallback=|| ()
-                    >
-                        <hr/>
-                    </Show>
+            <For
+                each=tree_nodes
+                key=move |c| key(&c.row)
+                children=move |item| {
+                    view! {
+                        <TreeViewRow
+                            item=item.row.clone()
+                            key
+                            selection_model=selection_model
+                            view=view
+                            each_child=each_child
+                            selection_color
+                            on_click
+                        >
+                            {view(item.get_key())}
+                        </TreeViewRow>
+                        <Show when=show_separator fallback=|| ()>
+                            <hr/>
+                        </Show>
+                    }
                 }
-            }
-        />
+            />
+
         </ul>
     }
     .into_view()
@@ -244,13 +240,12 @@ where
         }
     };
 
-    let on_row_click = move |ev: MouseEvent| {
+    let on_row_click = move |_: MouseEvent| {
         set_selected(());
     };
 
     let on_caret_click = move |ev: MouseEvent| {
         ev.stop_propagation();
-        ev.prevent_default();
         toggle_expand(())
     };
 
@@ -264,64 +259,66 @@ where
     };
 
     let node_children = create_read_slice(selection_model, move |_| {
-        node()
-            .map(|n| each_child(&n.row))
-            .unwrap_or_default()
+        node().map(|n| each_child(&n.row)).unwrap_or_default()
     });
 
     let children = store_value(children);
 
     view! {
-    <Show
-        when=move || node().is_some()
-    >
-    <li style:display="block">
-        <div
-            style={ move || { depth_style() + &selection_style() } }
-            style:display="flex"
-            class=div_class
-            on:click=move |ev| {
-                if let Some(f) = on_click {
-                    f(&key_sign(), ev);
-                } else {
-                    on_row_click(ev);
-                }
-            }
-        >
-            <Show when=move || { node.try_get_untracked().flatten().is_some_and(|c| !each_child(&c.row).is_empty()) }>
+        <Show when=move || node().is_some()>
+            <li style:display="block">
                 <div
-                    class=caret_class
-                    style:transform=if is_expanded() { "rotate(90deg)" } else { "" }
-                    style:cursor="pointer"
-                    style:font-size="24px"
-                    on:click=on_caret_click
-                />
-            </Show>
-            { children() }
-        </div>
-        <ul style:display=if is_expanded() { "block" } else { "none" }>
-        <For
-            each=node_children
-            key=move |c| key(&c)
-            children=move |item| {
-                view! {
-                    <TreeViewRow
-                        key
-                        item=item.clone()
-                        selection_model=selection_model
-                        each_child=each_child
-                        view=view
-                        selection_color
-                        on_click=on_click.clone()
-                    > {
-                        view(key(&item))
-                    }</TreeViewRow>
-                }
-            }
-        />
-        </ul>
-    </li>
-    </Show>
+                    style=move || { depth_style() + &selection_style() }
+                    style:display="flex"
+                    class=div_class
+                    on:click=move |ev| {
+                        if let Some(f) = on_click {
+                            f(&key_sign(), ev);
+                        } else {
+                            on_row_click(ev);
+                        }
+                    }
+                >
+
+                    <Show when=move || {
+                        node.try_get_untracked()
+                            .flatten()
+                            .is_some_and(|c| !each_child(&c.row).is_empty())
+                    }>
+                        <div
+                            class=caret_class
+                            style:transform=if is_expanded() { "rotate(90deg)" } else { "" }
+                            style:cursor="pointer"
+                            style:font-size="24px"
+                            on:click=on_caret_click
+                        ></div>
+                    </Show>
+                    {children()}
+                </div>
+                <ul style:display=if is_expanded() { "block" } else { "none" }>
+                    <For
+                        each=node_children
+                        key=move |c| key(&c)
+                        children=move |item| {
+                            view! {
+                                <TreeViewRow
+                                    key
+                                    item=item.clone()
+                                    selection_model=selection_model
+                                    each_child=each_child
+                                    view=view
+                                    selection_color
+                                    on_click=on_click.clone()
+                                >
+                                    {view(key(&item))}
+                                </TreeViewRow>
+                            }
+                        }
+                    />
+
+                </ul>
+            </li>
+        </Show>
     }
 }
 
@@ -349,7 +346,8 @@ where
         selection_model: RwSignal<SelectionModel<S, T>>,
         depth: usize,
     ) -> Self
-    where EC: Fn(&T) -> Vec<T> + Copy + 'static
+    where
+        EC: Fn(&T) -> Vec<T> + Copy + 'static,
     {
         let this = if let Some(node) = selection_model.get_untracked().items.get(&key(&item)) {
             Self {

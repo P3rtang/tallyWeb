@@ -30,7 +30,7 @@ pub fn slider(
                 prop:checked=checked.0
                 on:change=toggle_checked
             />
-            <span class="slider" style=style/>
+            <span class="slider" style=style></span>
         </label>
     }
 }

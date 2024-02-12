@@ -2,7 +2,7 @@ use super::*;
 use components::Message;
 use gloo_storage::{LocalStorage, Storage};
 use leptos::*;
-use leptos_router::ActionForm;
+use leptos_router::{ActionForm, A};
 
 #[server(ServerChangeAccountInfo, "/api")]
 async fn change_username(
@@ -18,6 +18,8 @@ async fn change_username(
         username: user.username,
         token: user.token.unwrap(),
     };
+
+    leptos_actix::redirect("/preferences");
 
     return Ok(session_user);
 }
@@ -48,7 +50,12 @@ pub fn ChangeAccountInfo() -> impl IntoView {
         <ActionForm action on:submit=on_submit>
             <div class="container login-form">
                 <input type="hidden" name="old_username" value=move || user().username/>
-                <input type="text" name="new_username" placeholder="New Username" value=move || user().username/>
+                <input
+                    type="text"
+                    name="new_username"
+                    placeholder="New Username"
+                    value=move || user().username
+                />
                 <input
                     type="password"
                     name="password"
@@ -57,8 +64,12 @@ pub fn ChangeAccountInfo() -> impl IntoView {
                     required
                 />
                 <div class="clearfix action-buttons">
-                    <button type="button" on:click=move |_| { navigate( "/preferences") }><i class="fa-solid fa-xmark"></i></button>
-                    <button type="submit" class="signupbtn"><i class="fa-solid fa-right-to-bracket"></i></button>
+                    <A href="/preferences">
+                        <i class="fa-solid fa-xmark"></i>
+                    </A>
+                    <button type="submit" class="signupbtn">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                    </button>
                 </div>
             </div>
         </ActionForm>

@@ -47,11 +47,11 @@ where
 
     view! {
         <div id="user-icon" style=button_style on:click=open_overlay>
-            <b>{ move || { initial() }}</b>
+            <b>{move || { initial() }}</b>
         </div>
         <Show
             when=move || accent_color.is_some()
-            fallback=move || view!{ <AccountOverlay show_overlay/> }
+            fallback=move || view! { <AccountOverlay show_overlay/> }
         >
             <AccountOverlay show_overlay accent_color=accent_color.unwrap()/>
         </Show>
@@ -83,11 +83,12 @@ pub fn AccountOverlay(
     let show_about = create_rw_signal(false);
 
     view! {
-        <Show
-            when=show_overlay
-            fallback=|| ()
-        >
-            <div id="account-overlay" style=border_style on:click=move |ev: web_sys::MouseEvent| { ev.stop_propagation() }>
+        <Show when=show_overlay fallback=|| ()>
+            <div
+                id="account-overlay"
+                style=border_style
+                on:click=move |ev: web_sys::MouseEvent| { ev.stop_propagation() }
+            >
                 <AccountOverlayNavigate
                     link="/preferences"
                     fa_icon="fa-solid fa-gear"
@@ -104,12 +105,13 @@ pub fn AccountOverlay(
                     fa_icon="fa-solid fa-right-from-bracket"
                     text="Logout"
                 />
+            // TODO: remove session cookie
             </div>
         </Show>
 
         <Show
             when=move || accent_color.is_some()
-            fallback=move || view!{ <AboutDialog open=show_about layout=screen_layout/> }
+            fallback=move || view! { <AboutDialog open=show_about layout=screen_layout/> }
         >
             <AboutDialog open=show_about layout=screen_layout accent_color=accent_color.unwrap()/>
         </Show>
@@ -130,28 +132,24 @@ where
     view! {
         <button
             class="overlay-button"
-            on:click=move |_| { if close_overlay {
-                if let Some(t) = use_context::<RwSignal<CloseOverlays>>() { t.update(|_| ()) }
-                on_click()
-            }}
+            on:click=move |_| {
+                if close_overlay {
+                    if let Some(t) = use_context::<RwSignal<CloseOverlays>>() {
+                        t.update(|_| ())
+                    }
+                    on_click()
+                }
+            }
         >
-            <Show
-                when=move || fa_icon.is_some()
-                fallback=|| ()
-            >
-                <i class={ fa_icon.unwrap() }></i>
+
+            <Show when=move || fa_icon.is_some() fallback=|| ()>
+                <i class=fa_icon.unwrap()></i>
             </Show>
-            <Show
-                when=move || icon.is_some()
-                fallback=|| ()
-            >
-                <svg src={ icon.unwrap() }></svg>
+            <Show when=move || icon.is_some() fallback=|| ()>
+                <svg src=icon.unwrap()></svg>
             </Show>
-            <Show
-                when=move || text.is_some()
-                fallback=|| ()
-            >
-                <span>{ text.unwrap() }</span>
+            <Show when=move || text.is_some() fallback=|| ()>
+                <span>{text.unwrap()}</span>
             </Show>
         </button>
     }
@@ -167,32 +165,25 @@ pub fn AccountOverlayNavigate(
     #[prop(optional)] text: Option<&'static str>,
 ) -> impl IntoView {
     view! {
-        <A
-            href=link
-            class={ if !show_link { "remove-underline" } else { "" } }
-        >
+        <A href=link class=if !show_link { "remove-underline" } else { "" }>
             <button
                 class="overlay-button"
-                on:click=move |_| { if close_overlay {
-                    if let Some(t) = use_context::<RwSignal<CloseOverlays>>() { t.update(|_| ()) }
-                }}>
-                <Show
-                    when=move || fa_icon.is_some()
-                    fallback=|| ()
-                >
-                    <i class={ fa_icon.unwrap() }></i>
+                on:click=move |_| {
+                    if close_overlay {
+                        if let Some(t) = use_context::<RwSignal<CloseOverlays>>() {
+                            t.update(|_| ())
+                        }
+                    }
+                }
+            >
+                <Show when=move || fa_icon.is_some() fallback=|| ()>
+                    <i class=fa_icon.unwrap()></i>
                 </Show>
-                <Show
-                    when=move || icon.is_some()
-                    fallback=|| ()
-                >
-                    <svg src={ icon.unwrap() }></svg>
+                <Show when=move || icon.is_some() fallback=|| ()>
+                    <svg src=icon.unwrap()></svg>
                 </Show>
-                <Show
-                    when=move || text.is_some()
-                    fallback=|| ()
-                >
-                    <span>{ text.unwrap() }</span>
+                <Show when=move || text.is_some() fallback=|| ()>
+                    <span>{text.unwrap()}</span>
                 </Show>
             </button>
         </A>

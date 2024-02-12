@@ -1,5 +1,5 @@
-use sqlx::{query, query_as, PgPool};
 use super::*;
+use sqlx::{query, query_as, PgPool};
 
 #[derive(Debug, Clone, sqlx::Type)]
 #[sqlx(type_name = "hunttype")]
@@ -81,7 +81,8 @@ impl DbUser {
             self.uuid
         )
         .fetch_all(pool)
-        .await.map_err(|err| AuthorizationError::Internal(err.to_string()))?;
+        .await
+        .map_err(|err| AuthorizationError::Internal(err.to_string()))?;
 
         Ok(data)
     }
@@ -122,14 +123,21 @@ impl DbPreferences {
         .await
         {
             Ok(data) => data,
-            Err(sqlx::Error::RowNotFound) => Err(BackendError::DataNotFound(String::from("preferences")))?,
+            Err(sqlx::Error::RowNotFound) => {
+                Err(BackendError::DataNotFound(String::from("preferences")))?
+            }
             Err(err) => Err(err)?,
         };
 
         Ok(data)
     }
 
-    pub async fn db_set(self, pool: &PgPool, username: &str, token: uuid::Uuid) -> Result<(), BackendError> {
+    pub async fn db_set(
+        self,
+        pool: &PgPool,
+        username: &str,
+        token: uuid::Uuid,
+    ) -> Result<(), BackendError> {
         let user = auth::get_user(pool, username, token).await?;
         query!(
             r#"

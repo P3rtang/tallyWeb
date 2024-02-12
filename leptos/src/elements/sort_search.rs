@@ -53,50 +53,52 @@ where
     });
 
     view! {
-        <Show
-            when=shown
-            fallback=|| ()
-        >
-        <div id="sort-search">
-            <Show
-                when=is_searching
-                fallback=move || view! {
-                    <button
-                        id="search-button"
-                        aria-label="search treeview"
-                        on:click=move |_| {
-                            is_searching.set(true);
+        <Show when=shown fallback=|| ()>
+            <div id="sort-search">
+                <Show
+                    when=is_searching
+                    fallback=move || {
+                        view! {
+                            <button
+                                id="search-button"
+                                aria-label="search treeview"
+                                on:click=move |_| {
+                                    is_searching.set(true);
+                                }
+                            >
+
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                            </button>
                         }
-                    >
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                    </button>
-                }
-            >
-                <div id="search">
-                    <input
-                        id="search-input"
-                        node_ref=search_input
-                        on:keyup=on_search
-                        on:focusout=move |_| {
-                            if search_input().map(|si| si.value() == "").unwrap_or_default() {
-                                is_searching.set(false)
+                    }
+                >
+
+                    <div id="search">
+                        <input
+                            id="search-input"
+                            node_ref=search_input
+                            on:keyup=on_search
+                            on:focusout=move |_| {
+                                if search_input().map(|si| si.value() == "").unwrap_or_default() {
+                                    is_searching.set(false)
+                                }
                             }
-                        }
-                    />
+                        />
+
+                    </div>
+                </Show>
+                <div id="sort">
+                    <button aria-label="reverse treeview order" on:click=reverse_order>
+                        <i class=arrow></i>
+                    </button>
+                    <select node_ref=select_sort on:change=on_sort>
+                        <option value="Name">Name</option>
+                        <option value="Count">Count</option>
+                        <option value="Time">Time</option>
+                        <option value="CreatedAt">Created At</option>
+                    </select>
                 </div>
-            </Show>
-            <div id="sort">
-                <button aria-label="reverse treeview order" on:click=reverse_order>
-                    <i class=arrow></i>
-                </button>
-                <select node_ref=select_sort on:change=on_sort>
-                    <option value="Name">Name</option>
-                    <option value="Count">Count</option>
-                    <option value="Time">Time</option>
-                    <option value="CreatedAt">Created At</option>
-                </select>
             </div>
-        </div>
         </Show>
     }
 }
