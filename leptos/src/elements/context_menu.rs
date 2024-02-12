@@ -2,9 +2,9 @@
 #![allow(non_snake_case)]
 
 use leptos::*;
-use leptos_router::{A, ToHref};
-use web_sys::MouseEvent;
+use leptos_router::{ToHref, A};
 
+use super::*;
 use components::{CloseOverlays, Overlay};
 
 #[component]
@@ -14,47 +14,47 @@ pub fn CountableContextMenu(
     #[prop(into)] key: Signal<uuid::Uuid>,
     #[prop(optional)] accent_color: Option<Signal<String>>,
 ) -> impl IntoView {
-    let on_del_click = move |ev: MouseEvent| {
-        ev.stop_propagation();
-        spawn_local(async move {});
-    };
+    let user = expect_context::<RwSignal<UserSession>>();
+    let state_rsrc = expect_context::<StateResource>();
+    let delete_action = create_server_action::<api::RemoveCountable>();
 
     view! {
-        <Show
-            when=move || accent_color.is_some()
-            fallback=move || view! {
-                <Overlay show_overlay=show_overlay location=location>
-                    <ContextMenuNav href=move || format!("edit/{}", key().to_string())>
-                        <span>Edit</span>
-                    </ContextMenuNav>
-                    <ContextMenuRow on:click=on_del_click>
-                        <span>Delete</span>
-                    </ContextMenuRow>
-                </Overlay>
-            }
-        >
-            <Overlay show_overlay=show_overlay location=location accent_color=accent_color.unwrap()>
-                <ContextMenuNav href=move || format!("edit/{}", key().to_string())>
-                    <span>Edit</span>
-                </ContextMenuNav>
-                <ContextMenuRow on:click=on_del_click>
-                    <span>Delete</span>
-                </ContextMenuRow>
-            </Overlay>
-        </Show>
+        <Overlay show_overlay=show_overlay location=location accent_color=accent_color.unwrap()>
+            <ContextMenuNav href=move || format!("edit/{}", key().to_string())>
+                <span>Edit</span>
+            </ContextMenuNav>
+            // TODO: look further into this actionform not working
+            // <ActionForm action=delete_action>
+            <div
+                class="context-menu-row"
+                type="submit"
+                on:click=move |ev| {
+                    ev.stop_propagation();
+                    ev.prevent_default();
+                    delete_action
+                        .dispatch(api::RemoveCountable {
+                            session: user.get_untracked(),
+                            key: key.get_untracked(),
+                        });
+                    state_rsrc.refetch();
+                }
+            >
+                Delete
+            </div>
+        // </ActionForm>
+        </Overlay>
     }
 }
 
 #[component]
 pub fn ContextMenuRow(children: Children) -> impl IntoView {
-    view! {
-        <div class="context-menu-row">{ children() }</div>
-    }
+    view! { <div class="context-menu-row">{children()}</div> }
 }
 
 #[component]
 pub fn ContextMenuNav<H>(href: H, children: Children) -> impl IntoView
-where H: ToHref + 'static,
+where
+    H: ToHref + 'static,
 {
     let on_click = move |_| {
         if let Some(t) = use_context::<RwSignal<CloseOverlays>>() {
@@ -64,7 +64,7 @@ where H: ToHref + 'static,
 
     view! {
         <A href=href class="remove-underline" on:click=on_click>
-            <div class="context-menu-row">{ children() }</div>
+            <div class="context-menu-row">{children()}</div>
         </A>
     }
 }

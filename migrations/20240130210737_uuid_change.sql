@@ -17,6 +17,10 @@ UPDATE counters
 SET owner_uuid = uuid FROM users
 WHERE users.id = counters.user_id;
 
+-- delete dangling counters
+DELETE FROM counters
+WHERE owner_uuid is null;
+
 -- owner should not be null
 ALTER TABLE counters
 ALTER COLUMN owner_uuid SET NOT NULL;
@@ -36,6 +40,10 @@ owner_uuid UUID;
 UPDATE phases
 SET owner_uuid = uuid FROM users
 WHERE users.id = phases.user_id;
+
+-- delete dangling phases
+DELETE FROM phases
+WHERE owner_uuid is null;
 
 -- owner should not be null
 ALTER TABLE phases
@@ -61,6 +69,10 @@ UPDATE phases
 SET parent_uuid = uuid FROM counters
 WHERE phases.id = ANY (counters.phases);
 
+-- delete dangling phases
+DELETE FROM phases
+WHERE parent_uuid is null;
+
 -- parent uuid should not be null
 ALTER TABLE phases
 ALTER COLUMN parent_uuid SET NOT NULL;
@@ -84,12 +96,20 @@ DROP COLUMN id;
 -- change preference to uuid
 --
 ALTER TABLE preferences
-ADD COLUMN user_uuid UUID PRIMARY KEY;
+ADD COLUMN user_uuid UUID;-- PRIMARY KEY;
 
 -- set the correct user uuid
 UPDATE preferences
 SET user_uuid = uuid FROM users
 WHERE users.id = preferences.user_id;
+
+-- delete dangling preferences
+DELETE FROM preferences
+WHERE user_uuid is null;
+
+-- set user_uuid as primary key
+ALTER TABLE preferences
+ADD PRIMARY KEY (user_uuid);
 
 -- drop the old user_id column
 ALTER TABLE preferences
@@ -104,6 +124,10 @@ ADD COLUMN user_uuid UUID;
 UPDATE auth_tokens
 SET user_uuid = uuid FROM users
 WHERE users.id = auth_tokens.user_id;
+
+-- delete dangling tokens
+DELETE FROM auth_tokens
+WHERE user_uuid is null;
 
 ALTER TABLE auth_tokens
 ALTER COLUMN user_uuid SET NOT NULL;

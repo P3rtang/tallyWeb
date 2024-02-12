@@ -55,7 +55,11 @@ where
             <div class="actionbuttons">
                 <button
                     style=button_style
-                    on:click=move |_| { if let Some(a) = about_node() { a.close() } }
+                    on:click=move |_| {
+                        if let Some(a) = about_node() {
+                            a.close()
+                        }
+                    }
                 >
                     Close
                 </button>

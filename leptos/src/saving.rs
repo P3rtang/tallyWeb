@@ -9,7 +9,9 @@ pub type SaveCountableAction = Action<(UserSession, Vec<ArcCountable>), Result<(
 pub type SaveHandlerCountable = SaveHandler<RwSignal<ArcCountable>>;
 
 pub trait Savable: Clone {
-    fn endpoint() -> Action<(UserSession, Vec<Self>), Result<(), AppError>> where Self:Sized;
+    fn endpoint() -> Action<(UserSession, Vec<Self>), Result<(), AppError>>
+    where
+        Self: Sized;
 }
 
 pub async fn save_countables(
@@ -46,8 +48,7 @@ pub async fn save_countables(
         }
     }
 
-    if let Err(err) = api::save_multiple(user, Some(counters), Some(phases)).await
-    {
+    if let Err(err) = api::save_multiple(user, Some(counters), Some(phases)).await {
         return match err {
             ServerFnError::Request(_) => Err(AppError::Connection),
             ServerFnError::ServerError(_) => Err(AppError::Authentication),
@@ -136,12 +137,12 @@ pub fn SavingError(err: AppError, is_offline: RwSignal<bool>) -> impl IntoView {
     };
 
     view! {
-        <b>{ err.to_string() }</b>
+        <b>{err.to_string()}</b>
         <button on:click=on_offline>Go Offline</button>
-        <Show
-            when=move || err != AppError::Connection
-        >
-            <A href="/login"><button>Login</button></A>
+        <Show when=move || err != AppError::Connection>
+            <A href="/login">
+                <button>Login</button>
+            </A>
         </Show>
     }
 }

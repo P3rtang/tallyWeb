@@ -143,7 +143,7 @@ impl ArcCountable {
 
     pub fn as_any(self) -> Result<Box<dyn core::any::Any + 'static>, AppError> {
         let c = self.0.try_lock().map_err(|_| AppError::LockMutex)?;
-        return Ok(c.box_any())
+        return Ok(c.box_any());
     }
 }
 
@@ -166,12 +166,18 @@ impl TryInto<api::Countable> for ArcCountable {
 
     fn try_into(self) -> Result<api::Countable, Self::Error> {
         match self.kind() {
-            CountableKind::Counter(_) => {
-                Ok(api::Countable::Counter(self.as_any()?.downcast_ref().cloned().ok_or(AppError::AnyConversion)?))
-            },
-            CountableKind::Phase(_) => {
-                Ok(api::Countable::Phase(self.as_any()?.downcast_ref().cloned().ok_or(AppError::AnyConversion)?))
-            },
+            CountableKind::Counter(_) => Ok(api::Countable::Counter(
+                self.as_any()?
+                    .downcast_ref()
+                    .cloned()
+                    .ok_or(AppError::AnyConversion)?,
+            )),
+            CountableKind::Phase(_) => Ok(api::Countable::Phase(
+                self.as_any()?
+                    .downcast_ref()
+                    .cloned()
+                    .ok_or(AppError::AnyConversion)?,
+            )),
         }
     }
 }
@@ -938,7 +944,7 @@ impl SortCountable {
 
     pub fn apply(&self, mut list: Vec<ArcCountable>) -> Vec<ArcCountable> {
         list.sort_by(self.sort_by());
-        return list
+        return list;
     }
 }
 

@@ -9,11 +9,11 @@ pub(crate) use session::UserSession;
 mod preferences;
 pub(crate) use preferences::Preferences;
 
+pub(crate) mod api;
 mod countable;
 pub(crate) mod elements;
 mod pages;
 pub(crate) mod saving;
-pub(crate) mod api;
 
 use countable::*;
 use saving::*;
@@ -72,4 +72,3 @@ impl From<gloo_storage::errors::StorageError> for AppError {
         Self::SetLocalStorage
     }
 }
-

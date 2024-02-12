@@ -13,7 +13,7 @@ use super::*;
 #[component]
 pub fn EditWindow() -> impl IntoView {
     view! {
-        <elements::Navbar/>
+        <elements::Navbar></elements::Navbar>
         <Outlet/>
     }
 }
@@ -25,25 +25,30 @@ where
 {
     let params = use_params::<CountableId>();
 
-    let valid_key = params.get_untracked()
-            .map(|p| uuid::Uuid::parse_str(&p.id).ok())
-            .ok()
-            .flatten();
-
+    let valid_key = params
+        .get_untracked()
+        .map(|p| uuid::Uuid::parse_str(&p.id).ok())
+        .ok()
+        .flatten();
 
     let key = create_rw_signal(
-        params.get_untracked()
+        params
+            .get_untracked()
             .map(|p| uuid::Uuid::parse_str(&p.id).ok())
             .ok()
-            .flatten().unwrap_or_default(),
+            .flatten()
+            .unwrap_or_default(),
     );
 
     create_isomorphic_effect(move |_| {
         params.with(|p| {
-            key.set(p.clone()
-                   .map(|p| uuid::Uuid::parse_str(&p.id).ok())
-                   .ok()
-                   .flatten().unwrap_or_default())
+            key.set(
+                p.clone()
+                    .map(|p| uuid::Uuid::parse_str(&p.id).ok())
+                    .ok()
+                    .flatten()
+                    .unwrap_or_default(),
+            )
         });
     });
 
@@ -60,10 +65,7 @@ struct CountableId {
 }
 
 #[component]
-fn EditCounterBox<F>(
-    layout: F,
-    key: RwSignal<uuid::Uuid>
-) -> impl IntoView
+fn EditCounterBox<F>(layout: F, key: RwSignal<uuid::Uuid>) -> impl IntoView
 where
     F: Fn() -> SidebarStyle + Copy + 'static,
 {
@@ -75,7 +77,6 @@ where
     let counter_rsrc = create_resource(key, move |id| {
         api::get_countable_by_id(session.get_untracked(), id)
     });
-
 
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
     let border_style = move || format!("border: 2px solid {}", accent_color());
@@ -148,7 +149,11 @@ where
         },
     );
 
-    let hunt_type_str = create_read_slice(countable, |c| c.as_ref().map(|c| String::from(c.get_hunt_type())).unwrap_or_default());
+    let hunt_type_str = create_read_slice(countable, |c| {
+        c.as_ref()
+            .map(|c| String::from(c.get_hunt_type()))
+            .unwrap_or_default()
+    });
 
     let has_charm = create_slice(
         countable,
@@ -215,10 +220,7 @@ where
         }
 
         let action = create_action(move |(user, countable): &(UserSession, ArcCountable)| {
-            api::update_countable(
-                user.clone(),
-                countable.clone().try_into().unwrap(),
-            )
+            api::update_countable(user.clone(), countable.clone().try_into().unwrap())
         });
 
         action.dispatch((user(), countable().unwrap()));
@@ -227,7 +229,7 @@ where
             match action.value()() {
                 Some(Ok(_)) => {
                     message.set_msg("Saved succesfully");
-                    navigate("/")
+                    leptos_router::use_navigate()("/", Default::default());
                 }
                 Some(Err(err)) => message.set_server_err(&err.to_string()),
                 _ => {}
@@ -251,17 +253,42 @@ where
     };
 
     view! {
-        <Suspense fallback=move || view!{ <LoadingScreen/> }>
-            { move || { countable.set(counter_rsrc.get().map(|c| c.ok()).flatten().map(|c| c.into())); } }
-
+        <Transition fallback=move || {
+            view! { <LoadingScreen/> }
+        }>
+            {move || {
+                countable.set(counter_rsrc.get().map(|c| c.ok()).flatten().map(|c| c.into()));
+            }}
             <Form action="/" on:submit=on_submit class="parent-form">
-                <div class={ move || String::from("editing-form ") + layout().get_widget_class() } style=border_style>
+                <div
+                    class=move || String::from("editing-form ") + layout().get_widget_class()
+                    style=border_style
+                >
                     <div class="content">
-                        <label for="name" class="title">Name</label>
-                        <input type="text" id="name" node_ref=name_input value=name class="edit" autocomplete="none"/>
-                        <label for="count" class="title">Count</label>
-                        <input type="number" id="count" node_ref=count_input value=count class="edit"/>
-                        <label for="time_hours" class="title">Time</label>
+                        <label for="name" class="title">
+                            Name
+                        </label>
+                        <input
+                            type="text"
+                            id="name"
+                            node_ref=name_input
+                            value=name
+                            class="edit"
+                            autocomplete="none"
+                        />
+                        <label for="count" class="title">
+                            Count
+                        </label>
+                        <input
+                            type="number"
+                            id="count"
+                            node_ref=count_input
+                            value=count
+                            class="edit"
+                        />
+                        <label for="time_hours" class="title">
+                            Time
+                        </label>
                         <span style="display: flex; align-items: center;">
                             <input
                                 type="number"
@@ -272,7 +299,7 @@ where
                                 style="width:
                                 7ch"
                             />
-                            <div style="position: relative; left: -24px;"> H</div>
+                            <div style="position: relative; left: -24px;">H</div>
                             <input
                                 type="number"
                                 id="time_mins"
@@ -282,18 +309,27 @@ where
                                 class="edit"
                                 style="width: 5ch"
                             />
-                            <div style="position: relative; left: -24px;"> M</div>
+                            <div style="position: relative; left: -24px;">M</div>
                         </span>
-                        <label for="hunt_type" class="title">Hunting Method</label>
-                        <select node_ref=hunt_type_dropdown class="edit" id="hunt_type" value=hunt_type_str>
-                        {
-                            create_isomorphic_effect(move |_| {
-                                let hunt: String = hunt_type().into();
-                                if let Some(d) = hunt_type_dropdown() {
-                                    d.set_value(&hunt)
-                                }
-                            });
-                        }
+                        <label for="hunt_type" class="title">
+                            Hunting Method
+                        </label>
+                        <select
+                            node_ref=hunt_type_dropdown
+                            class="edit"
+                            id="hunt_type"
+                            value=hunt_type_str
+                        >
+
+                            {
+                                create_isomorphic_effect(move |_| {
+                                    let hunt: String = hunt_type().into();
+                                    if let Some(d) = hunt_type_dropdown() {
+                                        d.set_value(&hunt)
+                                    }
+                                });
+                            }
+
                             <option value="NewOdds">New odds (1/4096)</option>
                             <option value="OldOdds">Old odds (1/8192)</option>
                             <option value="SOS">SOS hunt</option>
@@ -301,10 +337,12 @@ where
                             <option value="MasudaGenV">Masuda GenV</option>
                             <option value="MasudaGenVI">Masuda GenVI+</option>
                         </select>
-                        <label for="charm" class="title">Shiny Charm</label>
+                        <label for="charm" class="title">
+                            Shiny Charm
+                        </label>
                         <Slider checked=has_charm accent_color/>
                     </div>
-                    <div  class="action-buttons">
+                    <div class="action-buttons">
                         <button type="button" on:click=undo_changes>
                             <span>Undo</span>
                         </button>
@@ -314,6 +352,6 @@ where
                     </div>
                 </div>
             </Form>
-        </Suspense>
+        </Transition>
     }
 }

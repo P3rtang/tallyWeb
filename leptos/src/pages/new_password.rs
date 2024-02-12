@@ -1,5 +1,5 @@
 use leptos::*;
-use leptos_router::ActionForm;
+use leptos_router::{ActionForm, A};
 use web_sys::SubmitEvent;
 
 use super::*;
@@ -49,7 +49,8 @@ pub fn NewPassword() -> impl IntoView {
                     name="new_pass"
                     id="new_pass"
                     placeholder="New Password"
-                    node_ref=new_pass_ref required
+                    node_ref=new_pass_ref
+                    required
                 />
                 <input
                     type="password"
@@ -60,8 +61,12 @@ pub fn NewPassword() -> impl IntoView {
                     required
                 />
                 <div class="clearfix action-buttons">
-                    <button type="button" on:click=move |_| { navigate( "/preferences") }><i class="fa-solid fa-xmark"></i></button>
-                    <button type="submit" class="signupbtn"><i class="fa-solid fa-right-to-bracket"></i></button>
+                    <A href="/preferences">
+                        <i class="fa-solid fa-xmark"></i>
+                    </A>
+                    <button type="submit" class="signupbtn">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                    </button>
                 </div>
             </div>
         </ActionForm>

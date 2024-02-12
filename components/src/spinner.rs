@@ -19,7 +19,7 @@ pub fn Spinner(#[prop(default = 32)] size: usize) -> impl IntoView {
         border = size / 8
     );
     view! {
-        <style>{ style }</style>
+        <style>{style}</style>
         <div class="loader"></div>
     }
 }

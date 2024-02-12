@@ -13,5 +13,4 @@ pub use new_password::*;
 pub use preferences::*;
 pub use privacy_pol::*;
 
-pub(crate) use super::app::*;
 pub(crate) use super::*;

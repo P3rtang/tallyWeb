@@ -1,5 +1,5 @@
 #![allow(unused_braces)]
-use components::{LoadingScreen, Message, SavingMessage, SidebarStyle, Slider};
+use components::{Message, SavingMessage, SidebarStyle, Slider};
 use leptos::*;
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
@@ -80,24 +80,33 @@ where
     let confirm_style = move || format!("background-color: {}", accent_color.get());
 
     view! {
-        <elements::Navbar/>
+        <elements::Navbar></elements::Navbar>
         <ActionForm action=action on:submit=on_submit class="parent-form">
-            <div class={ move || String::from("editing-form ") + layout().get_widget_class() } style=border_style>
+            <div
+                class=move || String::from("editing-form ") + layout().get_widget_class()
+                style=border_style
+            >
                 <div class="content">
-                    <label for="use_default_accent_color" class="title">Use Default Accent Color</label>
+                    <label for="use_default_accent_color" class="title">
+                        Use Default Accent Color
+                    </label>
                     <Slider checked=use_default_accent_color accent_color/>
-                    { move || {
-                          use_default_accent_color.0.with(|b| {
-                              if *b {
-                                  preferences.update(|p| {
-                                      p.accent_color
-                                          .set_user(&user.get_untracked())
-                                  });
-                              }
-                          })
+                    {move || {
+                        use_default_accent_color
+                            .0
+                            .with(|b| {
+                                if *b {
+                                    preferences
+                                        .update(|p| {
+                                            p.accent_color.set_user(&user.get_untracked())
+                                        });
+                                }
+                            })
                     }}
 
-                    <label for="accent_color" class="title">Accent Color</label>
+                    <label for="accent_color" class="title">
+                        Accent Color
+                    </label>
                     <input
                         type="color"
                         name="accent_color"
@@ -108,7 +117,9 @@ where
                         prop:value=accent_color
                     />
 
-                    <label for="show_separator" class="title">Show Treeview Separator</label>
+                    <label for="show_separator" class="title">
+                        Show Treeview Separator
+                    </label>
                     <Slider checked=separator accent_color/>
 
                     <label class="title">Use Multi Select (experimental)</label>

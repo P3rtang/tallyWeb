@@ -97,43 +97,55 @@ pub fn App() -> impl IntoView {
         <Router>
             <main on:click=close_overlays>
                 // on navigation clear any messages or errors from the message box
-                { move || {
+                {move || {
                     let location = use_location();
                     location.state.with(|_| msg.clear())
                 }}
                 <Routes>
-                    <Route path="" ssr=SsrMode::Async view=|| view! {
-                        <ProvideSessionSignal>
-                            <ProvidePreferences>
-                                <ProvideSelectionModel>
+                    <Route
+                        path=""
+                        ssr=SsrMode::Async
+                        view=|| {
+                            view! {
+                                <ProvideSessionSignal>
+                                    <ProvidePreferences/>
+                                    <ProvideCountableSignals/>
                                     <Outlet/>
-                                </ProvideSelectionModel>
-                            </ProvidePreferences>
-                        </ProvideSessionSignal>
-                    }>
-                        <Route path="/" view=|| view! {
-                            <Outlet/>
-                            <HomePage/>
-                        }>
+                                </ProvideSessionSignal>
+                            }
+                        }
+                    >
+                        <Route
+                            path="/"
+                            view=|| {
+                                view! {
+                                    <Outlet/>
+                                    <HomePage/>
+                                }
+                            }
+                        >
                             <Route path="" view=UnsetCountable/>
                             <Route path=":key" view=SetCountable/>
                         </Route>
-                        <Route path="/preferences" view=move || view! {
-                            <PreferencesWindow layout=screen_layout/>
-                        }/>
+                        <Route
+                            path="/preferences"
+                            view=move || view! { <PreferencesWindow layout=screen_layout/> }
+                        />
 
                         <Route path="/edit" view=EditWindow>
-                            <Route path=":id" view=move || view! {
-                                <EditCounterWindow layout=screen_layout/>
-                            }/>
+                            <Route
+                                path=":id"
+                                view=move || view! { <EditCounterWindow layout=screen_layout/> }
+                            />
                         </Route>
 
-                        <Route path="/create-account" view=CreateAccount/>
-                        <Route path="/change-username" view=move || view!{ <ChangeAccountInfo/> }/>
+                        <Route path="/change-username" view=move || view! { <ChangeAccountInfo/> }/>
                         <Route path="/change-password" view=NewPassword/>
                         <Route path="/privacy-policy" view=PrivacyPolicy/>
+                        <Route path="/*any" view=NotFound/>
                     </Route>
                     <Route path="/login" view=LoginPage/>
+                    <Route path="/create-account" view=CreateAccount/>
                     <Route path="/*any" view=NotFound/>
                 </Routes>
             </main>
@@ -159,20 +171,7 @@ fn NotFound() -> impl IntoView {
         resp.set_status(actix_web::http::StatusCode::NOT_FOUND);
     }
 
-    view! {
-        <h1>"Not Found"</h1>
-    }
-}
-
-#[component(transparent)]
-fn ProvideSelectionModel(children: Children) -> impl IntoView {
-    let selection = SelectionModel::<uuid::Uuid, ArcCountable>::new();
-    let selection_signal = create_rw_signal(selection);
-    provide_context(selection_signal);
-
-    timer(selection_signal);
-
-    children()
+    view! { <h1>"Not Found"</h1> }
 }
 
 fn timer(selection_signal: SelectionSignal) {
@@ -180,7 +179,6 @@ fn timer(selection_signal: SelectionSignal) {
     const INTERVAL: Duration = Duration::milliseconds(1000 / FRAMERATE);
 
     let time = create_signal(0_u32);
-    provide_context(time);
 
     let calc_interval = |now: u32, old: u32| -> Duration {
         if now < old {
@@ -198,7 +196,7 @@ fn timer(selection_signal: SelectionSignal) {
                     time.0.try_get().unwrap_or_default(),
                 );
 
-                selection_signal.update(|s| {
+                selection_signal.try_update(|s| {
                     s.get_selected_keys()
                         .iter()
                         .filter_map(|key| s.get(key))
@@ -211,18 +209,6 @@ fn timer(selection_signal: SelectionSignal) {
                 .to_std()
                 .unwrap_or(std::time::Duration::from_millis(30)),
         );
-    });
-}
-
-#[cfg(not(ssr))]
-pub fn navigate(page: impl ToString) {
-    let page = page.to_string();
-    create_effect(move |_| {
-        let page = page.clone();
-        request_animation_frame(move || {
-            let navigate = leptos_router::use_navigate();
-            navigate(page.as_str(), Default::default());
-        });
     });
 }
 
@@ -260,30 +246,15 @@ fn connect_keys(
 
 #[component]
 pub fn HomePage() -> impl IntoView {
-    let session_user = expect_context::<RwSignal<UserSession>>();
-    // let message = expect_context::<Message>();
     let save_handler = expect_context::<SaveHandlerCountable>();
     let selection_signal = expect_context::<SelectionSignal>();
     let state = expect_context::<RwSignal<CounterList>>();
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen_layout = expect_context::<RwSignal<SidebarStyle>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
+    let data = expect_context::<StateResource>();
+
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
-
-    let data = create_blocking_resource(session_user, move |user| async move {
-        match api::get_counters_by_user_name(user).await {
-            Ok(api::CounterResponse::Counters(counters)) => {
-                save_handler.set_offline(false);
-                // message
-                //     .without_timeout()
-                //     .set_msg_view(view! { <AskOfflineData data=offline_data.clone()/> });
-                counters
-            }
-            _ => Vec::new(),
-        }
-    });
-
-    provide_context(data);
 
     let active = create_read_slice(selection_signal, move |sel| {
         let mut slc = sel
@@ -297,8 +268,10 @@ pub fn HomePage() -> impl IntoView {
     });
 
     view! {
-        <Transition fallback=move || view!{ <LoadingScreen/> }>
-            { move || {
+        <Transition fallback=move || {
+            view! { <LoadingScreen/> }
+        }>
+            {move || {
                 let list = match data.get() {
                     Some(data_list) if !save_handler.is_offline() => data_list.into(),
                     _ => state.get(),
@@ -306,7 +279,7 @@ pub fn HomePage() -> impl IntoView {
                 state.set(list)
             }}
             <div id="HomeGrid">
-                { move || {
+                {move || {
                     if screen_layout() == SidebarStyle::Hover {
                         let sel_memo = create_read_slice(selection_signal, |sel| sel.is_empty());
                         sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(*sel)));
@@ -314,8 +287,7 @@ pub fn HomePage() -> impl IntoView {
                 }}
                 <Sidebar display=show_sidebar layout=screen_layout accent_color=accent_color>
                     <SidebarContent/>
-                </Sidebar>
-                <section style:flex-grow="1" style:transition="width .5s">
+                </Sidebar> <section style:flex-grow="1" style:transition="width .5s">
                     <Navbar/>
                     <InfoBox countable_list=active/>
                 </section>
@@ -348,6 +320,7 @@ fn SidebarContent() -> impl IntoView {
                 children.sort_by(state.get().sort.sort_by());
                 children
             }
+
             view=|key| view! { <TreeViewRow key/> }
             show_separator=show_sep
             selection_model=selection_signal
@@ -357,6 +330,7 @@ fn SidebarContent() -> impl IntoView {
                 leptos_router::use_navigate()(&key.to_string(), Default::default())
             }
         />
+
         <NewCounterButton state_len/>
     }
 }
@@ -374,42 +348,41 @@ where
 {
     view! {
         <div
-            class={ format!("{class} progress-bar") }
+            class=format!("{class} progress-bar")
             style="
-                display:flex;
-                justify-content: center
-                align-items: center">
-            <div
-                style={ "
+            display:flex;
+            justify-content: center
+            align-items: center"
+        >
+            <div style="
                     font-size: 1.4rem;
                     color: #BBB;
                     padding: 0px 12px;
-                    margin: auto;".to_string()}>
-                { children() }
-            </div>
+                    margin: auto;"
+                .to_string()>{children()}</div>
             <div
                 class="through"
                 style="
-                    background: #DDD;
-                    padding: 1px;
-                    width: 100%;
-                    height: 18px;"
+                background: #DDD;
+                padding: 1px;
+                width: 100%;
+                height: 18px;"
             >
-                <Show
-                    when=move || {progress() > 0.0}
-                    fallback=|| ()
-                >
-                <div
-                    class="progress"
-                    style={ move || { format!("
+                <Show when=move || { progress() > 0.0 } fallback=|| ()>
+                    <div
+                        class="progress"
+                        style=move || {
+                            format!(
+                                "
                         height: 18px;
                         width: max({}%, 10px);
                         background: {};
                         ",
-                        progress() * 100.0,
-                        color()
-                    )}}>
-                </div>
+                                progress() * 100.0,
+                                color(),
+                            )
+                        }
+                    ></div>
                 </Show>
             </div>
         </div>
@@ -446,7 +419,7 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
                     .clone()
                     .map(|c| c.get_children().len())
                     .unwrap_or_default();
-                let name = format!("Phase {n_phase}");
+                let name = format!("Phase {}", n_phase + 1);
                 if let Some(countable) = countable.get_untracked() {
                     let user = user.get_untracked();
                     let new_phase = Phase::new(name, countable.get_uuid(), user.user_uuid);
@@ -478,20 +451,22 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     view! {
         <A href=move || key().to_string() on:click=|ev| ev.prevent_default()>
             <div class="row-body" on:contextmenu=on_right_click>
-                <span> { move || countable.get_untracked().map(|c| c.get_name()).unwrap_or_default() } </span>
+                <span>
+                    {move || countable.get_untracked().map(|c| c.get_name()).unwrap_or_default()}
+                </span>
                 <Show when=move || has_children>
                     <button on:click=click_new_phase>+</button>
                 </Show>
             </div>
-            <Show when=move || countable.get_untracked().is_some()>
-                <CountableContextMenu
-                    show_overlay=show_context_menu
-                    location=click_location
-                    key
-                    accent_color
-                />
-            </Show>
         </A>
+        <Show when=move || countable.get_untracked().is_some()>
+            <CountableContextMenu
+                show_overlay=show_context_menu
+                location=click_location
+                key
+                accent_color
+            />
+        </Show>
     }
 }
 
@@ -622,7 +597,7 @@ fn SetCountable() -> impl IntoView {
 
     let selection = expect_context::<SelectionSignal>();
 
-    create_isomorphic_effect(move |_| {
+    let key_memo = create_memo(move |_| {
         if let Some(key) = use_params::<Key>()
             .get()
             .map(|p| uuid::Uuid::parse_str(&p.key).ok())
@@ -632,10 +607,42 @@ fn SetCountable() -> impl IntoView {
             selection.update(|sel| sel.select(&key));
         }
     });
+
+    create_isomorphic_effect(move |_| key_memo.track());
 }
 
 #[component]
 fn UnsetCountable() -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
     selection.update(|sel| sel.clear_selection())
+}
+
+#[component]
+fn ProvideCountableSignals() -> impl IntoView {
+    let user = expect_context::<RwSignal<UserSession>>();
+
+    let data = create_blocking_resource(user, move |user| async move {
+        match api::get_counters_by_user_name(user).await {
+            Ok(api::CounterResponse::Counters(counters)) => counters,
+            _ => Vec::new(),
+        }
+    });
+
+    provide_context(data);
+
+    let selection = SelectionModel::<uuid::Uuid, ArcCountable>::new();
+    let selection_signal = create_rw_signal(selection);
+    provide_context(selection_signal);
+
+    timer(selection_signal);
+
+    view! {
+        <Transition fallback=move || {
+            view! { <components::LoadingScreen></components::LoadingScreen> }
+        }>
+            {
+                data.track();
+            }
+        </Transition>
+    }
 }

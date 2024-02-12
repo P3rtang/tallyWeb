@@ -8,8 +8,8 @@ use super::*;
 
 pub async fn insert_user(
     pool: &PgPool,
-    username: String,
-    password: String,
+    username: &str,
+    password: &str,
 ) -> Result<DbUser, BackendError> {
     // generate salt
     let salt = SaltString::generate(&mut OsRng);
@@ -202,7 +202,7 @@ pub async fn change_username(
 ) -> Result<DbUser, BackendError> {
     check_pass(pool, &old_username, &password).await?;
 
-    let _ = match query!(
+    match query!(
         r#"
         update users
         set username=$2
@@ -226,10 +226,9 @@ pub async fn change_username(
         r#"
         select users.uuid, users.username, tokens.uuid as token, users.email
         from users join auth_tokens as tokens on tokens.user_uuid = users.uuid
-        where users.username = $1 and users.password = $2
+        where users.username = $1
         "#,
         new_username,
-        password,
     )
     .fetch_one(pool)
     .await?;
@@ -237,11 +236,7 @@ pub async fn change_username(
     Ok(user)
 }
 
-pub async fn check_pass(
-    pool: &PgPool,
-    username: &str,
-    password: &str,
-) -> Result<(), BackendError> {
+pub async fn check_pass(pool: &PgPool, username: &str, password: &str) -> Result<(), BackendError> {
     struct Pass {
         password: String,
     }
@@ -297,6 +292,10 @@ pub async fn get_user(
     Ok(user)
 }
 
-pub async fn check_user(pool: &PgPool, username: &str, token: uuid::Uuid) -> Result<(), BackendError> {
+pub async fn check_user(
+    pool: &PgPool,
+    username: &str,
+    token: uuid::Uuid,
+) -> Result<(), BackendError> {
     get_user(pool, username, token).await.map(|_| ())
 }

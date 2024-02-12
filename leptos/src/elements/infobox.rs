@@ -1,10 +1,10 @@
 #![allow(non_snake_case)]
 
+use super::*;
 use chrono::Duration;
 use components::SidebarStyle;
 use leptos::*;
 use web_sys::MouseEvent;
-use super::*;
 
 use crate::{
     app::{Progressbar, SelectionSignal},
@@ -40,8 +40,8 @@ pub fn InfoBox(countable_list: Signal<Vec<ArcCountable>>) -> impl IntoView {
                         </div>
                     }
                 }
-            >
-            </For>
+            />
+
         </div>
     }
 }
@@ -83,7 +83,9 @@ fn Title(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
 
     view! {
         <div class="rowbox rowexpand">
-            <p class="info" style:min-height="0em" style:padding="0.5em" style:font-size="28px">{ get_name }</p>
+            <p class="info" style:min-height="0em" style:padding="0.5em" style:font-size="28px">
+                {get_name}
+            </p>
         </div>
     }
 }
@@ -128,12 +130,17 @@ where
     };
 
     view! {
-        <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox" } on:click=on_count_click>
-            <button class="count_minus" on:click=on_minus_click>-</button>
+        <div
+            class=move || if expand() { "rowbox rowexpand" } else { "rowbox" }
+            on:click=on_count_click
+        >
+            <button class="count_minus" on:click=on_minus_click>
+                -
+            </button>
             <p class="title" style:display=move || if show_title() { "block" } else { "none" }>
-                { get_name }
+                {get_name}
             </p>
-            <p class="info">{ get_count }</p>
+            <p class="info">{get_count}</p>
         </div>
     }
 }
@@ -166,9 +173,16 @@ where
     });
 
     view! {
-        <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox" } on:click=toggle_paused>
-            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>Time</p>
-            <p class="info" style:min-width="7em">{ time }</p>
+        <div
+            class=move || if expand() { "rowbox rowexpand" } else { "rowbox" }
+            on:click=toggle_paused
+        >
+            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>
+                Time
+            </p>
+            <p class="info" style:min-width="7em">
+                {time}
+            </p>
         </div>
     }
 }
@@ -205,13 +219,11 @@ where
 
     view! {
         <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox progress" }>
-            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>Progress</p>
-            <Progressbar
-                progress
-                class="info"
-                color
-            >
-                { move || format!("{:.03}%", progress() * 100.0) }
+            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>
+                Progress
+            </p>
+            <Progressbar progress class="info" color>
+                {move || format!("{:.03}%", progress() * 100.0)}
             </Progressbar>
         </div>
     }
@@ -245,22 +257,33 @@ where
 
     view! {
         <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox" }>
-            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>Last Step</p>
-            <p class="info time">{ move || {
-                on_count.with(|_| {
-                    let time_str = format_time(last_interaction.get_untracked().map(|t| {
-                        time.get_untracked() - Duration::milliseconds(t)
-                    }));
-                    last_interaction.set(Some(time.get_untracked().num_milliseconds()));
-                    time_str
-                })
-            }}</p>
+            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>
+                Last Step
+            </p>
+            <p class="info time">
+                {move || {
+                    on_count
+                        .with(|_| {
+                            let time_str = format_time(
+                                last_interaction
+                                    .get_untracked()
+                                    .map(|t| { time.get_untracked() - Duration::milliseconds(t) }),
+                            );
+                            last_interaction.set(Some(time.get_untracked().num_milliseconds()));
+                            time_str
+                        })
+                }}
+            </p>
         </div>
     }
 }
 
 #[component]
-fn AverageStep<E, T>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
+fn AverageStep<E, T>(
+    #[prop(into)] key: Signal<uuid::Uuid>,
+    expand: E,
+    show_title: T,
+) -> impl IntoView
 where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
@@ -282,14 +305,14 @@ where
 
     view! {
         <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox" }>
-            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>Avg Step Time</p>
-            <p class="info time"> { move || {
-                if count() == 0 {
-                    String::from("---")
-                } else {
-                    short_format_time(step())
-                }
-            }}</p>
+            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>
+                Avg Step Time
+            </p>
+            <p class="info time">
+                {move || {
+                    if count() == 0 { String::from("---") } else { short_format_time(step()) }
+                }}
+            </p>
         </div>
     }
 }

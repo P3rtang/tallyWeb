@@ -1,6 +1,7 @@
 #![allow(unused_braces)]
+use super::*;
 use leptos::*;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[server]
 pub async fn actix_extract_user() -> Result<UserSession, ServerFnError> {
@@ -40,10 +41,13 @@ pub struct UserSession {
 pub fn ProvideSessionSignal(children: ChildrenFn) -> impl IntoView {
     view! {
         <Await future=get_user_signal let:user>
-            { 
+
+            {
+                create_blocking_resource(*user, move |u| { api::check_user(u) });
                 provide_context(*user);
                 children()
             }
+
         </Await>
     }
 }
