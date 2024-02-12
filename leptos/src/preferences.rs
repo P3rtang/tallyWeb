@@ -72,7 +72,7 @@ pub fn ProvidePreferences() -> impl IntoView {
     let pref_signal = create_rw_signal(Preferences::new(&user.get_untracked()));
     provide_context(pref_signal);
 
-    let pref_rsrc = create_blocking_resource(user, move |user| api::get_user_preferences(user));
+    let pref_rsrc = create_blocking_resource(user, api::get_user_preferences);
     let pref_rsrc_memo = create_memo(move |_| {
         pref_rsrc.with(|p| {
             if let Some(Ok(p)) = p {

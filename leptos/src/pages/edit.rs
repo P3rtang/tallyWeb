@@ -257,7 +257,7 @@ where
             view! { <LoadingScreen/> }
         }>
             {move || {
-                countable.set(counter_rsrc.get().map(|c| c.ok()).flatten().map(|c| c.into()));
+                countable.set(counter_rsrc.get().and_then(|c| c.ok()).map(|c| c.into()));
             }}
             <Form action="/" on:submit=on_submit class="parent-form">
                 <div

@@ -17,5 +17,5 @@ pub async fn get_phases_from_parent_uuid(
     .fetch_all(pool)
     .await?;
 
-    return Ok(phases);
+    Ok(phases)
 }

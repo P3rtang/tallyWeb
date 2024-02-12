@@ -20,7 +20,7 @@ pub fn CountableContextMenu(
 
     view! {
         <Overlay show_overlay=show_overlay location=location accent_color=accent_color.unwrap()>
-            <ContextMenuNav href=move || format!("edit/{}", key().to_string())>
+            <ContextMenuNav href=move || format!("edit/{}", key())>
                 <span>Edit</span>
             </ContextMenuNav>
             // TODO: look further into this actionform not working

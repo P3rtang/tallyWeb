@@ -9,7 +9,7 @@ where
     F: Fn() -> bool + 'static,
 {
     let (sort_method, set_sort_method) =
-        create_slice(list, |list| list.sort.clone(), |list, new| list.sort = new);
+        create_slice(list, |list| list.sort, |list, new| list.sort = new);
     let select_sort = create_node_ref::<leptos::html::Select>();
     let on_sort = move |_| {
         set_sort_method.set(
