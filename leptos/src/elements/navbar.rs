@@ -1,5 +1,5 @@
 use super::*;
-use components::{AccountIcon, CloseOverlays, ShowSidebar};
+use components::{CloseOverlays, ShowSidebar};
 use leptos::*;
 use leptos_router::A;
 

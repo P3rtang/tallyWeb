@@ -1,7 +1,5 @@
 #![feature(let_chains)]
 
-mod about;
-mod account_icon;
 mod loading_screen;
 mod message;
 mod saving_screen;
@@ -9,8 +7,7 @@ mod sidebar;
 mod slider;
 mod spinner;
 mod treeview;
-pub use about::*;
-pub use account_icon::*;
+
 pub use loading_screen::*;
 pub use message::*;
 pub use saving_screen::*;

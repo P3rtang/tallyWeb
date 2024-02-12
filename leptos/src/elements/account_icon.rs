@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use super::*;
+use components::{CloseOverlays, SidebarStyle};
 use leptos::{logging::debug_warn, *};
 use leptos_router::A;
 

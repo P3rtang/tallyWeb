@@ -20,7 +20,7 @@ impl AccountAccentColor {
             .chars()
             .next()
             .unwrap_or_default();
-        let color_hex = components::letter_to_three_digit_hash(letter);
+        let color_hex = elements::letter_to_three_digit_hash(letter);
         self.0 = format!("#{color_hex}")
     }
 }
