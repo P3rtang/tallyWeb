@@ -67,8 +67,17 @@ nav {
         width: 42px;
         cursor: pointer;
 
-        &:hover {
-            background: #AAAAAA40;
+        @media (hover:hover) {
+            &:hover {
+                background: #AAAAAA40;
+            }
+        }
+
+        @media (pointer: coarse) {
+            &:active {
+                -webkit-tap-highlight-color: transparent;
+                background: #AAAAAA40;
+            }
         }
     }
 }
