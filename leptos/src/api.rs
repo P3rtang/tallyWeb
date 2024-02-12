@@ -37,13 +37,16 @@ pub async fn login_user(
     let pool = backend::create_pool().await?;
     let user = backend::auth::login_user(&pool, username, password).await?;
 
-    let session_user = UserSession {
+    let session = UserSession {
         user_uuid: user.uuid,
         username: user.username,
         token: user.token.unwrap(),
     };
 
-    Ok(session_user)
+    set_session_cookie(session.clone()).await?;
+    leptos_actix::redirect("/");
+
+    Ok(session)
 }
 
 #[server(CreateAccount, "/api", "Url", "create_account")]
@@ -340,13 +343,13 @@ pub async fn save_multiple(
 
 
 #[server]
-pub async fn set_session_cookie(user_session: UserSession) -> Result<(), ServerFnError> {
+pub async fn set_session_cookie(session: UserSession) -> Result<(), ServerFnError> {
     use actix_web::cookie::{self, time::Duration};
     use actix_web::http::header;
 
     let resp = expect_context::<leptos_actix::ResponseOptions>();
 
-    let mut cookie = cookie::Cookie::new("session", serde_json::to_string(&user_session)?);
+    let mut cookie = cookie::Cookie::new("session", serde_json::to_string(&session)?);
     cookie.set_max_age(Duration::days(30));
     cookie.set_path("/");
 
