@@ -1,6 +1,7 @@
+use components::SidebarStyle;
 use leptos::{html::Dialog, *};
 
-use super::*;
+pub const TALLYWEB_VERSION: &str = env!("TALLYWEB_VERSION");
 
 #[component]
 pub fn AboutDialog<F>(
@@ -50,7 +51,7 @@ where
                     <i class="fa-solid fa-link"></i>
                 </a>
                 <label class="title">Version</label>
-                <label class="info">0.2.5</label>
+                <label class="info">{ TALLYWEB_VERSION }</label>
             </div>
             <div class="actionbuttons">
                 <button

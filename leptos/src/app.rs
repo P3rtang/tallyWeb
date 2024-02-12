@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use super::{elements::*, pages::*, preferences::ProvidePreferences, session::*, *};
 
 pub const LEPTOS_OUTPUT_NAME: &str = env!("LEPTOS_OUTPUT_NAME");
+pub const TALLYWEB_VERSION: &str = env!("TALLYWEB_VERSION");
 
 pub type StateResource = Resource<UserSession, Vec<SerCounter>>;
 pub type SelectionSignal = RwSignal<SelectionModel<uuid::Uuid, ArcCountable>>;
