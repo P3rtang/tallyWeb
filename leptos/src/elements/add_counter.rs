@@ -8,9 +8,11 @@ pub fn NewCounterButton(state_len: Signal<usize>) -> impl IntoView {
     let message = expect_context::<Message>();
 
     let add_counter_action = create_action(move |(user, name): &(UserSession, String)| {
+        let mut new_counter = Counter::new(name, user.user_uuid);
+        new_counter.new_phase("Phase 1".to_string());
         api::update_counter(
             user.clone(),
-            Counter::new(name, user.user_uuid).into(),
+            new_counter.into(),
         )
     });
 
