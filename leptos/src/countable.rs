@@ -1,3 +1,5 @@
+#![allow(clippy::assign_op_pattern)]
+
 use super::*;
 use chrono::Duration;
 use serde::{Deserialize, Serialize};
