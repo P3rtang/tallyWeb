@@ -49,7 +49,7 @@ pub fn LoginPage() -> impl IntoView {
                     <A href="/create-account">
                         <i class="fa-solid fa-user-plus"></i>
                     </A>
-                    <button type="submit">
+                    <button type="submit" name="Sign in">
                         <i class="fa-solid fa-right-to-bracket"></i>
                     </button>
                 </div>
