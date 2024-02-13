@@ -37,7 +37,7 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
     - name: Setup postgres from test dump
-      run: psql -U p3rtang -d tally_web -f .github/postgres_setup/test_dump.sql
+      run: psql -U p3rtang -d tally_web -p ${{ job.services.postgres.ports[5432] }} -f .github/postgres_setup/test_dump.sql
     - name: Run Playwright tests
       run: cargo leptos end-to-end -r
     - uses: actions/upload-artifact@v3
