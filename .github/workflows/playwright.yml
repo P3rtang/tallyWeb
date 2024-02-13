@@ -5,19 +5,6 @@ on:
   pull_request:
     branches: [ main, master ]
 jobs:
-  services:
-    postgres:
-      image: postgres
-      options: >-
-        --health-cmd pg_isready
-        --health-interval 10s
-        --health-timeout 5s
-        --health-retries 5
-      env:
-        POSTGRES_PASSWORD: ${{ end2end.POSTGRES_PASSWORD }}
-      ports:
-        - 5432:5432
-
   test:
     runs-on: ubuntu-latest
     
@@ -50,9 +37,8 @@ jobs:
       run: psql -U p3rtang -d tally_web -f .github/postgres_setup/test_dump.sql
     - name: Run Playwright tests
       run: cargo leptos end-to-end -r
-      with:
-        env:
-          DATABASE_URL: ${{ end2end.DATABASE_URL }}
+      env:
+        DATABASE_URL: ${{ end2end.DATABASE_URL }}
     - uses: actions/upload-artifact@v3
       if: always()
       with:
