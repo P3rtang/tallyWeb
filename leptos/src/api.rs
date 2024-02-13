@@ -226,7 +226,7 @@ pub async fn update_counter(
         counter
             .phase_list
             .into_iter()
-            .map(|countable| update_countable(session.clone(), Countable::Phase(countable)))
+            .map(|countable| update_phase(session.clone(), countable))
             .collect::<Vec<_>>(),
     )
     .await?;
