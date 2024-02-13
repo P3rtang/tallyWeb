@@ -18,9 +18,7 @@ pub fn LoginPage() -> impl IntoView {
         <ActionForm action=login_action on:submit=on_submit>
             <div class="container login-form">
                 <h1>Login</h1>
-                <label for="username">
-                    <b>Username</b>
-                </label>
+                <label for="username">Username</label>
                 <input
                     type="text"
                     placeholder="Enter Username"
@@ -29,9 +27,7 @@ pub fn LoginPage() -> impl IntoView {
                     autocomplete="username"
                     required
                 />
-                <label for="password">
-                    <b>Password</b>
-                </label>
+                <label for="password">Password</label>
                 <input
                     type="password"
                     placeholder="Enter Password"
@@ -49,7 +45,7 @@ pub fn LoginPage() -> impl IntoView {
                     <A href="/create-account">
                         <i class="fa-solid fa-user-plus"></i>
                     </A>
-                    <button type="submit" name="Sign in">
+                    <button type="submit" aria-label="button-sign-in">
                         <i class="fa-solid fa-right-to-bracket"></i>
                     </button>
                 </div>
