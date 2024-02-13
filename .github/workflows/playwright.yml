@@ -37,7 +37,9 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
     - name: Setup postgres from test dump
-      run: psql -U p3rtang -d tally_web -h localhost -p ${{ job.services.postgres.ports[5432] }} -f .github/postgres_setup/test_dump.sql
+      run: |
+        psql -U postgres -d postgres -c "CREATE USER p3rtang WITH PASSWORD \'${{ secrets.POSTGRES_PASSWORD }}\' CREATEDB"
+        psql -U p3rtang -h localhost -p ${{ job.services.postgres.ports[5432] }} -d postgres -f .github/postgres_setup/test_dump.sql
       env:
         PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
     - name: Run Playwright tests
