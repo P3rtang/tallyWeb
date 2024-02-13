@@ -16,6 +16,8 @@ jobs:
         node-version: 18
     - name: Install leptos
       run: cargo install cargo-leptos
+    - name: Add wasm target
+      run: rustup target add wasm32-unknown-unknown
     - name: Install dependencies
       run: npm ci
     - name: Install Playwright Browsers
