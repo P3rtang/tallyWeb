@@ -31,7 +31,7 @@ async fn extract_pool() -> Result<Data<backend::PgPool>, AppError> {
 
 #[server(CheckUser, "/api")]
 pub async fn check_user(session: UserSession) -> Result<(), ServerFnError> {
-    let pool = backend::create_pool().await?;
+    let pool = extract_pool().await?;
     match backend::auth::check_user(&pool, &session.username, session.token).await {
         Ok(()) => return Ok(()),
         Err(err) => {
@@ -43,7 +43,7 @@ pub async fn check_user(session: UserSession) -> Result<(), ServerFnError> {
 
 #[server(LoginUser, "/api", "Url", "login_user")]
 pub async fn login_user(username: String, password: String) -> Result<UserSession, ServerFnError> {
-    let pool = backend::create_pool().await?;
+    let pool = extract_pool().await?;
     let user = backend::auth::login_user(&pool, username, password).await?;
 
     let session = UserSession {
@@ -68,7 +68,7 @@ pub async fn create_account(
         Err(backend::LoginError::InvalidPassword)?;
     }
 
-    let pool = backend::create_pool().await?;
+    let pool = extract_pool().await?;
     let user = backend::auth::insert_user(&pool, &username, &password).await?;
 
     let session_user = UserSession {
@@ -93,7 +93,7 @@ pub async fn change_password(
         Err(backend::LoginError::InvalidPassword)?;
     };
 
-    let pool = backend::create_pool().await?;
+    let pool = extract_pool().await?;
     let _ = backend::auth::change_password(&pool, username, old_pass, new_pass).await?;
 
     Ok(())
@@ -110,7 +110,7 @@ pub enum CounterResponse {
 pub async fn get_counters_by_user_name(
     session: UserSession,
 ) -> Result<CounterResponse, ServerFnError> {
-    let pool = backend::create_pool().await?;
+    let pool = extract_pool().await?;
 
     let user = match backend::auth::get_user(&pool, &session.username, session.token).await {
         Ok(user) => user,
@@ -134,7 +134,7 @@ pub async fn get_counter_by_id(
     session: UserSession,
     counter_id: uuid::Uuid,
 ) -> Result<SerCounter, ServerFnError> {
-    let pool = backend::create_pool().await?;
+    let pool = extract_pool().await?;
     let _ = backend::auth::get_user(&pool, &session.username, session.token).await?;
     let data =
         backend::get_counter_by_id(&pool, &session.username, session.token, counter_id).await?;
@@ -147,7 +147,7 @@ pub async fn get_phase_by_id(
     session: UserSession,
     phase_id: uuid::Uuid,
 ) -> Result<Phase, ServerFnError> {
-    let pool = backend::create_pool().await?;
+    let pool = extract_pool().await?;
     let data = backend::get_phase_by_id(&pool, &session.username, session.token, phase_id).await?;
     Ok(data.into())
 }
