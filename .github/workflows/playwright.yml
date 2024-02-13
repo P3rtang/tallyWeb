@@ -38,8 +38,14 @@ jobs:
       run: npx playwright install --with-deps
     - name: Setup postgres from test dump
       run: psql -U p3rtang -d tally_web -h localhost -p ${{ job.services.postgres.ports[5432] }} -f .github/postgres_setup/test_dump.sql
+      env:
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
     - name: Run Playwright tests
       run: cargo leptos end-to-end -r
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        LEPTOS_OUTPUT_NAME: debug
+        TALLYWEB_VERSION: 0.3.0
     - uses: actions/upload-artifact@v3
       if: always()
       with:
