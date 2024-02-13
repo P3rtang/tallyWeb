@@ -38,7 +38,7 @@ jobs:
       run: npx playwright install --with-deps
     - name: Setup postgres from test dump
       run: |
-        psql -U postgres -d postgres -c "CREATE USER p3rtang WITH PASSWORD \'${{ secrets.POSTGRES_PASSWORD }}\' CREATEDB"
+        psql -U postgres -h localhost -p ${{ job.services.postgres.ports[5432] }} -d postgres -c "CREATE USER p3rtang WITH PASSWORD \'${{ secrets.POSTGRES_PASSWORD }}\' CREATEDB"
         psql -U p3rtang -h localhost -p ${{ job.services.postgres.ports[5432] }} -d postgres -f .github/postgres_setup/test_dump.sql
       env:
         PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
