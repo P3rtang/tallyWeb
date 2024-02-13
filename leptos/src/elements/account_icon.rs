@@ -47,7 +47,7 @@ where
     };
 
     view! {
-        <div id="user-icon" style=button_style on:click=open_overlay>
+        <div id="user-icon" data-testid="test-account-icon" style=button_style on:click=open_overlay>
             <b>{move || { initial() }}</b>
         </div>
         <Show
@@ -87,6 +87,7 @@ pub fn AccountOverlay(
         <Show when=show_overlay fallback=|| ()>
             <div
                 id="account-overlay"
+                data-testid="test-account-overlay"
                 style=border_style
                 on:click=move |ev: web_sys::MouseEvent| { ev.stop_propagation() }
             >
