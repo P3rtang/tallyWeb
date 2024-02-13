@@ -39,7 +39,7 @@ jobs:
     - name: Setup postgres from test dump
       run: |
         psql -U postgres -h localhost -p ${{ job.services.postgres.ports[5432] }} -d postgres -c "CREATE USER p3rtang WITH PASSWORD '${{ secrets.POSTGRES_PASSWORD }}' CREATEDB"
-        psql -U p3rtang -h localhost -p ${{ job.services.postgres.ports[5432] }} -d postgres -c "CREATE DATABASE tally_web"
+        psql -U postgres -h localhost -p ${{ job.services.postgres.ports[5432] }} -d postgres -c "CREATE DATABASE tally_web OWNER p3rtang"
         psql -U p3rtang -h localhost -p ${{ job.services.postgres.ports[5432] }} -d postgres -f .github/postgres_setup/test_dump.sql
       env:
         PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
