@@ -41,7 +41,7 @@ jobs:
         psql -U postgres -h localhost -p ${{ job.services.postgres.ports[5432] }} -d postgres -c "CREATE USER p3rtang WITH PASSWORD '${{ secrets.POSTGRES_PASSWORD }}'"
         psql -U postgres -h localhost -p ${{ job.services.postgres.ports[5432] }} -d postgres -c "ALTER USER p3rtang CREATEDB"
         psql -U postgres -h localhost -p ${{ job.services.postgres.ports[5432] }} -c "CREATE DATABASE tally_web OWNER p3rtang"
-        psql -U p3rtang -h localhost -p ${{ job.services.postgres.ports[5432] }} -d postgres -f .github/postgres_setup/test_dump.sql
+        psql -U p3rtang -h localhost -p ${{ job.services.postgres.ports[5432] }} -f .github/postgres_setup/test_dump.sql
       env:
         PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
     - name: Run Playwright tests
