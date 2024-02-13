@@ -39,7 +39,7 @@ jobs:
     - name: Setup postgres from test dump
       run: psql -U p3rtang -d tally_web -h localhost -p ${{ job.services.postgres.ports[5432] }} -f .github/postgres_setup/test_dump.sql
       env:
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
     - name: Run Playwright tests
       run: cargo leptos end-to-end -r
       env:
