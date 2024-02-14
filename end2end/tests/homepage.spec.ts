@@ -11,6 +11,8 @@ test("homepage has account icon and overlay", async ({ page }) => {
     await expect(accountIcon).toBeVisible()
     await expect(accountIcon).toHaveText("U")
 
+    // make sure the wasm binary is loaded before clicking login
+    await page.waitForLoadState("networkidle");
     // test overlay on click
     await accountIcon.click()
     await expect(page.getByTestId("test-account-overlay")).toBeVisible()
@@ -28,6 +30,6 @@ test("sidebar", async ({ browser }) => {
     {
         await small_page.goto("http://localhost:3000");
         let sidebar = small_page.getByTestId("test-sidebar")
-        await expect(sidebar).toHaveCSS("position", "relative")
+        await expect(sidebar).toHaveCSS("position", "fixed")
     }
 })
