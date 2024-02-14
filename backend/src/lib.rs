@@ -277,10 +277,8 @@ pub async fn remove_phase(pool: &PgPool, phase_id: uuid::Uuid) -> Result<(), sql
     Ok(())
 }
 
-pub async fn migrate() -> Result<(), sqlx::Error> {
-    let pool = create_pool().await?;
-
-    sqlx::migrate!("../migrations").run(&pool).await?;
+pub async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
+    sqlx::migrate!("../migrations").run(pool).await?;
 
     Ok(())
 }

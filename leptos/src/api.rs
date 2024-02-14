@@ -23,7 +23,7 @@ impl From<Countable> for ArcCountable {
 }
 
 #[cfg(feature = "ssr")]
-async fn extract_pool() -> Result<Data<backend::PgPool>, AppError> {
+pub async fn extract_pool() -> Result<Data<backend::PgPool>, AppError> {
     extract::<Data<backend::PgPool>>()
         .await
         .map_err(|err| AppError::Extraction(err.to_string()))

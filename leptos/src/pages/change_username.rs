@@ -10,7 +10,7 @@ async fn change_username(
     password: String,
     new_username: String,
 ) -> Result<UserSession, ServerFnError> {
-    let pool = backend::create_pool().await?;
+    let pool = api::extract_pool().await?;
     let user = backend::auth::change_username(&pool, old_username, new_username, password).await?;
 
     let session_user = UserSession {
