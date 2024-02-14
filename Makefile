@@ -35,3 +35,8 @@ test: reset-db
 	# run the tests
 	cargo leptos test
 	cargo leptos end-to-end
+
+setup-pgadmin:
+	docker stop pgadmin
+	docker container rm pgadmin
+	docker run --name pgadmin --env-file .env --network host -d dpage/pgadmin4
