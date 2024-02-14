@@ -29,18 +29,23 @@ jobs:
       with:
         node-version: 18
 
+    - name: Get cargo leptos version
+      id: cargo-leptos-version
+      run: echo "CARGO_LEPTOS_VERSION=$(cargo search cargo-leptos --limit 1 | sed -n "s/.*\"\(.*\)\".*/\1/gp")" >> $GITHUB_ENV
     - name: cache cargo leptos installation
       uses: actions/cache@v3
       env:
         cache-name: cache-cargo-leptos
       with:
         path: ~/.cargo
-        key: ${{ runner.os }}-cargo_leptos_version-${{ vars.CARGO_LEPTOS_VERSION }}
+        key: ${{ runner.os }}-cargo_leptos_version-${{ env.CARGO_LEPTOS_VERSION }}
     - if: ${{ steps.cache-cargo-leptos.outputs.cache-hit != 'true' }}
       name: Install leptos
-      run: cargo install cargo-leptos --version ${{ vars.CARGO_LEPTOS_VERSION }}
+      run: cargo install cargo-leptos --version ${{ env.CARGO_LEPTOS_VERSION }}
+
     - name: Add wasm target
       run: rustup target add wasm32-unknown-unknown
+
 
     - name: Get installed Playwright version
       id: playwright-version
