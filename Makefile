@@ -20,6 +20,18 @@ dev:
 	sqlx database create
 	sqlx migrate run
 
-test:
+
+reset-db:
+	# reset the database
+	sqlx database reset -f -y
+
+	# populate the database with a user
+	docker exec postgres_tallyweb mkdir -p /postgres
+	docker cp .github/postgres_setup/test_user.sql postgres_tallyweb:/postgres/test_user.sql
+	docker exec postgres_tallyweb psql -U p3rtang -d tally_web -f /postgres/test_user.sql
+
+
+test: reset-db
+	# run the tests
 	cargo leptos test
 	cargo leptos end-to-end

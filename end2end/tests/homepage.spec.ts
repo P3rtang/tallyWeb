@@ -13,6 +13,7 @@ test("homepage has account icon and overlay", async ({ page }) => {
 
     // make sure the wasm binary is loaded before clicking login
     await page.waitForLoadState("networkidle");
+
     // test overlay on click
     await accountIcon.click()
     await expect(page.getByTestId("test-account-overlay")).toBeVisible()
@@ -24,11 +25,17 @@ test("sidebar", async ({ browser }) => {
 
     {
         await full_size_page.goto("http://localhost:3000");
+        // make sure the wasm binary is loaded before clicking login
+        await full_size_page.waitForLoadState("networkidle");
+
         let sidebar = full_size_page.getByTestId("test-sidebar")
         await expect(sidebar).toHaveCSS("position", "relative")
     }
     {
         await small_page.goto("http://localhost:3000");
+        // make sure the wasm binary is loaded before clicking login
+        await small_page.waitForLoadState("networkidle");
+
         let sidebar = small_page.getByTestId("test-sidebar")
         await expect(sidebar).toHaveCSS("position", "fixed")
     }
