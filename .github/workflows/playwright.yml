@@ -35,12 +35,24 @@ jobs:
         cache-name: cache-cargo-leptos
       with:
         path: ~/.cargo
-        key: ${{ vars.CARGO_LEPTOS_VERSION }}
+        key: ${{ runner.os }}-cargo_leptos_version-${{ vars.CARGO_LEPTOS_VERSION }}
     - if: ${{ steps.cache-cargo-leptos.outputs.cache-hit != 'true' }}
       name: Install leptos
-      run: cargo install cargo-leptos
+      run: cargo install cargo-leptos --version ${{ vars.CARGO_LEPTOS_VERSION }}
     - name: Add wasm target
       run: rustup target add wasm32-unknown-unknown
+
+    - name: Get installed Playwright version
+      id: playwright-version
+      run: echo "PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package.json').dependencies['@playwright/test'].version)")" >> $GITHUB_ENV
+    - name: Cache playwright binaries
+      uses: actions/cache@v3
+      id: playwright-cache
+      with:
+        path: |
+          ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+
     - name: Install dependencies
       run: npm ci
     - name: Install playwright
