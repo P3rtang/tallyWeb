@@ -35,7 +35,7 @@ jobs:
         cache-name: cache-cargo-leptos
       with:
         path: ~/.cargo
-        key: ${{ env.CARGO_LEPTOS_VERSION }}
+        key: ${{ vars.CARGO_LEPTOS_VERSION }}
     - if: ${{ steps.cache-cargo-leptos.outputs.cache-hit != 'true' }}
       name: Install leptos
       run: cargo install cargo-leptos
