@@ -68,7 +68,7 @@ where
     };
 
     view! {
-        <aside style=sidebar_style>
+        <aside style=sidebar_style data-testid="test-sidebar">
             <div class="content">{children()}</div>
         </aside>
     }
