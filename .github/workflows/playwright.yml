@@ -30,7 +30,7 @@ jobs:
         node-version: 18
 
     - name: cache cargo leptos installation
-    - uses: actions/cache@v3
+      uses: actions/cache@v3
       env:
         cache-name: cache-cargo-leptos
       with:
