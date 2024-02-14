@@ -29,7 +29,12 @@ jobs:
       with:
         node-version: 18
     - name: Install leptos
+      uses: actions/cache@v3
       run: cargo install cargo-leptos
+      env:
+        cache-name: cache-cargo-leptos
+      with:
+        key: ${{ env.cargo_leptos_version }}
     - name: Add wasm target
       run: rustup target add wasm32-unknown-unknown
     - name: Install dependencies
@@ -49,7 +54,7 @@ jobs:
       env:
         PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
     - name: Run Playwright tests
-      run: cargo leptos end-to-end -r
+      run: cargo leptos end-to-end
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         LEPTOS_OUTPUT_NAME: debug

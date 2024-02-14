@@ -19,3 +19,7 @@ dev:
 	# setup sqlx migrations
 	sqlx database create
 	sqlx migrate run
+
+test:
+	cargo leptos test
+	cargo leptos end-to-end
