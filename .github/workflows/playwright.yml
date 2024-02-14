@@ -46,7 +46,7 @@ jobs:
         PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
     - name: Run Playwright tests
       run: |
-        cargo leptos serve -r
+        cargo leptos serve -r &
         npx playwright test
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
