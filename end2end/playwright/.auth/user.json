@@ -1,0 +1,15 @@
+{
+  "cookies": [
+    {
+      "name": "session",
+      "value": "{\"user_uuid\":\"a716f0df-236d-4378-9d90-ad2704c09b3a\",\"username\":\"user\",\"token\":\"82283151-b778-4808-9a36-83d0224fbe89\"}",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1710435582.606123,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}
