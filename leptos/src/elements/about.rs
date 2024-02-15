@@ -51,7 +51,7 @@ where
                     <i class="fa-solid fa-link"></i>
                 </a>
                 <label class="title">Version</label>
-                <label class="info">{ TALLYWEB_VERSION }</label>
+                <label class="info">{TALLYWEB_VERSION}</label>
             </div>
             <div class="actionbuttons">
                 <button
@@ -62,6 +62,7 @@ where
                         }
                     }
                 >
+
                     Close
                 </button>
             </div>

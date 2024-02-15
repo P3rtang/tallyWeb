@@ -47,7 +47,12 @@ where
     };
 
     view! {
-        <div id="user-icon" data-testid="test-account-icon" style=button_style on:click=open_overlay>
+        <div
+            id="user-icon"
+            data-testid="test-account-icon"
+            style=button_style
+            on:click=open_overlay
+        >
             <b>{move || { initial() }}</b>
         </div>
         <Show
@@ -178,6 +183,7 @@ pub fn AccountOverlayNavigate(
                     }
                 }
             >
+
                 <Show when=move || fa_icon.is_some() fallback=|| ()>
                     <i class=fa_icon.unwrap()></i>
                 </Show>

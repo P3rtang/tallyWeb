@@ -116,6 +116,7 @@ pub fn App() -> impl IntoView {
                             }
                         }
                     >
+
                         <Route
                             path="/"
                             view=|| {
@@ -125,6 +126,7 @@ pub fn App() -> impl IntoView {
                                 }
                             }
                         >
+
                             <Route path="" view=UnsetCountable/>
                             <Route path=":key" view=SetCountable/>
                         </Route>
@@ -281,7 +283,7 @@ pub fn HomePage() -> impl IntoView {
             }}
             <div id="HomeGrid">
                 {move || {
-                    if screen_layout() == SidebarStyle::Hover {
+                    if screen_layout() != SidebarStyle::Landscape {
                         let sel_memo = create_read_slice(selection_signal, |sel| sel.is_empty());
                         sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(*sel)));
                     }
@@ -383,7 +385,8 @@ where
                                 color(),
                             )
                         }
-                    ></div>
+                    >
+                    </div>
                 </Show>
             </div>
         </div>
@@ -641,9 +644,11 @@ fn ProvideCountableSignals() -> impl IntoView {
         <Transition fallback=move || {
             view! { <components::LoadingScreen></components::LoadingScreen> }
         }>
+
             {
                 data.track();
             }
+
         </Transition>
     }
 }

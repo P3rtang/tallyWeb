@@ -47,6 +47,30 @@ test("sidebar style", async ({ browser, isMobile }) => {
     }
 })
 
+test("load page with selection", async ({ page, isMobile }) => {
+    page.goto("http://localhost:3000/a7602280-e3af-4d03-ac44-c130886cc59b")
+    // make sure the wasm binary is loaded before clicking login
+    await page.waitForLoadState("networkidle")
+
+    if (isMobile) {
+        let sidebar = page.locator("side-bar")
+        await expect(sidebar).not.toBeInViewport()
+    }
+
+    let count_info_box = page.locator("#infobox > div > div").nth(0)
+    await expect(count_info_box).toBeVisible()
+    await expect(count_info_box).toHaveClass("rowbox")
+
+    let count_info = count_info_box.locator(".info")
+    await expect(count_info).toHaveText("0")
+    if (!isMobile) {
+        count_info.click()
+    } else {
+        count_info.tap()
+    }
+    await expect(count_info).toHaveText("1")
+})
+
 test("create counter", async ({ page }) => {
     await page.goto("http://localhost:3000")
     // make sure the wasm binary is loaded before clicking login
@@ -58,6 +82,6 @@ test("create counter", async ({ page }) => {
     await expect(newCounterButton).toBeVisible()
     await newCounterButton.click()
 
-    let treeviewElement = sidebar.locator(".row span").locator("nth=0")
-    await expect(treeviewElement).toContainText('Counter 1')
+    let treeviewElement = sidebar.locator(".row span").locator("nth=2")
+    await expect(treeviewElement).toContainText('Counter 2')
 })

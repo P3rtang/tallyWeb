@@ -45,11 +45,11 @@ where
 
     view! {
         <aside>
-            <side-bar 
-                data-testid="test-sidebar" 
+            <side-bar
+                data-testid="test-sidebar"
                 style=move || format!("--accent: {}; {}", accent_color(), sidebar_style())
             >
-                { children() }
+                {children()}
             </side-bar>
         </aside>
     }
