@@ -36,7 +36,11 @@ pub fn CountableContextMenu(
                             session: user.get_untracked(),
                             key: key.get_untracked(),
                         });
-                    state_rsrc.refetch();
+                    create_effect(move |_| {
+                        if !delete_action.pending().get() {
+                            state_rsrc.refetch();
+                        }
+                    });
                 }
             >
                 Delete
