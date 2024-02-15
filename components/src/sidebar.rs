@@ -16,20 +16,6 @@ impl SidebarStyle {
             SidebarStyle::Landscape => "big",
         }
     }
-
-    fn get_navbar_style(&self) -> String {
-        match self {
-            SidebarStyle::Portrait => {
-                "position: fixed; top: 52px;".to_string()
-            },
-            SidebarStyle::Hover => {
-                "position: fixed; top: 52px; bottom: 12px; margin: 12px; height: calc(100vh - 80px); border-radius: 21px;".to_string()
-            },
-            SidebarStyle::Landscape => {
-                "position: relative; border-right: 1px solid #FFFFFF80;".to_string()
-            },
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -48,28 +34,23 @@ where
     F2: Fn() -> SidebarStyle + 'static,
 {
     let sidebar_style = move || {
-        layout().get_navbar_style()
-            + "max-width: 25rem;"
-            + "width: 100%;"
-            + "transition: transform 0.5s, width 0.5s;"
-            + "overflow-y: auto;"
-            + if !display().0 && layout() != SidebarStyle::Hover {
-                "width: 0px;"
-            } else if !display().0 && layout() == SidebarStyle::Hover {
-                "transform: TranslateX(-120%);"
-            } else {
-                ""
-            }
-            + &if layout() == SidebarStyle::Hover {
-                format!("border: solid 2px {};", accent_color())
-            } else {
-                "".to_string()
-            }
+        if !display().0 && layout() != SidebarStyle::Hover {
+            "width: 0px; transform: TranslateX(-2px);"
+        } else if !display().0 && layout() == SidebarStyle::Hover {
+            "transform: TranslateX(-120%);"
+        } else {
+            ""
+        }
     };
 
     view! {
         <aside>
-            <side-bar style=sidebar_style data-testid="test-sidebar">{children()}</side-bar>
+            <side-bar 
+                data-testid="test-sidebar" 
+                style=move || format!("--accent: {}; {}", accent_color(), sidebar_style())
+            >
+                { children() }
+            </side-bar>
         </aside>
     }
 }
