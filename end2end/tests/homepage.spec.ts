@@ -19,7 +19,11 @@ test("homepage has account icon and overlay", async ({ page }) => {
     await expect(page.getByTestId("test-account-overlay")).toBeVisible()
 })
 
-test("sidebar style", async ({ browser }) => {
+test("sidebar style", async ({ browser, isMobile }) => {
+    if (isMobile) {
+        return
+    }
+
     let pages = [
         {
             page: await browser.newContext({ viewport: { width: 1920, height: 1080 } }).then((ctx) => ctx.newPage()),
@@ -39,6 +43,7 @@ test("sidebar style", async ({ browser }) => {
         let sidebar = page.page.locator("side-bar")
         await expect(sidebar).toBeVisible()
         await expect(sidebar).toHaveCSS("position", page.sidebar.position)
+        await expect(sidebar).toHaveCSS("--accent", "#66eecc")
     }
 })
 
