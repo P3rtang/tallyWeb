@@ -42,4 +42,4 @@ test: reset-db
 setup-pgadmin:
 	docker stop pgadmin
 	docker container rm pgadmin
-	docker run --name pgadmin --env-file .env --network host -d dpage/pgadmin4
+	docker run --name pgadmin --env-file .env --restart always --network host -d dpage/pgadmin4
