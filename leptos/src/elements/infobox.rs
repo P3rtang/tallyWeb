@@ -273,6 +273,7 @@ where
                             time_str
                         })
                 }}
+
             </p>
         </div>
     }
@@ -312,6 +313,7 @@ where
                 {move || {
                     if count() == 0 { String::from("---") } else { short_format_time(step()) }
                 }}
+
             </p>
         </div>
     }

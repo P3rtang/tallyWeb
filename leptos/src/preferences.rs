@@ -87,9 +87,11 @@ pub fn ProvidePreferences() -> impl IntoView {
         <Transition fallback=move || {
             view! { <components::LoadingScreen></components::LoadingScreen> }
         }>
+
             {
                 pref_rsrc.track();
             }
+
         </Transition>
     }
 }

@@ -20,6 +20,9 @@ dev:
 	sqlx database create
 	sqlx migrate run
 
+dump-db:
+	mkdir -p db-backup
+	docker exec -t postgres_tallyweb pg_dump -U p3rtang -d tally_web > "db-backup/dbdump.sql"
 
 reset-db:
 	# reset the database
