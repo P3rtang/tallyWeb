@@ -1,5 +1,5 @@
 #![allow(unused_braces)]
-use components::{Message, SavingMessage, SidebarStyle, Slider};
+use components::{MessageBox, SavingMessage, SidebarStyle, Slider};
 use leptos::*;
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
@@ -12,7 +12,7 @@ where
     F: Fn() -> SidebarStyle + Copy + 'static,
 {
     let preferences = expect_context::<RwSignal<Preferences>>();
-    let message = expect_context::<Message>();
+    let message = expect_context::<MessageBox>();
     let user = expect_context::<RwSignal<UserSession>>();
 
     let action = create_server_action::<api::SavePreferences>();

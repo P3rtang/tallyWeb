@@ -3,12 +3,12 @@ use leptos_router::{ActionForm, A};
 use web_sys::SubmitEvent;
 
 use super::*;
-use components::Message;
+use components::MessageBox;
 
 #[component]
 pub fn NewPassword() -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
-    let message = expect_context::<Message>();
+    let message = expect_context::<MessageBox>();
 
     let action = create_server_action::<api::ChangePassword>();
 

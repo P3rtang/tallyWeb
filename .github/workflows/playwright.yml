@@ -73,11 +73,13 @@ jobs:
       env:
         PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
     - name: Run Playwright tests
-      run: cargo leptos end-to-end -r
+      run: cargo leptos end-to-end
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         LEPTOS_OUTPUT_NAME: debug
         TALLYWEB_VERSION: 0.3.0
+        LEPTOS_WASM_OPT_VERSION: version_116
+        LEPTOS_SASS_VERSION: 1.71.0
     - uses: actions/upload-artifact@v3
       if: always()
       with:

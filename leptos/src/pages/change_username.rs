@@ -1,5 +1,5 @@
 use super::*;
-use components::Message;
+use components::MessageBox;
 use gloo_storage::{LocalStorage, Storage};
 use leptos::*;
 use leptos_router::{ActionForm, A};
@@ -26,7 +26,7 @@ async fn change_username(
 
 #[component]
 pub fn ChangeAccountInfo() -> impl IntoView {
-    let message = expect_context::<Message>();
+    let message = expect_context::<MessageBox>();
     let user = expect_context::<RwSignal<UserSession>>();
 
     let action = create_server_action::<ServerChangeAccountInfo>();

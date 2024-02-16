@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use chrono::Duration;
-use components::{LoadingScreen, Message, SavingMessage, SidebarStyle, Slider};
+use components::{LoadingScreen, MessageBox, SavingMessage, SidebarStyle, Slider};
 use leptos::{
     html::{Input, Select},
     *,
@@ -71,7 +71,7 @@ where
 {
     let user = expect_context::<RwSignal<UserSession>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
-    let message = expect_context::<Message>();
+    let message = expect_context::<MessageBox>();
     let session = expect_context::<RwSignal<UserSession>>();
 
     let counter_rsrc = create_resource(key, move |id| {

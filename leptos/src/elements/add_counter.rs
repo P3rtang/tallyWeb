@@ -1,11 +1,11 @@
 use super::*;
-use components::{Message, Spinner};
+use components::{MessageBox, Spinner};
 use leptos::*;
 
 #[component]
 pub fn NewCounterButton(state_len: Signal<usize>) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
-    let message = expect_context::<Message>();
+    let message = expect_context::<MessageBox>();
 
     let add_counter_action = create_action(move |(user, name): &(UserSession, String)| {
         let mut new_counter = Counter::new(name, user.user_uuid);
