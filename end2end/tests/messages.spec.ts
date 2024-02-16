@@ -27,6 +27,9 @@ test("show messages", async ({ page }) => {
     await expect(message1).toHaveClass("fade-out")
     await expect(message1).toBeHidden()
 
-    let errorMessage = notificationBox.locator("dialog", { hasText: "error" })
+    let errorMessage = notificationBox.locator("dialog", { hasText: "An error occurred" })
     await expect(errorMessage).toHaveCSS("border", "2px solid rgb(255, 99, 71)")
+
+    let serverMessage = notificationBox.locator("dialog", { hasText: "Internal server Error" })
+    await expect(serverMessage).toHaveCSS("border", "2px solid rgb(255, 99, 71)")
 })

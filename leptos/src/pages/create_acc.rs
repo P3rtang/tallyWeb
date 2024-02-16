@@ -7,6 +7,7 @@ use super::*;
 #[component]
 pub fn CreateAccount() -> impl IntoView {
     let action = create_server_action::<api::CreateAccount>();
+    let message_jar = expect_context::<components::MessageJar>();
 
     let password_input = create_node_ref::<Input>();
     let password_repeat = create_node_ref::<Input>();
@@ -22,10 +23,10 @@ pub fn CreateAccount() -> impl IntoView {
             // message.set(Some(String::from("passwords do not match")));
             ev.prevent_default();
         }
-        create_effect(move |_| {
-            if action.value().get().is_some_and(|v| v.is_ok()) {
-                let _ = window().location().set_href("/");
-            }
+        create_effect(move |_| match action.value().get() {
+            Some(Ok(_)) => leptos_router::use_navigate()("/", Default::default()),
+            Some(Err(err)) => message_jar.set_err(err.to_string()),
+            None => {}
         });
     };
 

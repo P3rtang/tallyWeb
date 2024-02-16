@@ -31,9 +31,6 @@ pub fn App() -> impl IntoView {
     let close_overlay_signal = create_rw_signal(CloseOverlays());
     provide_context(close_overlay_signal);
 
-    let state = create_rw_signal(CounterList::new(&[]));
-    provide_context(state);
-
     let close_overlays = move |_| {
         close_overlay_signal.update(|_| ());
     };
@@ -85,6 +82,7 @@ pub fn App() -> impl IntoView {
 
         <Router>
             <main on:click=close_overlays>
+                <ProvideMessageSystem/>
                 <Routes>
                     <Route
                         path=""
@@ -92,7 +90,6 @@ pub fn App() -> impl IntoView {
                         view=|| {
                             view! {
                                 <ProvideSessionSignal>
-                                    <ProvideMessageSystem/>
                                     <ProvidePreferences/>
                                     <ProvideCountableSignals/>
                                     <Outlet/>
@@ -132,7 +129,7 @@ pub fn App() -> impl IntoView {
                         </Route>
 
                         <Route path="/change-username" view=move || view! { <ChangeAccountInfo/> }/>
-                        <Route path="/change-password" view=NewPassword/>
+                        <Route path="/change-password" view=ChangePassword/>
                         <Route path="/privacy-policy" view=PrivacyPolicy/>
                         <Route path="/*any" view=NotFound/>
                     </Route>
@@ -627,6 +624,9 @@ fn ProvideCountableSignals() -> impl IntoView {
     provide_context(selection_signal);
 
     timer(selection_signal);
+
+    let state = create_rw_signal(CounterList::new(&[]));
+    provide_context(state);
 
     view! {
         <Transition fallback=move || {

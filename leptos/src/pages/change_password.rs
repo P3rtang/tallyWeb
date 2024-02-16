@@ -1,21 +1,20 @@
 use leptos::*;
 use leptos_router::{ActionForm, A};
-use web_sys::SubmitEvent;
 
 use super::*;
-use components::MessageBox;
+use components::MessageJar;
 
 #[component]
-pub fn NewPassword() -> impl IntoView {
+pub fn ChangePassword() -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
-    let message = expect_context::<MessageBox>();
+    let message = expect_context::<MessageJar>();
 
     let action = create_server_action::<api::ChangePassword>();
 
     let new_pass_ref = create_node_ref::<leptos::html::Input>();
     let new_pass_repeat_ref = create_node_ref::<leptos::html::Input>();
 
-    let on_submit = move |ev: SubmitEvent| {
+    let on_submit = move |ev: ev::SubmitEvent| {
         if new_pass_ref().unwrap().value() != new_pass_repeat_ref().unwrap().value() {
             message.set_err("Passwords do not match");
             ev.prevent_default();
@@ -23,15 +22,15 @@ pub fn NewPassword() -> impl IntoView {
             message.set_err("Password should be longer than 8 characters");
             ev.prevent_default();
         }
-
-        create_effect(move |_| {
-            if let Some(Ok(_)) = action.value()() {
-                message.set_msg("Password succesfully changed")
-            } else if let Some(Err(_)) = action.value()() {
-                message.set_err("An error occurred")
-            }
-        });
     };
+
+    let server_resp = create_memo(move |_| match action.value().get() {
+        Some(Ok(_)) => message.set_msg("Password succesfully changed"),
+        Some(Err(err)) => message.set_err(err.to_string()),
+        None => {}
+    });
+
+    create_effect(move |_| server_resp.track());
 
     view! {
         <ActionForm action on:submit=on_submit>

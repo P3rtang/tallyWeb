@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use chrono::Duration;
 use leptos::*;
 
+pub type MessageKey = usize;
+
 #[derive(Debug, Clone, PartialEq)]
 struct Notification {
     kind: NotificationKind,
@@ -27,15 +29,15 @@ impl NotificationKind {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct MessageBox {
-    messages: RwSignal<HashMap<usize, RwSignal<Notification>>>,
+pub struct MessageJar {
+    messages: RwSignal<HashMap<MessageKey, RwSignal<Notification>>>,
     reset_time: Option<Duration>,
-    next_key: RwSignal<usize>,
+    next_key: RwSignal<MessageKey>,
     as_modal: bool,
 }
 
 #[allow(dead_code)]
-impl MessageBox {
+impl MessageJar {
     pub fn new(reset_time: Duration) -> Self {
         Self {
             messages: HashMap::new().into(),
@@ -45,7 +47,7 @@ impl MessageBox {
         }
     }
 
-    fn get_ordered(&self) -> Signal<Vec<(usize, RwSignal<Notification>)>> {
+    fn get_ordered(&self) -> Signal<Vec<(MessageKey, RwSignal<Notification>)>> {
         create_read_slice(self.messages, |msgs| {
             let mut entries = msgs
                 .iter()
@@ -81,7 +83,8 @@ impl MessageBox {
         }
     }
 
-    fn add_msg(&self, msg: NotificationKind) -> usize {
+    fn add_msg(&self, msg: NotificationKind) -> MessageKey {
+        self.next_key.update(|k| *k += 1);
         let key = self.next_key.get_untracked();
         self.messages.update(|m| {
             m.insert(
@@ -93,11 +96,10 @@ impl MessageBox {
                 .into(),
             );
         });
-        self.next_key.update(|k| *k += 1);
         key
     }
 
-    fn msg_timeout_effect(self, key: usize) {
+    fn msg_timeout_effect(self, key: MessageKey) {
         if let Some(timeout) = self.reset_time {
             create_effect(move |_| {
                 set_timeout(move || self.fade_out(key), timeout.to_std().unwrap())
@@ -105,12 +107,16 @@ impl MessageBox {
         }
     }
 
-    fn fade_out(self, key: usize) {
+    pub fn fade_out(self, key: MessageKey) {
         self.messages.update(|m| {
             if let Some(v) = m.get_mut(&key) {
                 v.update(|v| v.do_fade = true)
             }
         })
+    }
+
+    pub fn get_last_key(self) -> Signal<MessageKey> {
+        Signal::derive(self.next_key)
     }
 
     pub fn set_msg(self, msg: impl ToString) {
@@ -152,15 +158,6 @@ impl MessageBox {
         self.msg_timeout_effect(key);
     }
 
-    pub fn set_server_err(&self, err: &str) {
-        let err_msg = err.split_once(": ").map(|s| s.1).unwrap_or(err);
-        let key = self.add_msg(NotificationKind::Error(
-            self.as_modal,
-            view! { <b>{err_msg.to_string()}</b> }.into_view(),
-        ));
-        self.msg_timeout_effect(key)
-    }
-
     pub fn set_err(self, err: impl ToString) {
         let err = err.to_string();
         create_effect(move |_| {
@@ -182,8 +179,8 @@ impl MessageBox {
 }
 
 #[component]
-fn Message(key: usize, #[prop(into)] msg: Signal<Notification>) -> impl IntoView {
-    let msg_box = expect_context::<MessageBox>();
+fn Message(key: MessageKey, #[prop(into)] msg: Signal<Notification>) -> impl IntoView {
+    let msg_box = expect_context::<MessageJar>();
 
     let border_style = move || match msg().kind {
         NotificationKind::Message(_, _) => "border: 2px solid #ffe135",
@@ -259,7 +256,7 @@ fn Message(key: usize, #[prop(into)] msg: Signal<Notification>) -> impl IntoView
 
 #[component(transparent)]
 pub fn ProvideMessageSystem() -> impl IntoView {
-    let msg_box = MessageBox::new(Duration::seconds(5));
+    let msg_box = MessageJar::new(Duration::seconds(5));
     provide_context(msg_box);
 
     // on navigation clear any messages or errors from the message box
