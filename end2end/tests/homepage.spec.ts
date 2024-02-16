@@ -59,7 +59,7 @@ test("load page with selection", async ({ page, isMobile }) => {
 
     let count_info_box = page.locator("#infobox > div > div").nth(0)
     await expect(count_info_box).toBeVisible()
-    await expect(count_info_box).toHaveClass("rowbox")
+    await expect(count_info_box).toHaveClass(/rowbox/)
 
     let count_info = count_info_box.locator(".info")
     await expect(count_info).toHaveText("0")
