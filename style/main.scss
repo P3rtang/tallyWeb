@@ -649,12 +649,6 @@ notification-box {
         }
 
         button.close {
-            display: none;
-        }
-    }
-
-    dialog:hover {
-        button.close {
             display: flex;
             justify-content: center;
             align-items: center;
@@ -663,11 +657,18 @@ notification-box {
             top: 0px;
             right: 0px;
 
+            border-radius: 20px;
+            font-size: 18px;
             height: 28px;
             width: 28px;
 
-            border-radius: 20px;
-            font-size: 18px;
+            visibility: hidden;
+        }
+    }
+
+    dialog:hover {
+        button.close {
+            visibility: visible
         }
     }
 }
