@@ -187,7 +187,7 @@ Phase 1	0	0	NewOdds	f	\N	2024-02-15 09:29:31.993163	2439feb5-c234-4a0c-902b-e5c9
 
 COPY public.preferences (use_default_accent_color, accent_color, show_separator, multi_select, user_uuid) FROM stdin;
 t	\N	f	f	e86f5900-8e32-4cf9-8d6a-e3e5ed4f7627
-f	#abee68	f	f	2439feb5-c234-4a0c-902b-e5c9e679ffbe
+t	\N	f	f	2439feb5-c234-4a0c-902b-e5c9e679ffbe
 \.
 
 
