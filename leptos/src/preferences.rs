@@ -1,7 +1,10 @@
+use components::LoadingScreen;
 use leptos::*;
 use serde::{Deserialize, Serialize};
 
 use super::*;
+
+pub type PrefResource = Resource<UserSession, Result<Preferences, ServerFnError>>;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AccountAccentColor(pub String);
@@ -72,24 +75,26 @@ pub fn ProvidePreferences() -> impl IntoView {
     let pref_signal = create_rw_signal(Preferences::new(&user.get_untracked()));
     provide_context(pref_signal);
 
-    let pref_rsrc = create_blocking_resource(user, api::get_user_preferences);
-    let pref_rsrc_memo = create_memo(move |_| {
-        pref_rsrc.with(|p| {
+    let pref_resource = create_blocking_resource(user, api::get_user_preferences);
+    provide_context(pref_resource);
+
+    let pref_resource_memo = create_memo(move |_| {
+        pref_resource.with(|p| {
             if let Some(Ok(p)) = p {
                 pref_signal.set(p.clone())
             }
         });
     });
 
-    create_isomorphic_effect(move |_| pref_rsrc_memo.track());
+    create_isomorphic_effect(move |_| pref_resource_memo.track());
 
     view! {
-        <Transition fallback=move || {
-            view! { <components::LoadingScreen></components::LoadingScreen> }
+        <Transition fallback=|| {
+            view! { <LoadingScreen/> }
         }>
 
             {
-                pref_rsrc.track();
+                pref_resource.track();
             }
 
         </Transition>

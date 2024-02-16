@@ -403,3 +403,25 @@ pub async fn set_session_cookie(session: UserSession) -> Result<(), ServerFnErro
 
     return Ok(());
 }
+
+#[server(ServerChangeAccountInfo, "/api")]
+async fn change_username(
+    old_username: String,
+    password: String,
+    new_username: String,
+) -> Result<UserSession, ServerFnError> {
+    let pool = api::extract_pool().await?;
+    let user =
+        backend::auth::change_username(&pool, &old_username, &new_username, &password).await?;
+
+    let session_user = UserSession {
+        user_uuid: user.uuid,
+        username: user.username.clone(),
+        token: user.token.unwrap(),
+    };
+
+    api::login_user(user.username, password).await?;
+    leptos_actix::redirect("/preferences");
+
+    return Ok(session_user);
+}

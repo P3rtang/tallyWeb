@@ -4,22 +4,25 @@ use leptos::*;
 use leptos_router::A;
 
 #[component]
-pub fn Navbar() -> impl IntoView {
+pub fn Navbar(#[prop(default=true.into(), into)] has_sidebar: MaybeSignal<bool>) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
+    let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
+    let close_overlay_signal = expect_context::<RwSignal<CloseOverlays>>();
+
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
 
-    let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let toggle_sidebar = move |_| show_sidebar.update(|s| s.0 = !s.0);
-
-    let close_overlay_signal = expect_context::<RwSignal<CloseOverlays>>();
-    let close_overlays = move |_| {
-        close_overlay_signal.update(|_| ());
-    };
+    let close_overlays = move |_| close_overlay_signal.update(|_| ());
 
     view! {
         <nav on:click=close_overlays>
-            <button id="toggle-sidebar" aria-label="toggle sidebar" on:click=toggle_sidebar>
+            <button
+                id="toggle-sidebar"
+                aria-label="toggle sidebar"
+                on:click=toggle_sidebar
+                disabled=move || !has_sidebar()
+            >
                 <i class="fa-solid fa-bars"></i>
             </button>
             <A href="/">

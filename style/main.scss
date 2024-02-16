@@ -79,6 +79,15 @@ nav {
                 background: #AAAAAA40;
             }
         }
+
+        &:disabled {
+            color: gray;
+            cursor: unset;
+
+            &:hover {
+                background: none;
+            }
+        }
     }
 }
 

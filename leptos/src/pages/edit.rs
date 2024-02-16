@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use chrono::Duration;
-use components::{LoadingScreen, MessageBox, SavingMessage, SidebarStyle, Slider};
+use components::{LoadingScreen, MessageJar, SavingMessage, SidebarStyle, Slider};
 use leptos::{
     html::{Input, Select},
     *,
@@ -71,7 +71,7 @@ where
 {
     let user = expect_context::<RwSignal<UserSession>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
-    let message = expect_context::<MessageBox>();
+    let message = expect_context::<MessageJar>();
     let session = expect_context::<RwSignal<UserSession>>();
 
     let counter_rsrc = create_resource(key, move |id| {
@@ -165,6 +165,11 @@ where
         },
     );
 
+    let toggle_charm = move |_| {
+        let toggle = !has_charm.0.get_untracked();
+        has_charm.1.set(toggle)
+    };
+
     let name_input: NodeRef<Input> = create_node_ref();
     let count_input: NodeRef<Input> = create_node_ref();
     let hours_input: NodeRef<Input> = create_node_ref();
@@ -231,7 +236,7 @@ where
                     message.set_msg("Saved succesfully");
                     leptos_router::use_navigate()("/", Default::default());
                 }
-                Some(Err(err)) => message.set_server_err(&err.to_string()),
+                Some(Err(err)) => message.set_err(err.to_string()),
                 _ => {}
             };
         });
@@ -340,7 +345,7 @@ where
                         <label for="charm" class="title">
                             Shiny Charm
                         </label>
-                        <Slider checked=has_charm accent_color/>
+                        <Slider value=has_charm.0 on_checked=toggle_charm accent_color/>
                     </div>
                     <div class="action-buttons">
                         <button type="button" on:click=undo_changes>

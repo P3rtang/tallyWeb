@@ -5,17 +5,17 @@ use leptos_router::{ActionForm, A};
 #[component]
 pub fn LoginPage() -> impl IntoView {
     let login_action = create_server_action::<api::LoginUser>();
+    let message_jar = expect_context::<components::MessageJar>();
 
-    let on_submit = move |_| {
-        create_effect(move |_| {
-            if login_action.value().get().is_some_and(|v| v.is_ok()) {
-                let _ = window().location().set_href("/");
-            }
-        });
-    };
+    let server_resp = create_memo(move |_| match login_action.value().get() {
+        Some(Err(err)) => message_jar.set_err(err.to_string()),
+        _ => {}
+    });
+
+    create_effect(move |_| server_resp.track());
 
     view! {
-        <ActionForm action=login_action on:submit=on_submit>
+        <ActionForm action=login_action>
             <div class="container login-form">
                 <h1>Login</h1>
                 <label for="username">Username</label>

@@ -1,5 +1,5 @@
 #![allow(unused_braces)]
-use components::{MessageBox, SavingMessage, SidebarStyle, Slider};
+use components::{MessageJar, SavingMessage, SidebarStyle, Slider};
 use leptos::*;
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
@@ -12,38 +12,17 @@ where
     F: Fn() -> SidebarStyle + Copy + 'static,
 {
     let preferences = expect_context::<RwSignal<Preferences>>();
-    let message = expect_context::<MessageBox>();
+    let message = expect_context::<MessageJar>();
     let user = expect_context::<RwSignal<UserSession>>();
+    let pref_resource = expect_context::<PrefResource>();
 
     let action = create_server_action::<api::SavePreferences>();
-
-    let use_default_accent_color = create_slice(
-        preferences,
-        |pref| pref.use_default_accent_color,
-        |pref, new| pref.use_default_accent_color = new,
-    );
 
     let (accent_color, set_accent_color) = create_slice(
         preferences,
         |pref| pref.accent_color.0.clone(),
         |pref, new| pref.accent_color.0 = new,
     );
-
-    let separator = create_slice(
-        preferences,
-        |pref| pref.show_separator,
-        |pref, new| pref.show_separator = new,
-    );
-
-    let multi_select = create_slice(
-        preferences,
-        |pref| pref.multi_select,
-        |pref, new| pref.multi_select = new,
-    );
-
-    let undo_changes = move |_| {
-        // pref_resource.refetch();
-    };
 
     let on_change = move |ev: Event| {
         let color = event_target_value(&ev);
@@ -56,31 +35,49 @@ where
     let on_submit = move |ev: SubmitEvent| {
         ev.prevent_default();
 
-        let action = create_action(move |_| {
-            let user = user.get_untracked();
-
-            async move {
-                match api::save_preferences(user, preferences.get_untracked()).await {
-                    Ok(_) => message.set_msg("Settings Saved"),
-                    Err(err) => message.set_server_err(&err.to_string()),
-                };
-
-                Ok::<(), ServerFnError>(())
-            }
+        action.dispatch(api::SavePreferences {
+            session: user.get_untracked(),
+            preferences: preferences.get_untracked(),
         });
 
-        action.dispatch(());
         message
             .without_timeout()
             .as_modal()
-            .set_msg_view(SavingMessage)
+            .set_msg_view(SavingMessage);
+
+        let msg_key = message.get_last_key();
+
+        create_effect(move |_| match action.value().get() {
+            Some(Ok(_)) => {
+                message.fade_out(msg_key.get());
+                action.value().set_untracked(None)
+            }
+            Some(Err(err)) => {
+                message.fade_out(msg_key.get());
+                message.set_err(AppError::from(err));
+                action.value().set_untracked(None)
+            }
+            None => {}
+        });
     };
+
+    let on_default_checked = move |_: Event| {
+        preferences.update(|p| p.use_default_accent_color = !p.use_default_accent_color);
+        preferences.update(|p| p.accent_color.set_user(&user.get_untracked()))
+    };
+
+    let on_separator_checked =
+        move |_: Event| preferences.update(|p| p.show_separator = !p.show_separator);
+
+    let on_multi_checked = move |_: Event| preferences.update(|p| p.multi_select = !p.multi_select);
+
+    let undo_changes = move |_| pref_resource.refetch();
 
     let border_style = move || format!("border: 2px solid {};", accent_color.get());
     let confirm_style = move || format!("background-color: {}", accent_color.get());
 
     view! {
-        <elements::Navbar></elements::Navbar>
+        <elements::Navbar has_sidebar=false></elements::Navbar>
         <ActionForm action=action on:submit=on_submit class="parent-form">
             <div
                 class=move || String::from("editing-form ") + layout().get_widget_class()
@@ -90,20 +87,12 @@ where
                     <label for="use_default_accent_color" class="title">
                         Use Default Accent Color
                     </label>
-                    <Slider checked=use_default_accent_color accent_color/>
-                    {move || {
-                        use_default_accent_color
-                            .0
-                            .with(|b| {
-                                if *b {
-                                    preferences
-                                        .update(|p| {
-                                            p.accent_color.set_user(&user.get_untracked())
-                                        });
-                                }
-                            })
-                    }}
-
+                    <Slider
+                        value=preferences.get_untracked().use_default_accent_color
+                        name="use_default_accent_color"
+                        on_checked=on_default_checked
+                        accent_color
+                    />
                     <label for="accent_color" class="title">
                         Accent Color
                     </label>
@@ -113,17 +102,26 @@ where
                         id="accent_color"
                         class="edit"
                         on:input=on_change
-                        prop:disabled=move || use_default_accent_color.0()
+                        disabled=move || preferences().use_default_accent_color
+                        value=accent_color
                         prop:value=accent_color
                     />
 
                     <label for="show_separator" class="title">
                         Show Treeview Separator
                     </label>
-                    <Slider checked=separator accent_color/>
+                    <Slider
+                        value=preferences.get_untracked().show_separator
+                        on_checked=on_separator_checked
+                        accent_color
+                    />
 
                     <label class="title">Use Multi Select (experimental)</label>
-                    <Slider checked=multi_select accent_color/>
+                    <Slider
+                        value=preferences.get_untracked().multi_select
+                        on_checked=on_multi_checked
+                        accent_color
+                    />
 
                     <label class="title">Change Username</label>
                     <A class="edit" href="/change-username">

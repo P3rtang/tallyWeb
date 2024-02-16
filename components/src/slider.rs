@@ -1,12 +1,19 @@
 use leptos::*;
 
 #[component]
-pub fn slider(
-    #[prop(into)] checked: (Signal<bool>, SignalSetter<bool>),
+pub fn Slider<OC>(
+    #[prop(into)] value: MaybeSignal<bool>,
+    #[prop(default=String::new(), into)] name: String,
+    on_checked: OC,
     #[prop(optional, into)] accent_color: Option<Signal<String>>,
-) -> impl IntoView {
+) -> impl IntoView
+where
+    OC: Fn(ev::Event) + 'static,
+{
+    let value = create_rw_signal(value.get_untracked());
+
     let style = move || {
-        if checked.0() {
+        if value() {
             format!(
                 "background-color: {}",
                 accent_color
@@ -18,17 +25,20 @@ pub fn slider(
         }
     };
 
-    let toggle_checked = move |_| checked.1.set(!checked.0());
+    let on_toggle = move |ev| {
+        on_checked(ev);
+        value.update(|v| *v = !*v);
+    };
 
     view! {
         <label class="switch">
             <input
                 type="checkbox"
-                name="show_separator"
+                name=name
                 id="show_separator"
                 class="edit"
-                prop:checked=checked.0
-                on:change=toggle_checked
+                checked=value
+                on:change=on_toggle
             />
             <span class="slider" style=style></span>
         </label>

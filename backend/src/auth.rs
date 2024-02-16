@@ -196,9 +196,9 @@ pub async fn change_password(
 
 pub async fn change_username(
     pool: &PgPool,
-    old_username: String,
-    new_username: String,
-    password: String,
+    old_username: &str,
+    new_username: &str,
+    password: &str,
 ) -> Result<DbUser, BackendError> {
     check_pass(pool, &old_username, &password).await?;
 

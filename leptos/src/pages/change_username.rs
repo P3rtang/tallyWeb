@@ -1,53 +1,25 @@
 use super::*;
-use components::MessageBox;
-use gloo_storage::{LocalStorage, Storage};
+use components::MessageJar;
 use leptos::*;
 use leptos_router::{ActionForm, A};
 
-#[server(ServerChangeAccountInfo, "/api")]
-async fn change_username(
-    old_username: String,
-    password: String,
-    new_username: String,
-) -> Result<UserSession, ServerFnError> {
-    let pool = api::extract_pool().await?;
-    let user = backend::auth::change_username(&pool, old_username, new_username, password).await?;
-
-    let session_user = UserSession {
-        user_uuid: user.uuid,
-        username: user.username,
-        token: user.token.unwrap(),
-    };
-
-    leptos_actix::redirect("/preferences");
-
-    return Ok(session_user);
-}
-
 #[component]
 pub fn ChangeAccountInfo() -> impl IntoView {
-    let message = expect_context::<MessageBox>();
+    let message = expect_context::<MessageJar>();
     let user = expect_context::<RwSignal<UserSession>>();
 
-    let action = create_server_action::<ServerChangeAccountInfo>();
+    let action = create_server_action::<api::ServerChangeAccountInfo>();
 
-    let on_submit = move |_| {
-        create_effect(move |_| {
-            if let Some(Ok(session_user)) = action.value()() {
-                message.set_msg("Username succesfully changed");
-                if LocalStorage::set("user_session", session_user.clone()).is_ok() {
-                    user.set(session_user);
-                }
-            } else if let Some(Err(err)) = action.value()() {
-                let err_str = err.to_string();
-                let err_msg = err_str.split(": ").last().unwrap();
-                message.set_err(err_msg)
-            }
-        });
-    };
+    let server_resp = create_memo(move |_| match action.value().get() {
+        Some(Ok(_)) => message.set_msg("Username succesfully changed"),
+        Some(Err(err)) => message.set_err(AppError::from(err)),
+        None => {}
+    });
+
+    create_effect(move |_| server_resp.track());
 
     view! {
-        <ActionForm action on:submit=on_submit>
+        <ActionForm action>
             <div class="container login-form">
                 <input type="hidden" name="old_username" value=move || user().username/>
                 <input

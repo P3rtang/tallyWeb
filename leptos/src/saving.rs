@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use super::*;
-use components::MessageBox;
+use components::MessageJar;
 use gloo_storage::{LocalStorage, Storage};
 use leptos::*;
 use leptos_router::A;
@@ -128,7 +128,7 @@ where
 
 #[component]
 pub fn SavingError(err: AppError, is_offline: RwSignal<bool>) -> impl IntoView {
-    let message = expect_context::<MessageBox>();
+    let message = expect_context::<MessageJar>();
 
     let on_offline = move |_| {
         is_offline.set(true);
@@ -150,7 +150,7 @@ pub fn SavingError(err: AppError, is_offline: RwSignal<bool>) -> impl IntoView {
 #[component]
 pub fn AskOfflineData(data: Vec<SerCounter>) -> impl IntoView {
     let state = expect_context::<RwSignal<app::CounterList>>();
-    let message = expect_context::<MessageBox>();
+    let message = expect_context::<MessageJar>();
     let user = expect_context::<RwSignal<UserSession>>();
     let save_handler = expect_context::<SaveHandlerCountable>();
 

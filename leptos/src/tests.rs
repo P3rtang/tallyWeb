@@ -1,6 +1,12 @@
-use components::MessageBox;
+use components::MessageJar;
 use leptos::*;
 use leptos_router::{Outlet, A};
+
+#[server]
+async fn failing_server_fn() -> Result<(), ServerFnError> {
+    use super::AppError;
+    return Err(AppError::Internal)?;
+}
 
 #[component]
 pub fn ShowTests() -> impl IntoView {
@@ -22,12 +28,23 @@ pub fn ShowTests() -> impl IntoView {
 
 #[component]
 pub fn TestMessages() -> impl IntoView {
-    let msg = expect_context::<MessageBox>();
+    let failed_action = create_server_action::<FailingServerFn>();
+    failed_action.dispatch(FailingServerFn {});
+    let msg = expect_context::<MessageJar>();
+
+    let server_resp = create_memo(move |_| match failed_action.value().get() {
+        Some(Err(err)) => msg.without_timeout().set_err(err.to_string()),
+        _ => {}
+    });
+
+    create_effect(move |_| server_resp.track());
+
     msg.without_timeout().set_msg("message 1");
     msg.without_timeout()
         .set_msg("message 2 which is a longer message");
     msg.without_timeout()
         .set_msg("message 3\nwith one more line");
-    msg.set_msg("message 4\nthis one dissappears");
+    msg.with_timeout(chrono::Duration::seconds(3))
+        .set_msg("message 4\nthis one dissappears");
     msg.without_timeout().set_err("An error occurred")
 }
