@@ -72,8 +72,16 @@ jobs:
         psql -U p3rtang -h localhost -p ${{ job.services.postgres.ports[5432] }} -d tally_web -f .github/postgres_setup/test_dump.sql
       env:
         PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+
+    - name: Cache build dependencies for rust
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-tallyweb-target
+      with:
+        path: ./target/release
+        key: ${{ runner.os }}-cargo.target
     - name: Run Playwright tests
-      run: cargo leptos end-to-end
+      run: cargo leptos end-to-end -r
       env:
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         LEPTOS_OUTPUT_NAME: debug
