@@ -12,7 +12,8 @@ test("show messages", async ({ page }) => {
     // this message has a timeout and will disappear with a fade
     // therefore this should always run first after load
     let timoutMessage = notificationBox.locator("dialog", { hasText: "message 4" })
-    await expect(timoutMessage).toHaveClass("fade-out")
+    await expect(timoutMessage).toBeVisible()
+    await timoutMessage.waitFor({ state: "detached" })
     await expect(timoutMessage).toBeHidden()
 
     let message1 = notificationBox.locator("dialog", { hasText: "message 1" })
