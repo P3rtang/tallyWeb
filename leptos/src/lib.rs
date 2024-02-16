@@ -8,6 +8,8 @@ mod session;
 pub(crate) use session::UserSession;
 mod preferences;
 pub(crate) use preferences::Preferences;
+mod tests;
+pub(crate) use tests::*;
 
 pub(crate) mod api;
 mod countable;

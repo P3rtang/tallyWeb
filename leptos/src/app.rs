@@ -28,9 +28,6 @@ pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
 
-    let msg = Message::new(Duration::seconds(5));
-    provide_context(msg);
-
     let close_overlay_signal = create_rw_signal(CloseOverlays());
     provide_context(close_overlay_signal);
 
@@ -67,16 +64,7 @@ pub fn App() -> impl IntoView {
     let save_handler = SaveHandlerCountable::new();
     provide_context(save_handler);
 
-    // create_effect(move |_| if let Some(user) = user.get() {
-    //     save_handler.init_timer(user);
-    // });
-
     // connect_keys(selection_signal, save_handler, user_memo);
-
-    // create_effect(move |_| {
-    //     preferences
-    //         .with(|pref| selection_signal.update(|sel| sel.set_multi_select(pref.multi_select)))
-    // });
 
     create_effect(move |_| {
         handle_resize();
@@ -97,11 +85,6 @@ pub fn App() -> impl IntoView {
 
         <Router>
             <main on:click=close_overlays>
-                // on navigation clear any messages or errors from the message box
-                {move || {
-                    let location = use_location();
-                    location.state.with(|_| msg.clear())
-                }}
                 <Routes>
                     <Route
                         path=""
@@ -109,6 +92,7 @@ pub fn App() -> impl IntoView {
                         view=|| {
                             view! {
                                 <ProvideSessionSignal>
+                                    <ProvideMessageSystem/>
                                     <ProvidePreferences/>
                                     <ProvideCountableSignals/>
                                     <Outlet/>
@@ -142,6 +126,11 @@ pub fn App() -> impl IntoView {
                             />
                         </Route>
 
+                        <Route path="/test" view=ShowTests>
+                            <Route path="" view=|| ()/>
+                            <Route path="messages" view=TestMessages/>
+                        </Route>
+
                         <Route path="/change-username" view=move || view! { <ChangeAccountInfo/> }/>
                         <Route path="/change-password" view=NewPassword/>
                         <Route path="/privacy-policy" view=PrivacyPolicy/>
@@ -152,7 +141,6 @@ pub fn App() -> impl IntoView {
                     <Route path="/*any" view=NotFound/>
                 </Routes>
             </main>
-            <MessageBox msg/>
         </Router>
     }
 }
