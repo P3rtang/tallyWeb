@@ -92,24 +92,11 @@ impl From<gloo_storage::errors::StorageError> for AppError {
     }
 }
 
-impl From<&str> for AppError {
-    fn from(value: &str) -> Self {
-        match value {
-            "Invalid Username provided" => AppError::InvalidUsername,
-            "Invalid Password provided" => AppError::InvalidPassword,
-            "User data not found" => AppError::UserNotFound,
-            "User is missing auth_token" => AppError::MissingToken,
-            "Invalid Token" => AppError::InvalidToken,
-            err => AppError::ServerError(err.split_once(": ").unwrap_or_default().0.to_string()),
-        }
-    }
-}
-
 impl From<leptos::ServerFnError> for AppError {
     fn from(value: leptos::ServerFnError) -> Self {
         match value {
             leptos::ServerFnError::Request(_) => AppError::ConnectionError,
-            leptos::ServerFnError::ServerError(str) => AppError::from(str.as_str()),
+            leptos::ServerFnError::ServerError(str) => AppError::ServerError(str),
             _ => serde_json::from_str(&value.to_string())
                 .unwrap_or(AppError::ServerError(value.to_string())),
         }
