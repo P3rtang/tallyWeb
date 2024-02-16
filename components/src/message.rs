@@ -48,8 +48,8 @@ impl MessageBox {
     fn get_ordered(&self) -> Signal<Vec<(usize, RwSignal<Notification>)>> {
         create_read_slice(self.messages, |msgs| {
             let mut entries = msgs
-                .into_iter()
-                .map(|(key, value)| (*key, value.clone()))
+                .iter()
+                .map(|(key, value)| (*key, *value))
                 .collect::<Vec<_>>();
             entries.sort_by(|a, b| a.0.cmp(&b.0));
             entries
@@ -94,7 +94,7 @@ impl MessageBox {
             );
         });
         self.next_key.update(|k| *k += 1);
-        return key;
+        key
     }
 
     fn msg_timeout_effect(self, key: usize) {
@@ -107,7 +107,9 @@ impl MessageBox {
 
     fn fade_out(self, key: usize) {
         self.messages.update(|m| {
-            m.get_mut(&key).map(|v| v.update(|v| v.do_fade = true));
+            if let Some(v) = m.get_mut(&key) {
+                v.update(|v| v.do_fade = true)
+            }
         })
     }
 
