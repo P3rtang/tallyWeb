@@ -7,9 +7,10 @@ pub fn LoginPage() -> impl IntoView {
     let login_action = create_server_action::<api::LoginUser>();
     let message_jar = expect_context::<components::MessageJar>();
 
-    let server_resp = create_memo(move |_| match login_action.value().get() {
-        Some(Err(err)) => message_jar.set_err(err.to_string()),
-        _ => {}
+    let server_resp = create_memo(move |_| {
+        if let Some(Err(err)) = login_action.value().get() {
+            message_jar.set_err(AppError::from(err))
+        }
     });
 
     create_effect(move |_| server_resp.track());

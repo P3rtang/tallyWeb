@@ -200,7 +200,7 @@ pub async fn change_username(
     new_username: &str,
     password: &str,
 ) -> Result<DbUser, BackendError> {
-    check_pass(pool, &old_username, &password).await?;
+    check_pass(pool, old_username, password).await?;
 
     match query!(
         r#"

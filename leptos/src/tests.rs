@@ -1,3 +1,4 @@
+use super::*;
 use components::MessageJar;
 use leptos::*;
 use leptos_router::{Outlet, A};
@@ -32,9 +33,10 @@ pub fn TestMessages() -> impl IntoView {
     failed_action.dispatch(FailingServerFn {});
     let msg = expect_context::<MessageJar>();
 
-    let server_resp = create_memo(move |_| match failed_action.value().get() {
-        Some(Err(err)) => msg.without_timeout().set_err(err.to_string()),
-        _ => {}
+    let server_resp = create_memo(move |_| {
+        if let Some(Err(err)) = failed_action.value().get() {
+            msg.without_timeout().set_err(AppError::from(err))
+        }
     });
 
     create_effect(move |_| server_resp.track());
