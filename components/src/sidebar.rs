@@ -44,13 +44,8 @@ where
     };
 
     view! {
-        <aside>
-            <side-bar
-                data-testid="test-sidebar"
-                style=move || format!("--accent: {}; {}", accent_color(), sidebar_style())
-            >
-                {children()}
-            </side-bar>
+        <aside style=move || format!("--accent: {}; {}", accent_color(), sidebar_style())>
+            <side-bar data-testid="test-sidebar">{children()}</side-bar>
         </aside>
     }
 }
