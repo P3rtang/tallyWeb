@@ -40,7 +40,7 @@ test("sidebar style", async ({ browser, isMobile }) => {
         // make sure the wasm binary is loaded before clicking login
         await page.page.waitForLoadState("networkidle")
 
-        let sidebar = page.page.locator("side-bar")
+        let sidebar = page.page.locator("aside")
         await expect(sidebar).toBeVisible()
         await expect(sidebar).toHaveCSS("position", page.sidebar.position)
         await expect(sidebar).toHaveCSS("--accent", "#66eecc")
