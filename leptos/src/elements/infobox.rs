@@ -77,6 +77,7 @@ fn short_format_time(dur: Duration) -> String {
 #[component]
 fn Title(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
     let state = expect_context::<SelectionSignal>();
+
     let get_name = create_read_slice(state, move |state| {
         state.get(&key()).map(|c| c.get_name()).unwrap_or_default()
     });
@@ -96,9 +97,20 @@ where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
 {
+    let user = expect_context::<RwSignal<UserSession>>();
     let state = expect_context::<SelectionSignal>();
+
     let get_name = create_read_slice(state, move |state| {
         state.get(&key()).map(|c| c.get_name()).unwrap_or_default()
+    });
+
+    let toggle_paused = create_write_slice(state, move |s, _| {
+        if let Some(item) = s.get_mut(&key()) {
+            item.set_active(!item.is_active());
+            let save_handler = expect_context::<SaveHandlerCountable>();
+            save_handler.add_countable(item.clone().into());
+            save_handler.save(user.get_untracked())
+        }
     });
 
     let unpause = create_write_slice(state, move |s, _| {
@@ -118,6 +130,20 @@ where
             }
         },
     );
+
+    let key_listener = window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
+        "Equal" => {
+            unpause(());
+            add_count(1);
+        }
+        "Minus" => {
+            add_count(-1);
+        }
+        "KeyP" => toggle_paused(()),
+        _ => {}
+    });
+
+    on_cleanup(|| key_listener.remove());
 
     let on_count_click = move |_| {
         unpause(());

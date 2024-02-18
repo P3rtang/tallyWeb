@@ -35,7 +35,11 @@ reset-db:
 
 
 test: reset-db
-	# run the tests
+	# run styling tests
+	cargo fmt -q --check --all
+	leptosfmt -q --check .
+	cargo clippy -- -D warnings
+	# run program tests
 	cargo leptos test
 	cargo leptos end-to-end
 
@@ -43,3 +47,7 @@ setup-pgadmin:
 	docker stop pgadmin
 	docker container rm pgadmin
 	docker run --name pgadmin --env-file .env --restart always --network host -d dpage/pgadmin4
+
+fmt:
+	cargo fmt -q --all
+	leptosfmt -q .
