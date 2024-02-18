@@ -1,12 +1,12 @@
 import { test, expect } from "@playwright/test";
 
 test("homepage has title and links to intro page", async ({ page }) => {
-    await page.goto("http://localhost:3000/");
+    await page.goto("/")
     await expect(page).toHaveTitle("TallyWeb");
 });
 
 test("homepage has account icon and overlay", async ({ page }) => {
-    await page.goto("http://localhost:3000/");
+    await page.goto("/")
     // make sure the wasm binary is loaded before clicking login
     await page.waitForLoadState("networkidle");
 
@@ -36,7 +36,7 @@ test("sidebar style", async ({ browser, isMobile }) => {
     ];
 
     for (const page of pages) {
-        await page.page.goto("http://localhost:3000")
+        await page.page.goto("/")
         // make sure the wasm binary is loaded before clicking login
         await page.page.waitForLoadState("networkidle")
 
@@ -48,7 +48,7 @@ test("sidebar style", async ({ browser, isMobile }) => {
 })
 
 test("load page with selection", async ({ page, isMobile }) => {
-    page.goto("http://localhost:3000/a7602280-e3af-4d03-ac44-c130886cc59b")
+    page.goto("/a7602280-e3af-4d03-ac44-c130886cc59b")
     // make sure the wasm binary is loaded before clicking login
     await page.waitForLoadState("networkidle")
 
@@ -62,17 +62,17 @@ test("load page with selection", async ({ page, isMobile }) => {
     await expect(count_info_box).toHaveClass(/rowbox/)
 
     let count_info = count_info_box.locator(".info")
-    await expect(count_info).toHaveText("0")
+    let current_count = await count_info.textContent().then((text) => text ? text : "")
     if (!isMobile) {
         count_info.click()
     } else {
         count_info.tap()
     }
-    await expect(count_info).toHaveText("1")
+    await expect(count_info).toHaveText((parseInt(current_count) + 1).toString())
 })
 
 test("create counter", async ({ page }) => {
-    await page.goto("http://localhost:3000")
+    await page.goto("/")
     // make sure the wasm binary is loaded before clicking login
     await page.waitForLoadState("networkidle")
 

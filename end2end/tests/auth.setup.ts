@@ -4,7 +4,7 @@ const authFile = 'playwright/.auth/user.json';
 
 setup('authenticate', async ({ page }) => {
     // Perform authentication steps. Replace these actions with your own.
-    await page.goto('localhost:3000/login');
+    await page.goto('login');
 
     // make sure the wasm binary is loaded before clicking login
     await page.waitForLoadState("networkidle");
