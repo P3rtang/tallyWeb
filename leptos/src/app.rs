@@ -279,8 +279,7 @@ fn SidebarContent() -> impl IntoView {
             show_separator=show_sep
             selection_model=selection_signal
             selection_color=accent_color
-            on_click=|key: &uuid::Uuid, ev: leptos::ev::MouseEvent| {
-                ev.stop_propagation();
+            on_click=|key: &uuid::Uuid, _: leptos::ev::MouseEvent| {
                 leptos_router::use_navigate()(&key.to_string(), Default::default())
             }
         />

@@ -16,18 +16,56 @@ pub fn CountableContextMenu(
 ) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
     let state_rsrc = expect_context::<StateResource>();
+    let selection = expect_context::<SelectionSignal>();
+    let save_handler = expect_context::<SaveHandlerCountable>();
     let delete_action = create_server_action::<api::RemoveCountable>();
+
+    let is_success = create_read_slice(selection, move |sel| {
+        sel.get(&key.get_untracked())
+            .map(|c| c.get_completed() != 0)
+            .unwrap_or_default()
+    });
+
+    let countable_type = create_read_slice(selection, move |sel| {
+        matches!(
+            sel.get(&key.get_untracked())
+                .map(|c| c.kind())
+                .unwrap_or(CountableKind::Counter(key.get_untracked())),
+            CountableKind::Phase(_)
+        )
+    });
 
     view! {
         <Overlay show_overlay=show_overlay location=location accent_color=accent_color.unwrap()>
             <ContextMenuNav href=move || format!("edit/{}", key())>
                 <span>Edit</span>
             </ContextMenuNav>
-            // TODO: look further into this actionform not working
             // <ActionForm action=delete_action>
+            <Show when=move || countable_type.get()>
+                <div
+                    class="context-menu-row"
+                    on:click=move |ev| {
+                        ev.stop_propagation();
+                        ev.prevent_default();
+                        selection
+                            .update(|sel| {
+                                if let Some(c) = sel.get(&key.get_untracked()) {
+                                    c.toggle_success()
+                                }
+                            });
+                        if let Some(c) = selection.get_untracked().get(&key.get_untracked()) {
+                            save_handler.add_countable(c.clone().into());
+                            save_handler.save(user.get_untracked());
+                        }
+                    }
+                >
+
+                    {move || if is_success() { "Unmark Success" } else { "Mark Success" }}
+                </div>
+            </Show>
+            // TODO: look further into this actionform not working
             <div
                 class="context-menu-row"
-                type="submit"
                 on:click=move |ev| {
                     ev.stop_propagation();
                     ev.prevent_default();

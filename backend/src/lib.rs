@@ -180,15 +180,16 @@ pub async fn update_phase(
     let _ = auth::get_user(pool, username, token).await?;
     let _ = sqlx::query(
         r#"
-        INSERT INTO phases (uuid, owner_uuid, parent_uuid, name, count, time, hunt_type, has_charm)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO phases (uuid, owner_uuid, parent_uuid, name, count, time, hunt_type, has_charm, success)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 
         ON CONFLICT (uuid) DO UPDATE
             SET name      = $4,
                 count     = $5,
                 time      = $6,
                 hunt_type = $7,
-                has_charm = $8
+                has_charm = $8,
+                success   = $9
         "#,
     )
     .bind(phase.uuid)
@@ -199,6 +200,7 @@ pub async fn update_phase(
     .bind(phase.time)
     .bind(phase.hunt_type)
     .bind(phase.has_charm)
+    .bind(phase.success)
     .execute(pool)
     .await?;
 
