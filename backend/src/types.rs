@@ -32,6 +32,7 @@ pub struct DbPhase {
     pub hunt_type: Hunttype,
     pub has_charm: bool,
     pub dexnav_encounters: Option<i32>,
+    pub success: bool,
     pub created_at: chrono::NaiveDateTime,
 }
 

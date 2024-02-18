@@ -1,6 +1,4 @@
 #![allow(clippy::assign_op_pattern)]
-
-use super::*;
 use chrono::Duration;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -8,6 +6,8 @@ use std::{
     cmp::Ordering,
     sync::{Arc, Mutex},
 };
+
+use super::*;
 
 #[derive(Debug, Clone)]
 pub struct ArcCountable(Arc<Mutex<Box<dyn Countable>>>);
@@ -146,6 +146,16 @@ impl ArcCountable {
     pub fn as_any(&self) -> Result<Box<dyn core::any::Any + 'static>, AppError> {
         let c = self.0.try_lock().map_err(|_| AppError::LockMutex)?;
         Ok(c.box_any())
+    }
+
+    pub fn get_completed(&self) -> usize {
+        self.try_lock()
+            .map(|c| c.get_completed())
+            .unwrap_or_default()
+    }
+
+    pub fn toggle_success(&self) {
+        let _ = self.try_lock().map(|mut c| c.toggle_success());
     }
 }
 
@@ -334,6 +344,8 @@ pub trait Countable: std::fmt::Debug + Send + Any {
     fn set_hunt_type(&mut self, hunt_type: Hunttype);
     fn has_charm(&self) -> bool;
     fn set_charm(&mut self, set: bool);
+    fn get_completed(&self) -> usize;
+    fn toggle_success(&mut self);
 
     fn created_at(&self) -> chrono::NaiveDateTime;
 
@@ -532,6 +544,14 @@ impl Countable for SerCounter {
     fn box_any(&self) -> Box<dyn Any> {
         Box::new(self.clone())
     }
+
+    fn get_completed(&self) -> usize {
+        todo!()
+    }
+
+    fn toggle_success(&mut self) {
+        self.phase_list.iter_mut().for_each(|p| p.toggle_success());
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -650,7 +670,16 @@ impl Countable for Counter {
     }
 
     fn get_progress(&self) -> f64 {
-        1.0 - (1.0 - 1.0_f64 / self.get_hunt_type().get_odds() as f64).powi(self.get_rolls())
+        let mut chance = 0.0;
+        let p = 1.0 / self.get_odds() as f64;
+
+        for k in 0..((self.get_completed() + 1).min(self.phase_list.len())) {
+            let combs = n_choose_k(self.get_rolls() as usize, k);
+
+            chance += combs * p.powi(k as i32) * (1.0 - p).powi(self.get_rolls() - k as i32)
+        }
+
+        1.0 - chance
     }
 
     fn get_hunt_type(&self) -> Hunttype {
@@ -714,6 +743,14 @@ impl Countable for Counter {
     fn box_any(&self) -> Box<dyn Any> {
         Box::new(self.clone())
     }
+
+    fn get_completed(&self) -> usize {
+        self.phase_list.iter().map(|p| p.get_completed()).sum()
+    }
+
+    fn toggle_success(&mut self) {
+        self.phase_list.iter().for_each(|p| p.toggle_success());
+    }
 }
 
 #[serde_with::serde_as]
@@ -729,6 +766,7 @@ pub struct Phase {
     pub is_active: bool,
     pub hunt_type: Hunttype,
     pub has_charm: bool,
+    pub success: bool,
     pub created_at: chrono::NaiveDateTime,
 }
 
@@ -744,6 +782,7 @@ impl Phase {
             is_active: false,
             hunt_type: Hunttype::NewOdds,
             has_charm: false,
+            success: false,
             created_at: chrono::Utc::now().naive_utc(),
         }
     }
@@ -858,6 +897,14 @@ impl Countable for Phase {
 
     fn box_any(&self) -> Box<dyn Any> {
         Box::new(self.clone())
+    }
+
+    fn get_completed(&self) -> usize {
+        self.success.into()
+    }
+
+    fn toggle_success(&mut self) {
+        self.success = !self.success
     }
 }
 
@@ -1013,6 +1060,7 @@ cfg_if::cfg_if!(
                     is_active: false,
                     hunt_type: value.hunt_type.into(),
                     has_charm: value.has_charm,
+                    success: value.success,
                     created_at: value.created_at,
                 }
             }
@@ -1030,6 +1078,7 @@ cfg_if::cfg_if!(
                     hunt_type: self.hunt_type.clone().into(),
                     has_charm: self.has_charm,
                     dexnav_encounters: self.hunt_type.into(),
+                    success: self.success,
                     created_at: self.created_at,
                 }
             }
@@ -1073,3 +1122,12 @@ cfg_if::cfg_if!(
         }
     }
 );
+
+fn n_choose_k(n: usize, k: usize) -> f64 {
+    match (n, k) {
+        (n, k) if k > n => 0.0,
+        (_, 0) => 1.0,
+        (n, k) if k > n / 2 => n_choose_k(n, n - k),
+        (n, k) => n as f64 / k as f64 * n_choose_k(n - 1, k - 1),
+    }
+}
