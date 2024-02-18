@@ -199,6 +199,10 @@ aside {
         width: 100%;
         min-width: 400px;
         box-sizing: border-box;
+
+        @media (min-width: 601px) {
+            min-width: 400px;
+        }
     }
 
     .new-counter {
