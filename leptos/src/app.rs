@@ -61,8 +61,6 @@ pub fn App() -> impl IntoView {
     let save_handler = SaveHandlerCountable::new();
     provide_context(save_handler);
 
-    // connect_keys(selection_signal, save_handler, user_memo);
-
     create_effect(move |_| {
         handle_resize();
         connect_on_window_resize(Box::new(handle_resize));
@@ -197,38 +195,6 @@ fn timer(selection_signal: SelectionSignal) {
                 .to_std()
                 .unwrap_or(std::time::Duration::from_millis(30)),
         );
-    });
-}
-
-#[allow(dead_code)]
-fn connect_keys(
-    model: SelectionSignal,
-    save_handler: SaveHandlerCountable,
-    user: RwSignal<UserSession>,
-) {
-    window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
-        "Equal" => model.update(|m| {
-            m.selection_mut().into_iter().for_each(|c| {
-                c.set_active(true);
-                c.add_count(1);
-                save_handler.add_countable(c.clone().into());
-            })
-        }),
-        "Minus" => model.update(|m| {
-            m.selection_mut().into_iter().for_each(|c| {
-                c.set_active(true);
-                c.add_count(-1);
-                save_handler.add_countable(c.clone().into());
-            })
-        }),
-        "KeyP" => model.update(|list| {
-            list.selection_mut().into_iter().for_each(|c| {
-                c.set_active(!c.is_active());
-                save_handler.add_countable(c.clone().into());
-                save_handler.save(user());
-            })
-        }),
-        _ => {}
     });
 }
 

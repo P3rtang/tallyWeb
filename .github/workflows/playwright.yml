@@ -78,7 +78,7 @@ jobs:
       env:
         cache-name: cache-tallyweb-target
       with:
-        path: ./target/release
+        path: target
         key: ${{ runner.os }}-cargo.target
     - name: Run Playwright tests
       run: cargo leptos end-to-end -r
