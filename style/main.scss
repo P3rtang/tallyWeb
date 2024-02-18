@@ -197,6 +197,7 @@ aside {
         flex-flow: column;
         align-content: flex-end;
         width: 100%;
+        min-width: 400px;
         box-sizing: border-box;
 
         @media (min-width: 601px) {
