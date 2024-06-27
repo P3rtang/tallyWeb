@@ -15,6 +15,7 @@ $border-color-dark: #FFFFFF80;
 
 * {
     font-family: Roboto, Arial, sans-serif;
+    box-sizing: border-box;
 }
 
 input::-webkit-outer-spin-button,
@@ -106,7 +107,7 @@ nav {
 
     &.bottom {
         top: 52px;
-        left: max(-50%, 0px);
+        left: -50%;
     }
 
     &.top {
@@ -150,10 +151,10 @@ aside {
     flex-wrap: wrap;
     align-content: flex-end;
     overflow-x: hidden;
-    overflow-y: scroll;
+    overflow-y: auto;
 
     height: 100vh;
-    width: 400px;
+    width: 24em;
 
     border-right: 1px solid #FFFFFF80;
     transition: transform 0.5s, width 0.5s;
@@ -171,8 +172,10 @@ aside {
 
         height: calc(100vh - 80px);
         margin: 12px;
+        width: 24em;
+        max-width: 100%;
 
-        border-radius: 24px;
+        border-radius: 20px;
         border: solid 2px var(--accent);
     }
 
@@ -189,6 +192,7 @@ aside {
         display: flex;
         flex-flow: column;
         width: 100%;
+        min-width: 100%;
         box-sizing: border-box;
     }
 
@@ -205,7 +209,6 @@ aside {
 .treeview {
     padding: 8px;
     padding-top: 12px;
-    min-width: min(400px, 100vw);
     box-sizing: border-box;
 
     a {
@@ -631,7 +634,7 @@ notification-box {
     top: 52px;
     padding: 16px;
 
-    @media not (max-width: 600px) {
+    @media (min-width: 600px) {
         right: 24px;
     }
 
