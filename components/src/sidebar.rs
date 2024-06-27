@@ -24,28 +24,42 @@ pub struct ShowSidebar(pub bool);
 #[component(transparent)]
 pub fn Sidebar<F1, F2>(
     display: F1,
+    #[prop(optional, into)] width: Option<Signal<u32>>,
     layout: F2,
     #[prop(optional, default={ create_signal(String::from("#8BE9FD")).0.into() }, into)]
     accent_color: Signal<String>,
     children: ChildrenFn,
 ) -> impl IntoView
 where
-    F1: Fn() -> ShowSidebar + 'static,
-    F2: Fn() -> SidebarStyle + 'static,
+    F1: Fn() -> ShowSidebar + Copy + 'static,
+    F2: Fn() -> SidebarStyle + Copy + 'static,
 {
-    let sidebar_style = move || {
-        if !display().0 && layout() != SidebarStyle::Hover {
-            "width: 0px; transform: TranslateX(-2px);"
-        } else if !display().0 && layout() == SidebarStyle::Hover {
-            "transform: TranslateX(-120%);"
-        } else {
-            ""
+    let w = move || width.map(|s| s.get()).unwrap_or(400);
+    let aside_transform = move || match layout() {
+        SidebarStyle::Landscape if !display().0 => {
+            format!("transform: TranslateX(-2px); width: {}px", 0)
         }
+        SidebarStyle::Landscape => {
+            format!("transform: TranslateX(-2px); width: {}px", w())
+        }
+        SidebarStyle::Hover if !display().0 => format!("transform: TranslateX(-120%);"),
+        SidebarStyle::Portrait => format!("width: 100vw"),
+        _ => Default::default(),
     };
 
+    let sidebar_style = move || match layout() {
+        SidebarStyle::Landscape => format!("width: {}px", w()),
+        SidebarStyle::Hover => String::new(),
+        SidebarStyle::Portrait => String::new(),
+    };
+
+    let aside_style = move || format!("--accent: {}; {}", accent_color(), aside_transform());
+
     view! {
-        <aside style=move || format!("--accent: {}; {}", accent_color(), sidebar_style())>
-            <side-bar data-testid="test-sidebar">{children()}</side-bar>
+        <aside style=aside_style>
+            <side-bar data-testid="test-sidebar" style=sidebar_style>
+                {children()}
+            </side-bar>
         </aside>
     }
 }

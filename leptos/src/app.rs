@@ -221,6 +221,18 @@ pub fn HomePage() -> impl IntoView {
         slc
     });
 
+    let sidebar_width = create_rw_signal(400);
+    provide_context(sidebar_width);
+
+    let section_width = create_memo(move |_| {
+        if show_sidebar().0 {
+            format!("calc(100vw - {}px)", sidebar_width())
+        }
+        else {
+            String::from("100vw")
+        }
+    });
+
     view! {
         <Transition fallback=move || {
             view! { <LoadingScreen/> }
@@ -239,9 +251,15 @@ pub fn HomePage() -> impl IntoView {
                         sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(*sel)));
                     }
                 }}
-                <Sidebar display=show_sidebar layout=screen_layout accent_color=accent_color>
+                <Sidebar
+                    display=show_sidebar
+                    layout=screen_layout
+                    accent_color=accent_color
+                    width=sidebar_width
+                >
                     <SidebarContent/>
-                </Sidebar> <section style:flex-grow="1" style:transition="width .5s">
+                </Sidebar>
+                <section style:flex-grow="1" style:transition="width .5s" style:width=section_width>
                     <Navbar/>
                     <InfoBox countable_list=active/>
                 </section>
