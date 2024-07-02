@@ -14,3 +14,10 @@ js-sys = "0.3.64"
 web-sys = { version = "0.3.64", features = ["Storage", "Element", "Document"] }
 rand = "0.8.5"
 dyn-clone = "1.0.16"
+stylance = { version = "0.5.0", features = ["nightly"] }
+
+[package.metadata.stylance]
+output_dir = "./style/"
+folders = ["./src/", "./style/"]
+extensions = [".module.scss", ".module.css"]
+class_name_pattern = "tallyweb-[name]-[hash]"

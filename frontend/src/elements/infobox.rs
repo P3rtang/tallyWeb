@@ -11,6 +11,8 @@ use crate::{
     countable::ArcCountable,
 };
 
+stylance::import_style!(style, "infobox.module.scss");
+
 #[component]
 pub fn InfoBox(countable_list: Signal<Vec<ArcCountable>>) -> impl IntoView {
     let screen_layout = expect_context::<RwSignal<SidebarStyle>>();
@@ -26,14 +28,14 @@ pub fn InfoBox(countable_list: Signal<Vec<ArcCountable>>) -> impl IntoView {
                 children=move |countable| {
                     let key = create_signal(countable.get_uuid()).0;
                     view! {
-                        <div class="row">
+                        <div class=style::row>
                             <Show when=show_multiple>
                                 <Title key/>
                             </Show>
                             <Count expand=show_multiple key show_title/>
                             <Time expand=show_multiple key show_title/>
                             <Show when=multi_narrow>
-                                <Progress expand=show_multiple key show_title/>
+                                <Progress expand=|| true key show_title/>
                                 <LastStep expand=show_multiple key show_title/>
                                 <AverageStep expand=show_multiple key show_title/>
                             </Show>
@@ -84,9 +86,14 @@ fn Title(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
 
     view! {
         <div class="rowbox rowexpand">
-            <p class="info" style:min-height="0em" style:padding="0.5em" style:font-size="28px">
+            <span
+                class=style::info
+                style:min-height="0em"
+                style:padding="0.5em"
+                style:font-size="28px"
+            >
                 {get_name}
-            </p>
+            </span>
         </div>
     }
 }
@@ -155,18 +162,25 @@ where
         add_count(-1);
     };
 
+    let class = move || {
+        stylance::classes! {
+            style::rowbox,
+            if expand() { Some(style::expand) } else { None }
+        }
+    };
+
     view! {
-        <div
-            class=move || if expand() { "rowbox rowexpand" } else { "rowbox" }
-            on:click=on_count_click
-        >
-            <button class="count_minus" on:click=on_minus_click>
+        <div class=class on:click=on_count_click>
+            <button class=style::count_minus on:click=on_minus_click>
                 -
             </button>
-            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>
+            <span
+                class=style::title
+                style:display=move || if show_title() { "block" } else { "none" }
+            >
                 {get_name}
-            </p>
-            <p class="info">{get_count}</p>
+            </span>
+            <span class=style::info>{get_count}</span>
         </div>
     }
 }
@@ -198,17 +212,24 @@ where
         )
     });
 
+    let class = move || {
+        stylance::classes! {
+            style::rowbox,
+            if expand() { Some(style::expand) } else { None }
+        }
+    };
+
     view! {
-        <div
-            class=move || if expand() { "rowbox rowexpand" } else { "rowbox" }
-            on:click=toggle_paused
-        >
-            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>
+        <div class=class on:click=toggle_paused>
+            <span
+                class=style::title
+                style:display=move || if show_title() { "block" } else { "none" }
+            >
                 Time
-            </p>
-            <p class="info" style:min-width="7em">
+            </span>
+            <span class=style::info style:min-width="7em">
                 {time}
-            </p>
+            </span>
         </div>
     }
 }
@@ -243,12 +264,22 @@ where
         _ => "#ff9580",
     };
 
+    let class = move || {
+        stylance::classes! {
+            style::rowbox,
+            if expand() { Some(style::expand) } else { None }
+        }
+    };
+
     view! {
-        <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox progress" }>
-            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>
+        <div class=class>
+            <span
+                class=style::title
+                style:display=move || if show_title() { "block" } else { "none" }
+            >
                 Progress
-            </p>
-            <Progressbar progress class="info" color>
+            </span>
+            <Progressbar progress class=style::info color>
                 {move || format!("{:.03}%", progress() * 100.0)}
             </Progressbar>
         </div>
@@ -281,12 +312,24 @@ where
 
     let last_interaction = create_rw_signal(None::<i64>);
 
+    let class = move || {
+        stylance::classes! {
+            style::rowbox,
+            if expand() { Some(style::expand) } else { None }
+        }
+    };
+
     view! {
-        <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox" }>
-            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>
+        <div class=class>
+            <span
+                class=style::title
+                style:display=move || if show_title() { "block" } else { "none" }
+            >
                 Last Step
-            </p>
-            <p class="info time">
+            </span>
+            <span class=stylance::classes!(
+                style::info, style::time
+            )>
                 {move || {
                     on_count
                         .with(|_| {
@@ -300,7 +343,7 @@ where
                         })
                 }}
 
-            </p>
+            </span>
         </div>
     }
 }
@@ -330,17 +373,29 @@ where
 
     let step = move || Duration::milliseconds(time().num_milliseconds() / count() as i64);
 
+    let class = move || {
+        stylance::classes! {
+            style::rowbox,
+            if expand() { Some(style::expand) } else { None }
+        }
+    };
+
     view! {
-        <div class=move || if expand() { "rowbox rowexpand" } else { "rowbox" }>
-            <p class="title" style:display=move || if show_title() { "block" } else { "none" }>
+        <div class=class>
+            <span
+                class=style::title
+                style:display=move || if show_title() { "block" } else { "none" }
+            >
                 Avg Step Time
-            </p>
-            <p class="info time">
+            </span>
+            <span class=stylance::classes!(
+                style::info, style::time
+            )>
                 {move || {
                     if count() == 0 { String::from("---") } else { short_format_time(step()) }
                 }}
 
-            </p>
+            </span>
         </div>
     }
 }

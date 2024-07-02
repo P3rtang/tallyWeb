@@ -37,10 +37,13 @@ where
     let w = move || width.map(|s| s.get()).unwrap_or(400);
     let aside_transform = move || match layout() {
         SidebarStyle::Landscape if !display().0 => {
-            format!("transform: TranslateX(-2px); width: {}px", 0)
+            format!(
+                "transform: TranslateX(-2px); width: {}px; overflow-x: hidden",
+                0
+            )
         }
         SidebarStyle::Landscape => {
-            format!("transform: TranslateX(-2px); width: {}px", w())
+            format!("border-right: 2px solid #FFFFFF80; width: {}px", w())
         }
         SidebarStyle::Hover if !display().0 => format!("transform: TranslateX(-120%);"),
         SidebarStyle::Portrait => format!("width: 100vw"),

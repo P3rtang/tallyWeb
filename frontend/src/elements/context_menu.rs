@@ -1,18 +1,17 @@
 #![allow(unused_braces)]
 #![allow(non_snake_case)]
 
+use components::Overlay;
 use leptos::*;
-use leptos_router::{ToHref, A};
+use leptos_router::A;
 
 use super::*;
-use components::{CloseOverlays, Overlay};
 
 #[component]
 pub fn CountableContextMenu(
     show_overlay: RwSignal<bool>,
     location: ReadSignal<(i32, i32)>,
     #[prop(into)] key: Signal<uuid::Uuid>,
-    #[prop(optional)] accent_color: Option<Signal<String>>,
 ) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
     let state_rsrc = expect_context::<StateResource>();
@@ -26,7 +25,7 @@ pub fn CountableContextMenu(
             .unwrap_or_default()
     });
 
-    let countable_type = create_read_slice(selection, move |sel| {
+    let is_phase = create_read_slice(selection, move |sel| {
         matches!(
             sel.get(&key.get_untracked())
                 .map(|c| c.kind())
@@ -35,15 +34,24 @@ pub fn CountableContextMenu(
         )
     });
 
+    stylance::import_style!(style, "context_menu.module.scss");
+    stylance::import_style!(overlay, "overlay.module.scss");
+
     view! {
-        <Overlay show_overlay=show_overlay location=location accent_color=accent_color.unwrap()>
-            <ContextMenuNav href=move || format!("edit/{}", key())>
-                <span>Edit</span>
-            </ContextMenuNav>
+        <Overlay
+            attr:class=stylance::classes!(overlay::overlay, style::context_menu)
+            show_overlay=show_overlay
+            location=location
+        >
+            <A href=move || format!("edit/{}", key()) class="remove-underline">
+                <div class=stylance::classes!(overlay::row, overlay::interactive)>
+                    <span>Edit</span>
+                </div>
+            </A>
             // <ActionForm action=delete_action>
-            <Show when=move || countable_type.get()>
+            <Show when=move || is_phase.get()>
                 <div
-                    class="context-menu-row"
+                    class=stylance::classes!(overlay::row, overlay::interactive)
                     on:click=move |ev| {
                         ev.stop_propagation();
                         ev.prevent_default();
@@ -65,7 +73,7 @@ pub fn CountableContextMenu(
             </Show>
             // TODO: look further into this actionform not working
             <div
-                class="context-menu-row"
+                class=stylance::classes!(overlay::row, overlay::interactive)
                 on:click=move |ev| {
                     ev.stop_propagation();
                     ev.prevent_default();
@@ -92,22 +100,4 @@ pub fn CountableContextMenu(
 #[component]
 pub fn ContextMenuRow(children: Children) -> impl IntoView {
     view! { <div class="context-menu-row">{children()}</div> }
-}
-
-#[component]
-pub fn ContextMenuNav<H>(href: H, children: Children) -> impl IntoView
-where
-    H: ToHref + 'static,
-{
-    let on_click = move |_| {
-        if let Some(t) = use_context::<RwSignal<CloseOverlays>>() {
-            t.update(|_| ())
-        }
-    };
-
-    view! {
-        <A href=href class="remove-underline" on:click=on_click>
-            <div class="context-menu-row">{children()}</div>
-        </A>
-    }
 }

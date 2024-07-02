@@ -5,6 +5,12 @@ use components::{CloseOverlays, SidebarStyle};
 use leptos::{logging::debug_warn, *};
 use leptos_router::A;
 
+stylance::import_style!(
+    #[allow(dead_code)]
+    overlay,
+    "overlay.module.scss"
+);
+
 pub fn letter_to_three_digit_hash(letter: char) -> String {
     use rand::{Rng, SeedableRng};
 
@@ -80,20 +86,14 @@ pub fn AccountOverlay(
 
     let screen_layout = expect_context::<RwSignal<SidebarStyle>>();
 
-    let border_style = move || {
-        accent_color
-            .map(|ac| format!("border: 2px solid {};", ac()))
-            .unwrap_or_default()
-    };
-
     let show_about = create_rw_signal(false);
 
     view! {
         <Show when=show_overlay fallback=|| ()>
             <div
                 id="account-overlay"
+                class=overlay::overlay
                 data-testid="test-account-overlay"
-                style=border_style
                 on:click=move |ev: web_sys::MouseEvent| { ev.stop_propagation() }
             >
                 <AccountOverlayNavigate
@@ -137,27 +137,26 @@ where
     F: Fn() + 'static,
 {
     view! {
-        <button
-            class="overlay-button"
-            on:click=move |_| {
-                if close_overlay {
-                    if let Some(t) = use_context::<RwSignal<CloseOverlays>>() {
-                        t.update(|_| ())
-                    }
-                    on_click()
+        <button on:click=move |_| {
+            if close_overlay {
+                if let Some(t) = use_context::<RwSignal<CloseOverlays>>() {
+                    t.update(|_| ())
                 }
+                on_click()
             }
-        >
+        }>
 
-            <Show when=move || fa_icon.is_some() fallback=|| ()>
-                <i class=fa_icon.unwrap()></i>
-            </Show>
-            <Show when=move || icon.is_some() fallback=|| ()>
-                <svg src=icon.unwrap()></svg>
-            </Show>
-            <Show when=move || text.is_some() fallback=|| ()>
-                <span>{text.unwrap()}</span>
-            </Show>
+            <div class=stylance::classes!(overlay::row, overlay::interactive)>
+                <Show when=move || fa_icon.is_some() fallback=|| ()>
+                    <i class=fa_icon.unwrap()></i>
+                </Show>
+                <Show when=move || icon.is_some() fallback=|| ()>
+                    <svg src=icon.unwrap()></svg>
+                </Show>
+                <Show when=move || text.is_some() fallback=|| ()>
+                    <span>{text.unwrap()}</span>
+                </Show>
+            </div>
         </button>
     }
 }
@@ -173,8 +172,8 @@ pub fn AccountOverlayNavigate(
 ) -> impl IntoView {
     view! {
         <A href=link class=if !show_link { "remove-underline" } else { "" }>
-            <button
-                class="overlay-button"
+            <div
+                class=stylance::classes!(overlay::row, overlay::interactive)
                 on:click=move |_| {
                     if close_overlay {
                         if let Some(t) = use_context::<RwSignal<CloseOverlays>>() {
@@ -193,7 +192,7 @@ pub fn AccountOverlayNavigate(
                 <Show when=move || text.is_some() fallback=|| ()>
                     <span>{text.unwrap()}</span>
                 </Show>
-            </button>
+            </div>
         </A>
     }
 }

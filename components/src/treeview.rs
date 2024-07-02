@@ -141,31 +141,33 @@ where
     };
 
     view! {
-        <ul class="treeview">
-            <For
-                each=tree_nodes
-                key=move |c| key(&c.row)
-                children=move |item| {
-                    view! {
-                        <TreeViewRow
-                            item=item.row.clone()
-                            key
-                            selection_model=selection_model
-                            view=view
-                            each_child=each_child
-                            selection_color
-                            on_click
-                        >
-                            {view(item.get_key())}
-                        </TreeViewRow>
-                        <Show when=show_separator fallback=|| ()>
-                            <hr/>
-                        </Show>
+        <tree-view>
+            <ul>
+                <For
+                    each=tree_nodes
+                    key=move |c| key(&c.row)
+                    children=move |item| {
+                        view! {
+                            <TreeViewRow
+                                item=item.row.clone()
+                                key
+                                selection_model=selection_model
+                                view=view
+                                each_child=each_child
+                                selection_color
+                                on_click
+                            >
+                                {view(item.get_key())}
+                            </TreeViewRow>
+                            <Show when=show_separator fallback=|| ()>
+                                <hr/>
+                            </Show>
+                        }
                     }
-                }
-            />
+                />
 
-        </ul>
+            </ul>
+        </tree-view>
     }
     .into_view()
 }
