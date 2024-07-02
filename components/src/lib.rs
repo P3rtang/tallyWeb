@@ -23,12 +23,11 @@ pub struct CloseOverlays();
 
 #[component]
 pub fn Overlay(
+    #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
     show_overlay: RwSignal<bool>,
     location: ReadSignal<(i32, i32)>,
     children: ChildrenFn,
-    #[prop(optional)] accent_color: Option<Signal<String>>,
-) -> impl IntoView
-where {
+) -> impl IntoView {
     if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>() {
         create_effect(move |_| {
             close_signal.track();
@@ -37,13 +36,6 @@ where {
     } else {
         warn!("No `close overlay` signal available");
     }
-
-    let border_style = move || {
-        format!(
-            "border: 2px solid {};",
-            accent_color.map(|ac| ac()).unwrap_or_default()
-        )
-    };
 
     let location_style = move || {
         format!(
@@ -55,7 +47,7 @@ where {
 
     view! {
         <Show when=move || { show_overlay.get() } fallback=|| ()>
-            <div class="overlay" style=border_style() + &location_style()>
+            <div style=location_style() {..attrs.clone()}>
                 {children()}
             </div>
         </Show>

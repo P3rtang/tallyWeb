@@ -1,6 +1,7 @@
 use super::*;
 use components::{MessageJar, Spinner};
 use leptos::*;
+use stylance::import_style;
 
 #[component]
 pub fn NewCounterButton(state_len: Signal<usize>) -> impl IntoView {
@@ -35,8 +36,10 @@ pub fn NewCounterButton(state_len: Signal<usize>) -> impl IntoView {
         })
     };
 
+    import_style!(style, "new-counter.module.scss");
+
     view! {
-        <button on:click=on_click class="new-counter">
+        <button on:click=on_click class=style::new_counter>
             New Counter
         </button>
     }

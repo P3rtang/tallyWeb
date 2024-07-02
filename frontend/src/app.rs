@@ -88,9 +88,10 @@ pub fn App() -> impl IntoView {
                         view=|| {
                             view! {
                                 <ProvideSessionSignal>
-                                    <ProvidePreferences/>
-                                    <ProvideCountableSignals/>
-                                    <Outlet/>
+                                    <ProvidePreferences>
+                                        <ProvideCountableSignals/>
+                                        <Outlet/>
+                                    </ProvidePreferences>
                                 </ProvideSessionSignal>
                             }
                         }
@@ -227,8 +228,7 @@ pub fn HomePage() -> impl IntoView {
     let section_width = create_memo(move |_| {
         if show_sidebar().0 {
             format!("calc(100vw - {}px)", sidebar_width())
-        }
-        else {
+        } else {
             String::from("100vw")
         }
     });
@@ -318,7 +318,7 @@ where
     C: Fn() -> &'static str + Copy + 'static,
 {
     view! {
-        <div
+        <progress-bar
             class=format!("{class} progress-bar")
             style="
             display:flex;
@@ -331,14 +331,7 @@ where
                     padding: 0px 12px;
                     margin: auto;"
                 .to_string()>{children()}</div>
-            <div
-                class="through"
-                style="
-                background: #DDD;
-                padding: 1px;
-                width: 100%;
-                height: 18px;"
-            >
+            <through-bar class="through" style="background: #DDD; padding: 2px; width: 100%;">
                 <Show when=move || { progress() > 0.0 } fallback=|| ()>
                     <div
                         class="progress"
@@ -356,8 +349,8 @@ where
                     >
                     </div>
                 </Show>
-            </div>
-        </div>
+            </through-bar>
+        </progress-bar>
     }
 }
 
@@ -365,8 +358,6 @@ where
 fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
     let user = expect_context::<RwSignal<UserSession>>();
-    let preferences = expect_context::<RwSignal<Preferences>>();
-    let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
     let data_resource = expect_context::<StateResource>();
 
     let (key, _) = create_signal(key);
@@ -432,12 +423,7 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
             </div>
         </A>
         <Show when=move || countable.get_untracked().is_some()>
-            <CountableContextMenu
-                show_overlay=show_context_menu
-                location=click_location
-                key
-                accent_color
-            />
+            <CountableContextMenu show_overlay=show_context_menu location=click_location key/>
         </Show>
     }
 }

@@ -1,3 +1,6 @@
+include .env
+export $(shell sed 's/=.*//' .env)
+
 default:
 	cargo leptos build
 
@@ -7,32 +10,32 @@ dev:
 	cargo install cargo-leptos
 	cargo install sqlx-cli
 
-	# setup the dev database
-	docker container stop postgres_tallyweb
-	docker rm postgres_tallyweb
-	docker run -dit --name postgres_tallyweb -p 5432:5432 --env-file .env postgres
-	docker cp postgres/00-recreate-db.sql postgres_tallyweb:/
-	sleep 5
-	docker exec -d postgres_tallyweb psql -U postgres -f /00-recreate-db.sql
-
-	sleep 4
 	# setup sqlx migrations
 	sqlx database create
 	sqlx migrate run
+
+reset: recreate-docker recreate-user recreate-db
+
+recreate-docker:
+	docker stop tallyweb-postgres
+	docker rm tallyweb-postgres
+	docker run -d --name tallyweb-postgres -p $(POSTGRES_PORT):5432 --env-file .env postgres
+	timeout 10s bash -c "until docker exec $(POSTGRES_CONTAINER) pg_isready ; do sleep .5 ; done"
+
+recreate-user:
+	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "DROP USER IF EXISTS $(POSTGRES_USERNAME)"
+	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "CREATE USER $(POSTGRES_USERNAME) PASSWORD '$(POSTGRES_PASSWORD)' CREATEDB"
+
+recreate-db:
+	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "DROP DATABASE IF EXISTS $(PGDATABASE)"
+	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "CREATE DATABASE $(PGDATABASE) OWNER $(POSTGRES_USERNAME)"
 
 dump-db:
 	mkdir -p db-backup
 	docker exec -t postgres_tallyweb pg_dump -U p3rtang -d tally_web > "db-backup/dbdump.sql"
 
-reset-db:
-	# reset the database
-	sqlx database reset -f -y
-
-	# populate the database with a user
-	docker exec postgres_tallyweb mkdir -p /postgres
-	docker cp .github/postgres_setup/test_user.sql postgres_tallyweb:/postgres/test_user.sql
-	docker exec postgres_tallyweb psql -U p3rtang -d tally_web -f /postgres/test_user.sql
-
+watch-style:
+	stylance -w ./frontend/ --output-file ./style/bundle.scss
 
 test: reset-db
 	# run styling tests
