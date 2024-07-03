@@ -1,5 +1,5 @@
 use super::*;
-use components::{CloseOverlays, ShowSidebar};
+use components::{CloseOverlays, ShowSidebar, ToolTip};
 use leptos::*;
 use leptos_router::A;
 
@@ -15,6 +15,8 @@ pub fn Navbar(#[prop(default=true.into(), into)] has_sidebar: MaybeSignal<bool>)
     let toggle_sidebar = move |_| show_sidebar.update(|s| s.0 = !s.0);
     let close_overlays = move |_| close_overlay_signal.update(|_| ());
 
+    let home_img_ref = create_node_ref::<html::Img>();
+
     view! {
         <nav on:click=close_overlays>
             <button
@@ -26,8 +28,15 @@ pub fn Navbar(#[prop(default=true.into(), into)] has_sidebar: MaybeSignal<bool>)
                 <i class="fa-solid fa-bars"></i>
             </button>
             <A href="/">
-                <img src="/favicon.svg" width=48 height=48 alt="Home" class="tooltip-parent"/>
-                <span class="tooltip bottom">Home</span>
+                <img
+                    node_ref=home_img_ref
+                    src="/favicon.svg"
+                    width=48
+                    height=48
+                    alt="Home"
+                    class="tooltip-parent"
+                />
+                <ToolTip parent_node=home_img_ref>Home</ToolTip>
             </A>
 
             <div style:margin-left="auto" style:display="flex" style:align-items="center">
