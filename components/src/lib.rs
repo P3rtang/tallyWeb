@@ -2,6 +2,7 @@
 
 mod loading_screen;
 mod message;
+mod progressbar;
 mod saving_screen;
 mod sidebar;
 mod slider;
@@ -11,6 +12,7 @@ mod treeview;
 
 pub use loading_screen::*;
 pub use message::*;
+pub use progressbar::*;
 pub use saving_screen::*;
 pub use sidebar::*;
 pub use slider::*;
