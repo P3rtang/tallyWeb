@@ -190,23 +190,21 @@ where
     IV: IntoView,
     EC: Fn(&T) -> Vec<T> + Copy + 'static,
 {
-    let (key_sign, _) = create_signal(key(&item));
+    let key_val = store_value(key(&item));
 
-    let node = create_read_slice(selection_model, move |sm| {
-        sm.items.get(&key_sign()).cloned()
-    });
+    let node = create_read_slice(selection_model, move |sm| sm.items.get(&key_val()).cloned());
 
     let (is_expanded, toggle_expand) = create_slice(
         selection_model,
         move |model| {
             model
                 .items
-                .get(&key_sign())
+                .get(&key_val())
                 .map(|n| n.is_expanded)
                 .unwrap_or_default()
         },
         move |model, _| {
-            if let Some(node) = model.items.get_mut(&key_sign()) {
+            if let Some(node) = model.items.get_mut(&key_val()) {
                 node.toggle_expand()
             };
         },
@@ -214,8 +212,8 @@ where
 
     let (is_selected, set_selected) = create_slice(
         selection_model,
-        move |model| model.is_selected(&key_sign()),
-        move |model, _| model.select(&key_sign()),
+        move |model| model.is_selected(&key_val()),
+        move |model, _| model.select(&key_val()),
     );
 
     let caret_class = move || "caret fa-solid fa-caret-right";
@@ -275,7 +273,9 @@ where
                     class=div_class
                     on:click=move |ev| {
                         if let Some(f) = on_click {
-                            f(&key_sign(), ev);
+                            if let Some(k) = key_val.try_get_value() {
+                                f(&k, ev);
+                            }
                         } else {
                             on_row_click(ev);
                         }
