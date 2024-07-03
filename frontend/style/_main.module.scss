@@ -569,18 +569,18 @@ notification-box {
       justify-content: unset;
     }
 
-    &.fade-out {
+    &:global(.fade-out) {
       animation: fade 500ms;
     }
 
-    .content {
+    :global(.content) {
       padding: 24px 32px;
       display: grid;
       position: relative;
       width: 100%;
     }
 
-    button.close {
+    button:global(.close) {
       display: flex;
       justify-content: center;
       align-items: center;
@@ -599,7 +599,7 @@ notification-box {
   }
 
   dialog:hover {
-    button.close {
+    button:global(.close) {
       visibility: visible
     }
   }
