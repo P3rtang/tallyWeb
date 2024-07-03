@@ -37,7 +37,7 @@ dump-db:
 watch-style:
 	stylance -w ./frontend/ --output-file ./style/bundle.scss
 
-test: reset-db
+test:
 	# run styling tests
 	cargo fmt -q --check --all
 	leptosfmt -q --check .
