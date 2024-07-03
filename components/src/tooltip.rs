@@ -15,8 +15,8 @@ pub fn ToolTip<T: html::ElementDescriptor + Clone + 'static>(
             is_hovering.set(true);
             set_timeout(
                 move || {
-                    if is_hovering() {
-                        is_shown.set(true);
+                    if is_hovering.try_get().unwrap_or_default() {
+                        is_shown.try_set(true);
                     }
                 },
                 delay,
