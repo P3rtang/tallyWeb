@@ -170,7 +170,7 @@ where
     };
 
     view! {
-        <div class=class on:click=on_count_click>
+        <div class=class on:click=on_count_click data-testid="box">
             <button class=style::count_minus on:click=on_minus_click>
                 -
             </button>
@@ -180,7 +180,9 @@ where
             >
                 {get_name}
             </span>
-            <span class=style::info>{get_count}</span>
+            <span class=style::info data-testid="info">
+                {get_count}
+            </span>
         </div>
     }
 }
@@ -220,14 +222,14 @@ where
     };
 
     view! {
-        <div class=class on:click=toggle_paused>
+        <div class=class on:click=toggle_paused data-testid="box">
             <span
                 class=style::title
                 style:display=move || if show_title() { "block" } else { "none" }
             >
                 Time
             </span>
-            <span class=style::info style:min-width="7em">
+            <span class=style::info style:min-width="7em" data-testid="info">
                 {time}
             </span>
         </div>

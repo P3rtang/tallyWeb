@@ -10,10 +10,6 @@ dev:
 	cargo install cargo-leptos
 	cargo install sqlx-cli
 
-	# setup sqlx migrations
-	sqlx database create
-	sqlx migrate run
-
 reset: recreate-docker recreate-user recreate-db
 
 recreate-docker:
@@ -30,21 +26,27 @@ recreate-db:
 	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "DROP DATABASE IF EXISTS $(PGDATABASE)"
 	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "CREATE DATABASE $(PGDATABASE) OWNER $(POSTGRES_USERNAME)"
 
+	# setup sqlx migrations
+	sqlx database create
+	sqlx migrate run
+
+	psql -U p3rtang -d $(PGDATABASE) -h localhost -p $(POSTGRES_PORT) -w -f "db-backup/dbdump.sql"
+
 dump-db:
 	mkdir -p db-backup
-	docker exec -t postgres_tallyweb pg_dump -U p3rtang -d tally_web > "db-backup/dbdump.sql"
+	docker exec -t $(POSTGRES_CONTAINER) pg_dump --data-only -U p3rtang -d tally_web > "db-backup/dbdump.sql"
 
 watch-style:
 	stylance -w ./frontend/ --output-file ./style/bundle.scss
 
-test:
+test: recreate-db
 	# run styling tests
 	cargo fmt -q --check --all
 	leptosfmt -q --check .
 	cargo clippy -- -D warnings
 	# run program tests
 	cargo leptos test
-	cargo leptos end-to-end
+	cargo leptos end-to-end -r
 
 setup-pgadmin:
 	docker stop pgadmin
