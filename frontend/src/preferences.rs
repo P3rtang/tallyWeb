@@ -1,4 +1,3 @@
-use components::LoadingScreen;
 use leptos::*;
 use serde::{Deserialize, Serialize};
 
@@ -90,16 +89,5 @@ pub fn ProvidePreferences(children: ChildrenFn) -> impl IntoView {
 
     create_isomorphic_effect(move |_| pref_resource_memo.track());
 
-    view! {
-        <Transition fallback=|| {
-            view! { <LoadingScreen/> }
-        }>
-
-            {
-                pref_resource.track();
-            }
-            <div style=move || { format!("--accent: {}", accent_color.get().0) }>{children()}</div>
-
-        </Transition>
-    }
+    view! { <div style=move || { format!("--accent: {}", accent_color.get().0) }>{children()}</div> }
 }
