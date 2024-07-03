@@ -208,6 +208,9 @@ pub fn HomePage() -> impl IntoView {
     let screen_layout = expect_context::<RwSignal<SidebarStyle>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
     let data = expect_context::<StateResource>();
+    create_effect(move |_| {
+        data.refetch();
+    });
 
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
 
@@ -303,54 +306,6 @@ fn SidebarContent() -> impl IntoView {
         />
 
         <NewCounterButton state_len/>
-    }
-}
-
-#[component]
-pub fn Progressbar<F, C>(
-    progress: F,
-    color: C,
-    class: &'static str,
-    children: ChildrenFn,
-) -> impl IntoView
-where
-    F: Fn() -> f64 + Copy + 'static,
-    C: Fn() -> &'static str + Copy + 'static,
-{
-    view! {
-        <progress-bar
-            class=format!("{class} progress-bar")
-            style="
-            display:flex;
-            justify-content: center
-            align-items: center"
-        >
-            <div style="
-                    font-size: 1.4rem;
-                    color: #BBB;
-                    padding: 0px 12px;
-                    margin: auto;"
-                .to_string()>{children()}</div>
-            <through-bar class="through" style="background: #DDD; padding: 2px; width: 100%;">
-                <Show when=move || { progress() > 0.0 } fallback=|| ()>
-                    <div
-                        class="progress"
-                        style=move || {
-                            format!(
-                                "
-                        height: 18px;
-                        width: max({}%, 10px);
-                        background: {};
-                        ",
-                                progress() * 100.0,
-                                color(),
-                            )
-                        }
-                    >
-                    </div>
-                </Show>
-            </through-bar>
-        </progress-bar>
     }
 }
 

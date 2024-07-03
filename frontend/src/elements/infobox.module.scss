@@ -73,8 +73,19 @@
       min-width: 12rem;
       flex-grow: 1;
 
+      >div {
+        color: #BBB;
+      }
+
       through-bar {
+        padding: 2px;
         border-radius: 24px;
+        background: #DDD; 
+
+        color-bar {
+          border-radius: 24px;
+          height: 16px;
+        }
       }
 
       :global(.progress) {

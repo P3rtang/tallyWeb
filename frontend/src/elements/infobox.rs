@@ -2,14 +2,11 @@
 
 use super::*;
 use chrono::Duration;
-use components::SidebarStyle;
+use components::{Progressbar, SidebarStyle};
 use leptos::*;
 use web_sys::MouseEvent;
 
-use crate::{
-    app::{Progressbar, SelectionSignal},
-    countable::ArcCountable,
-};
+use crate::{app::SelectionSignal, countable::ArcCountable};
 
 stylance::import_style!(style, "infobox.module.scss");
 
@@ -281,8 +278,10 @@ where
             >
                 Progress
             </span>
-            <Progressbar progress class=style::info color>
+            <Progressbar progress attr:class=style::info color>
+
                 {move || format!("{:.03}%", progress() * 100.0)}
+
             </Progressbar>
         </div>
     }
