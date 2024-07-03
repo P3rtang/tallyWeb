@@ -6,6 +6,7 @@ mod saving_screen;
 mod sidebar;
 mod slider;
 mod spinner;
+mod tooltip;
 mod treeview;
 
 pub use loading_screen::*;
@@ -14,6 +15,7 @@ pub use saving_screen::*;
 pub use sidebar::*;
 pub use slider::*;
 pub use spinner::*;
+pub use tooltip::*;
 pub use treeview::*;
 
 use leptos::{logging::warn, *};

@@ -101,25 +101,14 @@ nav {
   }
 }
 
-.tooltip {
-  visibility: hidden;
-  position: absolute;
+tool-tip {
+  position: fixed;
   z-index: 1;
   color: white;
   font-size: 14px;
   background-color: #181818;
   border-radius: 8px;
   padding: 10px 25px 10px 25px;
-
-  &.bottom {
-    top: 52px;
-    left: -50%;
-  }
-
-  &.top {
-    top: -40px;
-    left: -50%;
-  }
 }
 
 main {
