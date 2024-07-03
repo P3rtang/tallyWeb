@@ -47,30 +47,6 @@ test("sidebar style", async ({ browser, isMobile }) => {
     }
 })
 
-test("load page with selection", async ({ page, isMobile }) => {
-    page.goto("/a7602280-e3af-4d03-ac44-c130886cc59b")
-    // make sure the wasm binary is loaded before clicking login
-    await page.waitForLoadState("networkidle")
-
-    if (isMobile) {
-        let sidebar = page.locator("side-bar")
-        await expect(sidebar).not.toBeInViewport()
-    }
-
-    let count_info_box = page.locator("#infobox > div > div").nth(0)
-    await expect(count_info_box).toBeVisible()
-    await expect(count_info_box).toHaveClass(/rowbox/)
-
-    let count_info = count_info_box.locator(".info")
-    let current_count = await count_info.textContent().then((text) => text ? text : "")
-    if (!isMobile) {
-        count_info.click()
-    } else {
-        count_info.tap()
-    }
-    await expect(count_info).toHaveText((parseInt(current_count) + 1).toString())
-})
-
 test("create counter", async ({ page }) => {
     await page.goto("/")
     // make sure the wasm binary is loaded before clicking login

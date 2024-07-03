@@ -45,7 +45,7 @@ where
         SidebarStyle::Landscape => {
             format!("border-right: 2px solid #FFFFFF80; width: {}px", w())
         }
-        SidebarStyle::Hover if !display().0 => "transform: TranslateX(-120%);".to_string(),
+        _ if !display().0 => "transform: TranslateX(-120%);".to_string(),
         SidebarStyle::Portrait => "width: 100vw".to_string(),
         _ => Default::default(),
     };
