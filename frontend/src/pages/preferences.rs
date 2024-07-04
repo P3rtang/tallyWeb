@@ -74,7 +74,6 @@ where
     let undo_changes = move |_| pref_resource.refetch();
 
     let border_style = move || format!("border: 2px solid {};", accent_color.get());
-    let confirm_style = move || format!("background-color: {}", accent_color.get());
 
     view! {
         <elements::Navbar has_sidebar=false></elements::Navbar>
@@ -84,22 +83,22 @@ where
                 style=border_style
             >
                 <div class="content">
-                    <label for="use_default_accent_color" class="title">
+                    <label for="use-default-color" class="title">
                         Use Default Accent Color
                     </label>
                     <Slider
-                        value=preferences.get_untracked().use_default_accent_color
-                        name="use_default_accent_color"
+                        checked=preferences.get_untracked().use_default_accent_color
+                        attr:name="use-default-color"
+                        attr:id="use-default-color"
                         on_checked=on_default_checked
-                        accent_color
                     />
-                    <label for="accent_color" class="title">
+                    <label for="accent-color" class="title">
                         Accent Color
                     </label>
                     <input
                         type="color"
-                        name="accent_color"
-                        id="accent_color"
+                        name="accent-color"
+                        id="accent-color"
                         class="edit"
                         on:input=on_change
                         disabled=move || preferences().use_default_accent_color
@@ -107,27 +106,33 @@ where
                         prop:value=accent_color
                     />
 
-                    <label for="show_separator" class="title">
+                    <label for="show-separator" class="title">
                         Show Treeview Separator
                     </label>
                     <Slider
-                        value=preferences.get_untracked().show_separator
+                        checked=preferences.get_untracked().show_separator
+                        attr:name="show-separator"
+                        attr:id="show-separator"
                         on_checked=on_separator_checked
-                        accent_color
                     />
 
-                    <label class="title">Use Multi Select (experimental)</label>
+                    <label for="multi-select" class="title">
+                        Use Multi Select (experimental)
+                    </label>
                     <Slider
-                        value=preferences.get_untracked().multi_select
+                        checked=preferences.get_untracked().multi_select
+                        attr:name="multi-select"
+                        attr:id="multi-select"
                         on_checked=on_multi_checked
-                        accent_color
                     />
 
-                    <label class="title">Change Username</label>
+                    <span for="change-username" class="title">
+                        Change Username
+                    </span>
                     <A class="edit" href="/change-username">
                         <i class="fa-solid fa-arrow-right"></i>
                     </A>
-                    <label class="title">Change Password</label>
+                    <span class="title">Change Password</span>
                     <A class="edit" href="/change-password">
                         <i class="fa-solid fa-arrow-right"></i>
                     </A>
@@ -136,9 +141,9 @@ where
                     <button type="button" on:click=undo_changes>
                         <span>Undo</span>
                     </button>
-                    <button type="submit" style=confirm_style>
-                        <span>Save</span>
-                    </button>
+                // <button type="submit" style=confirm_style>
+                // <span>Save</span>
+                // </button>
                 </div>
             </div>
         </ActionForm>

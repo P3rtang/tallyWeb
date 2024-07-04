@@ -2,45 +2,81 @@ use leptos::*;
 
 #[component]
 pub fn Slider<OC>(
-    #[prop(into)] value: MaybeSignal<bool>,
-    #[prop(default=String::new(), into)] name: String,
+    #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
+    #[prop(into)] checked: MaybeSignal<bool>,
     on_checked: OC,
-    #[prop(optional, into)] accent_color: Option<Signal<String>>,
 ) -> impl IntoView
 where
     OC: Fn(ev::Event) + 'static,
 {
-    let value = create_rw_signal(value.get_untracked());
-
-    let style = move || {
-        if value() {
-            format!(
-                "background-color: {}",
-                accent_color
-                    .map(|ac| ac())
-                    .unwrap_or(String::from("#8BE9FD"))
-            )
-        } else {
-            String::new()
-        }
-    };
-
     let on_toggle = move |ev| {
         on_checked(ev);
-        value.update(|v| *v = !*v);
     };
 
     view! {
-        <label class="switch">
-            <input
-                type="checkbox"
-                name=name
-                id="show_separator"
-                class="edit"
-                checked=value
-                on:change=on_toggle
-            />
-            <span class="slider" style=style></span>
+        <style>
+            r#"
+            switch-el {
+                position: relative;
+                display: inline-block;
+                min-width: 60px;
+                max-width: 60px;
+                height: 34px;
+                margin: auto 0px;
+            }
+            
+            slider-el {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: var(--accent, #3584E4);
+                -webkit-transition: .32s;
+                transition: .32s;
+                border-radius: 34px;
+            }
+            
+            slider-el:before {
+                position: absolute;
+                content: "";
+                height: 26px;
+                width: 26px;
+                left: 4px;
+                bottom: 4px;
+                background-color: white;
+                -webkit-transition: .32s;
+                transition: .32s;
+                border-radius: 50%;
+            }
+            
+            input:focus+slider-el {
+                box-shadow: 0 0 1px #2196F3;
+            }
+            
+            input:checked+slider-el:before {
+                -webkit-transform: translateX(26px);
+                -ms-transform: translateX(26px);
+                transform: translateX(26px);
+            }
+            
+            input:not(:checked)+slider-el {
+                background: #CCC;
+            }
+            
+            @keyframes slide {
+                100% {
+                    left: 0;
+                }
+            }
+            "#
+        </style>
+        <label>
+            <switch-el>
+                <input type="checkbox" {..attrs} class="edit" on:change=on_toggle checked=checked/>
+                <slider-el class="slider"></slider-el>
+            </switch-el>
         </label>
     }
 }
