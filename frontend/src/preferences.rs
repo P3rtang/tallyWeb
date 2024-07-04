@@ -71,23 +71,27 @@ impl Preferences {
 #[component(transparent)]
 pub fn ProvidePreferences(children: ChildrenFn) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
-    let pref_signal = create_rw_signal(Preferences::new(&user.get_untracked()));
-    provide_context(pref_signal);
 
     let pref_resource = create_blocking_resource(user, api::get_user_preferences);
     provide_context(pref_resource);
 
-    let pref_resource_memo = create_memo(move |_| {
-        pref_resource.with(|p| {
-            if let Some(Ok(p)) = p {
-                pref_signal.set(p.clone())
-            }
-        });
-    });
+    let pref_signal = create_rw_signal(Preferences::new(&user.get_untracked()));
+    provide_context(pref_signal);
 
     let accent_color = create_read_slice(pref_signal, |p| p.accent_color.clone());
 
-    create_isomorphic_effect(move |_| pref_resource_memo.track());
+    view! {
+        <Transition>
 
-    view! { <div style=move || { format!("--accent: {}", accent_color.get().0) }>{children()}</div> }
+            {
+                pref_resource
+                    .with(|p| {
+                        if let Some(Ok(p)) = p {
+                            pref_signal.set(p.clone())
+                        }
+                    });
+            }
+            <div style=move || { format!("--accent: {}", accent_color.get().0) }>{children()}</div>
+        </Transition>
+    }
 }
