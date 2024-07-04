@@ -22,18 +22,12 @@ impl SidebarStyle {
 pub struct ShowSidebar(pub bool);
 
 #[component(transparent)]
-pub fn Sidebar<F1, F2>(
-    display: F1,
+pub fn Sidebar(
+    #[prop(optional, into, default=ShowSidebar(true).into())] display: MaybeSignal<ShowSidebar>,
     #[prop(optional, into)] width: Option<Signal<u32>>,
-    layout: F2,
-    #[prop(optional, default={ create_signal(String::from("#8BE9FD")).0.into() }, into)]
-    accent_color: Signal<String>,
+    #[prop(optional, into, default=SidebarStyle::Hover.into())] layout: MaybeSignal<SidebarStyle>,
     children: ChildrenFn,
-) -> impl IntoView
-where
-    F1: Fn() -> ShowSidebar + Copy + 'static,
-    F2: Fn() -> SidebarStyle + Copy + 'static,
-{
+) -> impl IntoView {
     let w = move || width.map(|s| s.get()).unwrap_or(400);
     let aside_transform = move || match layout() {
         SidebarStyle::Landscape if !display().0 => {
@@ -56,10 +50,8 @@ where
         SidebarStyle::Portrait => String::new(),
     };
 
-    let aside_style = move || format!("--accent: {}; {}", accent_color(), aside_transform());
-
     view! {
-        <aside style=aside_style>
+        <aside style=aside_transform>
             <side-bar data-testid="test-sidebar" style=sidebar_style>
                 {children()}
             </side-bar>

@@ -206,13 +206,10 @@ pub fn HomePage() -> impl IntoView {
     let state = expect_context::<RwSignal<CounterList>>();
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen_layout = expect_context::<RwSignal<SidebarStyle>>();
-    let preferences = expect_context::<RwSignal<Preferences>>();
     let data = expect_context::<StateResource>();
     create_effect(move |_| {
         data.refetch();
     });
-
-    let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
 
     let active = create_read_slice(selection_signal, move |sel| {
         let mut slc = sel
@@ -254,12 +251,7 @@ pub fn HomePage() -> impl IntoView {
                         sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(*sel)));
                     }
                 }}
-                <Sidebar
-                    display=show_sidebar
-                    layout=screen_layout
-                    accent_color=accent_color
-                    width=sidebar_width
-                >
+                <Sidebar display=show_sidebar layout=screen_layout width=sidebar_width>
                     <SidebarContent/>
                 </Sidebar>
                 <section style:flex-grow="1" style:transition="width .5s" style:width=section_width>
