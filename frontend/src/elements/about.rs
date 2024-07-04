@@ -44,14 +44,14 @@ where
     view! {
         <dialog node_ref=about_node style=border_style class=class id="about">
             <div class="content">
-                <label class="title">Author</label>
-                <label class="info">P3rtang</label>
-                <label class="title">Github</label>
+                <span class="title">Author</span>
+                <span class="info">P3rtang</span>
+                <span class="title">Github</span>
                 <a class="button" href="https://github.com/P3rtang/tallyWeb">
                     <i class="fa-solid fa-link"></i>
                 </a>
-                <label class="title">Version</label>
-                <label class="info">{TALLYWEB_VERSION}</label>
+                <span class="title">Version</span>
+                <span class="info">{TALLYWEB_VERSION}</span>
             </div>
             <div class="actionbuttons">
                 <button
