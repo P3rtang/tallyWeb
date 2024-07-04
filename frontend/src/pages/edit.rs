@@ -345,7 +345,7 @@ where
                         <label for="charm" class="title">
                             Shiny Charm
                         </label>
-                        <Slider value=has_charm.0 on_checked=toggle_charm accent_color/>
+                        <Slider checked=has_charm.0 on_checked=toggle_charm/>
                     </div>
                     <div class="action-buttons">
                         <button type="button" on:click=undo_changes>
