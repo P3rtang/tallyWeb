@@ -74,7 +74,14 @@ where
         </style>
         <label>
             <switch-el>
-                <input type="checkbox" {..attrs} class="edit" on:change=on_toggle checked=checked/>
+                <input
+                    type="checkbox"
+                    {..attrs}
+                    class="edit"
+                    on:change=on_toggle
+                    prop:checked=checked
+                    checked=checked
+                />
                 <slider-el class="slider"></slider-el>
             </switch-el>
         </label>
