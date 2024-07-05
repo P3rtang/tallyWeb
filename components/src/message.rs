@@ -30,7 +30,7 @@ impl NotificationKind {
 
 #[derive(Debug, Clone, Copy)]
 pub struct MessageJar {
-    messages: RwSignal<HashMap<MessageKey, RwSignal<Notification>>>,
+    messages: RwSignal<HashMap<MessageKey, Notification>>,
     reset_time: Option<Duration>,
     next_key: RwSignal<MessageKey>,
     as_modal: bool,
@@ -47,11 +47,11 @@ impl MessageJar {
         }
     }
 
-    fn get_ordered(&self) -> Signal<Vec<(MessageKey, RwSignal<Notification>)>> {
+    fn get_ordered(&self) -> Signal<Vec<(MessageKey, Notification)>> {
         create_read_slice(self.messages, |msgs| {
             let mut entries = msgs
                 .iter()
-                .map(|(key, value)| (*key, *value))
+                .map(|(key, value)| (*key, value.clone()))
                 .collect::<Vec<_>>();
             entries.sort_by(|a, b| a.0.cmp(&b.0));
             entries
@@ -110,7 +110,7 @@ impl MessageJar {
     pub fn fade_out(self, key: MessageKey) {
         self.messages.update(|m| {
             if let Some(v) = m.get_mut(&key) {
-                v.update(|v| v.do_fade = true)
+                v.do_fade = true
             }
         })
     }
@@ -179,46 +179,43 @@ impl MessageJar {
 }
 
 #[component]
-fn Message(key: MessageKey, #[prop(into)] msg: Signal<Notification>) -> impl IntoView {
+fn Message(key: MessageKey) -> impl IntoView {
     let msg_box = expect_context::<MessageJar>();
 
-    let border_style = move || match msg().kind {
+    if !msg_box.messages.get().contains_key(&key) {
+        return view! {}.into_view();
+    }
+
+    let kind = create_read_slice(msg_box.messages, move |map| {
+        map.get(&key).unwrap().kind.clone()
+    });
+
+    let border_style = move || match kind() {
         NotificationKind::Message(_, _) => "border: 2px solid #ffe135",
-        NotificationKind::Error(_, _) => {
-            "color: tomato;
-            border: 2px solid tomato;"
-        }
-        NotificationKind::Success(_, _) => {
-            "color: #28a745;
-            border: 2px solid #28a745;"
-        }
+        NotificationKind::Error(_, _) => "color: tomato; border: 2px solid tomato;",
+        NotificationKind::Success(_, _) => "color: #28a745; border: 2px solid #28a745;",
     };
 
-    let is_modal = move || match msg().kind {
+    let is_modal = move || match kind() {
         NotificationKind::Message(is_modal, _) => is_modal,
         NotificationKind::Error(is_modal, _) => is_modal,
         NotificationKind::Success(is_modal, _) => is_modal,
     };
 
     let dialog_ref = create_node_ref::<html::Dialog>();
-
-    create_effect(move |_| match msg() {
-        _ if is_modal() => {
-            if let Some(d) = dialog_ref() {
-                d.close();
+    create_effect(move |_| {
+        if let Some(d) = dialog_ref() {
+            d.close();
+            if is_modal() {
                 let _ = d.show_modal();
-            }
-        }
-        _ => {
-            if let Some(d) = dialog_ref() {
-                d.close();
+            } else {
                 d.show();
             }
         }
     });
 
-    let dialog_class = create_memo(move |_| {
-        if msg.get().do_fade {
+    let dialog_class = create_read_slice(msg_box.messages, move |map| {
+        if map.get(&key).unwrap().do_fade {
             String::from("fade-out")
         } else {
             String::from("")
@@ -248,16 +245,17 @@ fn Message(key: MessageKey, #[prop(into)] msg: Signal<Notification>) -> impl Int
                 <button class="close" on:click=on_close_click>
                     <i class="fa-solid fa-xmark"></i>
                 </button>
-                {move || { msg().kind.get_view().unwrap_or(view! {}.into_view()) }}
+                {move || kind.get().get_view().unwrap_or(view! {}.into_view())}
             </div>
         </dialog>
     }
+    .into_view()
 }
 
-#[component(transparent)]
+#[component]
 pub fn ProvideMessageSystem() -> impl IntoView {
-    let msg_box = MessageJar::new(Duration::seconds(5));
-    provide_context(msg_box);
+    let msg_jar = MessageJar::new(Duration::seconds(5));
+    provide_context(msg_jar);
 
     // on navigation clear any messages or errors from the message box
     // let loc_memo = create_memo(move |_| {
@@ -269,10 +267,10 @@ pub fn ProvideMessageSystem() -> impl IntoView {
     view! {
         <notification-box>
             <For
-                each=move || msg_box.get_ordered().get().into_iter().rev()
+                each=move || msg_jar.get_ordered().get().into_iter().rev()
                 key=|(key, _)| *key
-                children=|(key, msg)| {
-                    view! { <Message key msg/> }
+                children=|(key, _)| {
+                    view! { <Message key/> }
                 }
             />
 
