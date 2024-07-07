@@ -58,6 +58,10 @@ impl MessageJar {
         })
     }
 
+    pub fn has_msg(&self) -> bool {
+        !self.messages.get().is_empty()
+    }
+
     pub fn clear(&self) {
         self.messages.update(|list| list.clear())
     }
@@ -92,8 +96,7 @@ impl MessageJar {
                 Notification {
                     kind: msg,
                     do_fade: false,
-                }
-                .into(),
+                },
             );
         });
         key
@@ -182,7 +185,7 @@ impl MessageJar {
 fn Message(key: MessageKey) -> impl IntoView {
     let msg_box = expect_context::<MessageJar>();
 
-    if !msg_box.messages.get().contains_key(&key) {
+    if !msg_box.messages.get_untracked().contains_key(&key) {
         return view! {}.into_view();
     }
 
@@ -265,15 +268,17 @@ pub fn ProvideMessageSystem() -> impl IntoView {
     //
 
     view! {
-        <notification-box>
-            <For
-                each=move || msg_jar.get_ordered().get().into_iter().rev()
-                key=|(key, _)| *key
-                children=|(key, _)| {
-                    view! { <Message key/> }
-                }
-            />
+        <Show when=move || msg_jar.has_msg()>
+            <notification-box>
+                <For
+                    each=move || msg_jar.get_ordered().get().into_iter().rev()
+                    key=|(key, _)| *key
+                    children=|(key, _)| {
+                        view! { <Message key/> }
+                    }
+                />
 
-        </notification-box>
+            </notification-box>
+        </Show>
     }
 }

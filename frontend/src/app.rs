@@ -78,9 +78,9 @@ pub fn App() -> impl IntoView {
 
         <Title text="TallyWeb"/>
 
+        <ProvideMessageSystem/>
         <Router>
             <main on:click=close_overlays>
-                <ProvideMessageSystem/>
                 <Routes>
                     <Route
                         path=""
@@ -122,16 +122,11 @@ pub fn App() -> impl IntoView {
                             />
                         </Route>
 
-                        <Route path="/test" view=ShowTests>
-                            <Route path="" view=|| ()/>
-                            <Route path="messages" view=TestMessages/>
-                        </Route>
-
                         <Route path="/change-username" view=move || view! { <ChangeAccountInfo/> }/>
                         <Route path="/change-password" view=ChangePassword/>
                         <Route path="/privacy-policy" view=PrivacyPolicy/>
-                        <Route path="/*any" view=NotFound/>
                     </Route>
+                    <TestRoutes/>
                     <Route path="/login" view=LoginPage/>
                     <Route path="/create-account" view=CreateAccount/>
                     <Route path="/*any" view=NotFound/>
