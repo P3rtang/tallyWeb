@@ -1,0 +1,33 @@
+test-list {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-flow: column;
+
+  .entry {
+    display: flex;
+    align-items: center;
+    height: 32px;
+    width: 100%;
+    padding: 12px 24px;
+
+    &:hover {
+      background: $element-hover-color-dark;
+    }
+
+  }
+
+  a {
+    text-decoration: none;
+    color: white;
+  }
+}
+
+.test_case {
+  display: flex;
+  margin: 16px;
+
+  >*:not(:first-child) {
+    margin-left: 12px;
+  }
+}

@@ -906,27 +906,3 @@ dialog:open {
     }
   }
 }
-
-test-list {
-  width: 320px;
-  height: 100vh;
-  display: flex;
-  background: $element-background-color-dark;
-
-  .test-entry {
-    display: flex;
-    align-items: center;
-    height: 32px;
-    width: 100%;
-    padding: 12px 24px;
-
-    &:hover {
-      background: $element-hover-color-dark;
-    }
-
-    a {
-      text-decoration: none;
-      color: white;
-    }
-  }
-}
