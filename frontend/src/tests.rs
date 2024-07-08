@@ -79,7 +79,6 @@ fn Message() -> impl IntoView {
 fn Slider() -> impl IntoView {
     expect_context::<RwSignal<ShowSidebar>>().set(ShowSidebar(false));
     let checked_signal = create_rw_signal(false);
-
     let disable_signal = create_rw_signal(false);
 
     view! {
