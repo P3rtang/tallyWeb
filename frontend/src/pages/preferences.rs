@@ -4,6 +4,8 @@ use leptos::*;
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
 
+stylance::import_style!(style, "../elements/edit_form.module.scss");
+
 use super::*;
 
 #[component]
@@ -73,79 +75,155 @@ where
 
     let undo_changes = move |_| pref_resource.refetch();
 
-    let border_style = move || format!("border: 2px solid {};", accent_color.get());
+    let form_style = move || {
+        stylance::classes!(
+            style::form,
+            match layout() {
+                SidebarStyle::Portrait => Some(style::portrait),
+                SidebarStyle::Hover => Some(style::small),
+                SidebarStyle::Landscape => Some(style::big),
+            }
+        )
+    };
 
     view! {
         <elements::Navbar has_sidebar=false></elements::Navbar>
-        <ActionForm action=action on:submit=on_submit class="parent-form">
-            <div
-                class=move || String::from("editing-form ") + layout().get_widget_class()
-                style=border_style
-            >
-                <div class="content">
-                    <label for="use-default-color" class="title">
-                        Use Default Accent Color
-                    </label>
-                    <Slider
-                        checked=preferences.get_untracked().use_default_accent_color
-                        attr:name="use-default-color"
-                        attr:id="use-default-color"
-                        on_checked=on_default_checked
-                    />
-                    <label for="accent-color" class="title">
-                        Accent Color
-                    </label>
-                    <input
-                        type="color"
-                        name="accent-color"
-                        id="accent-color"
-                        class="edit"
-                        on:input=on_change
-                        disabled=move || preferences().use_default_accent_color
-                        value=accent_color
-                        prop:value=accent_color
-                    />
+        <h1 style:color="white" style:padding="12px 48px">
+            Settings
+        </h1>
+        <div style:display="flex" style:height="100%" style:justify-content="center">
+            <edit-form class=form_style>
+                <ActionForm action=action on:submit=on_submit>
+                    <table class=style::content>
+                        <tr class=style::row>
+                            <td>
+                                <label for="use-default-color" class="title">
+                                    Use Default Accent Color
+                                </label>
+                            </td>
+                            <td>
+                                <Slider
+                                    checked=preferences.get_untracked().use_default_accent_color
+                                    attr:name="use-default-color"
+                                    attr:id="use-default-color"
+                                    on_checked=on_default_checked
+                                />
+                            </td>
+                        </tr>
 
-                    <label for="show-separator" class="title">
-                        Show Treeview Separator
-                    </label>
-                    <Slider
-                        checked=preferences.get_untracked().show_separator
-                        attr:name="show-separator"
-                        attr:id="show-separator"
-                        on_checked=on_separator_checked
-                    />
+                        <tr class=style::row>
+                            <td>
+                                <label for="accent-color" class="title">
+                                    Accent Color
+                                </label>
+                            </td>
+                            <td>
+                                <input
+                                    type="color"
+                                    name="accent-color"
+                                    id="accent-color"
+                                    class="edit"
+                                    on:input=on_change
+                                    disabled=move || preferences().use_default_accent_color
+                                    value=accent_color
+                                    prop:value=accent_color
+                                />
+                            </td>
+                        </tr>
 
-                    <label for="multi-select" class="title">
-                        Use Multi Select (experimental)
-                    </label>
-                    <Slider
-                        checked=preferences.get_untracked().multi_select
-                        attr:name="multi-select"
-                        attr:id="multi-select"
-                        on_checked=on_multi_checked
-                    />
+                        <tr>
+                            <td colspan="2">
+                                <hr/>
+                            </td>
+                        </tr>
 
-                    <span for="change-username" class="title">
-                        Change Username
-                    </span>
-                    <A class="edit" href="/change-username">
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </A>
-                    <span class="title">Change Password</span>
-                    <A class="edit" href="/change-password">
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </A>
-                </div>
-                <div class="action-buttons">
-                    <button type="button" on:click=undo_changes>
-                        <span>Undo</span>
-                    </button>
-                // <button type="submit" style=confirm_style>
-                // <span>Save</span>
-                // </button>
-                </div>
-            </div>
-        </ActionForm>
+                        <tr class=style::row>
+                            <td>
+                                <label for="show-separator" class="title">
+                                    Show Treeview Separator
+                                </label>
+                            </td>
+                            <td>
+                                <Slider
+                                    checked=preferences.get_untracked().show_separator
+                                    attr:name="show-separator"
+                                    attr:id="show-separator"
+                                    on_checked=on_separator_checked
+                                />
+                            </td>
+                        </tr>
+
+                        <tr class=style::row>
+                            <td>
+                                <label for="multi-select" class="title">
+                                    Use Multi Select (experimental)
+                                </label>
+                            </td>
+                            <td>
+                                <Slider
+                                    checked=preferences.get_untracked().multi_select
+                                    attr:name="multi-select"
+                                    attr:id="multi-select"
+                                    on_checked=on_multi_checked
+                                />
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td colspan="2">
+                                <hr/>
+                            </td>
+                        </tr>
+
+                        <tr class=style::row>
+                            <td>
+                                <span for="change-username" class="title">
+                                    Change Username
+                                </span>
+                            </td>
+                            <td>
+                                <A class=style::edit href="/change-username">
+                                    <i class="fa-solid fa-arrow-right"></i>
+                                </A>
+                            </td>
+                        </tr>
+
+                        <tr class=style::row>
+                            <td>
+                                <span class="title">Change Password</span>
+                            </td>
+                            <td>
+                                <A class=style::edit href="/change-password">
+                                    <i class="fa-solid fa-arrow-right"></i>
+                                </A>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <action-buttons
+                        style:display="flex"
+                        style:justify-content="space-between"
+                        class=move || {
+                            stylance::classes!(
+                                style::action_buttons, match layout() { SidebarStyle::Portrait =>
+                                Some(style::fixed), SidebarStyle::Hover => None,
+                                SidebarStyle::Landscape => None, }
+                            )
+                        }
+                    >
+
+                        <action-start></action-start>
+                        <action-end>
+                            <button type="button" on:click=undo_changes>
+                                <span>Undo</span>
+                            </button>
+                            <button type="submit" class=style::confirm>
+                                <span>Save</span>
+                            </button>
+                        </action-end>
+                    </action-buttons>
+                </ActionForm>
+            </edit-form>
+        </div>
     }
 }
