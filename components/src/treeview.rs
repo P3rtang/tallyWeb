@@ -87,8 +87,8 @@ where
         self.selection
             .iter()
             .filter(|(_, b)| **b)
-            .map(|(k, _)| &self.items.get(k).unwrap().row)
-            .collect::<Vec<_>>()
+            .filter_map(|(k, _)| self.items.get(k).map(|i| &i.row))
+            .collect()
     }
 
     pub fn get_selected_keys(&self) -> Vec<&S> {
@@ -108,7 +108,7 @@ where
     }
 
     pub fn is_empty(&self) -> bool {
-        self.selection().is_empty()
+        self.selection.is_empty()
     }
 }
 

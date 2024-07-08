@@ -1,21 +1,10 @@
 use leptos::*;
-use wasm_bindgen::{prelude::Closure, JsCast};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SidebarStyle {
     Portrait,
     Hover,
     Landscape,
-}
-
-impl SidebarStyle {
-    pub fn get_widget_class(&self) -> &str {
-        match self {
-            SidebarStyle::Portrait => "small",
-            SidebarStyle::Hover => "small",
-            SidebarStyle::Landscape => "big",
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -57,12 +46,6 @@ pub fn Sidebar(
             </side-bar>
         </aside>
     }
-}
-
-pub fn connect_on_window_resize(f: Box<dyn FnMut()>) {
-    let closure = Closure::wrap(f as Box<dyn FnMut()>);
-    leptos_dom::window().set_onresize(Some(closure.as_ref().unchecked_ref()));
-    closure.forget();
 }
 
 #[component(transparent)]

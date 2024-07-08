@@ -1,17 +1,12 @@
-use components::SidebarStyle;
 use leptos::{html::Dialog, *};
 
 pub const TALLYWEB_VERSION: &str = env!("TALLYWEB_VERSION");
 
 #[component]
-pub fn AboutDialog<F>(
+pub fn AboutDialog(
     open: RwSignal<bool>,
-    layout: F,
     #[prop(optional)] accent_color: Option<Signal<String>>,
-) -> impl IntoView
-where
-    F: Fn() -> SidebarStyle + Copy + 'static,
-{
+) -> impl IntoView {
     let about_node = create_node_ref::<Dialog>();
     create_effect(move |_| {
         if let Some(a) = about_node() {
@@ -35,14 +30,8 @@ where
             .unwrap_or_default()
     };
 
-    let class = move || match layout() {
-        SidebarStyle::Portrait => String::from("overlay"),
-        SidebarStyle::Hover => String::from("overlay big"),
-        SidebarStyle::Landscape => String::from("overlay big"),
-    };
-
     view! {
-        <dialog node_ref=about_node style=border_style class=class id="about">
+        <dialog node_ref=about_node style=border_style id="about">
             <div class="content">
                 <span class="title">Author</span>
                 <span class="info">P3rtang</span>
