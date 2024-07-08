@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use chrono::Duration;
-use components::{LoadingScreen, MessageJar, SavingMessage, SidebarStyle, Slider};
+use components::{LoadingScreen, MessageJar, SavingMessage, Slider};
 use leptos::{
     html::{Input, Select},
     *,
@@ -19,10 +19,7 @@ pub fn EditWindow() -> impl IntoView {
 }
 
 #[component]
-pub fn EditCounterWindow<F>(layout: F) -> impl IntoView
-where
-    F: Fn() -> SidebarStyle + Copy + 'static,
-{
+pub fn EditCounterWindow() -> impl IntoView {
     let params = use_params::<CountableId>();
 
     let valid_key = params
@@ -54,7 +51,7 @@ where
 
     view! {
         <Show when=move || valid_key.is_some()>
-            <EditCounterBox layout key/>
+            <EditCounterBox key/>
         </Show>
     }
 }
@@ -65,10 +62,7 @@ struct CountableId {
 }
 
 #[component]
-fn EditCounterBox<F>(layout: F, key: RwSignal<uuid::Uuid>) -> impl IntoView
-where
-    F: Fn() -> SidebarStyle + Copy + 'static,
-{
+fn EditCounterBox(key: RwSignal<uuid::Uuid>) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
     let message = expect_context::<MessageJar>();
@@ -265,10 +259,7 @@ where
                 countable.set(counter_rsrc.get().and_then(|c| c.ok()).map(|c| c.into()));
             }}
             <Form action="/" on:submit=on_submit class="parent-form">
-                <div
-                    class=move || String::from("editing-form ") + layout().get_widget_class()
-                    style=border_style
-                >
+                <div class=move || String::from("editing-form ") style=border_style>
                     <div class="content">
                         <label for="name" class="title">
                             Name

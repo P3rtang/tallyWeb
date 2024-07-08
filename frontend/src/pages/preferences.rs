@@ -1,5 +1,5 @@
 #![allow(unused_braces)]
-use components::{MessageJar, SavingMessage, SidebarStyle, Slider};
+use components::{MessageJar, SavingMessage, Slider};
 use leptos::*;
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
@@ -9,14 +9,12 @@ stylance::import_style!(style, "../elements/edit_form.module.scss");
 use super::*;
 
 #[component]
-pub fn PreferencesWindow<F>(layout: F) -> impl IntoView
-where
-    F: Fn() -> SidebarStyle + Copy + 'static,
-{
+pub fn PreferencesWindow() -> impl IntoView {
     let preferences = expect_context::<RwSignal<Preferences>>();
     let message = expect_context::<MessageJar>();
     let user = expect_context::<RwSignal<UserSession>>();
     let pref_resource = expect_context::<PrefResource>();
+    let screen = expect_context::<Screen>();
 
     let action = create_server_action::<api::SavePreferences>();
 
@@ -78,10 +76,10 @@ where
     let form_style = move || {
         stylance::classes!(
             style::form,
-            match layout() {
-                SidebarStyle::Portrait => Some(style::portrait),
-                SidebarStyle::Hover => Some(style::small),
-                SidebarStyle::Landscape => Some(style::big),
+            match (screen.style)() {
+                ScreenStyle::Portrait => Some(style::portrait),
+                ScreenStyle::Small => Some(style::small),
+                ScreenStyle::Big => Some(style::big),
             }
         )
     };
@@ -205,9 +203,9 @@ where
                         style:justify-content="space-between"
                         class=move || {
                             stylance::classes!(
-                                style::action_buttons, match layout() { SidebarStyle::Portrait =>
-                                Some(style::fixed), SidebarStyle::Hover => None,
-                                SidebarStyle::Landscape => None, }
+                                style::action_buttons, match (screen.style) () {
+                                ScreenStyle::Portrait => Some(style::fixed), ScreenStyle::Small =>
+                                None, ScreenStyle::Big => None, }
                             )
                         }
                     >

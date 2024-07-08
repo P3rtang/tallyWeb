@@ -2,7 +2,7 @@
 
 use super::*;
 use chrono::Duration;
-use components::{Progressbar, SidebarStyle};
+use components::Progressbar;
 use leptos::*;
 use web_sys::MouseEvent;
 
@@ -12,10 +12,10 @@ stylance::import_style!(style, "infobox.module.scss");
 
 #[component]
 pub fn InfoBox(countable_list: Signal<Vec<ArcCountable>>) -> impl IntoView {
-    let screen_layout = expect_context::<RwSignal<SidebarStyle>>();
+    let screen = expect_context::<Screen>();
     let show_multiple = move || countable_list().len() > 1;
-    let show_title = move || !(screen_layout() == SidebarStyle::Portrait || show_multiple());
-    let multi_narrow = move || !(show_multiple() && SidebarStyle::Portrait == screen_layout());
+    let show_title = move || !((screen.style)() == ScreenStyle::Portrait || show_multiple());
+    let multi_narrow = move || !(show_multiple() && ScreenStyle::Portrait == (screen.style)());
 
     view! {
         <div id="infobox" style:display=move || if !multi_narrow() { "block" } else { "flex" }>

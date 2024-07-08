@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use super::*;
-use components::{CloseOverlays, SidebarStyle};
+use components::CloseOverlays;
 use leptos::{logging::debug_warn, *};
 use leptos_router::A;
 
@@ -84,8 +84,6 @@ pub fn AccountOverlay(
         debug_warn!("No `close overlay` signal available");
     }
 
-    let screen_layout = expect_context::<RwSignal<SidebarStyle>>();
-
     let show_about = create_rw_signal(false);
 
     view! {
@@ -118,9 +116,9 @@ pub fn AccountOverlay(
 
         <Show
             when=move || accent_color.is_some()
-            fallback=move || view! { <AboutDialog open=show_about layout=screen_layout/> }
+            fallback=move || view! { <AboutDialog open=show_about/> }
         >
-            <AboutDialog open=show_about layout=screen_layout accent_color=accent_color.unwrap()/>
+            <AboutDialog open=show_about accent_color=accent_color.unwrap()/>
         </Show>
     }
 }

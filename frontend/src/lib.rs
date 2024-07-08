@@ -2,10 +2,14 @@
 #![feature(let_chains)]
 #![feature(half_open_range_patterns_in_slices)]
 
-pub mod app;
+use leptos::leptos_dom;
+use wasm_bindgen::{prelude::Closure, JsCast};
 
+pub mod app;
 mod session;
 pub(crate) use session::UserSession;
+mod screen;
+pub(crate) use screen::{ProvideScreenSignal, Screen, ScreenStyle};
 mod preferences;
 pub(crate) use preferences::{PrefResource, Preferences};
 mod tests;
@@ -84,6 +88,8 @@ pub enum AppError {
     ConnectionError,
     #[error("{0}")]
     ServerError(String),
+    #[error("Unable to get window size, Got: {0}")]
+    WindowSize(String),
 }
 
 impl From<gloo_storage::errors::StorageError> for AppError {
@@ -101,4 +107,10 @@ impl From<leptos::ServerFnError> for AppError {
                 .unwrap_or(AppError::ServerError(value.to_string())),
         }
     }
+}
+
+pub fn connect_on_window_resize(f: Box<dyn FnMut()>) {
+    let closure = Closure::wrap(f as Box<dyn FnMut()>);
+    leptos_dom::window().set_onresize(Some(closure.as_ref().unchecked_ref()));
+    closure.forget();
 }

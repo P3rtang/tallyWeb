@@ -35,36 +35,11 @@ pub fn App() -> impl IntoView {
         close_overlay_signal.update(|_| ());
     };
 
-    let screen_layout = create_rw_signal(SidebarStyle::Landscape);
     let show_sidebar = create_rw_signal(ShowSidebar(true));
-
-    provide_context(screen_layout);
     provide_context(show_sidebar);
-
-    let handle_resize = move || {
-        if let Some(width) = leptos_dom::window()
-            .inner_width()
-            .ok()
-            .and_then(|v| v.as_f64())
-        {
-            if width < 600.0 {
-                screen_layout.set(SidebarStyle::Portrait)
-            } else if width < 1200.0 {
-                screen_layout.set(SidebarStyle::Hover)
-            } else {
-                screen_layout.set(SidebarStyle::Landscape);
-                show_sidebar.update(|s| s.0 = true);
-            }
-        }
-    };
 
     let save_handler = SaveHandlerCountable::new();
     provide_context(save_handler);
-
-    create_effect(move |_| {
-        handle_resize();
-        connect_on_window_resize(Box::new(handle_resize));
-    });
 
     view! {
         <Stylesheet href=format!("/pkg/{LEPTOS_OUTPUT_NAME}.css")/>
@@ -88,10 +63,12 @@ pub fn App() -> impl IntoView {
                         view=|| {
                             view! {
                                 <ProvideSessionSignal>
-                                    <ProvidePreferences>
-                                        <ProvideCountableSignals/>
-                                        <Outlet/>
-                                    </ProvidePreferences>
+                                    <ProvideScreenSignal>
+                                        <ProvidePreferences>
+                                            <ProvideCountableSignals/>
+                                            <Outlet/>
+                                        </ProvidePreferences>
+                                    </ProvideScreenSignal>
                                 </ProvideSessionSignal>
                             }
                         }
@@ -110,16 +87,10 @@ pub fn App() -> impl IntoView {
                             <Route path="" view=UnsetCountable/>
                             <Route path=":key" view=SetCountable/>
                         </Route>
-                        <Route
-                            path="/preferences"
-                            view=move || view! { <PreferencesWindow layout=screen_layout/> }
-                        />
+                        <Route path="/preferences" view=move || view! { <PreferencesWindow/> }/>
 
                         <Route path="/edit" view=EditWindow>
-                            <Route
-                                path=":id"
-                                view=move || view! { <EditCounterWindow layout=screen_layout/> }
-                            />
+                            <Route path=":id" view=move || view! { <EditCounterWindow/> }/>
                         </Route>
 
                         <Route path="/change-username" view=move || view! { <ChangeAccountInfo/> }/>
@@ -200,7 +171,7 @@ pub fn HomePage() -> impl IntoView {
     let selection_signal = expect_context::<SelectionSignal>();
     let state = expect_context::<RwSignal<CounterList>>();
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
-    let screen_layout = expect_context::<RwSignal<SidebarStyle>>();
+    let screen = expect_context::<Screen>();
     let data = expect_context::<StateResource>();
     create_effect(move |_| {
         data.refetch();
@@ -228,10 +199,20 @@ pub fn HomePage() -> impl IntoView {
         }
     });
 
+    let sidebar_layout = create_read_slice(screen.style, |s| s.to_sidebar());
+
+    create_isomorphic_effect(move |_| {
+        if screen.style.get() != ScreenStyle::Big {
+            let sel_memo = create_read_slice(selection_signal, |sel| sel.is_empty());
+            sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(*sel)));
+        }
+    });
+
     view! {
         <Transition fallback=move || {
             view! { <LoadingScreen/> }
         }>
+
             {move || {
                 let list = match data.get() {
                     Some(data_list) if !save_handler.is_offline() => data_list.into(),
@@ -240,13 +221,7 @@ pub fn HomePage() -> impl IntoView {
                 state.set(list)
             }}
             <div id="HomeGrid">
-                {move || {
-                    if screen_layout() != SidebarStyle::Landscape {
-                        let sel_memo = create_read_slice(selection_signal, |sel| sel.is_empty());
-                        sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(*sel)));
-                    }
-                }}
-                <Sidebar display=show_sidebar layout=screen_layout width=sidebar_width>
+                <Sidebar display=show_sidebar layout=sidebar_layout width=sidebar_width>
                     <SidebarContent/>
                 </Sidebar>
                 <section style:flex-grow="1" style:transition="width .5s" style:width=section_width>
