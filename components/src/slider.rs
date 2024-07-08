@@ -14,7 +14,7 @@ where
     };
 
     view! {
-        <label style:display="flex">
+        <label>
             <style>
                 r#"
                 switch-el {
