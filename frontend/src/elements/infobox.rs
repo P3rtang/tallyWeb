@@ -6,13 +6,12 @@ use components::Progressbar;
 use leptos::*;
 use web_sys::MouseEvent;
 
-use crate::{app::SelectionSignal, countable::ArcCountable};
-
 stylance::import_style!(style, "infobox.module.scss");
 
 #[component]
-pub fn InfoBox(countable_list: Signal<Vec<ArcCountable>>) -> impl IntoView {
+pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl IntoView {
     let screen = expect_context::<Screen>();
+
     let show_multiple = move || countable_list().len() > 1;
     let show_title = move || !((screen.style)() == ScreenStyle::Portrait || show_multiple());
     let multi_narrow = move || !(show_multiple() && ScreenStyle::Portrait == (screen.style)());
@@ -21,9 +20,8 @@ pub fn InfoBox(countable_list: Signal<Vec<ArcCountable>>) -> impl IntoView {
         <div id="infobox" style:display=move || if !multi_narrow() { "block" } else { "flex" }>
             <For
                 each=countable_list
-                key=|countable| countable.get_uuid()
-                children=move |countable| {
-                    let key = create_signal(countable.get_uuid()).0;
+                key=|key| *key
+                children=move |key| {
                     view! {
                         <div class=style::row>
                             <Show when=show_multiple>
@@ -74,7 +72,7 @@ fn short_format_time(dur: Duration) -> String {
 }
 
 #[component]
-fn Title(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
+fn Title(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
     let state = expect_context::<SelectionSignal>();
 
     let get_name = create_read_slice(state, move |state| {
@@ -96,7 +94,11 @@ fn Title(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
 }
 
 #[component]
-fn Count<T, E>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
+fn Count<T, E>(
+    #[prop(into)] key: MaybeSignal<uuid::Uuid>,
+    expand: E,
+    show_title: T,
+) -> impl IntoView
 where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
@@ -185,7 +187,7 @@ where
 }
 
 #[component]
-fn Time<T, E>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
+fn Time<T, E>(#[prop(into)] key: MaybeSignal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
 where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
@@ -234,7 +236,11 @@ where
 }
 
 #[component]
-fn Progress<T, E>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
+fn Progress<T, E>(
+    #[prop(into)] key: MaybeSignal<uuid::Uuid>,
+    expand: E,
+    show_title: T,
+) -> impl IntoView
 where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
@@ -288,7 +294,11 @@ where
 }
 
 #[component]
-fn LastStep<E, T>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
+fn LastStep<E, T>(
+    #[prop(into)] key: MaybeSignal<uuid::Uuid>,
+    expand: E,
+    show_title: T,
+) -> impl IntoView
 where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
@@ -351,7 +361,7 @@ where
 
 #[component]
 fn AverageStep<E, T>(
-    #[prop(into)] key: Signal<uuid::Uuid>,
+    #[prop(into)] key: MaybeSignal<uuid::Uuid>,
     expand: E,
     show_title: T,
 ) -> impl IntoView

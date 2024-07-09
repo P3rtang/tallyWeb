@@ -14,7 +14,6 @@ pub const LEPTOS_OUTPUT_NAME: &str = env!("LEPTOS_OUTPUT_NAME");
 pub const TALLYWEB_VERSION: &str = env!("TALLYWEB_VERSION");
 
 pub type StateResource = Resource<UserSession, Vec<SerCounter>>;
-pub type SelectionSignal = RwSignal<SelectionModel<uuid::Uuid, ArcCountable>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CounterResponse {
@@ -64,8 +63,8 @@ pub fn App() -> impl IntoView {
                             view! {
                                 <ProvideSessionSignal>
                                     <ProvideScreenSignal>
+                                        <ProvideCountableSignals/>
                                         <ProvidePreferences>
-                                            <ProvideCountableSignals/>
                                             <Outlet/>
                                         </ProvidePreferences>
                                     </ProvideScreenSignal>
@@ -74,24 +73,26 @@ pub fn App() -> impl IntoView {
                         }
                     >
 
-                        <Route
-                            path="/"
-                            view=|| {
-                                view! {
-                                    <Outlet/>
-                                    <HomePage/>
+                        <Route path="" view=RouteSidebar>
+                            <Route
+                                path="/"
+                                view=|| {
+                                    view! {
+                                        <Outlet/>
+                                        <HomePage/>
+                                    }
                                 }
-                            }
-                        >
+                            >
 
-                            <Route path="" view=UnsetCountable/>
-                            <Route path=":key" view=SetCountable/>
+                                <Route path="" view=UnsetCountable/>
+                                <Route path=":key" view=SetCountable/>
+                            </Route>
+                            <Route path="/edit" view=EditWindow>
+                                <Route path=":id" view=move || view! { <EditCountableWindow/> }/>
+                            </Route>
                         </Route>
+
                         <Route path="/preferences" view=move || view! { <PreferencesWindow/> }/>
-
-                        <Route path="/edit" view=EditWindow>
-                            <Route path=":id" view=move || view! { <EditCounterWindow/> }/>
-                        </Route>
 
                         <Route path="/change-username" view=move || view! { <ChangeAccountInfo/> }/>
                         <Route path="/change-password" view=ChangePassword/>
@@ -125,6 +126,44 @@ fn NotFound() -> impl IntoView {
     }
 
     view! { <h1>"Not Found"</h1> }
+}
+
+#[component]
+fn RouteSidebar() -> impl IntoView {
+    let selection = expect_context::<SelectionSignal>();
+    let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
+    let screen = expect_context::<Screen>();
+
+    let sidebar_layout = create_read_slice(screen.style, |s| s.to_sidebar());
+
+    let sidebar_width = create_rw_signal(400);
+    provide_context(sidebar_width);
+
+    let section_width = create_memo(move |_| {
+        if show_sidebar().0 {
+            format!("calc(100vw - {}px)", sidebar_width())
+        } else {
+            String::from("100vw")
+        }
+    });
+
+    create_isomorphic_effect(move |_| {
+        if screen.style.get() != ScreenStyle::Big {
+            let sel_memo = create_read_slice(selection, |sel| sel.is_empty());
+            sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(*sel)));
+        }
+    });
+
+    view! {
+        <div style:display="flex">
+            <Sidebar display=show_sidebar layout=sidebar_layout width=sidebar_width>
+                <SidebarContent/>
+            </Sidebar>
+            <section style:flex-grow="1" style:transition="width .5s" style:width=section_width>
+                <Outlet/>
+            </section>
+        </div>
+    }
 }
 
 fn timer(selection_signal: SelectionSignal) {
@@ -167,69 +206,22 @@ fn timer(selection_signal: SelectionSignal) {
 
 #[component]
 pub fn HomePage() -> impl IntoView {
-    let save_handler = expect_context::<SaveHandlerCountable>();
     let selection_signal = expect_context::<SelectionSignal>();
-    let state = expect_context::<RwSignal<CounterList>>();
-    let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
-    let screen = expect_context::<Screen>();
-    let data = expect_context::<StateResource>();
-    create_effect(move |_| {
-        data.refetch();
-    });
 
-    let active = create_read_slice(selection_signal, move |sel| {
-        let mut slc = sel
+    let active = create_memo(move |_| {
+        selection_signal
+            .get()
             .get_selected_keys()
-            .iter()
-            .filter_map(|key| sel.get(*key).cloned())
-            .collect::<Vec<_>>();
-        slc.sort_by(state().sort.sort_by());
-
-        slc
-    });
-
-    let sidebar_width = create_rw_signal(400);
-    provide_context(sidebar_width);
-
-    let section_width = create_memo(move |_| {
-        if show_sidebar().0 {
-            format!("calc(100vw - {}px)", sidebar_width())
-        } else {
-            String::from("100vw")
-        }
-    });
-
-    let sidebar_layout = create_read_slice(screen.style, |s| s.to_sidebar());
-
-    create_isomorphic_effect(move |_| {
-        if screen.style.get() != ScreenStyle::Big {
-            let sel_memo = create_read_slice(selection_signal, |sel| sel.is_empty());
-            sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(*sel)));
-        }
+            .into_iter()
+            .map(|k| *k)
+            .collect()
     });
 
     view! {
-        <Transition fallback=move || {
-            view! { <LoadingScreen/> }
-        }>
-
-            {move || {
-                let list = match data.get() {
-                    Some(data_list) if !save_handler.is_offline() => data_list.into(),
-                    _ => state.get(),
-                };
-                state.set(list)
-            }}
-            <div id="HomeGrid">
-                <Sidebar display=show_sidebar layout=sidebar_layout width=sidebar_width>
-                    <SidebarContent/>
-                </Sidebar>
-                <section style:flex-grow="1" style:transition="width .5s" style:width=section_width>
-                    <Navbar/>
-                    <InfoBox countable_list=active/>
-                </section>
-            </div>
-        </Transition>
+        <div id="HomeGrid">
+            <Navbar/>
+            <InfoBox countable_list=active/>
+        </div>
     }
 }
 
@@ -472,15 +464,20 @@ fn SetCountable() -> impl IntoView {
 
     let selection = expect_context::<SelectionSignal>();
 
-    let key_memo = create_memo(move |_| {
-        if let Some(key) = use_params::<Key>()
+    let key_memo = create_memo(move |old_key| {
+        let new_key = use_params::<Key>()
             .get()
-            .map(|p| uuid::Uuid::parse_str(&p.key).ok())
             .ok()
-            .flatten()
+            .map(|p| uuid::Uuid::parse_str(&p.key).ok())
+            .flatten();
+
+        if let Some(key) = new_key
+            && old_key.cloned().is_none()
         {
             selection.update(|sel| sel.select(&key));
         }
+
+        new_key
     });
 
     create_isomorphic_effect(move |_| key_memo.track());
@@ -495,6 +492,7 @@ fn UnsetCountable() -> impl IntoView {
 #[component]
 fn ProvideCountableSignals() -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
+    let save_handler = expect_context::<SaveHandlerCountable>();
 
     let data = create_blocking_resource(user, move |user| async move {
         match api::get_counters_by_user_name(user).await {
@@ -514,13 +512,21 @@ fn ProvideCountableSignals() -> impl IntoView {
     let state = create_rw_signal(CounterList::new(&[]));
     provide_context(state);
 
+    let memo = create_memo(move |_| {
+        let list = match data.get() {
+            Some(data_list) if !save_handler.is_offline() => data_list.into(),
+            _ => state.get(),
+        };
+        state.set(list.clone());
+        list
+    });
+
     view! {
-        <Transition fallback=move || {
-            view! { <components::LoadingScreen></components::LoadingScreen> }
-        }>
+        <Transition>
 
             {
                 data.track();
+                memo.track();
             }
 
         </Transition>

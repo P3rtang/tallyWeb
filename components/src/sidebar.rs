@@ -47,12 +47,3 @@ pub fn Sidebar(
         </aside>
     }
 }
-
-#[component(transparent)]
-pub fn HoverSidebar(children: ChildrenFn) -> impl IntoView {
-    view! {
-        <aside>
-            <div class="content">{children()}</div>
-        </aside>
-    }
-}
