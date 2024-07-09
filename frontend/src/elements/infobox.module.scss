@@ -82,8 +82,12 @@
         border-radius: 24px;
         background: #DDD; 
 
-        color-bar {
+        >* {
           border-radius: 24px;
+          overflow: hidden;
+        }
+
+        color-bar {
           height: 16px;
         }
       }

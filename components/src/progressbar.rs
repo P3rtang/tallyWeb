@@ -37,11 +37,13 @@ where
                     }
                 >
 
-                    <color-bar style=move || {
-                        "display: block;".to_string() + "min-height: 8px;"
-                            + format!("background: {};", color()).as_str()
-                            + format!("width: max({}%, 10px);", progress() * 100.0).as_str()
-                    }></color-bar>
+                    <div>
+                        <color-bar style=move || {
+                            "display: block;".to_string() + "min-height: 8px;"
+                                + format!("background: {};", color()).as_str()
+                                + format!("width: max({}%, 2px);", progress() * 100.0).as_str()
+                        }></color-bar>
+                    </div>
 
                 </Show>
             </through-bar>
