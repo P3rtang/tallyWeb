@@ -45,6 +45,8 @@ cfg_if! {
     }
 }
 
+pub type SelectionSignal = leptos::RwSignal<components::SelectionModel<uuid::Uuid, ArcCountable>>;
+
 #[derive(
     Debug, Clone, PartialEq, Eq, thiserror::Error, Default, serde::Serialize, serde::Deserialize,
 )]

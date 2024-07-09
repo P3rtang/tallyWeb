@@ -66,6 +66,13 @@ where
     }
 
     pub fn select(&mut self, key: &S) {
+        if !self.multi_select {
+            self.selection.clear();
+        }
+        self.selection.insert(key.clone(), true);
+    }
+
+    pub fn toggle(&mut self, key: &S) {
         let current_value = self.is_selected(key);
         if !self.multi_select {
             self.selection.clear();
@@ -94,7 +101,7 @@ where
     pub fn get_selected_keys(&self) -> Vec<&S> {
         self.selection
             .iter()
-            .filter(|(_, b)| **b)
+            .filter(|(k, b)| **b && self.items.get(k).is_some())
             .map(|(key, _)| key)
             .collect()
     }
