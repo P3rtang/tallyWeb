@@ -132,7 +132,7 @@ fn RouteSidebar() -> impl IntoView {
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen = expect_context::<Screen>();
 
-    let sidebar_layout = create_read_slice(screen.style, |s| s.to_sidebar());
+    let sidebar_layout: Signal<SidebarLayout> = create_read_slice(screen.style, |s| (*s).into());
 
     let sidebar_width = create_rw_signal(400);
     provide_context(sidebar_width);

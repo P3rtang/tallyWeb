@@ -1,5 +1,5 @@
 use super::{connect_on_window_resize, AppError};
-use components::MessageJar;
+use components::{MessageJar, SidebarLayout};
 use leptos::*;
 use wasm_bindgen::JsCast;
 
@@ -10,12 +10,12 @@ pub enum ScreenStyle {
     Big,
 }
 
-impl ScreenStyle {
-    pub fn to_sidebar(self) -> components::SidebarStyle {
+impl Into<SidebarLayout> for ScreenStyle {
+    fn into(self) -> SidebarLayout {
         match self {
-            ScreenStyle::Portrait => components::SidebarStyle::Portrait,
-            ScreenStyle::Small => components::SidebarStyle::Hover,
-            ScreenStyle::Big => components::SidebarStyle::Landscape,
+            ScreenStyle::Portrait => SidebarLayout::Portrait,
+            ScreenStyle::Small => SidebarLayout::Hover,
+            ScreenStyle::Big => SidebarLayout::Landscape,
         }
     }
 }
