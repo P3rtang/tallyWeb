@@ -60,9 +60,10 @@ pub fn App() -> impl IntoView {
                             view! {
                                 <ProvideSessionSignal>
                                     <ProvideScreenSignal>
-                                        <ProvideCountableSignals/>
                                         <ProvidePreferences>
-                                            <Outlet/>
+                                            <ProvideCountableSignals>
+                                                <Outlet/>
+                                            </ProvideCountableSignals>
                                         </ProvidePreferences>
                                     </ProvideScreenSignal>
                                 </ProvideSessionSignal>
@@ -84,9 +85,9 @@ pub fn App() -> impl IntoView {
                                 <Route path="" view=UnsetCountable/>
                                 <Route path=":key" view=SetCountable/>
                             </Route>
-                            <Route path="/edit" view=EditWindow>
-                                <Route path=":id" view=move || view! { <EditCounterWindow/> }/>
-                            </Route>
+                        </Route>
+                        <Route path="/edit" view=EditWindow>
+                            <Route path=":key" view=move || view! { <EditCountableWindow/> }/>
                         </Route>
 
                         <Route path="/preferences" view=move || view! { <PreferencesWindow/> }/>
@@ -211,7 +212,7 @@ pub fn HomePage() -> impl IntoView {
             .get()
             .get_selected_keys()
             .into_iter()
-            .map(|k| *k)
+            .copied()
             .collect()
     });
 
@@ -344,8 +345,7 @@ fn SetCountable() -> impl IntoView {
         let new_key = use_params::<Key>()
             .get()
             .ok()
-            .map(|p| uuid::Uuid::parse_str(&p.key).ok())
-            .flatten();
+            .and_then(|p| uuid::Uuid::parse_str(&p.key).ok());
 
         if let Some(key) = new_key
             && old_key != Some(&new_key)
@@ -366,7 +366,7 @@ fn UnsetCountable() -> impl IntoView {
 }
 
 #[component]
-fn ProvideCountableSignals() -> impl IntoView {
+fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
     let save_handler = expect_context::<SaveHandlerCountable>();
 
@@ -388,21 +388,16 @@ fn ProvideCountableSignals() -> impl IntoView {
     let state = create_rw_signal(CounterList::new(&[]));
     provide_context(state);
 
-    let memo = create_memo(move |_| {
-        let list = match data.get() {
-            Some(data_list) if !save_handler.is_offline() => data_list.into(),
-            _ => state.get(),
-        };
-        state.set(list.clone());
-        list
-    });
-
     view! {
         <Transition>
 
             {
-                data.track();
-                memo.track();
+                let list = match data.get() {
+                    Some(data_list) if !save_handler.is_offline() => data_list.into(),
+                    _ => state.get(),
+                };
+                state.set(list.clone());
+                children()
             }
 
         </Transition>
