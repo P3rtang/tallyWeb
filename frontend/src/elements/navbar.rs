@@ -4,10 +4,12 @@ use leptos::*;
 use leptos_router::A;
 
 #[component]
-pub fn Navbar(#[prop(default=true.into(), into)] has_sidebar: MaybeSignal<bool>) -> impl IntoView {
+pub fn Navbar(
+    #[prop(default=true.into(), into)] has_sidebar: MaybeSignal<bool>,
+    #[prop(default=ShowSidebar(false).into(), into)] show_sidebar: RwSignal<ShowSidebar>,
+) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
-    let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let close_overlay_signal = expect_context::<RwSignal<CloseOverlays>>();
 
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
