@@ -1,5 +1,5 @@
 use super::*;
-use components::{self, MessageJar, ShowSidebar, Sidebar, SidebarStyle};
+use components::{self, MessageJar, ShowSidebar, Sidebar, SidebarLayout};
 use leptos::*;
 use leptos_router::{Outlet, Route, A};
 
@@ -42,7 +42,7 @@ pub fn ShowTests() -> impl IntoView {
 
     view! {
         <div style:display="flex">
-            <Sidebar display=show_sidebar layout=SidebarStyle::Landscape>
+            <Sidebar display=show_sidebar layout=SidebarLayout::Landscape>
                 <test-list>{test_list.clone()}</test-list>
             </Sidebar>
             <Outlet/>

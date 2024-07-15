@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
-use components::{MessageJar, Select, SelectionModel, ShowSidebar, Sidebar, TreeViewWidget};
+use components::{
+    MessageJar, Select, SelectionModel, ShowSidebar, Sidebar, SidebarLayout, TreeViewWidget,
+};
 use elements::{Navbar, SortSearch};
 use leptos::*;
 use leptos_router::{use_params, ActionForm, Outlet, Params, A};
@@ -18,6 +20,8 @@ pub fn EditWindow() -> impl IntoView {
     let counters = expect_context::<RwSignal<CounterList>>();
     let screen = expect_context::<Screen>();
 
+    let sidebar_layout: Signal<SidebarLayout> = create_read_slice(screen.style, |s| (*s).into());
+
     let selection = create_rw_signal(SelectionModel::<uuid::Uuid, ArcCountable>::new());
     provide_context(selection);
 
@@ -30,6 +34,7 @@ pub fn EditWindow() -> impl IntoView {
     let sidebar_update_memo =
         create_memo(move |_| ((screen.style)(), selection().get_owned_selected_keys()));
 
+    // we need to render the outlet first since it sets the selection key from the url
     let outlet_view = view! { <Outlet/> };
 
     create_isomorphic_effect(move |_| match sidebar_update_memo.get() {
@@ -49,7 +54,7 @@ pub fn EditWindow() -> impl IntoView {
 
     view! {
         <div style:display="flex">
-            <Sidebar display=show_sidebar width>
+            <Sidebar display=show_sidebar layout=sidebar_layout width>
                 <nav>
                     <SortSearch list=counters shown=show_sort_search/>
                 </nav>
