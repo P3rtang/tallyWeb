@@ -10,9 +10,9 @@ pub enum ScreenStyle {
     Big,
 }
 
-impl Into<SidebarLayout> for ScreenStyle {
-    fn into(self) -> SidebarLayout {
-        match self {
+impl From<ScreenStyle> for SidebarLayout {
+    fn from(val: ScreenStyle) -> Self {
+        match val {
             ScreenStyle::Portrait => SidebarLayout::Portrait,
             ScreenStyle::Small => SidebarLayout::Hover,
             ScreenStyle::Big => SidebarLayout::Landscape,

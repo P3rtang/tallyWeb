@@ -119,8 +119,7 @@ pub fn SelectOver(
                 let screen_height = window()
                     .inner_height()
                     .ok()
-                    .map(|js_val| js_val.as_f64())
-                    .flatten()
+                    .and_then(|js_val| js_val.as_f64())
                     .unwrap_or(1080.0);
                 max_height.set(Some(format!("{}px", screen_height - y)))
             })
