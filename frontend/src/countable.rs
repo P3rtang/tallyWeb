@@ -331,16 +331,16 @@ impl TryFrom<String> for Hunttype {
     }
 }
 
-impl Into<SelectOption> for Hunttype {
-    fn into(self) -> SelectOption {
-        (self.repr(), self.clone().into()).into()
+impl From<Hunttype> for SelectOption {
+    fn from(val: Hunttype) -> Self {
+        (val.repr(), val.clone().into()).into()
     }
 }
 
-impl Into<leptos::Attribute> for Hunttype {
-    fn into(self) -> leptos::Attribute {
-        let str: &'static str = self.into();
-        return leptos::Attribute::String(str.into());
+impl From<Hunttype> for leptos::Attribute {
+    fn from(val: Hunttype) -> Self {
+        let str: &'static str = val.into();
+        leptos::Attribute::String(str.into())
     }
 }
 
