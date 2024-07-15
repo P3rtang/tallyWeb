@@ -7,7 +7,7 @@ pub enum SidebarStyle {
     Landscape,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShowSidebar(pub bool);
 
 #[component(transparent)]
