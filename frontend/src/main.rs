@@ -5,7 +5,7 @@ use std::process::Command;
 use std::thread;
 
 use leptos::*;
-use tally_web::*;
+use frontend::*;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "ssr")] {
@@ -31,16 +31,13 @@ cfg_if::cfg_if! {
                 let site_root = &leptos_options.site_root;
 
                 App::new()
-                    .wrap(middleware::Compress::default())
+                    .wrap(actix_web::middleware::Condition::new(conf.leptos_options.env == leptos_config::Env::PROD, middleware::Compress::default()))
                     .route("/api/{tail:.*}", leptos_actix::handle_server_fns())
                     .service(privacy_policy)
-                    // serve JS/WASM/CSS from `pkg`
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
-                    // serve other assets from the `assets` directory
-                    .service(Files::new("/assets", site_root))
                     .service(Files::new("/fa", format!("{site_root}/font_awesome")))
                     .service(Files::new("/icons", format!("{site_root}/icons")))
-                    // serve the favicon from /favicon.ico
+                    // // serve the favicon from /favicon.ico
                     .service(favicon)
                     .leptos_routes(
                         leptos_options.to_owned(),
@@ -49,8 +46,8 @@ cfg_if::cfg_if! {
                     )
                     .app_data(web::Data::new(leptos_options.to_owned()))
                     .app_data(web::Data::new(pool.clone()))
-                    .service(Files::new("/", site_root))
             })
+
             .bind(&addr)
             .map_err(|err| AppError::ActixError(err.to_string()))?
             .run()
