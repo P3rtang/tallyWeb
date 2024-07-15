@@ -1,7 +1,6 @@
+use super::CounterList;
 use leptos::*;
 use web_sys::KeyboardEvent;
-
-use crate::app::CounterList;
 
 #[component]
 pub fn SortSearch<F>(list: RwSignal<CounterList>, shown: F) -> impl IntoView

@@ -7,7 +7,7 @@ use wasm_bindgen::{prelude::Closure, JsCast};
 
 pub mod app;
 mod session;
-pub(crate) use session::UserSession;
+pub(crate) use session::{SessionFormInput, UserSession};
 mod screen;
 pub(crate) use screen::{ProvideScreenSignal, Screen, ScreenStyle};
 mod preferences;

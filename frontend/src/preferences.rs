@@ -72,26 +72,20 @@ impl Preferences {
 pub fn ProvidePreferences(children: ChildrenFn) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
 
-    let pref_resource = create_blocking_resource(user, api::get_user_preferences);
-    provide_context(pref_resource);
+    let data = create_blocking_resource(user, api::get_user_preferences);
+    provide_context(data);
 
     let pref_signal = create_rw_signal(Preferences::new(&user.get_untracked()));
     provide_context(pref_signal);
 
-    let accent_color = create_read_slice(pref_signal, |p| p.accent_color.clone());
+    let accent_color = create_read_slice(pref_signal, |p| p.accent_color.clone().0);
 
     view! {
         <Transition>
 
-            {
-                pref_resource
-                    .with(|p| {
-                        if let Some(Ok(p)) = p {
-                            pref_signal.set(p.clone())
-                        }
-                    });
-            }
-            <div style=move || { format!("--accent: {}", accent_color.get().0) }>{children()}</div>
+            {if let Some(Ok(p)) = data.get() {
+                pref_signal.set(p.clone())
+            }} <div style=move || { format!("--accent: {}", accent_color()) }>{children()}</div>
         </Transition>
     }
 }
