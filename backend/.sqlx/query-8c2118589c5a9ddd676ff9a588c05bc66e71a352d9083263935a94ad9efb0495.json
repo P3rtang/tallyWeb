@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE phases\n        SET hunt_type = $2\n        WHERE uuid = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "hunttype",
+            "kind": {
+              "Enum": [
+                "OldOdds",
+                "NewOdds",
+                "SOS",
+                "DexNav",
+                "MasudaGenIV",
+                "MasudaGenV",
+                "MasudaGenVI"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8c2118589c5a9ddd676ff9a588c05bc66e71a352d9083263935a94ad9efb0495"
+}
