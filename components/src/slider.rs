@@ -1,18 +1,10 @@
 use leptos::*;
 
 #[component]
-pub fn Slider<OC>(
+pub fn Slider(
     #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
     #[prop(into)] checked: MaybeSignal<bool>,
-    on_checked: OC,
-) -> impl IntoView
-where
-    OC: Fn(ev::Event) + 'static,
-{
-    let on_toggle = move |ev| {
-        on_checked(ev);
-    };
-
+) -> impl IntoView {
     view! {
         <label>
             <style>
@@ -82,7 +74,6 @@ where
                     type="checkbox"
                     {..attrs}
                     style:display="none"
-                    on:change=on_toggle
                     prop:checked=checked
                     checked=checked
                 />

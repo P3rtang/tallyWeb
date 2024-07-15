@@ -336,7 +336,7 @@ fn EditCounterBox(key: RwSignal<uuid::Uuid>) -> impl IntoView {
                         <label for="charm" class="title">
                             Shiny Charm
                         </label>
-                        <Slider checked=has_charm.0 on_checked=toggle_charm/>
+                        <Slider checked=has_charm.0 on:change=toggle_charm/>
                     </div>
                     <div class="action-buttons">
                         <button type="button" on:click=undo_changes>

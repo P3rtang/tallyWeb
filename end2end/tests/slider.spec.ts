@@ -51,3 +51,15 @@ test("disable", async ({ page }) => {
     await slider.click()
     expect(await page.isChecked("#test-disable")).toBeFalsy()
 })
+
+test("on_checked", async ({ page }) => {
+    await loadPage(page)
+
+
+    let slider = page.locator("#test-on_checked + slider-el")
+    let colored_div = page.getByTestId("colored_div")
+
+    await expect(colored_div).toHaveCSS("background", /rgb(255, 0, 0)*/)
+    await slider.click()
+    await expect(colored_div).toHaveCSS("background", /rgb(0, 255, 0)*/)
+})

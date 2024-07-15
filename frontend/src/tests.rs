@@ -80,15 +80,12 @@ fn Slider() -> impl IntoView {
     expect_context::<RwSignal<ShowSidebar>>().set(ShowSidebar(false));
     let checked_signal = create_rw_signal(false);
     let disable_signal = create_rw_signal(false);
+    let background = create_rw_signal(false);
 
     view! {
         <div>
             <div class=style::test_case>
-                <components::Slider
-                    attr:id="test-background"
-                    checked=true
-                    on_checked=|_| ()
-                ></components::Slider>
+                <components::Slider attr:id="test-background" checked=true></components::Slider>
             </div>
             <div class=style::test_case>
                 <button data-testid="toggle" on:click=move |_| checked_signal.update(|s| *s = !*s)>
@@ -97,7 +94,6 @@ fn Slider() -> impl IntoView {
                 <components::Slider
                     attr:id="test-managed"
                     checked=checked_signal
-                    on_checked=|_| ()
                 ></components::Slider>
             </div>
             <div class=style::test_case>
@@ -114,8 +110,23 @@ fn Slider() -> impl IntoView {
                     attr:data-testid="disable"
                     checked=true
                     attr:disabled=disable_signal
-                    on_checked=|_| ()
                 ></components::Slider>
+            </div>
+
+            <div class=style::test_case>
+                <components::Slider
+                    attr:id="test-on_checked"
+                    attr:data-testid="on_checked"
+                    checked=false
+                    on:change=move |_: ev::Event| background.update(|s| *s = !*s)
+                ></components::Slider>
+                <div
+                    attr:data-testid="colored_div"
+                    style:width="32px"
+                    style:height="32px"
+                    style:background=move || if !background() { "#FF0000" } else { "#00FF00" }
+                ></div>
+
             </div>
         </div>
     }
