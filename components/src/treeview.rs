@@ -101,8 +101,17 @@ where
     pub fn get_selected_keys(&self) -> Vec<&S> {
         self.selection
             .iter()
-            .filter(|(k, b)| **b && self.items.get(k).is_some())
+            .filter(|(k, b)| **b && self.items.contains_key(k))
             .map(|(key, _)| key)
+            .collect()
+    }
+
+    pub fn get_owned_selected_keys(&self) -> Vec<S> {
+        self.selection
+            .iter()
+            .filter(|(k, b)| **b && self.items.contains_key(k))
+            .map(|(key, _)| key)
+            .cloned()
             .collect()
     }
 
@@ -129,12 +138,11 @@ pub fn TreeViewWidget<T, F, S, FV, IV, EC>(
     #[prop(default=create_rw_signal(SelectionModel::default()), into)] selection_model: RwSignal<
         SelectionModel<S, T>,
     >,
-    #[prop(optional, into)] selection_color: Option<Signal<String>>,
     #[prop(optional)] on_click: Option<fn(&S, MouseEvent)>,
 ) -> impl IntoView
 where
-    T: Clone + PartialEq + 'static + Debug,
-    S: Clone + PartialEq + Eq + Hash + ToString + Debug + 'static,
+    T: Debug + Clone + PartialEq + 'static,
+    S: Debug + Clone + PartialEq + Eq + Hash + ToString + 'static,
     F: Fn() -> Vec<T> + Copy + 'static,
     FV: Fn(S) -> IV + Copy + 'static,
     IV: IntoView,
@@ -161,7 +169,6 @@ where
                                 selection_model=selection_model
                                 view=view
                                 each_child=each_child
-                                selection_color
                                 on_click
                             >
                                 {view(item.get_key())}
@@ -187,12 +194,11 @@ fn TreeViewRow<T, S, FV, IV, EC>(
     each_child: EC,
     view: FV,
     selection_model: RwSignal<SelectionModel<S, T>>,
-    selection_color: Option<Signal<String>>,
     on_click: Option<fn(&S, MouseEvent)>,
 ) -> impl IntoView
 where
-    T: Clone + PartialEq + 'static + Debug,
-    S: Clone + PartialEq + Eq + Hash + ToString + 'static,
+    T: Debug + Clone + PartialEq + 'static,
+    S: Debug + Clone + PartialEq + Eq + Hash + ToString + 'static,
     FV: Fn(S) -> IV + Copy + 'static,
     IV: IntoView,
     EC: Fn(&T) -> Vec<T> + Copy + 'static,
@@ -234,22 +240,15 @@ where
         class
     };
 
-    let selection_style = move || {
+    let background = create_memo(move |_| {
         if is_selected() {
-            format!(
-                "background: {};",
-                selection_color
-                    .map(|ac| ac())
-                    .unwrap_or(String::from("#8BE9FD"))
-            )
+            "var(--accent, #3584E4)"
         } else {
-            String::new()
+            "none"
         }
-    };
+    });
 
-    let on_row_click = move |_: MouseEvent| {
-        set_selected(());
-    };
+    let on_row_click = move |_: MouseEvent| set_selected(());
 
     let on_caret_click = move |ev: MouseEvent| {
         ev.stop_propagation();
@@ -275,7 +274,8 @@ where
         <Show when=move || node().is_some()>
             <li style:display="block">
                 <div
-                    style=move || { depth_style() + &selection_style() }
+                    style=depth_style
+                    style:background=background
                     style:display="flex"
                     class=div_class
                     on:click=move |ev| {
@@ -316,7 +316,6 @@ where
                                     selection_model=selection_model
                                     each_child=each_child
                                     view=view
-                                    selection_color
                                     on_click
                                 >
                                     {view(key(&item))}

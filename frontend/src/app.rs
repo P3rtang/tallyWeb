@@ -235,7 +235,6 @@ fn SidebarContent() -> impl IntoView {
 
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
     let state_len = create_read_slice(state, |s| s.list.len());
-    let accent_color = create_read_slice(preferences, |prefs| prefs.accent_color.0.clone());
 
     view! {
         <nav>
@@ -253,7 +252,6 @@ fn SidebarContent() -> impl IntoView {
             view=|key| view! { <TreeViewRow key/> }
             show_separator=show_sep
             selection_model=selection_signal
-            selection_color=accent_color
             on_click=|key: &uuid::Uuid, _: leptos::ev::MouseEvent| {
                 leptos_router::use_navigate()(&key.to_string(), Default::default())
             }
