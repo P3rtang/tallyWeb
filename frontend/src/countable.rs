@@ -1,6 +1,8 @@
 #![allow(clippy::assign_op_pattern)]
 use chrono::Duration;
+use components::SelectOption;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::{
     any::Any,
     cmp::Ordering,
@@ -21,7 +23,7 @@ impl ArcCountable {
         self.0
             .try_lock()
             .map(|c| c.kind())
-            .unwrap_or(CountableKind::Counter(self.get_uuid()))
+            .unwrap_or(CountableKind::Counter)
     }
 
     pub fn is_active(&self) -> bool {
@@ -178,13 +180,13 @@ impl TryInto<api::Countable> for ArcCountable {
 
     fn try_into(self) -> Result<api::Countable, Self::Error> {
         match self.kind() {
-            CountableKind::Counter(_) => Ok(api::Countable::Counter(
+            CountableKind::Counter => Ok(api::Countable::Counter(
                 self.as_any()?
                     .downcast_ref()
                     .cloned()
                     .ok_or(AppError::AnyConversion)?,
             )),
-            CountableKind::Phase(_) => Ok(api::Countable::Phase(
+            CountableKind::Phase => Ok(api::Countable::Phase(
                 self.as_any()?
                     .downcast_ref()
                     .cloned()
@@ -282,18 +284,30 @@ impl Hunttype {
             _ => 4096,
         }
     }
+
+    pub fn repr(&self) -> &'static str {
+        match self {
+            Hunttype::OldOdds => "Old Odds",
+            Hunttype::NewOdds => "New Odds",
+            Hunttype::SOS => "SOS",
+            Hunttype::DexNav(_) => "DexNav",
+            Hunttype::Masuda(Masuda::GenIV) => "Masuda (gen IV)",
+            Hunttype::Masuda(Masuda::GenV) => "Masuda (gen V)",
+            Hunttype::Masuda(Masuda::GenVI) => "Masuda (gen VI+)",
+        }
+    }
 }
 
-impl From<Hunttype> for String {
+impl From<Hunttype> for &'static str {
     fn from(val: Hunttype) -> Self {
         match val {
-            Hunttype::OldOdds => String::from("OldOdds"),
-            Hunttype::NewOdds => String::from("NewOdds"),
-            Hunttype::SOS => String::from("SOS"),
-            Hunttype::DexNav(_) => String::from("DexNav"),
-            Hunttype::Masuda(Masuda::GenIV) => String::from("MasudaGenIV"),
-            Hunttype::Masuda(Masuda::GenV) => String::from("MasudaGenV"),
-            Hunttype::Masuda(Masuda::GenVI) => String::from("MasudaGenVI"),
+            Hunttype::OldOdds => "OldOdds",
+            Hunttype::NewOdds => "NewOdds",
+            Hunttype::SOS => "SOS",
+            Hunttype::DexNav(_) => "DexNav",
+            Hunttype::Masuda(Masuda::GenIV) => "MasudaGenIV",
+            Hunttype::Masuda(Masuda::GenV) => "MasudaGenV",
+            Hunttype::Masuda(Masuda::GenVI) => "MasudaGenVI",
         }
     }
 }
@@ -314,6 +328,29 @@ impl TryFrom<String> for Hunttype {
                 "Hunttype should be one of the following: OldOdds, NewOdds, SOS, Masuda",
             )),
         };
+    }
+}
+
+impl Into<SelectOption> for Hunttype {
+    fn into(self) -> SelectOption {
+        (self.repr(), self.clone().into()).into()
+    }
+}
+
+impl Into<leptos::Attribute> for Hunttype {
+    fn into(self) -> leptos::Attribute {
+        let str: &'static str = self.into();
+        return leptos::Attribute::String(str.into());
+    }
+}
+
+impl leptos::IntoAttribute for Hunttype {
+    fn into_attribute(self) -> leptos::Attribute {
+        self.into()
+    }
+
+    fn into_attribute_boxed(self: Box<Self>) -> leptos::Attribute {
+        (*self).into()
     }
 }
 
@@ -398,7 +435,7 @@ impl Countable for SerCounter {
     }
 
     fn kind(&self) -> CountableKind {
-        CountableKind::Counter(self.uuid)
+        CountableKind::Counter
     }
 
     fn get_name(&self) -> String {
@@ -582,7 +619,7 @@ impl Countable for Counter {
     }
 
     fn kind(&self) -> CountableKind {
-        CountableKind::Counter(self.uuid)
+        CountableKind::Counter
     }
 
     fn get_name(&self) -> String {
@@ -598,11 +635,17 @@ impl Countable for Counter {
     }
 
     fn set_count(&mut self, count: i32) {
-        let diff = self.phase_list.iter().map(|p| p.get_count()).sum::<i32>()
-            - self.phase_list.last().map(|p| p.get_count()).unwrap_or(0);
-        self.phase_list
-            .last_mut()
-            .map(|p| p.0.try_lock().map(|mut p| p.set_count(count - diff)));
+        let mut diff = count - self.get_count();
+        self.phase_list.sort_by_key(|a| a.created_at());
+        for phase in self.phase_list.iter_mut().rev() {
+            if phase.get_count() + diff <= 0 {
+                phase.set_count(0);
+                diff += phase.get_count();
+            } else {
+                phase.set_count(phase.get_count() + diff);
+                break;
+            }
+        }
     }
 
     fn add_count(&mut self, count: i32) {
@@ -616,7 +659,9 @@ impl Countable for Counter {
     }
 
     fn get_odds(&self) -> i32 {
-        self.phase_list.last().map(|p| p.get_odds()).unwrap_or(8192)
+        // TODO: look into the proper way to handle different Odds
+        // averaging will approach the correct solution but likely is not fully correct
+        self.phase_list.iter().map(|p| p.get_odds()).sum::<i32>() / self.phase_list.len() as i32
     }
 
     fn get_time(&self) -> Duration {
@@ -794,7 +839,7 @@ impl Countable for Phase {
     }
 
     fn kind(&self) -> CountableKind {
-        CountableKind::Phase(self.uuid)
+        CountableKind::Phase
     }
 
     fn get_name(&self) -> String {
@@ -908,17 +953,18 @@ impl Countable for Phase {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub enum CountableKind {
-    Counter(uuid::Uuid),
-    Phase(uuid::Uuid),
+    #[default]
+    Counter,
+    Phase,
 }
 
-impl CountableKind {
-    pub fn uuid(self) -> uuid::Uuid {
+impl std::fmt::Display for CountableKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CountableKind::Counter(id) => id,
-            CountableKind::Phase(id) => id,
+            CountableKind::Counter => write!(f, "Counter"),
+            CountableKind::Phase => write!(f, "Phase"),
         }
     }
 }
@@ -1129,5 +1175,133 @@ fn n_choose_k(n: usize, k: usize) -> f64 {
         (_, 0) => 1.0,
         (n, k) if k > n / 2 => n_choose_k(n, n - k),
         (n, k) => n as f64 / k as f64 * n_choose_k(n - 1, k - 1),
+    }
+}
+
+fn insert_deep(c: ArcCountable, map: &mut HashMap<uuid::Uuid, ArcCountable>) {
+    map.insert(c.get_uuid(), c.clone());
+    for child in c.get_children() {
+        insert_deep(child, map)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CounterList {
+    pub list: HashMap<uuid::Uuid, ArcCountable>,
+    pub flat: HashMap<uuid::Uuid, ArcCountable>,
+    search: Option<String>,
+    pub sort: SortCountable,
+}
+
+impl CounterList {
+    pub fn new(counters: &[Counter]) -> Self {
+        let mut list = HashMap::new();
+        let mut flat = HashMap::new();
+        for c in counters {
+            let countable = ArcCountable::new(Box::new(c.clone()));
+            list.insert(c.uuid, countable.clone());
+            insert_deep(countable.clone(), &mut flat);
+        }
+
+        CounterList {
+            list,
+            flat,
+            search: None,
+            sort: SortCountable::Name(false),
+        }
+    }
+
+    pub fn search(&mut self, value: &str) {
+        self.search = Some(value.to_lowercase().to_string())
+    }
+
+    pub fn get_items(&mut self) -> Vec<ArcCountable> {
+        self.list.values().cloned().collect()
+    }
+
+    pub fn get_filtered_list(&mut self) -> Vec<ArcCountable> {
+        let mut list = self.list.values().cloned().collect::<Vec<_>>();
+
+        list.sort_by(self.sort.sort_by());
+
+        if let Some(search) = &self.search {
+            let mut list_starts_with = Vec::new();
+            let mut child_starts_with = Vec::new();
+            let mut list_contains = Vec::new();
+            let mut child_contains = Vec::new();
+
+            for counter in list.iter() {
+                let name = counter.get_name().to_lowercase();
+                if name.starts_with(search) {
+                    list_starts_with.push(counter.clone())
+                } else if counter.has_child_starts_with(search) {
+                    child_starts_with.push(counter.clone())
+                } else if name.contains(search) {
+                    list_contains.push(counter.clone())
+                } else if counter.has_child_contains(search) {
+                    child_contains.push(counter.clone())
+                }
+            }
+
+            list_starts_with.append(&mut child_starts_with);
+            list_starts_with.append(&mut list_contains);
+            list_starts_with.append(&mut child_contains);
+
+            list_starts_with
+        } else {
+            list
+        }
+    }
+
+    pub fn load_offline(&mut self, data: Vec<SerCounter>) {
+        let list: CounterList = data.into();
+        self.list = list.list;
+    }
+}
+
+impl From<Vec<SerCounter>> for CounterList {
+    fn from(value: Vec<SerCounter>) -> Self {
+        let list = value
+            .into_iter()
+            .map(|sc| {
+                let phase_list: Vec<ArcCountable> = sc
+                    .phase_list
+                    .into_iter()
+                    .map(|p| ArcCountable::new(Box::new(p)))
+                    .collect();
+                Counter {
+                    uuid: sc.uuid,
+                    owner_uuid: sc.owner_uuid,
+                    name: sc.name,
+                    phase_list,
+                    created_at: sc.created_at,
+                }
+            })
+            .collect::<Vec<_>>();
+        Self::new(list.as_slice())
+    }
+}
+
+impl Default for CounterList {
+    fn default() -> Self {
+        Self::new(&[])
+    }
+}
+
+impl From<CounterList> for Vec<SerCounter> {
+    fn from(val: CounterList) -> Self {
+        let mut rtrn_list = Vec::new();
+        for arc_c in val.list.values() {
+            if let Some(counter) = arc_c
+                .lock()
+                .map(|c| c.as_any().downcast_ref::<Counter>().cloned())
+                .ok()
+                .flatten()
+            {
+                rtrn_list.push(counter.clone().into())
+            }
+        }
+
+        rtrn_list
     }
 }

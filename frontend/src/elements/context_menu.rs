@@ -29,8 +29,8 @@ pub fn CountableContextMenu(
         matches!(
             sel.get(&key.get_untracked())
                 .map(|c| c.kind())
-                .unwrap_or(CountableKind::Counter(key.get_untracked())),
-            CountableKind::Phase(_)
+                .unwrap_or(CountableKind::Counter),
+            CountableKind::Phase
         )
     });
 

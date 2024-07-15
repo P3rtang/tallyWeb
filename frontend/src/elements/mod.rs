@@ -6,7 +6,7 @@ mod infobox;
 mod navbar;
 mod sort_search;
 
-pub use super::{app::*, *};
+pub use super::*;
 pub use about::AboutDialog;
 pub use account::{letter_to_three_digit_hash, AccountIcon};
 pub use add_counter::*;
