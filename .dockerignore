@@ -1,3 +1,5 @@
 .env
 .git
 .dockerignore
+target/
+frontend/target/
