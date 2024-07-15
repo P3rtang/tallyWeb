@@ -1,6 +1,6 @@
 [package]
 name = "components"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -9,8 +9,15 @@ edition = "2021"
 chrono = "0.4.31"
 leptos = { version = "0.6", features = ["nightly"] }
 leptos_router = { version = "0.6", features = ["nightly"] }
-wasm-bindgen = "=0.2.89"
+wasm-bindgen = "=0.2.92"
 js-sys = "0.3.64"
 web-sys = { version = "0.3.64", features = ["Storage", "Element", "Document"] }
 rand = "0.8.5"
 dyn-clone = "1.0.16"
+stylance = { version = "0.5.0", features = ["nightly"] }
+
+[package.metadata.stylance]
+output_dir = "./style/"
+folders = ["./src/", "./style/"]
+extensions = [".module.scss", ".module.css"]
+class_name_pattern = "tallyweb-[name]-[hash]"

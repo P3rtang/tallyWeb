@@ -66,6 +66,13 @@ where
     }
 
     pub fn select(&mut self, key: &S) {
+        if !self.multi_select {
+            self.selection.clear();
+        }
+        self.selection.insert(key.clone(), true);
+    }
+
+    pub fn toggle(&mut self, key: &S) {
         let current_value = self.is_selected(key);
         if !self.multi_select {
             self.selection.clear();
@@ -87,15 +94,24 @@ where
         self.selection
             .iter()
             .filter(|(_, b)| **b)
-            .map(|(k, _)| &self.items.get(k).unwrap().row)
-            .collect::<Vec<_>>()
+            .filter_map(|(k, _)| self.items.get(k).map(|i| &i.row))
+            .collect()
     }
 
     pub fn get_selected_keys(&self) -> Vec<&S> {
         self.selection
             .iter()
-            .filter(|(_, b)| **b)
+            .filter(|(k, b)| **b && self.items.contains_key(k))
             .map(|(key, _)| key)
+            .collect()
+    }
+
+    pub fn get_owned_selected_keys(&self) -> Vec<S> {
+        self.selection
+            .iter()
+            .filter(|(k, b)| **b && self.items.contains_key(k))
+            .map(|(key, _)| key)
+            .cloned()
             .collect()
     }
 
@@ -108,7 +124,7 @@ where
     }
 
     pub fn is_empty(&self) -> bool {
-        self.selection().is_empty()
+        self.selection.is_empty()
     }
 }
 
@@ -122,12 +138,11 @@ pub fn TreeViewWidget<T, F, S, FV, IV, EC>(
     #[prop(default=create_rw_signal(SelectionModel::default()), into)] selection_model: RwSignal<
         SelectionModel<S, T>,
     >,
-    #[prop(optional, into)] selection_color: Option<Signal<String>>,
     #[prop(optional)] on_click: Option<fn(&S, MouseEvent)>,
 ) -> impl IntoView
 where
-    T: Clone + PartialEq + 'static + Debug,
-    S: Clone + PartialEq + Eq + Hash + ToString + Debug + 'static,
+    T: Debug + Clone + PartialEq + 'static,
+    S: Debug + Clone + PartialEq + Eq + Hash + ToString + 'static,
     F: Fn() -> Vec<T> + Copy + 'static,
     FV: Fn(S) -> IV + Copy + 'static,
     IV: IntoView,
@@ -141,31 +156,32 @@ where
     };
 
     view! {
-        <ul class="treeview">
-            <For
-                each=tree_nodes
-                key=move |c| key(&c.row)
-                children=move |item| {
-                    view! {
-                        <TreeViewRow
-                            item=item.row.clone()
-                            key
-                            selection_model=selection_model
-                            view=view
-                            each_child=each_child
-                            selection_color
-                            on_click
-                        >
-                            {view(item.get_key())}
-                        </TreeViewRow>
-                        <Show when=show_separator fallback=|| ()>
-                            <hr/>
-                        </Show>
+        <tree-view>
+            <ul>
+                <For
+                    each=tree_nodes
+                    key=move |c| key(&c.row)
+                    children=move |item| {
+                        view! {
+                            <TreeViewRow
+                                item=item.row.clone()
+                                key
+                                selection_model=selection_model
+                                view=view
+                                each_child=each_child
+                                on_click
+                            >
+                                {view(item.get_key())}
+                            </TreeViewRow>
+                            <Show when=show_separator fallback=|| ()>
+                                <hr/>
+                            </Show>
+                        }
                     }
-                }
-            />
+                />
 
-        </ul>
+            </ul>
+        </tree-view>
     }
     .into_view()
 }
@@ -178,33 +194,30 @@ fn TreeViewRow<T, S, FV, IV, EC>(
     each_child: EC,
     view: FV,
     selection_model: RwSignal<SelectionModel<S, T>>,
-    selection_color: Option<Signal<String>>,
     on_click: Option<fn(&S, MouseEvent)>,
 ) -> impl IntoView
 where
-    T: Clone + PartialEq + 'static + Debug,
-    S: Clone + PartialEq + Eq + Hash + ToString + 'static,
+    T: Debug + Clone + PartialEq + 'static,
+    S: Debug + Clone + PartialEq + Eq + Hash + ToString + 'static,
     FV: Fn(S) -> IV + Copy + 'static,
     IV: IntoView,
     EC: Fn(&T) -> Vec<T> + Copy + 'static,
 {
-    let (key_sign, _) = create_signal(key(&item));
+    let key_val = store_value(key(&item));
 
-    let node = create_read_slice(selection_model, move |sm| {
-        sm.items.get(&key_sign()).cloned()
-    });
+    let node = create_read_slice(selection_model, move |sm| sm.items.get(&key_val()).cloned());
 
     let (is_expanded, toggle_expand) = create_slice(
         selection_model,
         move |model| {
             model
                 .items
-                .get(&key_sign())
+                .get(&key_val())
                 .map(|n| n.is_expanded)
                 .unwrap_or_default()
         },
         move |model, _| {
-            if let Some(node) = model.items.get_mut(&key_sign()) {
+            if let Some(node) = model.items.get_mut(&key_val()) {
                 node.toggle_expand()
             };
         },
@@ -212,8 +225,8 @@ where
 
     let (is_selected, set_selected) = create_slice(
         selection_model,
-        move |model| model.is_selected(&key_sign()),
-        move |model, _| model.select(&key_sign()),
+        move |model| model.is_selected(&key_val()),
+        move |model, _| model.select(&key_val()),
     );
 
     let caret_class = move || "caret fa-solid fa-caret-right";
@@ -227,22 +240,15 @@ where
         class
     };
 
-    let selection_style = move || {
+    let background = create_memo(move |_| {
         if is_selected() {
-            format!(
-                "background: {};",
-                selection_color
-                    .map(|ac| ac())
-                    .unwrap_or(String::from("#8BE9FD"))
-            )
+            "var(--accent, #3584E4)"
         } else {
-            String::new()
+            "none"
         }
-    };
+    });
 
-    let on_row_click = move |_: MouseEvent| {
-        set_selected(());
-    };
+    let on_row_click = move |_: MouseEvent| set_selected(());
 
     let on_caret_click = move |ev: MouseEvent| {
         ev.stop_propagation();
@@ -268,12 +274,15 @@ where
         <Show when=move || node().is_some()>
             <li style:display="block">
                 <div
-                    style=move || { depth_style() + &selection_style() }
+                    style=depth_style
+                    style:background=background
                     style:display="flex"
                     class=div_class
                     on:click=move |ev| {
                         if let Some(f) = on_click {
-                            f(&key_sign(), ev);
+                            if let Some(k) = key_val.try_get_value() {
+                                f(&k, ev);
+                            }
                         } else {
                             on_row_click(ev);
                         }
@@ -307,7 +316,6 @@ where
                                     selection_model=selection_model
                                     each_child=each_child
                                     view=view
-                                    selection_color
                                     on_click
                                 >
                                     {view(key(&item))}

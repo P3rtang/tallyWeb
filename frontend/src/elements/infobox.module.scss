@@ -1,0 +1,101 @@
+#infobox {
+  align-items: flex-start;
+  overflow-x: auto;
+  padding: 8px;
+  font-size: 36px;
+  color: white;
+  white-space: nowrap;
+  max-width: 1200px;
+  margin: 0px auto;
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+
+    @media (min-width: 1200px) {
+      max-width: calc(100vw - 410px);
+    }
+
+    margin-left: auto;
+    margin-right: auto;
+
+    .rowbox {
+      user-select: none;
+      display: flex;
+      align-items: center;
+      background: $element-bg-color-dark;
+      flex-grow: 1;
+      min-width: 6em;
+      min-height: 3.6em;
+
+      border-radius: 16px;
+      margin: 8px;
+
+      &.expand {
+        min-width: 95%;
+      }
+
+      .info {
+        display: flex;
+        flex-grow: 1;
+        justify-content: center;
+        // min-width: 3.2em;
+        min-height: 2em;
+        padding: 0.75em;
+        flex-flow: wrap;
+        align-content: center;
+        margin: auto;
+      }
+
+      .time {
+        min-width: 4em;
+      }
+
+      .count_minus {
+        border-radius: 0;
+        width: 15%;
+        height: 80%;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 32px;
+        border-right: 1px solid white;
+      }
+    }
+
+    .title {
+      font-size: 0.75em;
+      padding: 0.5em;
+      padding-left: 1em;
+    }
+
+    progress-bar {
+      min-width: 12rem;
+      flex-grow: 1;
+
+      >div {
+        color: #BBB;
+      }
+
+      through-bar {
+        padding: 2px;
+        border-radius: 24px;
+        background: #DDD; 
+
+        >* {
+          border-radius: 24px;
+          overflow: hidden;
+        }
+
+        color-bar {
+          height: 16px;
+        }
+      }
+
+      :global(.progress) {
+        border-top-left-radius: 24px;
+        border-bottom-left-radius: 24px;
+      }
+    }
+  }
+}

@@ -5,7 +5,7 @@ FROM pg_stat_activity
 WHERE datname = current_database()
   AND pid <> pg_backend_pid();
 
-DROP DATABASE IF Exists tally_web;
+DROP DATABASE IF Exists tallyweb;
 DROP USER IF EXISTS p3rtang;
 CREATE USER p3rtang PASSWORD 'ktkNfiGEW4tr8T';
 ALTER USER p3rtang CREATEDB;

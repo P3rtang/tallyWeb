@@ -13,6 +13,21 @@ pub enum Hunttype {
     MasudaGenVI,
 }
 
+impl From<String> for Hunttype {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "OldOdds" => Self::OldOdds,
+            "NewOdds" => Self::NewOdds,
+            "SOS" => Self::SOS,
+            "DexNav" => Self::DexNav,
+            "MasudaGenIV" => Self::MasudaGenIV,
+            "MasudaGenV" => Self::MasudaGenV,
+            "MasudaGenVI" => Self::MasudaGenVI,
+            _ => Self::NewOdds,
+        }
+    }
+}
+
 #[derive(Debug, sqlx::FromRow)]
 pub struct DbCounter {
     pub uuid: uuid::Uuid,

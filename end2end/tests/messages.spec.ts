@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test("show messages", async ({ page }) => {
-    await page.goto("http://localhost:3000/test/messages")
+    await page.goto("http://localhost:3000/test/message")
 
     // make sure the wasm binary is loaded before clicking login
     await page.waitForLoadState("networkidle");
