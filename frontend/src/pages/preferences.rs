@@ -4,7 +4,11 @@ use leptos::*;
 use leptos_router::{ActionForm, A};
 use web_sys::{Event, SubmitEvent};
 
-stylance::import_style!(style, "../elements/edit_form.module.scss");
+stylance::import_style!(
+    #[allow(dead_code)]
+    style,
+    "../../style/edit.module.scss"
+);
 
 use super::*;
 
@@ -12,7 +16,7 @@ use super::*;
 pub fn PreferencesWindow() -> impl IntoView {
     let preferences = expect_context::<RwSignal<Preferences>>();
     let message = expect_context::<MessageJar>();
-    let user = expect_context::<RwSignal<UserSession>>();
+    let session = expect_context::<RwSignal<UserSession>>();
     let pref_resource = expect_context::<PrefResource>();
     let screen = expect_context::<Screen>();
 
@@ -36,7 +40,9 @@ pub fn PreferencesWindow() -> impl IntoView {
         ev.prevent_default();
 
         action.dispatch(api::SavePreferences {
-            session: user.get_untracked(),
+            session_user_uuid: session.get_untracked().user_uuid,
+            session_username: session.get_untracked().username,
+            session_token: session.get_untracked().token,
             preferences: preferences.get_untracked(),
         });
 
@@ -63,7 +69,7 @@ pub fn PreferencesWindow() -> impl IntoView {
 
     let on_default_checked = move |_: Event| {
         preferences.update(|p| p.use_default_accent_color = !p.use_default_accent_color);
-        preferences.update(|p| p.accent_color.set_user(&user.get_untracked()))
+        preferences.update(|p| p.accent_color.set_user(&session.get_untracked()))
     };
 
     let on_separator_checked =
@@ -92,6 +98,7 @@ pub fn PreferencesWindow() -> impl IntoView {
         <div style:display="flex" style:height="100%" style:justify-content="center">
             <edit-form class=form_style>
                 <ActionForm action=action on:submit=on_submit>
+                    <SessionFormInput session/>
                     <table class=style::content>
                         <tr class=style::row>
                             <td>
@@ -102,7 +109,7 @@ pub fn PreferencesWindow() -> impl IntoView {
                             <td>
                                 <Slider
                                     checked=preferences.get_untracked().use_default_accent_color
-                                    attr:name="use-default-color"
+                                    attr:name="preferences[use_default_accent_color]"
                                     attr:id="use-default-color"
                                     on:change=on_default_checked
                                 />
@@ -118,7 +125,7 @@ pub fn PreferencesWindow() -> impl IntoView {
                             <td>
                                 <input
                                     type="color"
-                                    name="accent-color"
+                                    name="preferences[accent_color]"
                                     id="accent-color"
                                     class="edit"
                                     on:input=on_change
@@ -144,7 +151,7 @@ pub fn PreferencesWindow() -> impl IntoView {
                             <td>
                                 <Slider
                                     checked=preferences.get_untracked().show_separator
-                                    attr:name="show-separator"
+                                    attr:name="preferences[show_separator]"
                                     attr:id="show-separator"
                                     on:change=on_separator_checked
                                 />
@@ -160,7 +167,7 @@ pub fn PreferencesWindow() -> impl IntoView {
                             <td>
                                 <Slider
                                     checked=preferences.get_untracked().multi_select
-                                    attr:name="multi-select"
+                                    attr:name="preferences[multi_select]"
                                     attr:id="multi-select"
                                     on:change=on_multi_checked
                                 />

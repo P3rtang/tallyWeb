@@ -304,7 +304,13 @@ pub async fn get_user_preferences(session: UserSession) -> Result<Preferences, S
         Ok(data) => Preferences::from_db(&session_user, data),
         Err(backend::BackendError::DataNotFound(_)) => {
             let new_prefs = Preferences::new(&session_user);
-            save_preferences(session, new_prefs.clone()).await?;
+            save_preferences(
+                session.user_uuid,
+                session.username,
+                session.token,
+                new_prefs.clone(),
+            )
+            .await?;
             new_prefs
         }
         Err(err) => return Err(err)?,
@@ -315,9 +321,16 @@ pub async fn get_user_preferences(session: UserSession) -> Result<Preferences, S
 
 #[server(SavePreferences, "/api")]
 pub async fn save_preferences(
-    session: UserSession,
+    session_user_uuid: uuid::Uuid,
+    session_username: String,
+    session_token: uuid::Uuid,
     preferences: Preferences,
 ) -> Result<(), ServerFnError> {
+    let session = UserSession {
+        user_uuid: session_user_uuid,
+        username: session_username,
+        token: session_token,
+    };
     let pool = extract_pool().await?;
 
     let user = backend::auth::get_user(&pool, &session.username, session.token).await?;

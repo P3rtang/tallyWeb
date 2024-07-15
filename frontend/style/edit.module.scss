@@ -1,0 +1,193 @@
+.tree_row {
+  display: flex;
+  height: 36px;
+  align-items: center;
+}
+
+.form {
+  font-size: 24px;
+  color: lightgray;
+  display: block;
+  padding: 8px;
+
+  &.portrait {
+    font-size: 21px;
+  }
+
+  &.big, &.small {
+    background: $component-bg-color-dark;
+    border: 2px solid var(--accent);
+    border-radius: 24px;
+
+    .content {
+      margin: 24px 48px;
+    }
+  }
+
+  .content {
+    margin: 16px;
+    border-collapse: collapse;
+
+    .row {
+      height: 3em;
+
+      >* {
+        padding: 8px;
+      }
+
+      td:first-child {
+        border-radius: 12px 0px 0px 12px;
+      }
+
+      td:last-child {
+        text-align: end;
+        text-align: -webkit-right;
+        vertical-align: middle;
+        border-radius: 0px 12px 12px 0px;
+      }
+    }
+
+    .edit {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      height: 2.25em;
+      width: 2.25em;
+
+      color: black;
+      background: $interactable-bg-color-dark;
+      border-radius: 40px;
+      text-decoration: none;
+    }
+
+    input[type="color"] {
+      height: 3.2em;
+      width: 4.8em;
+    }
+
+    input[type="text"], input[type="number"] {
+      font-size: 24px;
+      padding: 8px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .text_row {
+      display: flex;
+      flex-flow: column;
+      margin-bottom: 48px;
+
+      input[type="text"], input[type="number"] {
+        max-width: 75vw;
+      }
+    }
+
+    tr:not(.text_row) {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    td {
+      &:first-child {
+        flex-grow: 1;
+      }
+    }
+  }
+
+  .boxed {
+    position: relative;
+    color: black;
+    padding: 4px;
+    border-radius: 12px;
+    background: $interactable-bg-color-dark;
+
+    input[type="text"], input[type="number"] {
+      box-sizing: unset;
+      border: none;
+      background: none;
+    }
+  }
+
+  .action_buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 32px;
+
+    &.fixed {
+      padding: 12px;
+      bottom: 0px;
+      left: 0px;
+      position: absolute;
+      width: 100%;
+    }
+
+    button {
+      margin: 4px;
+      font-size: 24px;
+      padding: 12px;
+      min-width: 5em;
+    }
+
+    .confirm {
+      background: var(--accent, $select-color-dark)
+    }
+  }
+
+  select {
+    background: none;
+    border: none;
+    font-size: 24px;
+    height: 44px;
+    padding: 0px 0px 0px 16px;
+    width: 100%;
+
+    option {
+      background: $interactable-bg-color-dark;
+    }
+  }
+
+  custom-select {
+    width: 100%;
+
+    #dropdown-button {
+      margin: 2px;
+    }
+
+    select-view {
+      align-items: center;
+      height: 44px;
+      padding: 0px 0px 0px 16px;
+      position: relative;
+      z-index: 2;
+    }
+
+    select-options {
+      padding: 8px;
+      left: 0px;
+      top: 0px;
+      position: absolute;
+      z-index: 1;
+      background: $interactable-bg-color-dark;
+      width: 100%;
+      border-radius: 12px;
+      padding-top: 48px;
+      border: 2px solid var(--accent);
+
+      select-option {
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+
+        &:hover {
+          background: $interactable-hover-color-dark;
+        }
+      }
+    }
+
+    img {
+      transition: transform 0.32s;
+    }
+  }
+}
