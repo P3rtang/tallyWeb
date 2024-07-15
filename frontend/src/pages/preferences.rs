@@ -104,7 +104,7 @@ pub fn PreferencesWindow() -> impl IntoView {
                                     checked=preferences.get_untracked().use_default_accent_color
                                     attr:name="use-default-color"
                                     attr:id="use-default-color"
-                                    on_checked=on_default_checked
+                                    on:change=on_default_checked
                                 />
                             </td>
                         </tr>
@@ -146,7 +146,7 @@ pub fn PreferencesWindow() -> impl IntoView {
                                     checked=preferences.get_untracked().show_separator
                                     attr:name="show-separator"
                                     attr:id="show-separator"
-                                    on_checked=on_separator_checked
+                                    on:change=on_separator_checked
                                 />
                             </td>
                         </tr>
@@ -162,7 +162,7 @@ pub fn PreferencesWindow() -> impl IntoView {
                                     checked=preferences.get_untracked().multi_select
                                     attr:name="multi-select"
                                     attr:id="multi-select"
-                                    on_checked=on_multi_checked
+                                    on:change=on_multi_checked
                                 />
                             </td>
                         </tr>

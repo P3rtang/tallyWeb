@@ -88,7 +88,7 @@ pub fn App() -> impl IntoView {
                                 <Route path=":key" view=SetCountable/>
                             </Route>
                             <Route path="/edit" view=EditWindow>
-                                <Route path=":id" view=move || view! { <EditCountableWindow/> }/>
+                                <Route path=":id" view=move || view! { <EditCounterWindow/> }/>
                             </Route>
                         </Route>
 
