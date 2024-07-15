@@ -22,7 +22,7 @@ pub async fn save_countables(
     let mut phases = Vec::<Phase>::new();
     for countable in countables {
         match countable.kind() {
-            CountableKind::Counter(_) => {
+            CountableKind::Counter => {
                 let counter = countable
                     .try_lock()
                     .map_err(|_| AppError::LockMutex)?
@@ -34,7 +34,7 @@ pub async fn save_countables(
                 counters.push(counter)
                 // update_counter(user.username.clone(), user.token.clone(), counter).await
             }
-            CountableKind::Phase(_) => {
+            CountableKind::Phase => {
                 let phase = countable
                     .try_lock()
                     .map_err(|_| AppError::LockMutex)?
@@ -60,7 +60,7 @@ pub async fn save_countables(
 }
 
 pub fn save_to_browser() -> Result<(), gloo_storage::errors::StorageError> {
-    let save_data: Vec<SerCounter> = expect_context::<RwSignal<app::CounterList>>()
+    let save_data: Vec<SerCounter> = expect_context::<RwSignal<CounterList>>()
         .get_untracked()
         .into();
     LocalStorage::set("save_data", save_data)
@@ -149,7 +149,7 @@ pub fn SavingError(err: AppError, is_offline: RwSignal<bool>) -> impl IntoView {
 
 #[component]
 pub fn AskOfflineData(data: Vec<SerCounter>) -> impl IntoView {
-    let state = expect_context::<RwSignal<app::CounterList>>();
+    let state = expect_context::<RwSignal<CounterList>>();
     let message = expect_context::<MessageJar>();
     let user = expect_context::<RwSignal<UserSession>>();
     let save_handler = expect_context::<SaveHandlerCountable>();

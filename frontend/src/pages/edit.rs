@@ -145,7 +145,7 @@ fn EditCounterBox(key: RwSignal<uuid::Uuid>) -> impl IntoView {
 
     let hunt_type_str = create_read_slice(countable, |c| {
         c.as_ref()
-            .map(|c| String::from(c.get_hunt_type()))
+            .map(|c| <&'static str>::from(c.get_hunt_type()).to_string())
             .unwrap_or_default()
     });
 
@@ -319,7 +319,7 @@ fn EditCounterBox(key: RwSignal<uuid::Uuid>) -> impl IntoView {
 
                             {
                                 create_isomorphic_effect(move |_| {
-                                    let hunt: String = hunt_type().into();
+                                    let hunt: &'static str = hunt_type().into();
                                     if let Some(d) = hunt_type_dropdown() {
                                         d.set_value(&hunt)
                                     }

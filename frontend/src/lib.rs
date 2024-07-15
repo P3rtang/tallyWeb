@@ -46,6 +46,7 @@ cfg_if! {
 }
 
 pub type SelectionSignal = leptos::RwSignal<components::SelectionModel<uuid::Uuid, ArcCountable>>;
+pub type StateResource = leptos::Resource<UserSession, Vec<SerCounter>>;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, thiserror::Error, Default, serde::Serialize, serde::Deserialize,

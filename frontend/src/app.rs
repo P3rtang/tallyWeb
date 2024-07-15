@@ -6,14 +6,11 @@ use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use super::{elements::*, pages::*, preferences::ProvidePreferences, session::*, *};
 
 pub const LEPTOS_OUTPUT_NAME: &str = env!("LEPTOS_OUTPUT_NAME");
 pub const TALLYWEB_VERSION: &str = env!("TALLYWEB_VERSION");
-
-pub type StateResource = Resource<UserSession, Vec<SerCounter>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CounterResponse {
@@ -332,124 +329,6 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
         <Show when=move || countable.get_untracked().is_some()>
             <CountableContextMenu show_overlay=show_context_menu location=click_location key/>
         </Show>
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct CounterList {
-    pub list: HashMap<uuid::Uuid, ArcCountable>,
-    search: Option<String>,
-    pub sort: SortCountable,
-}
-
-impl CounterList {
-    fn new(counters: &[Counter]) -> Self {
-        return CounterList {
-            list: counters
-                .iter()
-                .map(|c| (c.get_uuid(), ArcCountable::new(Box::new(c.clone()))))
-                .collect(),
-            search: None,
-            sort: SortCountable::Name(false),
-        };
-    }
-
-    pub fn search(&mut self, value: &str) {
-        self.search = Some(value.to_lowercase().to_string())
-    }
-
-    pub fn get_items(&mut self) -> Vec<ArcCountable> {
-        self.list.values().cloned().collect()
-    }
-
-    pub fn get_filtered_list(&mut self) -> Vec<ArcCountable> {
-        let mut list = self.list.values().cloned().collect::<Vec<_>>();
-
-        list.sort_by(self.sort.sort_by());
-
-        if let Some(search) = &self.search {
-            let mut list_starts_with = Vec::new();
-            let mut child_starts_with = Vec::new();
-            let mut list_contains = Vec::new();
-            let mut child_contains = Vec::new();
-
-            for counter in list.iter() {
-                let name = counter.get_name().to_lowercase();
-                if name.starts_with(search) {
-                    list_starts_with.push(counter.clone())
-                } else if counter.has_child_starts_with(search) {
-                    child_starts_with.push(counter.clone())
-                } else if name.contains(search) {
-                    list_contains.push(counter.clone())
-                } else if counter.has_child_contains(search) {
-                    child_contains.push(counter.clone())
-                }
-            }
-
-            list_starts_with.append(&mut child_starts_with);
-            list_starts_with.append(&mut list_contains);
-            list_starts_with.append(&mut child_contains);
-
-            list_starts_with
-        } else {
-            list
-        }
-    }
-
-    pub fn load_offline(&mut self, data: Vec<SerCounter>) {
-        let list: CounterList = data.into();
-        self.list = list.list;
-    }
-}
-
-impl From<Vec<SerCounter>> for CounterList {
-    fn from(value: Vec<SerCounter>) -> Self {
-        let list = value
-            .into_iter()
-            .map(|sc| {
-                let phase_list: Vec<ArcCountable> = sc
-                    .phase_list
-                    .into_iter()
-                    .map(|p| ArcCountable::new(Box::new(p)))
-                    .collect();
-                let counter = Counter {
-                    uuid: sc.uuid,
-                    owner_uuid: sc.owner_uuid,
-                    name: sc.name,
-                    phase_list,
-                    created_at: sc.created_at,
-                };
-                (counter.get_uuid(), ArcCountable::new(Box::new(counter)))
-            })
-            .collect();
-        Self {
-            list,
-            ..Default::default()
-        }
-    }
-}
-
-impl Default for CounterList {
-    fn default() -> Self {
-        Self::new(&[])
-    }
-}
-
-impl From<CounterList> for Vec<SerCounter> {
-    fn from(val: CounterList) -> Self {
-        let mut rtrn_list = Vec::new();
-        for arc_c in val.list.values() {
-            if let Some(counter) = arc_c
-                .lock()
-                .map(|c| c.as_any().downcast_ref::<Counter>().cloned())
-                .ok()
-                .flatten()
-            {
-                rtrn_list.push(counter.clone().into())
-            }
-        }
-
-        rtrn_list
     }
 }
 
