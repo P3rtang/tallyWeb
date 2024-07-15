@@ -108,49 +108,76 @@ pub fn SelectOver(
         }
     };
 
+    let options_list_ref = create_node_ref::<html::Div>();
+
+    let max_height = create_rw_signal(None::<String>);
+
+    create_effect(move |_| {
+        if let Some(node) = options_list_ref() {
+            request_animation_frame(move || {
+                let y = node.get_bounding_client_rect().top();
+                let screen_height = window()
+                    .inner_height()
+                    .ok()
+                    .map(|js_val| js_val.as_f64())
+                    .flatten()
+                    .unwrap_or(1080.0);
+                max_height.set(Some(format!("{}px", screen_height - y)))
+            })
+        }
+    });
+
     view! {
+        <style>
+            r#"select-options {
+                scrollbar-width: thin;
+                scrollbar-color: rgba(0, 0, 0, 0.32) transparent;
+            }"#
+        </style>
         <custom-select>
-            <select-view style:display="flex">
-                <label style:align-content="center" style:width="100%" for="dropdown-button">
-                    {move || selection().name}
-                </label>
-                <button
-                    type="button"
-                    id="dropdown-button"
-                    on:click=toggle_show
-                    style:height="40px"
-                    style:width="40px"
-                >
-                    <img
-                        src="/icons/dropdown.svg"
-                        width="24px"
-                        height="24px"
-                        style:transform=toggle_style
-                    />
-                </button>
-            </select-view>
-            <Show when=show_options>
-                <select-options style:display="block">
+            <div node_ref=options_list_ref>
+                <select-view style:display="flex">
+                    <label style:align-content="center" style:width="100%" for="dropdown-button">
+                        {move || selection().name}
+                    </label>
+                    <button
+                        type="button"
+                        id="dropdown-button"
+                        on:click=toggle_show
+                        style:height="40px"
+                        style:width="40px"
+                    >
+                        <img
+                            src="/icons/dropdown.svg"
+                            width="24px"
+                            height="24px"
+                            style:transform=toggle_style
+                        />
+                    </button>
+                </select-view>
+                <Show when=show_options>
+                    <select-options style:display="block" style:max-height=max_height>
 
-                    {options
-                        .clone()
-                        .into_iter()
-                        .map(move |option| {
-                            let option = store_value(option);
-                            view! {
-                                <select-option
-                                    on:click=move |_| on_option(option())
-                                    style:display="block"
-                                    style:background=move || selected_bg(option())
-                                >
-                                    {option().name}
-                                </select-option>
-                            }
-                        })
-                        .collect_view()}
+                        {options
+                            .clone()
+                            .into_iter()
+                            .map(move |option| {
+                                let option = store_value(option);
+                                view! {
+                                    <select-option
+                                        on:click=move |_| on_option(option())
+                                        style:display="block"
+                                        style:background=move || selected_bg(option())
+                                    >
+                                        {option().name}
+                                    </select-option>
+                                }
+                            })
+                            .collect_view()}
 
-                </select-options>
-            </Show>
+                    </select-options>
+                </Show>
+            </div>
         </custom-select>
     }
 }
