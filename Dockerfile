@@ -12,6 +12,8 @@ RUN cp cargo-binstall /usr/local/cargo/bin
 
 # Install cargo-leptos
 RUN cargo binstall cargo-leptos -y
+# Install stylance
+RUN cargo install stylance-cli
 
 # Add the WASM target
 RUN rustup target add wasm32-unknown-unknown
@@ -20,6 +22,9 @@ RUN rustup target add wasm32-unknown-unknown
 RUN mkdir -p /app
 WORKDIR /app
 COPY . .
+
+# Bundle css
+RUN stylance ./frontend/ --output-file ./style/bundle.scss
 
 # Build the app
 RUN LEPTOS_OUTPUT_NAME="tallyweb_$(tr -dc a-z0-9 </dev/urandom | head -c 10)" cargo leptos build -r -P -vv
