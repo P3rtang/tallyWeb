@@ -1,5 +1,16 @@
 use leptos::{html::Dialog, *};
 
+stylance::import_style!(
+    #[allow(dead_code)]
+    about,
+    "about.module.scss"
+);
+stylance::import_style!(
+    #[allow(dead_code)]
+    main,
+    "../../style/_main.module.scss"
+);
+
 pub const TALLYWEB_VERSION: &str = env!("TALLYWEB_VERSION");
 
 #[component]
@@ -31,18 +42,26 @@ pub fn AboutDialog(
     };
 
     view! {
-        <dialog node_ref=about_node style=border_style id="about">
-            <div class="content">
-                <span class="title">Author</span>
-                <span class="info">P3rtang</span>
-                <span class="title">Github</span>
-                <a class="button" href="https://github.com/P3rtang/tallyWeb">
+        <dialog
+            class=stylance::classes!(about::big, main::overlay)
+            node_ref=about_node
+            style=border_style
+            id="about"
+        >
+            <div class=about::content>
+                <span class=about::title>Author</span>
+                <span class=about::info>P3rtang</span>
+                <span class=about::title>Github</span>
+                <a
+                    class=stylance::classes!(about::button, about::info)
+                    href="https://github.com/P3rtang/tallyWeb"
+                >
                     <i class="fa-solid fa-link"></i>
                 </a>
-                <span class="title">Version</span>
-                <span class="info">{TALLYWEB_VERSION}</span>
+                <span class=about::title>Version</span>
+                <span class=about::info>{TALLYWEB_VERSION}</span>
             </div>
-            <div class="actionbuttons">
+            <action-buttons>
                 <button
                     style=button_style
                     on:click=move |_| {
@@ -54,7 +73,7 @@ pub fn AboutDialog(
 
                     Close
                 </button>
-            </div>
+            </action-buttons>
         </dialog>
     }
 }

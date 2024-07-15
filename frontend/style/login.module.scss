@@ -1,0 +1,115 @@
+main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login_form {
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+  width: min(100%, 24em);
+  padding: 8px;
+
+  a {
+    color: unset;
+    text-decoration: none;
+  }
+
+  h1 {
+    margin-top: 0px;
+    padding: 0px;
+    color: #6272A4;
+  }
+
+  label {
+    display: none;
+  }
+
+  input[type="text"],
+  input[type="password"] {
+    font-size: 1.3em;
+    height: 3rem;
+    margin: 8px 0px;
+    padding-left: 16px;
+
+    border-radius: 3em;
+    border: none;
+    outline: none;
+    background: $interactable-hover-color-dark;
+  }
+
+  input:focus-visible {
+    background: $interactable-bg-color-dark;
+  }
+
+  action-buttons {
+    display: flex;
+    justify-content: right;
+    margin-top: 24px;
+
+    >*:not(:first-child) {
+      margin-left: 16px;
+    }
+
+    i {
+      font-size: 1.4rem;
+    }
+
+    .action-button-el {
+      display: flex;
+      align-items: center;
+      background: $interactable-bg-color-dark;
+      color: black;
+      max-height: 3.5rem;
+      border-radius: 3rem;
+      border: none;
+      font-size: 1.2rem;
+      margin-right: auto;
+
+      label {
+        color: #dddddd;
+        padding: 0px 16px 0px 8px;
+        display: block;
+      }
+
+      .accept-ts {
+        text-align: center;
+        width: 100%;
+        display: flex;
+        padding: 0px 24px 0px 12px;
+        color: #8494B6;
+      }
+
+      b {
+        margin: 0px;
+        font-size: 1rem;
+      }
+    }
+
+    input[type="checkbox"] {
+      border: 2px solid white;
+      min-height: 1.5rem;
+      min-width: 1.5rem;
+      margin-left: 16px;
+    }
+
+    a,
+    button {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 3.5rem;
+      min-width: 3.5rem;
+      border-radius: 3em;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      background: #666666;
+
+      &:hover {
+        background: #555555;
+      }
+    }
+  }
+}

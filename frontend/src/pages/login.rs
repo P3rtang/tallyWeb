@@ -2,6 +2,12 @@ use super::*;
 use leptos::*;
 use leptos_router::{ActionForm, A};
 
+stylance::import_style!(
+    #[allow(dead_code)]
+    style,
+    "../../style/login.module.scss"
+);
+
 #[component]
 pub fn LoginPage() -> impl IntoView {
     let login_action = create_server_action::<api::LoginUser>();
@@ -17,7 +23,7 @@ pub fn LoginPage() -> impl IntoView {
 
     view! {
         <ActionForm action=login_action>
-            <div class="container login-form">
+            <div class=style::login_form>
                 <h1>Login</h1>
                 <label for="username">Username</label>
                 <input
@@ -38,8 +44,8 @@ pub fn LoginPage() -> impl IntoView {
                     required
                 />
 
-                <div class="action-buttons">
-                    <div class="action-buttons-el">
+                <action-buttons>
+                    <div class=style::action_button_el>
                         <input type="checkbox" name="remember" id="remember"/>
                         <label for="remember">Remember Me</label>
                     </div>
@@ -49,7 +55,7 @@ pub fn LoginPage() -> impl IntoView {
                     <button type="submit" aria-label="button-sign-in">
                         <i class="fa-solid fa-right-to-bracket"></i>
                     </button>
-                </div>
+                </action-buttons>
             </div>
         </ActionForm>
     }

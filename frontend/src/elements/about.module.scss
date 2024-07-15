@@ -1,0 +1,50 @@
+#about {
+  background: $element-bg-color-dark;
+  font-size: 20px;
+
+  &.big {
+    padding: 12px;
+  }
+
+  button {
+    margin-top: 6rem;
+    margin-left: auto;
+  }
+
+  .content {
+    display: grid;
+    grid-gap: 8px;
+    align-items: center;
+    justify-items: left;
+
+    .info {
+      background: $interactable-bg-color-dark;
+      padding: 12px;
+      border-radius: 12px;
+    }
+  }
+
+  span,
+  a {
+    margin: 0px;
+    padding: 12px;
+    border-radius: 8px;
+
+    &.title {
+      min-width: 6em;
+      grid-column: 1;
+    }
+
+    &.info {
+      grid-column: 2;
+      width: 12em;
+
+      &.button {
+        width: unset;
+        border-radius: 48px;
+        grid-column: 2;
+      }
+    }
+  }
+}
+
