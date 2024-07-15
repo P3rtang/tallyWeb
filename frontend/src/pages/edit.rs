@@ -28,7 +28,7 @@ pub fn EditWindow() -> impl IntoView {
     let show_sidebar = create_rw_signal(ShowSidebar(true));
 
     let sidebar_update_memo =
-        create_memo(move |_| return ((screen.style)(), selection().get_owned_selected_keys()));
+        create_memo(move |_| ((screen.style)(), selection().get_owned_selected_keys()));
 
     let outlet_view = view! { <Outlet/> };
 
@@ -296,12 +296,9 @@ fn EditTime(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
         if let Some(node) = node_ref() {
             let mut new_val = event_target_value(&ev);
             if new_val.parse::<i64>().is_ok_and(|v| min <= v && v < max) {
-                return;
-            } else {
-                if new_val.len() > 0 {
-                    new_val.remove(new_val.len() - 1);
-                    node.set_value(&new_val);
-                }
+            } else if !new_val.is_empty() {
+                new_val.remove(new_val.len() - 1);
+                node.set_value(&new_val);
             }
         }
     };
@@ -394,8 +391,7 @@ fn EditHunttype(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
     let hunt_type = move || counters().flat[&key()].get_hunt_type();
     let selected = create_memo(move |_| hunt_type().into());
 
-    let hunt_option =
-        |ht: Hunttype| -> (&'static str, &'static str) { return (ht.repr(), ht.into()) };
+    let hunt_option = |ht: Hunttype| -> (&'static str, &'static str) { (ht.repr(), ht.into()) };
 
     let options = vec![
         hunt_option(Hunttype::OldOdds).into(),
