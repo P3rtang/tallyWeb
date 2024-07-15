@@ -176,6 +176,60 @@ pub async fn get_countable_by_id(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+#[server(EditCountableForm)]
+pub async fn edit_countable_form(
+    session_user_uuid: uuid::Uuid,
+    session_username: String,
+    session_token: uuid::Uuid,
+
+    countable_key: uuid::Uuid,
+    countable_kind: CountableKind,
+    countable_name: String,
+    countable_count: i32,
+    countable_hours: i64,
+    countable_mins: i64,
+    countable_secs: i64,
+    countable_millis: i64,
+    countable_hunttype: String,
+    countable_charm: Option<String>,
+) -> Result<(), ServerFnError> {
+    let session = UserSession {
+        user_uuid: session_user_uuid,
+        username: session_username,
+        token: session_token,
+    };
+    check_user(session).await?;
+
+    let countable_time =
+        ((countable_hours * 60 + countable_mins) * 60 + countable_secs) * 1000 + countable_millis;
+
+    let mut conn = extract_pool().await?.begin().await?;
+    match countable_kind {
+        CountableKind::Counter => {
+            backend::counter::set_name(&mut conn, countable_key, &countable_name).await?;
+            backend::counter::set_count(&mut conn, countable_key, countable_count).await?;
+            backend::counter::set_time(&mut conn, countable_key, countable_time).await?;
+            backend::counter::set_hunttype(&mut conn, countable_key, countable_hunttype.into())
+                .await?;
+            backend::counter::set_charm(&mut conn, countable_key, countable_charm.is_some())
+                .await?;
+        }
+        CountableKind::Phase => {
+            backend::phase::set_name(&mut conn, countable_key, &countable_name).await?;
+            backend::phase::set_count(&mut conn, countable_key, countable_count).await?;
+            backend::phase::set_time(&mut conn, countable_key, countable_time).await?;
+            backend::phase::set_hunttype(&mut conn, countable_key, countable_hunttype.into())
+                .await?;
+            backend::phase::set_charm(&mut conn, countable_key, countable_charm.is_some()).await?;
+        }
+    }
+
+    conn.commit().await?;
+
+    return Ok(());
+}
+
 #[server(UpdateCountable, "/api")]
 pub async fn update_countable(
     session: UserSession,

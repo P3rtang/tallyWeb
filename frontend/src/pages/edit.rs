@@ -1,353 +1,444 @@
 #![allow(non_snake_case)]
-use chrono::Duration;
-use components::{LoadingScreen, MessageJar, SavingMessage, Slider};
-use leptos::{
-    html::{Input, Select},
-    *,
-};
-use leptos_router::{use_params, Form, Outlet, Params};
-use web_sys::{Event, SubmitEvent};
+use components::{MessageJar, Select, SelectionModel, ShowSidebar, Sidebar, TreeViewWidget};
+use elements::{Navbar, SortSearch};
+use leptos::*;
+use leptos_router::{use_params, ActionForm, Outlet, Params, A};
 
 use super::*;
 
+stylance::import_style!(
+    #[allow(dead_code)]
+    style,
+    "../../style/edit.module.scss"
+);
+
 #[component]
 pub fn EditWindow() -> impl IntoView {
+    let preferences = expect_context::<RwSignal<Preferences>>();
+    let counters = expect_context::<RwSignal<CounterList>>();
+    let screen = expect_context::<Screen>();
+
+    let selection = create_rw_signal(SelectionModel::<uuid::Uuid, ArcCountable>::new());
+    provide_context(selection);
+
+    let width = create_rw_signal(400);
+    let show_sort_search = create_rw_signal(true);
+    let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
+
+    let show_sidebar = create_rw_signal(ShowSidebar(true));
+
+    let sidebar_update_memo =
+        create_memo(move |_| return ((screen.style)(), selection().get_owned_selected_keys()));
+
+    let outlet_view = view! { <Outlet/> };
+
+    create_isomorphic_effect(move |_| match sidebar_update_memo.get() {
+        (ScreenStyle::Portrait, e) => {
+            width.set(0);
+            show_sidebar.set(ShowSidebar(e.is_empty()));
+        }
+        (ScreenStyle::Small, e) => {
+            width.set(0);
+            show_sidebar.set(ShowSidebar(e.is_empty()));
+        }
+        (ScreenStyle::Big, _) => {
+            width.set(400);
+            show_sidebar.set(ShowSidebar(true));
+        }
+    });
+
     view! {
-        <elements::Navbar></elements::Navbar>
-        <Outlet/>
+        <div style:display="flex">
+            <Sidebar display=show_sidebar width>
+                <nav>
+                    <SortSearch list=counters shown=show_sort_search/>
+                </nav>
+                <TreeViewWidget
+                    each=move || { counters.get().get_filtered_list() }
+                    key=|countable| countable.get_uuid()
+                    each_child=move |countable| {
+                        let mut children = countable.get_children();
+                        children.sort_by(counters.get().sort.sort_by());
+                        children
+                    }
+
+                    view=|key| view! { <TreeViewRow key/> }
+                    show_separator=show_sep
+                    selection_model=selection
+                />
+            </Sidebar>
+            <section style:width=move || format!("calc(100vw - {}px)", width())>
+                <Navbar show_sidebar/>
+                {outlet_view}
+            </section>
+        </div>
     }
 }
 
 #[component]
-pub fn EditCounterWindow() -> impl IntoView {
-    let params = use_params::<CountableId>();
-
-    let valid_key = params
-        .get_untracked()
-        .map(|p| uuid::Uuid::parse_str(&p.id).ok())
-        .ok()
-        .flatten();
-
-    let key = create_rw_signal(
-        params
-            .get_untracked()
-            .map(|p| uuid::Uuid::parse_str(&p.id).ok())
-            .ok()
-            .flatten()
-            .unwrap_or_default(),
-    );
-
-    create_isomorphic_effect(move |_| {
-        params.with(|p| {
-            key.set(
-                p.clone()
-                    .map(|p| uuid::Uuid::parse_str(&p.id).ok())
-                    .ok()
-                    .flatten()
-                    .unwrap_or_default(),
-            )
-        });
-    });
+fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
+    let counters = expect_context::<RwSignal<CounterList>>();
+    let name = move || {
+        counters()
+            .flat
+            .get(&key)
+            .map(|c| c.get_name())
+            .unwrap_or_default()
+    };
 
     view! {
-        <Show when=move || valid_key.is_some()>
-            <EditCounterBox key/>
-        </Show>
+        <A href=move || key.to_string()>
+            <div class=style::tree_row>
+                <span>{name}</span>
+            </div>
+        </A>
+    }
+}
+
+#[component]
+pub fn EditCountableWindow() -> impl IntoView {
+    let selection = expect_context::<RwSignal<SelectionModel<uuid::Uuid, ArcCountable>>>();
+    let counters = expect_context::<RwSignal<CounterList>>();
+    let screen = expect_context::<Screen>();
+
+    let key_memo = create_memo(move |old_key| {
+        let new_key = use_params::<Key>()()
+            .ok()
+            .and_then(|p| uuid::Uuid::parse_str(&p.key).ok());
+
+        if let Some(key) = new_key
+            && new_key != old_key.copied()
+        {
+            selection.update(|sel| sel.select(&key))
+        }
+
+        new_key.unwrap_or_default()
+    });
+
+    let form_style = move || {
+        stylance::classes!(
+            style::form,
+            match (screen.style)() {
+                ScreenStyle::Portrait => Some(style::portrait),
+                ScreenStyle::Small => Some(style::small),
+                ScreenStyle::Big => Some(style::big),
+            }
+        )
+    };
+
+    let valid = move || counters().flat.contains_key(&key_memo());
+
+    create_isomorphic_effect(move |_| key_memo.track());
+
+    view! {
+        <h1 style:color="white" style:padding="12px 48px">
+            Edit
+        </h1>
+        <div style:display="flex" style:justify-content="center">
+            <Show when=valid>
+                <edit-form class=form_style>
+                    <EditCounterBox key=key_memo/>
+                </edit-form>
+            </Show>
+        </div>
     }
 }
 
 #[derive(Debug, Clone, Params, PartialEq, Eq, Default)]
-struct CountableId {
-    id: String,
+struct Key {
+    key: String,
 }
 
 #[component]
-fn EditCounterBox(key: RwSignal<uuid::Uuid>) -> impl IntoView {
-    let user = expect_context::<RwSignal<UserSession>>();
-    let preferences = expect_context::<RwSignal<Preferences>>();
-    let message = expect_context::<MessageJar>();
+fn EditCounterBox(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+    let rs = expect_context::<StateResource>();
     let session = expect_context::<RwSignal<UserSession>>();
+    let counters = expect_context::<RwSignal<CounterList>>();
+    let msg = expect_context::<MessageJar>();
+    let action = create_server_action::<api::EditCountableForm>();
+    let screen = expect_context::<Screen>();
 
-    let counter_rsrc = create_resource(key, move |id| {
-        api::get_countable_by_id(session.get_untracked(), id)
+    let kind = create_read_slice(counters, move |c| c.flat[&key()].kind());
+
+    create_effect(move |_| match action.value()() {
+        Some(Ok(_)) => {
+            leptos_router::use_navigate()(format!("/{}", key()).as_str(), Default::default())
+        }
+        Some(Err(err)) => match err {
+            ServerFnError::WrappedServerError(err) => msg.set_err(err),
+            ServerFnError::Registration(err) => msg.set_err(err),
+            ServerFnError::Request(_) => msg.set_err("Could not reach server"),
+            ServerFnError::Response(err) => msg.set_err(err),
+            ServerFnError::ServerError(err) => msg.set_err(err),
+            ServerFnError::Deserialization(err) => msg.set_err(err),
+            ServerFnError::Serialization(err) => msg.set_err(err),
+            ServerFnError::Args(err) => msg.set_err(err),
+            ServerFnError::MissingArg(err) => msg.set_err(err),
+        },
+        None => {}
     });
 
-    let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
-    let border_style = move || format!("border: 2px solid {}", accent_color());
-    let confirm_style = move || format!("background-color: {}", accent_color());
+    create_effect(move |_| {
+        if let Some(Ok(_)) = action.value()() {
+            rs.refetch();
+            leptos_router::use_navigate()(format!("/{}", key()).as_str(), Default::default())
+        }
+    });
 
-    let countable = create_rw_signal(None::<ArcCountable>);
+    view! {
+        <ActionForm action>
+            <SessionFormInput session/>
+            <input type="hidden" name="countable_key" value=move || key().to_string()/>
+            <input type="hidden" name="countable_kind" value=move || kind().to_string()/>
+            <table style:display="flex" style:flex-flow="column" class=style::content>
+                <tbody>
+                    <tr class=stylance::classes!(style::row, style::text_row)>
+                        <EditName key/>
+                    </tr>
+                    <tr class=stylance::classes!(style::row, style::text_row)>
+                        <EditCount key/>
+                    </tr>
+                    <tr class=stylance::classes!(style::row, style::text_row)>
+                        <EditTime key/>
+                    </tr>
+                    <tr class=stylance::classes!(style::row, style::text_row)>
+                        <EditHunttype key/>
+                    </tr>
+                    <tr class=style::row>
+                        <EditCharm key/>
+                    </tr>
+                </tbody>
+            </table>
+            <action-buttons class=move || {
+                stylance::classes!(
+                    style::action_buttons, match (screen.style) () { ScreenStyle::Portrait =>
+                    Some(style::fixed), ScreenStyle::Small => None, ScreenStyle::Big => None, }
+                )
+            }>
 
+                <action-start></action-start>
+                <action-end>
+                    <button type="submit" class=style::confirm>
+                        Submit
+                    </button>
+                </action-end>
+            </action-buttons>
+        </ActionForm>
+    }
+}
+
+#[component]
+fn EditName(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+    let counters = expect_context::<RwSignal<CounterList>>();
     let (name, set_name) = create_slice(
-        countable,
-        |c| c.clone().map(|c| c.get_name()).unwrap_or_default(),
-        |c, new| {
-            if let Some(c) = c.as_mut() {
-                c.set_name(new)
+        counters,
+        move |l| l.flat[&key()].get_name(),
+        move |l, name| l.flat[&key()].set_name(name),
+    );
+
+    let on_input = move |ev| set_name(event_target_value(&ev));
+
+    view! {
+        <td>
+            <label for="change-name">Name</label>
+        </td>
+        <td>
+            <div class=style::boxed>
+                <input
+                    type="text"
+                    value=name
+                    prop:value=name
+                    id="change-name"
+                    name="countable_name"
+                    on:input=on_input
+                    style:text-align="end"
+                />
+            </div>
+        </td>
+    }
+}
+
+#[component]
+fn EditCount(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+    let counters = expect_context::<RwSignal<CounterList>>();
+    let count = create_read_slice(counters, move |l| l.flat.get(&key()).unwrap().get_count());
+
+    view! {
+        <td>
+            <label for="change-count">Count</label>
+        </td>
+        <td>
+            <div class=style::boxed>
+                <input
+                    type="number"
+                    value=count
+                    prop:value=count
+                    id="change-count"
+                    name="countable_count"
+                    style:text-align="end"
+                />
+            </div>
+        </td>
+    }
+}
+
+#[component]
+fn EditTime(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+    let counters = expect_context::<RwSignal<CounterList>>();
+
+    let time = create_read_slice(counters, move |c| c.flat[&key()].get_time());
+
+    let min_ref = create_node_ref::<html::Input>();
+    let sec_ref = create_node_ref::<html::Input>();
+    let millis_ref = create_node_ref::<html::Input>();
+
+    let limit_num = |ev: ev::Event, node_ref: NodeRef<html::Input>, min, max| {
+        if let Some(node) = node_ref() {
+            let mut new_val = event_target_value(&ev);
+            if new_val.parse::<i64>().is_ok_and(|v| min <= v && v < max) {
+                return;
+            } else {
+                if new_val.len() > 0 {
+                    new_val.remove(new_val.len() - 1);
+                    node.set_value(&new_val);
+                }
             }
-        },
-    );
-
-    let (count, set_count) = create_slice(
-        countable,
-        |c| c.clone().map(|c| c.get_count()).unwrap_or_default(),
-        |c, new| {
-            if let Some(c) = c.as_mut() {
-                c.set_count(new)
-            }
-        },
-    );
-
-    let (hours, set_hours) = create_slice(
-        countable,
-        |c| {
-            c.clone()
-                .map(|c| c.get_time().num_hours())
-                .unwrap_or_default()
-        },
-        |c, new| {
-            let old_h = c
-                .clone()
-                .map(|c| c.get_time().num_hours())
-                .unwrap_or_default();
-            let diff = Duration::hours(old_h - new);
-            if let Some(c) = c.as_mut() {
-                c.set_time(c.get_time() - diff)
-            }
-        },
-    );
-    let (mins, set_mins) = create_slice(
-        countable,
-        |c| {
-            c.clone()
-                .map(|c| c.get_time().num_minutes() % 60)
-                .unwrap_or_default()
-        },
-        |c, new| {
-            let old_m = c
-                .clone()
-                .map(|c| c.get_time().num_minutes() % 60)
-                .unwrap_or_default();
-            let diff = Duration::minutes(old_m - new);
-            if let Some(c) = c.as_mut() {
-                c.set_time(c.get_time() - diff)
-            }
-        },
-    );
-
-    let (hunt_type, set_hunt_type) = create_slice(
-        countable,
-        |c| c.as_ref().map(|c| c.get_hunt_type()).unwrap_or_default(),
-        |c, new| {
-            let _ = c.as_mut().map(|c| c.set_hunt_type(new));
-        },
-    );
-
-    let hunt_type_str = create_read_slice(countable, |c| {
-        c.as_ref()
-            .map(|c| <&'static str>::from(c.get_hunt_type()).to_string())
-            .unwrap_or_default()
-    });
-
-    let has_charm = create_slice(
-        countable,
-        |c| c.as_ref().map(|c| c.has_charm()).unwrap_or_default(),
-        |c, new| {
-            if let Some(c) = c.as_mut() {
-                c.set_charm(new)
-            }
-        },
-    );
-
-    let toggle_charm = move |_| {
-        let toggle = !has_charm.0.get_untracked();
-        has_charm.1.set(toggle)
-    };
-
-    let name_input: NodeRef<Input> = create_node_ref();
-    let count_input: NodeRef<Input> = create_node_ref();
-    let hours_input: NodeRef<Input> = create_node_ref();
-    let mins_input: NodeRef<Input> = create_node_ref();
-    let hunt_type_dropdown: NodeRef<Select> = create_node_ref();
-
-    let undo_changes = move |_| {
-        counter_rsrc.refetch();
-        if let Some(v) = name_input() {
-            v.set_value(&name())
-        }
-        if let Some(v) = count_input() {
-            v.set_value_as_number(count() as f64)
-        }
-        if let Some(v) = hours_input() {
-            v.set_value_as_number(hours() as f64)
-        }
-        if let Some(v) = mins_input() {
-            v.set_value_as_number(mins() as f64)
         }
     };
 
-    let on_submit = move |ev: SubmitEvent| {
-        ev.prevent_default();
-        set_name(name_input().expect("Defined above").value());
-        if let Ok(num) = count_input().expect("Defined above").value().parse::<i32>() {
-            set_count(num)
-        }
+    let pad_mins = move || format!("{:02}", time().num_minutes() % 60);
+    let pad_secs = move || format!("{:02}", time().num_seconds() % 60);
+    let pad_millis = move || format!("{:03}", time().num_milliseconds() % 1000);
 
-        set_hours(
-            hours_input()
-                .expect("Defined above")
-                .value()
-                .parse::<i64>()
-                .unwrap_or_default(),
-        );
-
-        set_mins(
-            mins_input()
-                .expect("Defined above")
-                .value()
-                .parse::<i64>()
-                .unwrap_or_default(),
-        );
-
-        if let Ok(hunt_type) =
-            Hunttype::try_from(hunt_type_dropdown().expect("Defined above").value())
-        {
-            set_hunt_type(hunt_type);
-        } else {
-            message.set_err("Could not save\nselected Hunttype");
+    let pad_input = move |node_ref: NodeRef<html::Input>, w| {
+        // we check whether a signal is disposed so we know the node_ref is disposed as well
+        if time.try_get().is_none() {
             return;
         }
-
-        let action = create_action(move |(user, countable): &(UserSession, ArcCountable)| {
-            api::update_countable(user.clone(), countable.clone().try_into().unwrap())
-        });
-
-        action.dispatch((user(), countable().unwrap()));
-
-        create_effect(move |_| {
-            match action.value()() {
-                Some(Ok(_)) => {
-                    message.set_msg("Saved succesfully");
-                    leptos_router::use_navigate()("/", Default::default());
-                }
-                Some(Err(err)) => message.set_err(err.to_string()),
-                _ => {}
-            };
-        });
-
-        message
-            .without_timeout()
-            .as_modal()
-            .set_msg_view(SavingMessage)
-    };
-
-    let on_mins_input = move |ev: Event| {
-        if let Ok(num) = event_target_value(&ev).parse::<i32>() {
-            if num > 60 {
-                mins_input().unwrap().set_value("59")
-            } else if num <= 0 {
-                mins_input().unwrap().set_value("00")
+        if let Some(node) = node_ref() {
+            if let Ok(num) = node.value().parse::<i32>() {
+                node.set_value(format!("{:0w$}", num, w = w).as_str());
+            } else if node.value() == "" {
+                node.set_value("0".repeat(w).as_str())
             }
         }
     };
 
     view! {
-        <Transition fallback=move || {
-            view! { <LoadingScreen/> }
-        }>
-            {move || {
-                countable.set(counter_rsrc.get().and_then(|c| c.ok()).map(|c| c.into()));
-            }}
-            <Form action="/" on:submit=on_submit class="parent-form">
-                <div class=move || String::from("editing-form ") style=border_style>
-                    <div class="content">
-                        <label for="name" class="title">
-                            Name
-                        </label>
-                        <input
-                            type="text"
-                            id="name"
-                            node_ref=name_input
-                            value=name
-                            class="edit"
-                            autocomplete="none"
-                        />
-                        <label for="count" class="title">
-                            Count
-                        </label>
-                        <input
-                            type="number"
-                            id="count"
-                            node_ref=count_input
-                            value=count
-                            class="edit"
-                        />
-                        <label for="time_hours" class="title">
-                            Time
-                        </label>
-                        <span style="display: flex; align-items: center;">
-                            <input
-                                type="number"
-                                id="time_hours"
-                                node_ref=hours_input
-                                value=hours
-                                class="edit"
-                                style="width:
-                                7ch"
-                            />
-                            <div style="position: relative; left: -24px;">H</div>
-                            <input
-                                type="number"
-                                id="time_mins"
-                                node_ref=mins_input
-                                value=mins
-                                on:input=on_mins_input
-                                class="edit"
-                                style="width: 5ch"
-                            />
-                            <div style="position: relative; left: -24px;">M</div>
-                        </span>
-                        <label for="hunt_type" class="title">
-                            Hunting Method
-                        </label>
-                        <select
-                            node_ref=hunt_type_dropdown
-                            class="edit"
-                            id="hunt_type"
-                            value=hunt_type_str
-                        >
+        <td>Time</td>
+        <td>
+            <div class=style::boxed style:text-align="end">
+                <label for="change-hours">
+                    <input
+                        type="number"
+                        value=move || time.get_untracked().num_hours()
+                        id="change-hours"
+                        name="countable_hours"
+                        style:width="6ch"
+                        style:text-align="end"
+                    />
+                    :
+                </label>
+                <label for="change-mins">
+                    <input
+                        type="number"
+                        value=pad_mins
+                        id="change-mins"
+                        name="countable_mins"
+                        max="59"
+                        style:width="2ch"
+                        style:text-align="end"
+                        node_ref=min_ref
+                        on:input=move |ev| limit_num(ev, min_ref, 0, 59)
+                        on:focusout=move |_| pad_input(min_ref, 2)
+                    />
+                    :
+                </label>
+                <label for="change-secs">
+                    <input
+                        type="number"
+                        value=pad_secs
+                        id="change-secs"
+                        name="countable_secs"
+                        max="59"
+                        style:width="2ch"
+                        style:text-align="end"
+                        node_ref=sec_ref
+                        on:input=move |ev| limit_num(ev, sec_ref, 0, 59)
+                        on:focusout=move |_| pad_input(sec_ref, 2)
+                    />
+                    .
+                </label>
+                <label for="change-millis">
+                    <input
+                        type="number"
+                        value=pad_millis
+                        id="change-millis"
+                        name="countable_millis"
+                        max="999"
+                        style:width="3ch"
+                        style:text-align="end"
+                        node_ref=millis_ref
+                        on:input=move |ev| limit_num(ev, millis_ref, 0, 999)
+                        on:focusout=move |_| pad_input(millis_ref, 3)
+                    />
+                </label>
+            </div>
+        </td>
+    }
+}
 
-                            {
-                                create_isomorphic_effect(move |_| {
-                                    let hunt: &'static str = hunt_type().into();
-                                    if let Some(d) = hunt_type_dropdown() {
-                                        d.set_value(&hunt)
-                                    }
-                                });
-                            }
+#[component]
+fn EditHunttype(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+    let counters = expect_context::<RwSignal<CounterList>>();
+    let hunt_type = move || counters().flat[&key()].get_hunt_type();
+    let selected = create_memo(move |_| hunt_type().into());
 
-                            <option value="NewOdds">New odds (1/4096)</option>
-                            <option value="OldOdds">Old odds (1/8192)</option>
-                            <option value="SOS">SOS hunt</option>
-                            <option value="MasudaGenIV">Masuda GenIV</option>
-                            <option value="MasudaGenV">Masuda GenV</option>
-                            <option value="MasudaGenVI">Masuda GenVI+</option>
-                        </select>
-                        <label for="charm" class="title">
-                            Shiny Charm
-                        </label>
-                        <Slider checked=has_charm.0 on:change=toggle_charm/>
-                    </div>
-                    <div class="action-buttons">
-                        <button type="button" on:click=undo_changes>
-                            <span>Undo</span>
-                        </button>
-                        <button style=confirm_style type="submit">
-                            <span>Save</span>
-                        </button>
-                    </div>
-                </div>
-            </Form>
-        </Transition>
+    let hunt_option =
+        |ht: Hunttype| -> (&'static str, &'static str) { return (ht.repr(), ht.into()) };
+
+    let options = vec![
+        hunt_option(Hunttype::OldOdds).into(),
+        hunt_option(Hunttype::NewOdds).into(),
+        hunt_option(Hunttype::Masuda(Masuda::GenIV)).into(),
+        hunt_option(Hunttype::Masuda(Masuda::GenV)).into(),
+        hunt_option(Hunttype::Masuda(Masuda::GenVI)).into(),
+        hunt_option(Hunttype::SOS).into(),
+        // hunt_option(Hunttype::DexNav).into(),
+    ];
+
+    view! {
+        <td>
+            <label for="change-hunttype">Method</label>
+        </td>
+        <td style:text-align="start">
+            <div class=style::boxed>
+                <Select
+                    attr:id="change-hunttype"
+                    attr:name="countable_hunttype"
+                    attr:value=hunt_type
+                    selected
+                    options
+                />
+            </div>
+        </td>
+    }
+}
+
+#[component]
+fn EditCharm(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+    let counters = expect_context::<RwSignal<CounterList>>();
+    let checked = create_memo(move |_| counters.get().flat[&key.get()].has_charm());
+    view! {
+        <td>
+            <label for="has-charm">Has Charm</label>
+        </td>
+        <td>
+            <components::Slider
+                attr:id="has-charm"
+                attr:name="countable_charm"
+                checked
+            ></components::Slider>
+        </td>
     }
 }

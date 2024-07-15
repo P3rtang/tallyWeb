@@ -48,6 +48,7 @@ nav {
   padding: 0px 8px;
   box-sizing: border-box;
   width: 100%;
+  z-index: 10;
 
   a {
     margin-left: 1em;
@@ -140,6 +141,7 @@ aside {
   @media (max-width: 600px) {
     position: fixed;
     top: 52px;
+    left: 0px;
     width: 100vw;
     height: calc(100vh - 52px);
   }
@@ -151,6 +153,7 @@ aside {
   @media (max-width: 1200px) and (min-width: 601px) {
     position: fixed;
     top: 52px;
+    left: 0px;
 
     height: calc(100vh - 80px);
     margin: 12px;
@@ -525,6 +528,8 @@ notification-box {
   position: fixed;
   top: 52px;
   padding: 16px;
+
+  z-index: 100;
 
   @media (min-width: 600px) {
     right: 24px;
