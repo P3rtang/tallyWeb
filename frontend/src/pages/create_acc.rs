@@ -4,6 +4,8 @@ use web_sys::SubmitEvent;
 
 use super::*;
 
+stylance::import_style!(style, "../../style/login.module.scss");
+
 #[component]
 pub fn CreateAccount() -> impl IntoView {
     let action = create_server_action::<api::CreateAccount>();
@@ -31,55 +33,50 @@ pub fn CreateAccount() -> impl IntoView {
     };
 
     view! {
-        <ActionForm action=action on:submit=on_submit>
-            <div class="container login-form">
-                <h1>Sign Up</h1>
+        <ActionForm action=action on:submit=on_submit class=style::login_form>
+            <h1>Sign Up</h1>
 
-                <label for="username">
-                    <b>Username</b>
-                </label>
-                <input type="text" placeholder="Enter Username" name="username" required/>
+            <label for="username">
+                <b>Username</b>
+            </label>
+            <input type="text" placeholder="Enter Username" name="username" required/>
 
-                <label for="password">
-                    <b>Password</b>
-                </label>
-                <input
-                    type="password"
-                    placeholder="Enter Password"
-                    name="password"
-                    node_ref=password_input
-                    required
-                />
+            <label for="password">
+                <b>Password</b>
+            </label>
+            <input
+                type="password"
+                placeholder="Enter Password"
+                name="password"
+                node_ref=password_input
+                required
+            />
 
-                <label for="password_repeat">
-                    <b>Repeat Password</b>
-                </label>
-                <input
-                    type="password"
-                    placeholder="Repeat Password"
-                    name="password_repeat"
-                    node_ref=password_repeat
-                    required
-                />
+            <label for="password_repeat">
+                <b>Repeat Password</b>
+            </label>
+            <input
+                type="password"
+                placeholder="Repeat Password"
+                name="password_repeat"
+                node_ref=password_repeat
+                required
+            />
 
-                // <p>By creating an account you agree to our <a href="#" style="color:dodgerblue">Terms & Privacy</a>.</p>
-
-                <div class="clearfix action-buttons">
-                    <div class="action-buttons-el">
-                        <input type="checkbox" required/>
-                        <A href="/privacy-policy" class="acceptTS">
-                            <b>I have read the</b>
-                            <b>Terms & Conditions</b>
-                        </A>
-                    </div>
-                    <A href="/login">
-                        <i class="fa-solid fa-xmark"></i>
+            <action-buttons>
+                <div class=style::action_button_el>
+                    <input type="checkbox" required/>
+                    <A href="/privacy-policy" class=style::accept_ts>
+                        <b>{"I have read the Terms&Conditions"}</b>
                     </A>
-                    <button type="submit" class="signupbtn">
-                        <i class="fa-solid fa-right-to-bracket"></i>
-                    </button>
                 </div>
-            </div>
+                <A href="/login">
+                    <i class="fa-solid fa-xmark"></i>
+                </A>
+                <button type="submit" class="signupbtn">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                </button>
+            </action-buttons>
         </ActionForm>
     }
 }

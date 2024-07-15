@@ -99,7 +99,7 @@
   .boxed {
     position: relative;
     color: black;
-    padding: 4px;
+    padding: 2px;
     border-radius: 12px;
     background: $interactable-bg-color-dark;
 
@@ -161,6 +161,8 @@
       padding: 0px 0px 0px 16px;
       position: relative;
       z-index: 2;
+      background: $interactable-bg-color-dark;
+      border-radius: 12px;
     }
 
     select-options {
@@ -174,6 +176,7 @@
       border-radius: 12px;
       padding-top: 48px;
       border: 2px solid var(--accent);
+      overflow-y: auto;
 
       select-option {
         cursor: pointer;
