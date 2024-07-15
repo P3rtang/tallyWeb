@@ -204,6 +204,7 @@ fn timer(selection_signal: SelectionSignal) {
 #[component]
 pub fn HomePage() -> impl IntoView {
     let selection_signal = expect_context::<SelectionSignal>();
+    let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
 
     let active = create_memo(move |_| {
         selection_signal
@@ -216,7 +217,7 @@ pub fn HomePage() -> impl IntoView {
 
     view! {
         <div id="HomeGrid">
-            <Navbar/>
+            <Navbar show_sidebar/>
             <InfoBox countable_list=active/>
         </div>
     }
@@ -249,9 +250,7 @@ fn SidebarContent() -> impl IntoView {
             view=|key| view! { <TreeViewRow key/> }
             show_separator=show_sep
             selection_model=selection_signal
-            on_click=|key: &uuid::Uuid, _: leptos::ev::MouseEvent| {
-                leptos_router::use_navigate()(&key.to_string(), Default::default())
-            }
+            on_click=|_, _| ()
         />
 
         <NewCounterButton state_len/>
@@ -316,7 +315,7 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
         .unwrap_or_default();
 
     view! {
-        <A href=move || key().to_string() on:click=|ev| ev.prevent_default()>
+        <A href=move || key().to_string()>
             <div class="row-body" on:contextmenu=on_right_click>
                 <span>
                     {move || countable.get_untracked().map(|c| c.get_name()).unwrap_or_default()}
@@ -349,7 +348,7 @@ fn SetCountable() -> impl IntoView {
             .flatten();
 
         if let Some(key) = new_key
-            && old_key.cloned().is_none()
+            && old_key != Some(&new_key)
         {
             selection.update(|sel| sel.select(&key));
         }
