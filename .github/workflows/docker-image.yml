@@ -18,7 +18,9 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
     - name: create .env-docker
-      run: echo "${{ secrets.DATABASE_URL }}" >> .env-docker
+      run: |
+        echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env-docker
+        echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env-docker
     - name: Build docker
       run: docker build . --tag p3rtang/tallyweb
     - name: Push docker
