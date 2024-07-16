@@ -3,6 +3,7 @@
 mod loading_screen;
 mod message;
 mod progressbar;
+mod resizebar;
 mod saving_screen;
 mod select;
 mod sidebar;
@@ -14,6 +15,7 @@ mod treeview;
 pub use loading_screen::*;
 pub use message::*;
 pub use progressbar::*;
+pub use resizebar::{Direction, ResizeBar};
 pub use saving_screen::*;
 pub use select::{Select, SelectOption};
 pub use sidebar::*;
