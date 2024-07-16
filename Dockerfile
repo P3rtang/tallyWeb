@@ -31,7 +31,7 @@ RUN LEPTOS_OUTPUT_NAME="tallyweb_$(tr -dc a-z0-9 </dev/urandom | head -c 10)" ca
 
 FROM rustlang/rust:nightly-bullseye as runner
 # Copy the server binary to the /app directory
-COPY --from=builder /app/target/release/tally_web /app/
+COPY --from=builder /app/target/release/frontend /app/
 # /target/site contains our JS/WASM/CSS, etc.
 COPY --from=builder /app/target/site /app/site
 
@@ -51,4 +51,4 @@ ENV LEPTOS_WASM_OPT_VERSION="version_116"
 ENV TALLYWEB_VERSION="0.3.1"
 EXPOSE 3000
 # Run the server
-CMD ["/app/tally_web"]
+CMD ["/app/frontend"]
