@@ -29,17 +29,24 @@ pub fn EditWindow() -> impl IntoView {
     let show_sort_search = create_rw_signal(true);
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
 
-    let show_sidebar = create_rw_signal(ShowSidebar(true));
+    let show_sidebar = create_rw_signal(ShowSidebar(false));
 
-    let sidebar_update_memo =
-        create_memo(move |_| ((screen.style)(), selection().get_owned_selected_keys()));
+    let min_height = create_memo(move |_| match (screen.style)() {
+        ScreenStyle::Portrait => Some("110vh"),
+        ScreenStyle::Small => None,
+        ScreenStyle::Big => None,
+    });
 
     // we need to render the outlet first since it sets the selection key from the url
     let outlet_view = view! { <Outlet/> };
 
+    let sidebar_update_memo =
+        create_memo(move |_| ((screen.style)(), selection().get_owned_selected_keys()));
+
     create_isomorphic_effect(move |_| match sidebar_update_memo.get() {
         (ScreenStyle::Portrait, e) => {
             width.set(0);
+            logging::log!("{}", e.is_empty());
             show_sidebar.set(ShowSidebar(e.is_empty()));
         }
         (ScreenStyle::Small, e) => {
@@ -72,7 +79,10 @@ pub fn EditWindow() -> impl IntoView {
                     selection_model=selection
                 />
             </Sidebar>
-            <section style:width=move || format!("calc(100vw - {}px)", width())>
+            <section
+                style:width=move || format!("calc(100vw - {}px)", width())
+                style:min-height=min_height
+            >
                 <Navbar show_sidebar/>
                 {outlet_view}
             </section>
@@ -293,6 +303,7 @@ fn EditTime(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 
     let time = create_read_slice(counters, move |c| c.flat[&key()].get_time());
 
+    let hour_ref = create_node_ref::<html::Input>();
     let min_ref = create_node_ref::<html::Input>();
     let sec_ref = create_node_ref::<html::Input>();
     let millis_ref = create_node_ref::<html::Input>();
@@ -308,6 +319,7 @@ fn EditTime(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
         }
     };
 
+    let pad_hours = move || format!("{:02}", time().num_hours());
     let pad_mins = move || format!("{:02}", time().num_minutes() % 60);
     let pad_secs = move || format!("{:02}", time().num_seconds() % 60);
     let pad_millis = move || format!("{:03}", time().num_milliseconds() % 1000);
@@ -333,11 +345,13 @@ fn EditTime(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
                 <label for="change-hours">
                     <input
                         type="number"
-                        value=move || time.get_untracked().num_hours()
+                        value=pad_hours
                         id="change-hours"
                         name="countable_hours"
-                        style:width="6ch"
+                        style:width="4ch"
                         style:text-align="end"
+                        node_ref=hour_ref
+                        on:focusout=move |_| pad_input(hour_ref, 2)
                     />
                     :
                 </label>

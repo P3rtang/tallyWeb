@@ -126,6 +126,10 @@ body {
   height: 100vh;
 }
 
+:global(.transition-width) {
+  transition: width 0.32s, transform 0.32s;
+}
+
 aside {
   display: flex;
   position: relative;
@@ -134,10 +138,7 @@ aside {
   align-content: flex-end;
   overflow-y: auto;
   z-index: 8;
-
   height: 100vh;
-  width: 24em;
-  transition: transform 0.32s, width 0.32s, border 0.32s;
 
   @media (max-width: 600px) {
     position: fixed;
@@ -158,7 +159,6 @@ aside {
 
     height: calc(100vh - 80px);
     margin: 12px;
-    width: 24em;
     max-width: 100%;
 
     border-radius: 20px;
