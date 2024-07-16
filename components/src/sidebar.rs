@@ -13,34 +13,32 @@ pub struct ShowSidebar(pub bool);
 #[component(transparent)]
 pub fn Sidebar(
     #[prop(optional, into, default=ShowSidebar(true).into())] display: MaybeSignal<ShowSidebar>,
-    #[prop(optional, into)] width: Option<Signal<u32>>,
+    #[prop(optional, into, default=400.into())] width: MaybeSignal<usize>,
     #[prop(optional, into, default=SidebarLayout::Hover.into())] layout: MaybeSignal<SidebarLayout>,
+    #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
     children: ChildrenFn,
 ) -> impl IntoView {
-    let w = move || width.map(|s| s.get()).unwrap_or(400);
-    let aside_transform = move || match layout() {
-        SidebarLayout::Landscape if !display().0 => {
-            format!(
-                "transform: TranslateX(-2px); width: {}px; overflow-x: hidden",
-                0
-            )
+    let aside_transform = move || match (layout(), display().0) {
+        (SidebarLayout::Landscape, false) => {
+            "transform: TranslateX(-2px); width: 0px; overflow-x: hidden;".into()
         }
-        SidebarLayout::Landscape => {
-            format!("border-right: 2px solid #FFFFFF80; width: {}px", w())
+        (SidebarLayout::Landscape, true) => {
+            format!("border-right: 2px solid #FFFFFF80; width: {}px;", width())
         }
-        _ if !display().0 => "transform: TranslateX(-120%);".to_string(),
-        SidebarLayout::Portrait => "width: 100vw".to_string(),
-        _ => Default::default(),
+        (SidebarLayout::Portrait, true) => "width: 100vw;".into(),
+
+        (_, false) => "transform: TranslateX(-120%);".into(),
+        (_, true) => Default::default(),
     };
 
     let sidebar_style = move || match layout() {
-        SidebarLayout::Landscape => format!("width: {}px", w()),
-        SidebarLayout::Hover => String::new(),
+        SidebarLayout::Landscape => format!("width: {}px", width()),
+        SidebarLayout::Hover => format!("width: {}px", width() - 12),
         SidebarLayout::Portrait => String::new(),
     };
 
     view! {
-        <aside style=aside_transform>
+        <aside {..attrs} style=aside_transform>
             <side-bar data-testid="test-sidebar" style=sidebar_style>
                 {children()}
             </side-bar>

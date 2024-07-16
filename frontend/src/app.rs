@@ -11,6 +11,7 @@ use super::{elements::*, pages::*, preferences::ProvidePreferences, session::*, 
 
 pub const LEPTOS_OUTPUT_NAME: &str = env!("LEPTOS_OUTPUT_NAME");
 pub const TALLYWEB_VERSION: &str = env!("TALLYWEB_VERSION");
+pub const SIDEBAR_MIN_WIDTH: usize = 280;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CounterResponse {
@@ -152,12 +153,32 @@ fn RouteSidebar() -> impl IntoView {
         }
     });
 
+    let suppress_transition = create_rw_signal(false);
+    let trans_class = move || (!suppress_transition()).then_some("transition-width");
+
+    let on_resize = move |ev: ev::DragEvent| {
+        if ev.client_x() as usize > SIDEBAR_MIN_WIDTH {
+            suppress_transition.set(true);
+            sidebar_width.update(|w| *w = ev.client_x() as usize);
+        } else {
+            suppress_transition.set(false);
+        }
+    };
+
     view! {
         <div style:display="flex">
-            <Sidebar display=show_sidebar layout=sidebar_layout width=sidebar_width>
+            <Sidebar
+                display=show_sidebar
+                layout=sidebar_layout
+                width=sidebar_width
+                attr:class=trans_class
+            >
                 <SidebarContent/>
             </Sidebar>
-            <section style:flex-grow="1" style:transition="width .5s" style:width=section_width>
+            <Show when=move || (screen.style)() != ScreenStyle::Portrait>
+                <ResizeBar position=sidebar_width direction=Direction::Vertical on:drag=on_resize/>
+            </Show>
+            <section style:flex-grow="1" class=trans_class style:width=section_width>
                 <Outlet/>
             </section>
         </div>
