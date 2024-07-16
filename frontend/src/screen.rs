@@ -58,7 +58,7 @@ impl Screen {
             ))? as usize;
 
         let style = match (width, height) {
-            _ if width < 600 && height > 800 => ScreenStyle::Portrait,
+            _ if width < 600 && height > width => ScreenStyle::Portrait,
             _ if width < 1200 => ScreenStyle::Small,
             _ => ScreenStyle::Big,
         };
