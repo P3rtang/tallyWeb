@@ -200,6 +200,10 @@ fn EditCounterBox(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
         }
     });
 
+    let undo = move |_| {
+        rs.refetch();
+    };
+
     view! {
         <ActionForm action>
             <SessionFormInput session/>
@@ -233,6 +237,9 @@ fn EditCounterBox(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 
                 <action-start></action-start>
                 <action-end>
+                    <button type="button" on:click=undo>
+                        Undo
+                    </button>
                     <button type="submit" class=style::confirm>
                         Submit
                     </button>
