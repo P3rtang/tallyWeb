@@ -137,7 +137,7 @@ aside {
   flex-wrap: wrap;
   align-content: flex-end;
   overflow-y: auto;
-  z-index: 8;
+  z-index: 11;
   height: 100vh;
 
   @media (max-width: 600px) {
@@ -195,6 +195,11 @@ aside {
     font-size: 1.5rem;
     min-height: 1.8em;
     min-width: 200px;
+  }
+
+  resize-bar {
+    // nav is 10
+    z-index: 12;
   }
 }
 

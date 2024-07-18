@@ -38,10 +38,9 @@ pub fn ResizeBar(
             style:cursor=cursor
             style:min-width=width
             style:min-height=height
-            style:position="absolute"
+            style:position="fixed"
             style:top=move || pos().0
             style:left=move || pos().1
-            style:z-index="100"
             draggable="true"
             {..attrs}
         >

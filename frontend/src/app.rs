@@ -174,10 +174,14 @@ fn RouteSidebar() -> impl IntoView {
                 attr:class=trans_class
             >
                 <SidebarContent/>
+                <Show when=move || (screen.style)() != ScreenStyle::Portrait>
+                    <ResizeBar
+                        position=sidebar_width
+                        direction=Direction::Vertical
+                        on:drag=on_resize
+                    />
+                </Show>
             </Sidebar>
-            <Show when=move || (screen.style)() != ScreenStyle::Portrait>
-                <ResizeBar position=sidebar_width direction=Direction::Vertical on:drag=on_resize/>
-            </Show>
             <section style:flex-grow="1" class=trans_class style:width=section_width>
                 <Outlet/>
             </section>
