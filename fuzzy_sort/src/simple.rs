@@ -6,18 +6,18 @@ pub struct SimpleMatch {
 
 impl SimpleMatch {
     pub fn new(pattern: impl ToString) -> Self {
-        return Self {
+        Self {
             pattern: pattern.to_string(),
-        };
+        }
     }
 
-    pub fn set(self: &mut Self, pattern: impl ToString) {
+    pub fn set(&mut self, pattern: impl ToString) {
         self.pattern = pattern.to_string()
     }
 }
 
 impl<'a> FuzzySort<'a> for SimpleMatch {
-    fn score(self: &Self, a: &'a str) -> u32 {
+    fn score(&self, a: &'a str) -> u32 {
         let mut idx = 0;
         let mut score = 0;
         for char in self.pattern.chars() {
@@ -31,10 +31,10 @@ impl<'a> FuzzySort<'a> for SimpleMatch {
             println!("char={char}, score={score}")
         }
 
-        return score;
+        score
     }
 
-    fn sort<T: Sortable + 'static>(self: &Self) -> impl FnMut(&T, &T) -> std::cmp::Ordering {
+    fn sort<T: Sortable + 'static>(&self) -> impl FnMut(&T, &T) -> std::cmp::Ordering {
         return move |a: &T, b: &T| self.score(b.as_str()).cmp(&self.score(a.as_str()));
     }
 }

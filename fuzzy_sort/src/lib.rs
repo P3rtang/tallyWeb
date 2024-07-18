@@ -2,12 +2,12 @@ mod simple;
 pub use simple::*;
 
 pub trait FuzzySort<'a> {
-    fn score(self: &Self, a: &'a str) -> u32;
-    fn sort<T: Sortable + 'static>(self: &Self) -> impl FnMut(&T, &T) -> std::cmp::Ordering;
+    fn score(&self, a: &'a str) -> u32;
+    fn sort<T: Sortable + 'static>(&self) -> impl FnMut(&T, &T) -> std::cmp::Ordering;
 }
 
 pub trait Sortable {
-    fn as_str<'a>(self: &'a Self) -> &'a str;
+    fn as_str(&self) -> &str;
 }
 
 #[cfg(test)]

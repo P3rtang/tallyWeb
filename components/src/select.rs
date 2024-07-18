@@ -9,7 +9,7 @@ pub struct SelectOption {
 }
 
 impl Sortable for SelectOption {
-    fn as_str<'a>(self: &'a Self) -> &'a str {
+    fn as_str(&self) -> &str {
         &self.name
     }
 }
@@ -145,9 +145,9 @@ pub fn SelectOver(
     });
 
     let selected_bg = move |idx: usize, option: SelectOption| {
-        if key_input().is_some() && idx == 0 {
-            "var(--accent, #3584E4)"
-        } else if key_input().is_none() && option.value == selection().value {
+        if key_input().is_some() && idx == 0
+            || key_input().is_none() && option.value == selection().value
+        {
             "var(--accent, #3584E4)"
         } else {
             ""
