@@ -1,0 +1,6 @@
+[package]
+name = "fuzzy-sort"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
