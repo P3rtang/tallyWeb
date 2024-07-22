@@ -1,5 +1,20 @@
 use super::*;
 
+pub async fn all_by_user(tx: &mut PgTx, user: uuid::Uuid) -> Result<Vec<DbCounter>, BackendError> {
+    let counters = sqlx::query_as!(
+        DbCounter,
+        r#"
+        SELECT * FROM counters
+        where owner_uuid = $1;
+        "#,
+        user,
+    )
+    .fetch_all(&mut **tx)
+    .await?;
+
+    Ok(counters)
+}
+
 pub async fn get_children(tx: &mut PgTx, key: uuid::Uuid) -> Result<Vec<DbPhase>, BackendError> {
     let last_child = sqlx::query_as!(
         DbPhase,

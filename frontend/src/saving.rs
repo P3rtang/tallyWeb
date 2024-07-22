@@ -24,8 +24,7 @@ pub async fn save_countables(
         match countable.kind() {
             CountableKind::Counter => {
                 let counter = countable
-                    .try_lock()
-                    .map_err(|_| AppError::LockMutex)?
+                    .try_lock()?
                     .as_any()
                     .downcast_ref::<Counter>()
                     .ok_or(AppError::Internal)?
@@ -36,8 +35,7 @@ pub async fn save_countables(
             }
             CountableKind::Phase => {
                 let phase = countable
-                    .try_lock()
-                    .map_err(|_| AppError::LockMutex)?
+                    .try_lock()?
                     .as_any()
                     .downcast_ref::<Phase>()
                     .ok_or(AppError::Internal)?

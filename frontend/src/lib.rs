@@ -7,7 +7,8 @@ use wasm_bindgen::{prelude::Closure, JsCast};
 
 pub mod app;
 mod session;
-pub(crate) use session::{SessionFormInput, UserSession};
+pub(crate) use session::SessionFormInput;
+pub use session::UserSession;
 mod screen;
 pub(crate) use screen::{ProvideScreenSignal, Screen, ScreenStyle};
 mod preferences;
@@ -24,7 +25,13 @@ pub(crate) mod saving;
 use countable::*;
 use saving::*;
 
+mod countable_v2;
+pub(crate) use countable_v2::{CountableStore, ProvideStore};
+
 use cfg_if::cfg_if;
+
+#[cfg(feature = "ssr")]
+pub mod middleware;
 
 cfg_if! {
     if #[cfg(feature = "hydrate")] {
@@ -74,7 +81,7 @@ pub enum AppError {
     #[error("User data not found")]
     UserNotFound,
     #[error("Failed to lock a Countable Mutex")]
-    LockMutex,
+    LockMutex(String),
     #[error("Error connecting to db pool\nGot Error: {0}")]
     DbConnection(String),
     #[error("Error extracting actix web data\nGot Error: {0}")]
@@ -85,6 +92,8 @@ pub enum AppError {
     ActixError(String),
     #[error("Missing Session cookie")]
     MissingSession,
+    #[error("Invalid Session cookie")]
+    InvalidSession(String),
     #[error("Internal error converting to Any type")]
     AnyConversion,
     #[error("No Connection")]
@@ -93,6 +102,10 @@ pub enum AppError {
     ServerError(String),
     #[error("Unable to get window size, Got: {0}")]
     WindowSize(String),
+    #[error("Url payload error")]
+    UrlPayload,
+    #[error("{0}: cannot contain children")]
+    CannotContainChildren(String),
 }
 
 impl From<gloo_storage::errors::StorageError> for AppError {
@@ -109,6 +122,34 @@ impl From<leptos::ServerFnError> for AppError {
             _ => serde_json::from_str(&value.to_string())
                 .unwrap_or(AppError::ServerError(value.to_string())),
         }
+    }
+}
+
+impl From<serde_qs::Error> for AppError {
+    fn from(_: serde_qs::Error) -> Self {
+        Self::UrlPayload
+    }
+}
+
+#[cfg(feature = "ssr")]
+impl Into<actix_web::Error> for AppError {
+    fn into(self) -> actix_web::Error {
+        match self {
+            AppError::MissingToken => actix_web::error::ErrorBadRequest(self),
+            _ => todo!(),
+        }
+    }
+}
+
+impl<T> From<std::sync::TryLockError<std::sync::MutexGuard<'_, T>>> for AppError {
+    fn from(value: std::sync::TryLockError<std::sync::MutexGuard<'_, T>>) -> Self {
+        Self::LockMutex(value.to_string())
+    }
+}
+
+impl<T> From<std::sync::PoisonError<std::sync::MutexGuard<'_, T>>> for AppError {
+    fn from(value: std::sync::PoisonError<std::sync::MutexGuard<'_, T>>) -> Self {
+        Self::LockMutex(value.to_string())
     }
 }
 

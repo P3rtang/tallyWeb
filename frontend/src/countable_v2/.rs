@@ -146,7 +146,7 @@ impl ArcCountable {
     }
 
     pub fn as_any(&self) -> Result<Box<dyn core::any::Any + 'static>, AppError> {
-        let c = self.0.try_lock()?;
+        let c = self.0.try_lock().map_err(|_| AppError::LockMutex)?;
         Ok(c.box_any())
     }
 

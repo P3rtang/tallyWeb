@@ -373,7 +373,7 @@ pub async fn get_user_preferences(session: UserSession) -> Result<Preferences, S
     Ok(Preferences::from(prefs))
 }
 
-#[server(SavePreferences, "/api")]
+#[server(SavePreferences, "/api/session")]
 pub async fn save_preferences(
     session_user_uuid: uuid::Uuid,
     session_username: String,

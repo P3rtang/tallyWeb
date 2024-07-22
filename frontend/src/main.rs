@@ -1,15 +1,14 @@
 #![allow(unused_imports)]
 
+use leptos::*;
 use std::io::Write;
 use std::process::Command;
 use std::thread;
 
-use frontend::*;
-use leptos::*;
-
 cfg_if::cfg_if! {
     if #[cfg(feature = "ssr")] {
         use actix_files::Files;
+        use frontend::{app, AppError, middleware as mw};
         use actix_web::*;
         use leptos_actix::{generate_route_list, LeptosRoutes};
         use actix_web::http::StatusCode;
@@ -32,7 +31,15 @@ cfg_if::cfg_if! {
 
                 App::new()
                     .wrap(actix_web::middleware::Condition::new(conf.leptos_options.env == leptos_config::Env::PROD, middleware::Compress::default()))
-                    .route("/api/{tail:.*}", leptos_actix::handle_server_fns())
+                    .service(
+                        web::scope("/api")
+                            .service(
+                                web::scope("/session")
+                                    .wrap(mw::CheckSession)
+                                    .route("/{tail:.*}", leptos_actix::handle_server_fns())
+                            )
+                            .route("/{tail:.*}", leptos_actix::handle_server_fns())
+                    )
                     .service(privacy_policy)
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
                     .service(Files::new("/fa", format!("{site_root}/font_awesome")))

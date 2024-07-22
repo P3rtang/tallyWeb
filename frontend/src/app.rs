@@ -63,7 +63,9 @@ pub fn App() -> impl IntoView {
                                     <ProvideScreenSignal>
                                         <ProvidePreferences>
                                             <ProvideCountableSignals>
-                                                <Outlet/>
+                                                <ProvideStore>
+                                                    <Outlet/>
+                                                </ProvideStore>
                                             </ProvideCountableSignals>
                                         </ProvidePreferences>
                                     </ProvideScreenSignal>

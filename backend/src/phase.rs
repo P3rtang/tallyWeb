@@ -1,5 +1,32 @@
 use super::*;
 
+pub async fn all_by_user(tx: &mut PgTx, user: uuid::Uuid) -> Result<Vec<DbPhase>, BackendError> {
+    let phases = sqlx::query_as!(
+        DbPhase,
+        r#"
+        SELECT 
+            uuid,
+            owner_uuid,
+            parent_uuid,
+            name,
+            count,
+            time,
+            has_charm,
+            hunt_type as "hunt_type: Hunttype",
+            dexnav_encounters,
+            success,
+            created_at
+            FROM phases
+        where owner_uuid = $1;
+        "#,
+        user,
+    )
+    .fetch_all(&mut **tx)
+    .await?;
+
+    Ok(phases)
+}
+
 pub async fn set_name(tx: &mut PgTx, key: uuid::Uuid, name: &str) -> Result<(), BackendError> {
     sqlx::query!(
         r#"
