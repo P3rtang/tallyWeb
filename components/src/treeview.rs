@@ -169,7 +169,7 @@ where
     let tree_nodes = move || {
         nodes()
             .iter()
-            .filter_map(|n| selection_model.get_untracked().get_node(&key(&n)).cloned())
+            .filter_map(|n| selection_model.get_untracked().get_node(&key(n)).cloned())
             .collect::<Vec<_>>()
     };
 

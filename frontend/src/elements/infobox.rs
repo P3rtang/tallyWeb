@@ -11,11 +11,11 @@ stylance::import_style!(style, "infobox.module.scss");
 #[derive(Debug, Clone, Copy, Default)]
 pub struct IsActive(RwSignal<bool>);
 impl IsActive {
-    fn toggle(self: &Self) {
+    fn toggle(&self) {
         self.0.update(|b| *b = !*b)
     }
 
-    fn set(self: &Self, set: bool) {
+    fn set(&self, set: bool) {
         self.0.update(|b| *b = set);
     }
 }

@@ -16,9 +16,9 @@ impl SortMethod {
         &self,
     ) -> impl Fn(&CountableStore, &CountableId, &CountableId) -> std::cmp::Ordering {
         match self {
-            Self::Id(false) => |_: &CountableStore, a: &CountableId, b: &CountableId| a.cmp(&b),
+            Self::Id(false) => |_: &CountableStore, a: &CountableId, b: &CountableId| a.cmp(b),
             Self::Id(true) => {
-                |_: &CountableStore, a: &CountableId, b: &CountableId| a.cmp(&b).reverse()
+                |_: &CountableStore, a: &CountableId, b: &CountableId| a.cmp(b).reverse()
             }
             Self::Name(false) => |store: &CountableStore, a: &CountableId, b: &CountableId| {
                 store.name(a).cmp(&store.name(b))
@@ -87,14 +87,14 @@ impl From<String> for SortMethod {
     }
 }
 
-impl Into<&str> for SortMethod {
-    fn into(self) -> &'static str {
-        match self {
-            Self::Id(_) => "Id",
-            Self::Name(_) => "Name",
-            Self::Count(_) => "Count",
-            Self::Time(_) => "Time",
-            Self::CreatedAt(_) => "CreatedAt",
+impl From<SortMethod> for &str {
+    fn from(val: SortMethod) -> Self {
+        match val {
+            SortMethod::Id(_) => "Id",
+            SortMethod::Name(_) => "Name",
+            SortMethod::Count(_) => "Count",
+            SortMethod::Time(_) => "Time",
+            SortMethod::CreatedAt(_) => "CreatedAt",
         }
     }
 }

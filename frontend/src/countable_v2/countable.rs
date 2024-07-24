@@ -1,6 +1,5 @@
 use chrono::TimeDelta;
 use serde::{Deserialize, Serialize};
-use serde_with;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -22,20 +21,20 @@ impl CountableStore {
         }
     }
 
-    pub fn contains(self: &Self, countable: &CountableId) -> bool {
+    pub fn contains(&self, countable: &CountableId) -> bool {
         self.store.contains_key(countable)
     }
 
-    pub fn get(self: &Self, countable: &CountableId) -> Option<Countable> {
+    pub fn get(&self, countable: &CountableId) -> Option<Countable> {
         self.store.get(countable).cloned()
     }
 
-    pub fn len(self: &Self) -> usize {
+    pub fn len(&self) -> usize {
         self.store.len()
     }
 
     pub fn new_countable_checked(
-        self: &mut Self,
+        &mut self,
         name: &str,
         kind: CountableKind,
         parent: Option<CountableId>,
@@ -52,7 +51,7 @@ impl CountableStore {
     }
 
     pub fn new_countable(
-        self: &mut Self,
+        &mut self,
         name: &str,
         kind: CountableKind,
         parent: Option<CountableId>,
@@ -60,7 +59,7 @@ impl CountableStore {
         self.new_countable_checked(name, kind, parent).unwrap()
     }
 
-    pub fn root_nodes(self: &Self) -> Vec<Countable> {
+    pub fn root_nodes(&self) -> Vec<Countable> {
         self.store
             .values()
             .filter(|v| self.parent(&v.uuid().into()).is_none())
@@ -68,10 +67,7 @@ impl CountableStore {
             .collect()
     }
 
-    pub fn children_checked(
-        self: &Self,
-        countable: &CountableId,
-    ) -> Result<Vec<Countable>, AppError> {
+    pub fn children_checked(&self, countable: &CountableId) -> Result<Vec<Countable>, AppError> {
         Ok(
             match self
                 .store
@@ -90,28 +86,22 @@ impl CountableStore {
         )
     }
 
-    pub fn children(self: &Self, countable: &CountableId) -> Vec<Countable> {
+    pub fn children(&self, countable: &CountableId) -> Vec<Countable> {
         self.children_checked(countable).unwrap()
     }
 
-    pub fn parent_checked(
-        self: &Self,
-        countable: &CountableId,
-    ) -> Result<Option<Countable>, AppError> {
-        Ok(match self.store.get(&countable) {
-            Some(Countable::Counter(c)) => c
-                .lock()?
-                .parent
-                .map(|id| self.store.get(&id))
-                .flatten()
-                .cloned(),
+    pub fn parent_checked(&self, countable: &CountableId) -> Result<Option<Countable>, AppError> {
+        Ok(match self.store.get(countable) {
+            Some(Countable::Counter(c)) => {
+                c.lock()?.parent.and_then(|id| self.store.get(&id)).cloned()
+            }
             Some(Countable::Phase(p)) => self.store.get(&p.lock()?.parent).cloned(),
             Some(Countable::Chain(_)) => todo!(),
             None => None,
         })
     }
 
-    pub fn parent(self: &Self, countable: &CountableId) -> Option<Countable> {
+    pub fn parent(&self, countable: &CountableId) -> Option<Countable> {
         self.parent_checked(countable).unwrap()
     }
 
@@ -133,37 +123,35 @@ impl CountableStore {
         self.kind_checked(countable).unwrap()
     }
 
-    pub fn name_checked(self: &Self, countable: &CountableId) -> Result<String, AppError> {
-        Ok(self
-            .store
-            .get(&countable)
+    pub fn name_checked(&self, countable: &CountableId) -> Result<String, AppError> {
+        self.store
+            .get(countable)
             .ok_or(AppError::CountableNotFound)?
-            .name_checked()?)
+            .name_checked()
     }
 
-    pub fn name(self: &Self, countable: &CountableId) -> String {
+    pub fn name(&self, countable: &CountableId) -> String {
         self.name_checked(countable).unwrap()
     }
 
     pub fn set_name_checked(&self, countable: &CountableId, name: &str) -> Result<(), AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => c.lock()?.name = name.into(),
-                Countable::Phase(p) => p.lock()?.name = name.into(),
-                Countable::Chain(_) => todo!(),
-            },
-        )
+        match self
+            .store
+            .get(countable)
+            .ok_or(AppError::CountableNotFound)?
+        {
+            Countable::Counter(c) => c.lock()?.name = name.into(),
+            Countable::Phase(p) => p.lock()?.name = name.into(),
+            Countable::Chain(_) => todo!(),
+        };
+        Ok(())
     }
 
     pub fn set_name(&self, countable: &CountableId, name: &str) {
         self.set_name_checked(countable, name).unwrap()
     }
 
-    pub fn count_checked(self: &Self, countable: &CountableId) -> Result<i32, AppError> {
+    pub fn count_checked(&self, countable: &CountableId) -> Result<i32, AppError> {
         Ok(
             match self
                 .store
@@ -183,32 +171,24 @@ impl CountableStore {
         )
     }
 
-    pub fn count(self: &Self, countable: &CountableId) -> i32 {
+    pub fn count(&self, countable: &CountableId) -> i32 {
         self.count_checked(countable).unwrap()
     }
 
-    pub fn set_count_checked(
-        self: &Self,
-        countable: &CountableId,
-        count: i32,
-    ) -> Result<(), AppError> {
+    pub fn set_count_checked(&self, countable: &CountableId, count: i32) -> Result<(), AppError> {
         let diff = count - self.count_checked(countable)?;
         self.add_count_checked(countable, diff)?;
         Ok(())
     }
 
-    pub fn set_count(self: &Self, countable: &CountableId, count: i32) {
+    pub fn set_count(&self, countable: &CountableId, count: i32) {
         self.set_count_checked(countable, count).unwrap()
     }
 
-    pub fn add_count_checked(
-        self: &Self,
-        countable: &CountableId,
-        mut add: i32,
-    ) -> Result<(), AppError> {
+    pub fn add_count_checked(&self, countable: &CountableId, mut add: i32) -> Result<(), AppError> {
         match self
             .store
-            .get(&countable)
+            .get(countable)
             .ok_or(AppError::CountableNotFound)?
         {
             Countable::Counter(c) => {
@@ -231,14 +211,14 @@ impl CountableStore {
         Ok(())
     }
 
-    pub fn add_count(self: &Self, countable: &CountableId, add: i32) {
+    pub fn add_count(&self, countable: &CountableId, add: i32) {
         self.add_count_checked(countable, add).unwrap();
     }
 
-    pub fn time_checked(self: &Self, countable: &CountableId) -> Result<TimeDelta, AppError> {
+    pub fn time_checked(&self, countable: &CountableId) -> Result<TimeDelta, AppError> {
         match self
             .store
-            .get(&countable)
+            .get(countable)
             .ok_or(AppError::CountableNotFound)?
         {
             Countable::Counter(c) => {
@@ -253,12 +233,12 @@ impl CountableStore {
         }
     }
 
-    pub fn time(self: &Self, countable: &CountableId) -> TimeDelta {
+    pub fn time(&self, countable: &CountableId) -> TimeDelta {
         self.time_checked(countable).unwrap()
     }
 
     pub fn set_time_checked(
-        self: &Self,
+        &self,
         countable: &CountableId,
         time: TimeDelta,
     ) -> Result<(), AppError> {
@@ -267,18 +247,18 @@ impl CountableStore {
         Ok(())
     }
 
-    pub fn set_time(self: &Self, countable: &CountableId, time: TimeDelta) {
+    pub fn set_time(&self, countable: &CountableId, time: TimeDelta) {
         self.set_time_checked(countable, time).unwrap()
     }
 
     pub fn add_time_checked(
-        self: &Self,
+        &self,
         countable: &CountableId,
         mut add: TimeDelta,
     ) -> Result<(), AppError> {
         match self
             .store
-            .get(&countable)
+            .get(countable)
             .ok_or(AppError::CountableNotFound)?
         {
             Countable::Counter(c) => {
@@ -300,11 +280,11 @@ impl CountableStore {
         Ok(())
     }
 
-    pub fn add_time(self: &Self, countable: &CountableId, add: TimeDelta) {
+    pub fn add_time(&self, countable: &CountableId, add: TimeDelta) {
         self.add_time_checked(countable, add).unwrap();
     }
 
-    pub fn hunttype_checked(self: &Self, countable: &CountableId) -> Result<Hunttype, AppError> {
+    pub fn hunttype_checked(&self, countable: &CountableId) -> Result<Hunttype, AppError> {
         match self
             .store
             .get(countable)
@@ -315,8 +295,7 @@ impl CountableStore {
 
                 let ht = children
                     .first()
-                    .map(|child| self.hunttype_checked(child).ok())
-                    .flatten()
+                    .and_then(|child| self.hunttype_checked(child).ok())
                     .unwrap_or_default();
 
                 for child in children.iter() {
@@ -324,22 +303,22 @@ impl CountableStore {
                         return Ok(Hunttype::Mixed);
                     }
                 }
-                return Ok(ht);
+                Ok(ht)
             }
             Countable::Phase(p) => Ok(p.lock()?.hunt_type),
             Countable::Chain(_) => todo!(),
         }
     }
 
-    pub fn hunttype(self: &Self, countable: &CountableId) -> Hunttype {
+    pub fn hunttype(&self, countable: &CountableId) -> Hunttype {
         self.hunttype_checked(countable).unwrap()
     }
 
-    pub fn rolls_checked(self: &Self, countable: &CountableId) -> Result<usize, AppError> {
+    pub fn rolls_checked(&self, countable: &CountableId) -> Result<usize, AppError> {
         Ok(
             match self
                 .store
-                .get(&countable)
+                .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(c) => c
@@ -359,15 +338,15 @@ impl CountableStore {
         )
     }
 
-    pub fn rolls(self: &Self, countable: &CountableId) -> usize {
+    pub fn rolls(&self, countable: &CountableId) -> usize {
         self.rolls_checked(countable).unwrap()
     }
 
-    pub fn odds_checked(self: &Self, countable: &CountableId) -> Result<f64, AppError> {
+    pub fn odds_checked(&self, countable: &CountableId) -> Result<f64, AppError> {
         Ok(
             match self
                 .store
-                .get(&countable)
+                .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(c) => {
@@ -390,17 +369,17 @@ impl CountableStore {
         )
     }
 
-    pub fn odds(self: &Self, countable: &CountableId) -> f64 {
+    pub fn odds(&self, countable: &CountableId) -> f64 {
         self.odds_checked(countable).unwrap()
     }
 
-    pub fn progress_checked(self: &Self, countable: &CountableId) -> Result<f64, AppError> {
+    pub fn progress_checked(&self, countable: &CountableId) -> Result<f64, AppError> {
         let prob = 1.0 / self.odds_checked(countable)?;
         let rolls = self.rolls_checked(countable)?;
         Ok(
             match self
                 .store
-                .get(&countable)
+                .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(c) => {
@@ -420,15 +399,15 @@ impl CountableStore {
         )
     }
 
-    pub fn progress(self: &Self, countable: &CountableId) -> f64 {
+    pub fn progress(&self, countable: &CountableId) -> f64 {
         self.progress_checked(countable).unwrap()
     }
 
-    pub fn completed_checked(self: &Self, countable: &CountableId) -> Result<usize, AppError> {
+    pub fn completed_checked(&self, countable: &CountableId) -> Result<usize, AppError> {
         Ok(
             match self
                 .store
-                .get(&countable)
+                .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(c) => c
@@ -445,11 +424,11 @@ impl CountableStore {
         )
     }
 
-    pub fn has_charm_checked(self: &Self, countable: &CountableId) -> Result<bool, AppError> {
+    pub fn has_charm_checked(&self, countable: &CountableId) -> Result<bool, AppError> {
         Ok(
             match self
                 .store
-                .get(&countable)
+                .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(c) => {
@@ -465,23 +444,22 @@ impl CountableStore {
         )
     }
 
-    pub fn has_charm(self: &Self, countable: &CountableId) -> bool {
+    pub fn has_charm(&self, countable: &CountableId) -> bool {
         self.has_charm_checked(countable).unwrap()
     }
 
-    pub fn is_success_checked(self: &Self, countable: &CountableId) -> Result<bool, AppError> {
+    pub fn is_success_checked(&self, countable: &CountableId) -> Result<bool, AppError> {
         Ok(
             match self
                 .store
-                .get(&countable)
+                .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(c) => c
                     .lock()?
                     .children
                     .last()
-                    .map(|child| self.is_success_checked(child).ok())
-                    .flatten()
+                    .and_then(|child| self.is_success_checked(child).ok())
                     .unwrap_or_default(),
                 Countable::Phase(p) => p.lock()?.success,
                 Countable::Chain(_) => todo!(),
@@ -489,55 +467,53 @@ impl CountableStore {
         )
     }
 
-    pub fn is_success(self: &Self, countable: &CountableId) -> bool {
+    pub fn is_success(&self, countable: &CountableId) -> bool {
         self.is_success_checked(countable).unwrap()
     }
 
-    pub fn toggle_success_checked(self: &Self, countable: &CountableId) -> Result<(), AppError> {
-        Ok(
-            match self
-                .store
-                .get(&countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(_) => {}
-                Countable::Phase(p) => {
-                    let success = p.lock()?.success;
-                    p.lock()?.success = !success;
-                }
-                Countable::Chain(_) => todo!(),
-            },
-        )
+    pub fn toggle_success_checked(&self, countable: &CountableId) -> Result<(), AppError> {
+        match self
+            .store
+            .get(countable)
+            .ok_or(AppError::CountableNotFound)?
+        {
+            Countable::Counter(_) => {}
+            Countable::Phase(p) => {
+                let success = p.lock()?.success;
+                p.lock()?.success = !success;
+            }
+            Countable::Chain(_) => todo!(),
+        };
+        Ok(())
     }
 
-    pub fn toggle_success(self: &Self, countable: &CountableId) {
+    pub fn toggle_success(&self, countable: &CountableId) {
         self.toggle_success_checked(countable).unwrap()
     }
 
     pub fn created_at_checked(
-        self: &Self,
+        &self,
         countable: &CountableId,
     ) -> Result<chrono::NaiveDateTime, AppError> {
-        Ok(self
-            .store
+        self.store
             .get(countable)
             .ok_or(AppError::CountableNotFound)?
-            .created_at_checked()?)
+            .created_at_checked()
     }
 
-    pub fn created_at(self: &Self, countable: &CountableId) -> chrono::NaiveDateTime {
+    pub fn created_at(&self, countable: &CountableId) -> chrono::NaiveDateTime {
         self.created_at_checked(countable).unwrap()
     }
 }
 
 #[typetag::serde]
 impl Savable for CountableStore {
-    fn indexed_db_name(self: &Self) -> String {
+    fn indexed_db_name(&self) -> String {
         "CountableStore".into()
     }
 
     fn save_endpoint(
-        self: &Self,
+        &self,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
     {
         let cloned = self.clone();
@@ -549,12 +525,12 @@ impl Savable for CountableStore {
 
 #[typetag::serde]
 impl Savable for Vec<Countable> {
-    fn indexed_db_name(self: &Self) -> String {
+    fn indexed_db_name(&self) -> String {
         "CountableStore".into()
     }
 
     fn save_endpoint(
-        self: &Self,
+        &self,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
     {
         Box::pin(api::update_countable_many(self.clone()))
@@ -613,7 +589,7 @@ impl Countable {
         }
     }
 
-    pub fn add_child_checked(self: &Self, child: CountableId) -> Result<(), AppError> {
+    pub fn add_child_checked(&self, child: CountableId) -> Result<(), AppError> {
         match self {
             Countable::Counter(c) => {
                 c.lock()?.children.push(child);
@@ -624,11 +600,11 @@ impl Countable {
         }
     }
 
-    pub fn add_child(self: &Self, child: CountableId) {
+    pub fn add_child(&self, child: CountableId) {
         self.add_child_checked(child).unwrap()
     }
 
-    pub fn uuid_checked(self: &Self) -> Result<uuid::Uuid, AppError> {
+    pub fn uuid_checked(&self) -> Result<uuid::Uuid, AppError> {
         Ok(match self {
             Countable::Counter(c) => c.lock()?.uuid,
             Countable::Phase(p) => p.lock()?.uuid,
@@ -636,11 +612,11 @@ impl Countable {
         })
     }
 
-    pub fn uuid(self: &Self) -> uuid::Uuid {
+    pub fn uuid(&self) -> uuid::Uuid {
         self.uuid_checked().unwrap()
     }
 
-    pub fn name_checked(self: &Self) -> Result<String, AppError> {
+    pub fn name_checked(&self) -> Result<String, AppError> {
         Ok(match self {
             Countable::Counter(c) => c.lock()?.name.clone(),
             Countable::Phase(p) => p.lock()?.name.clone(),
@@ -648,11 +624,11 @@ impl Countable {
         })
     }
 
-    pub fn name(self: &Self) -> String {
+    pub fn name(&self) -> String {
         self.name_checked().unwrap()
     }
 
-    pub fn set_name_checked(self: &Self, name: &str) -> Result<(), AppError> {
+    pub fn set_name_checked(&self, name: &str) -> Result<(), AppError> {
         match self {
             Countable::Counter(c) => c.lock()?.name = name.into(),
             Countable::Phase(p) => p.lock()?.name = name.into(),
@@ -662,11 +638,11 @@ impl Countable {
         Ok(())
     }
 
-    pub fn set_name(self: &Self, name: &str) {
+    pub fn set_name(&self, name: &str) {
         self.set_name_checked(name).unwrap()
     }
 
-    pub fn created_at_checked(self: &Self) -> Result<chrono::NaiveDateTime, AppError> {
+    pub fn created_at_checked(&self) -> Result<chrono::NaiveDateTime, AppError> {
         Ok(match self {
             Countable::Counter(c) => c.lock()?.created_at,
             Countable::Phase(p) => p.lock()?.created_at,
@@ -674,7 +650,7 @@ impl Countable {
         })
     }
 
-    pub fn created_at(self: &Self) -> chrono::NaiveDateTime {
+    pub fn created_at(&self) -> chrono::NaiveDateTime {
         self.created_at_checked().unwrap()
     }
 }
@@ -861,35 +837,31 @@ pub enum Masuda {
 }
 
 impl Hunttype {
-    fn rolls(self: &Self) -> impl Fn(i32, bool) -> usize {
+    fn rolls(&self) -> impl Fn(i32, bool) -> usize {
         match self {
             Hunttype::OldOdds => {
-                |count, has_charm: bool| (count * has_charm.then_some(3).unwrap_or(1)) as usize
+                |count, has_charm: bool| (count * if has_charm { 3 } else { 1 }) as usize
             }
             Hunttype::NewOdds => {
-                |count, has_charm: bool| (count * has_charm.then_some(3).unwrap_or(1)) as usize
+                |count, has_charm: bool| (count * if has_charm { 3 } else { 1 }) as usize
             }
             Hunttype::SOS => |count, has_charm: bool| match count {
-                c if c < 10 => (count * has_charm.then_some(3).unwrap_or(1)) as usize,
-                c if c < 20 => {
-                    (10 + (count - 10) * has_charm.then_some(3 + 4).unwrap_or(1 + 4)) as usize
-                }
-                c if c < 30 => {
-                    (60 + (count - 20) * has_charm.then_some(3 + 8).unwrap_or(1 + 8)) as usize
-                }
-                _ => (50 + (count - 30) * has_charm.then_some(3 + 13).unwrap_or(1 + 12)) as usize,
+                c if c < 10 => (count * if has_charm { 3 } else { 1 }) as usize,
+                c if c < 20 => (10 + (count - 10) * if has_charm { 3 + 4 } else { 1 + 4 }) as usize,
+                c if c < 30 => (60 + (count - 20) * if has_charm { 3 + 8 } else { 1 + 8 }) as usize,
+                _ => (50 + (count - 30) * if has_charm { 3 + 13 } else { 1 + 12 }) as usize,
             },
-            Hunttype::Masuda(Masuda::GenIV) => |count, has_charm: bool| {
-                (count * has_charm.then_some(3 + 4).unwrap_or(1 + 4)) as usize
-            },
-            Hunttype::Masuda(_) => |count, has_charm: bool| {
-                (count * has_charm.then_some(3 + 5).unwrap_or(1 + 5)) as usize
-            },
+            Hunttype::Masuda(Masuda::GenIV) => {
+                |count, has_charm: bool| (count * if has_charm { 3 + 4 } else { 1 + 4 }) as usize
+            }
+            Hunttype::Masuda(_) => {
+                |count, has_charm: bool| (count * if has_charm { 3 + 5 } else { 1 + 5 }) as usize
+            }
             Hunttype::Mixed => unreachable!(),
         }
     }
 
-    fn odds(self: &Self) -> f64 {
+    fn odds(&self) -> f64 {
         match self {
             Hunttype::OldOdds | Hunttype::Masuda(Masuda::GenIV) => 8192.0,
             _ => 4096.0,
@@ -943,7 +915,7 @@ impl TryFrom<String> for Hunttype {
 
 impl From<Hunttype> for components::SelectOption {
     fn from(val: Hunttype) -> Self {
-        (val.repr(), val.clone().into()).into()
+        (val.repr(), val.into()).into()
     }
 }
 

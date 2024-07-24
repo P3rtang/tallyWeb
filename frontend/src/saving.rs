@@ -3,9 +3,9 @@ use leptos::{create_action, create_effect, expect_context, view};
 
 #[typetag::serde(tag = "type")]
 pub trait Savable {
-    fn indexed_db_name(self: &Self) -> String;
+    fn indexed_db_name(&self) -> String;
     fn save_endpoint(
-        self: &Self,
+        &self,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>;
 }
 
@@ -41,6 +41,7 @@ impl SaveHandler {
     ) -> Result<(), AppError> {
         let msg = expect_context::<components::MessageJar>();
 
+        #[allow(clippy::borrowed_box)]
         let action = create_action(move |val: &Box<dyn Savable>| val.save_endpoint());
         action.dispatch(value);
 
@@ -73,8 +74,5 @@ impl SaveHandler {
 }
 
 fn is_offline(err: &leptos::ServerFnError) -> bool {
-    match err {
-        leptos::ServerFnError::Request(_) => true,
-        _ => false,
-    }
+    matches!(err, leptos::ServerFnError::Request(_))
 }
