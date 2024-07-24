@@ -13,7 +13,7 @@ mod tooltip;
 mod treeview;
 
 pub use loading_screen::*;
-pub use message::*;
+pub use message::{MessageKey, ProvideMessageSystem};
 pub use progressbar::*;
 pub use resizebar::{Direction, ResizeBar};
 pub use saving_screen::*;
@@ -23,6 +23,8 @@ pub use slider::*;
 pub use spinner::*;
 pub use tooltip::*;
 pub use treeview::*;
+
+pub type MessageJar = message::MessageJar<message::NoHandle>;
 
 use leptos::{logging::warn, *};
 

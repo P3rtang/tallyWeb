@@ -28,22 +28,32 @@ impl NotificationKind {
     }
 }
 
+pub trait Handle: Clone + Copy + 'static {}
 #[derive(Debug, Clone, Copy)]
-pub struct MessageJar {
+pub struct WithHandle;
+impl Handle for WithHandle {}
+#[derive(Debug, Clone, Copy)]
+pub struct NoHandle;
+impl Handle for NoHandle {}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MessageJar<T: Handle> {
     messages: RwSignal<HashMap<MessageKey, Notification>>,
     reset_time: Option<Duration>,
     next_key: RwSignal<MessageKey>,
     as_modal: bool,
+    phantomdata: std::marker::PhantomData<T>,
 }
 
 #[allow(dead_code)]
-impl MessageJar {
+impl<T: Handle + 'static> MessageJar<T> {
     pub fn new(reset_time: Duration) -> Self {
         Self {
             messages: HashMap::new().into(),
             reset_time: Some(reset_time),
             as_modal: false,
             next_key: 0.into(),
+            phantomdata: std::marker::PhantomData {},
         }
     }
 
@@ -121,27 +131,29 @@ impl MessageJar {
     pub fn get_last_key(self) -> Signal<MessageKey> {
         Signal::derive(self.next_key)
     }
+}
+
+impl MessageJar<NoHandle> {
+    pub fn with_handle(self) -> MessageJar<WithHandle> {
+        unsafe { std::mem::transmute(self) }
+    }
 
     pub fn set_msg(self, msg: impl ToString) {
         let msg = msg.to_string();
-        create_effect(move |_| {
-            let msg_lines = msg.lines();
-            let key = self.add_msg(NotificationKind::Message(
-                self.as_modal,
-                msg_lines
-                    .map(|l| view! { <b>{l.to_string()}</b> })
-                    .collect_view(),
-            ));
-            self.msg_timeout_effect(key);
-        });
+        let msg_lines = msg.lines();
+        let key = self.add_msg(NotificationKind::Message(
+            self.as_modal,
+            msg_lines
+                .map(|l| view! { <b>{l.to_string()}</b> })
+                .collect_view(),
+        ));
+        self.msg_timeout_effect(key);
     }
 
     pub fn set_msg_view(self, msg: impl IntoView + 'static) {
         let msg = msg.into_view();
-        create_effect(move |_| {
-            let key = self.add_msg(NotificationKind::Message(self.as_modal, msg.clone()));
-            self.msg_timeout_effect(key);
-        });
+        let key = self.add_msg(NotificationKind::Message(self.as_modal, msg.clone()));
+        self.msg_timeout_effect(key);
     }
 
     pub fn set_success(&self, msg: &str) {
@@ -163,35 +175,117 @@ impl MessageJar {
 
     pub fn set_err(self, err: impl ToString) {
         let err = err.to_string();
-        create_effect(move |_| {
-            let msg_lines = err.lines();
-            let key = self.add_msg(NotificationKind::Error(
-                self.as_modal,
-                msg_lines
-                    .map(|l| view! { <b>{l.to_string()}</b> })
-                    .collect_view(),
-            ));
-            self.msg_timeout_effect(key)
-        });
+        let msg_lines = err.lines();
+        let key = self.add_msg(NotificationKind::Error(
+            self.as_modal,
+            msg_lines
+                .map(|l| view! { <b>{l.to_string()}</b> })
+                .collect_view(),
+        ));
+        self.msg_timeout_effect(key);
     }
 
     pub fn set_err_view(&self, err: impl IntoView) {
         let key = self.add_msg(NotificationKind::Error(self.as_modal, err.into_view()));
         self.msg_timeout_effect(key)
     }
+
+    pub fn set_server_err(&self, err: &leptos::ServerFnError) {
+        match err {
+            ServerFnError::WrappedServerError(e) => self.set_err(e),
+            ServerFnError::Registration(e) => self.set_err(e),
+            ServerFnError::Request(e) => self.set_err(e),
+            ServerFnError::Response(e) => self.set_err(e),
+            ServerFnError::ServerError(e) => self.set_err(e),
+            ServerFnError::Deserialization(e) => self.set_err(e),
+            ServerFnError::Serialization(e) => self.set_err(e),
+            ServerFnError::Args(e) => self.set_err(e),
+            ServerFnError::MissingArg(e) => self.set_err(e),
+        }
+    }
+}
+
+impl MessageJar<WithHandle> {
+    pub fn set_msg(self, msg: impl ToString) -> MessageKey {
+        let msg = msg.to_string();
+        let msg_lines = msg.lines();
+        let key = self.add_msg(NotificationKind::Message(
+            self.as_modal,
+            msg_lines
+                .map(|l| view! { <b>{l.to_string()}</b> })
+                .collect_view(),
+        ));
+        self.msg_timeout_effect(key);
+        key
+    }
+
+    pub fn set_msg_view(self, msg: impl IntoView + 'static) -> MessageKey {
+        let msg = msg.into_view();
+        let key = self.add_msg(NotificationKind::Message(self.as_modal, msg.clone()));
+        self.msg_timeout_effect(key);
+        key
+    }
+
+    pub fn set_success(&self, msg: &str) -> MessageKey {
+        let msg_lines = msg.lines();
+        let key = self.add_msg(NotificationKind::Success(
+            self.as_modal,
+            msg_lines
+                .map(|l| view! { <b>{l.to_string()}</b> })
+                .collect_view(),
+        ));
+
+        self.msg_timeout_effect(key);
+        key
+    }
+
+    pub fn set_success_view(&self, msg: impl IntoView) -> MessageKey {
+        let key = self.add_msg(NotificationKind::Success(self.as_modal, msg.into_view()));
+        self.msg_timeout_effect(key);
+        key
+    }
+
+    pub fn set_err(self, err: impl ToString) -> MessageKey {
+        let err = err.to_string();
+        let msg_lines = err.lines();
+        let key = self.add_msg(NotificationKind::Error(
+            self.as_modal,
+            msg_lines
+                .map(|l| view! { <b>{l.to_string()}</b> })
+                .collect_view(),
+        ));
+        self.msg_timeout_effect(key);
+        key
+    }
+
+    pub fn set_err_view(&self, err: impl IntoView) -> MessageKey {
+        let key = self.add_msg(NotificationKind::Error(self.as_modal, err.into_view()));
+        self.msg_timeout_effect(key);
+        key
+    }
+
+    pub fn set_server_err(&self, err: &leptos::ServerFnError) -> MessageKey {
+        match err {
+            ServerFnError::WrappedServerError(e) => self.set_err(e),
+            ServerFnError::Registration(e) => self.set_err(e),
+            ServerFnError::Request(e) => self.set_err(e),
+            ServerFnError::Response(e) => self.set_err(e),
+            ServerFnError::ServerError(e) => self.set_err(e),
+            ServerFnError::Deserialization(e) => self.set_err(e),
+            ServerFnError::Serialization(e) => self.set_err(e),
+            ServerFnError::Args(e) => self.set_err(e),
+            ServerFnError::MissingArg(e) => self.set_err(e),
+        }
+    }
 }
 
 #[component]
-fn Message(key: MessageKey) -> impl IntoView {
-    let msg_box = expect_context::<MessageJar>();
-
-    if !msg_box.messages.get_untracked().contains_key(&key) {
+fn Message(key: MessageKey, jar: MessageJar<NoHandle>) -> impl IntoView {
+    if !jar.messages.get_untracked().contains_key(&key) {
         return view! {}.into_view();
     }
 
-    let kind = create_read_slice(msg_box.messages, move |map| {
-        map.get(&key).unwrap().kind.clone()
-    });
+    let kind = create_read_slice(jar.messages, move |map| map.get(&key).unwrap().kind.clone());
 
     let border_style = move || match kind() {
         NotificationKind::Message(_, _) => "border: 2px solid #ffe135",
@@ -217,7 +311,7 @@ fn Message(key: MessageKey) -> impl IntoView {
         }
     });
 
-    let dialog_class = create_read_slice(msg_box.messages, move |map| {
+    let dialog_class = create_read_slice(jar.messages, move |map| {
         if map.get(&key).unwrap().do_fade {
             String::from("fade-out")
         } else {
@@ -227,11 +321,11 @@ fn Message(key: MessageKey) -> impl IntoView {
 
     let on_close_click = move |ev: ev::MouseEvent| {
         ev.stop_propagation();
-        msg_box.fade_out(key)
+        jar.fade_out(key)
     };
 
     let on_animend = move |_| {
-        msg_box.messages.update(|m| {
+        jar.messages.update(|m| {
             m.remove(&key);
         })
     };
@@ -273,8 +367,8 @@ pub fn ProvideMessageSystem() -> impl IntoView {
                 <For
                     each=move || msg_jar.get_ordered().get().into_iter().rev()
                     key=|(key, _)| *key
-                    children=|(key, _)| {
-                        view! { <Message key/> }
+                    children=move |(key, _)| {
+                        view! { <Message key jar=msg_jar/> }
                     }
                 />
 
