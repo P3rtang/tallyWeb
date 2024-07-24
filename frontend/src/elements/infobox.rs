@@ -8,9 +8,22 @@ use web_sys::MouseEvent;
 
 stylance::import_style!(style, "infobox.module.scss");
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct IsActive(RwSignal<bool>);
+impl IsActive {
+    fn toggle(self: &Self) {
+        self.0.update(|b| *b = !*b)
+    }
+
+    fn set(self: &Self, set: bool) {
+        self.0.update(|b| *b = set);
+    }
+}
+
 #[component]
 pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl IntoView {
     let screen = expect_context::<Screen>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
     let show_multiple = move || countable_list().len() > 1;
     let show_title = move || !((screen.style)() == ScreenStyle::Portrait || show_multiple());
@@ -22,19 +35,23 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl In
                 each=countable_list
                 key=|key| *key
                 children=move |key| {
+                    let is_active = IsActive::default();
+                    provide_context(is_active);
                     view! {
-                        <div class=style::row>
-                            <Show when=show_multiple>
-                                <Title key/>
-                            </Show>
-                            <Count expand=show_multiple key show_title/>
-                            <Time expand=show_multiple key show_title/>
-                            <Show when=multi_narrow>
-                                <Progress expand=|| true key show_title/>
-                                <LastStep expand=show_multiple key show_title/>
-                                <AverageStep expand=show_multiple key show_title/>
-                            </Show>
-                        </div>
+                        <Show when=move || store().contains(&key.into())>
+                            <div class=style::row>
+                                <Show when=show_multiple>
+                                    <Title key/>
+                                </Show>
+                                <Count expand=show_multiple key show_title/>
+                                <Time expand=show_multiple key show_title/>
+                                <Show when=multi_narrow>
+                                    <Progress expand=|| true key show_title/>
+                                    <LastStep expand=show_multiple key show_title/>
+                                    <AverageStep expand=show_multiple key show_title/>
+                                </Show>
+                            </div>
+                        </Show>
                     }
                 }
             />
@@ -76,7 +93,7 @@ fn Title(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
     let state = expect_context::<SelectionSignal>();
 
     let get_name = create_read_slice(state, move |state| {
-        state.get(&key()).map(|c| c.get_name()).unwrap_or_default()
+        state.get(&key()).map(|c| c.name()).unwrap_or_default()
     });
 
     view! {
@@ -103,56 +120,32 @@ where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
 {
-    let user = expect_context::<RwSignal<UserSession>>();
-    let state = expect_context::<SelectionSignal>();
-
-    let get_name = create_read_slice(state, move |state| {
-        state.get(&key()).map(|c| c.get_name()).unwrap_or_default()
-    });
-
-    let toggle_paused = create_write_slice(state, move |s, _| {
-        if let Some(item) = s.get_mut(&key()) {
-            item.set_active(!item.is_active());
-            let save_handler = expect_context::<SaveHandlerCountable>();
-            save_handler.add_countable(item.clone().into());
-            save_handler.save(user.get_untracked())
-        }
-    });
-
-    let unpause = create_write_slice(state, move |s, _| {
-        if let Some(item) = s.get_mut(&key()) {
-            item.set_active(true)
-        };
-    });
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let is_active = expect_context::<IsActive>();
+    let name = create_read_slice(store, move |s| s.name(&key().into()));
 
     let (get_count, add_count) = create_slice(
-        state,
-        move |state| state.get(&key()).map(|c| c.get_count()).unwrap_or_default(),
-        move |state, count| {
-            if let Some(c) = state.get(&key()) {
-                c.add_count(count);
-                let save_handler = expect_context::<SaveHandlerCountable>();
-                save_handler.add_countable(c.clone().into());
-            }
-        },
+        store,
+        move |s| s.count(&key().into()),
+        move |s, count| s.add_count(&key().into(), count),
     );
 
     let key_listener = window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
         "Equal" => {
-            unpause(());
+            is_active.set(true);
             add_count(1);
         }
         "Minus" => {
             add_count(-1);
         }
-        "KeyP" => toggle_paused(()),
+        "KeyP" => is_active.toggle(),
         _ => {}
     });
 
     on_cleanup(|| key_listener.remove());
 
     let on_count_click = move |_| {
-        unpause(());
+        is_active.set(true);
         add_count(1);
     };
 
@@ -177,7 +170,7 @@ where
                 class=style::title
                 style:display=move || if show_title() { "block" } else { "none" }
             >
-                {get_name}
+                {name}
             </span>
             <span class=style::info data-testid="info">
                 {get_count}
@@ -192,26 +185,40 @@ where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
 {
-    let state = expect_context::<SelectionSignal>();
-    let user = expect_context::<RwSignal<UserSession>>();
+    let is_active = expect_context::<IsActive>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
-    let toggle_paused = create_write_slice(state, move |s, _| {
-        if let Some(item) = s.get_mut(&key()) {
-            item.set_active(!item.is_active());
-            let save_handler = expect_context::<SaveHandlerCountable>();
-            save_handler.add_countable(item.clone().into());
-            save_handler.save(user.get_untracked())
-        }
-    });
+    #[allow(unused_variables)]
+    let (time, add_time) = create_slice(
+        store,
+        move |s| format_time(s.time(&key().into())),
+        move |s, add| s.add_time(&key().into(), add),
+    );
 
-    let time = create_read_slice(state, move |state| {
-        format_time(
-            state
-                .get(&key())
-                .map(|c| c.get_time())
-                .unwrap_or(Duration::zero()),
-        )
-    });
+    #[cfg(not(feature = "ssr"))] // run timer only on client
+    {
+        let time = create_signal(0_u32);
+        let calc_interval =
+            |now: u32, old: u32| Duration::milliseconds(((1000 + now - old) % 1000).into());
+
+        let handle = set_interval_with_handle(
+            move || {
+                let interval = calc_interval(
+                    js_sys::Date::new_0().get_milliseconds(),
+                    time.0.try_get().unwrap_or_default(),
+                );
+                if (is_active.0)() {
+                    add_time(interval);
+                }
+                time.1.try_set(js_sys::Date::new_0().get_milliseconds());
+            },
+            std::time::Duration::from_millis(30),
+        );
+
+        on_cleanup(|| {
+            let _ = handle.map(|h| h.clear());
+        });
+    }
 
     let class = move || {
         stylance::classes! {
@@ -221,7 +228,7 @@ where
     };
 
     view! {
-        <div class=class on:click=toggle_paused data-testid="box">
+        <div class=class on:click=move |_| is_active.toggle() data-testid="box">
             <span
                 class=style::title
                 style:display=move || if show_title() { "block" } else { "none" }
@@ -245,26 +252,15 @@ where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
 {
-    let state = expect_context::<SelectionSignal>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
-    let progress = create_read_slice(state, move |state| {
-        state
-            .get(&key())
-            .map(|c| c.get_progress())
-            .unwrap_or_default()
-    });
-
-    let rolls = create_read_slice(state, move |state| {
-        state.get(&key()).map(|c| c.get_rolls()).unwrap_or_default()
-    });
-
-    let odds = create_read_slice(state, move |state| {
-        state.get(&key()).map(|c| c.get_odds()).unwrap_or_default()
-    });
+    let progress = create_read_slice(store, move |s| s.progress(&key.get_untracked().into()));
+    let rolls = create_read_slice(store, move |s| s.rolls(&key.get_untracked().into()));
+    let odds = create_read_slice(store, move |s| s.odds(&key().into()));
 
     let color = move || match progress() {
         num if num < 0.5 => "#50fa7b",
-        num if num < 0.75 && rolls() < odds() => "#fcff10",
+        num if num < 0.75 && rolls() < odds() as usize => "#fcff10",
         num if num < 0.75 => "#ffb86c",
         _ => "#ff9580",
     };
@@ -303,24 +299,15 @@ where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
 {
-    let state = expect_context::<SelectionSignal>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
     let format_time = |millis: Option<Duration>| match millis {
         None => String::from("---"),
         Some(m) => short_format_time(m),
     };
 
-    let on_count = create_read_slice(state, move |state| {
-        state.get(&key()).map(|c| c.get_count()).unwrap_or_default()
-    });
-
-    let time = create_read_slice(state, move |state| {
-        state
-            .get(&key())
-            .map(|c| c.get_time())
-            .unwrap_or(Duration::zero())
-    });
-
+    let on_count = create_read_slice(store, move |s| s.count(&key().into()));
+    let time = create_read_slice(store, move |s| s.time(&key().into()));
     let last_interaction = create_rw_signal(None::<i64>);
 
     let class = move || {
@@ -369,18 +356,10 @@ where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
 {
-    let state = expect_context::<SelectionSignal>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
-    let count = create_read_slice(state, move |state| {
-        state.get(&key()).map(|c| c.get_count()).unwrap_or_default()
-    });
-
-    let time = create_read_slice(state, move |state| {
-        state
-            .get(&key())
-            .map(|c| c.get_time())
-            .unwrap_or(Duration::zero())
-    });
+    let count = create_read_slice(store, move |s| s.count(&key().into()));
+    let time = create_read_slice(store, move |s| s.time(&key().into()));
 
     let step = move || Duration::milliseconds(time().num_milliseconds() / count() as i64);
 

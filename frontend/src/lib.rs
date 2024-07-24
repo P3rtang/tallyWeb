@@ -17,16 +17,14 @@ mod tests;
 pub(crate) use tests::*;
 
 pub(crate) mod api;
-mod countable;
 pub(crate) mod elements;
 mod pages;
 pub(crate) mod saving;
 
-use countable::*;
 use saving::*;
 
 mod countable_v2;
-pub(crate) use countable_v2::{CountableStore, ProvideStore};
+pub(crate) use countable_v2::*;
 
 use cfg_if::cfg_if;
 
@@ -52,8 +50,9 @@ cfg_if! {
     }
 }
 
-pub type SelectionSignal = leptos::RwSignal<components::SelectionModel<uuid::Uuid, ArcCountable>>;
-pub type StateResource = leptos::Resource<UserSession, Vec<SerCounter>>;
+pub type SelectionSignal = leptos::RwSignal<components::SelectionModel<uuid::Uuid, Countable>>;
+pub type StateResource =
+    leptos::Resource<UserSession, Result<CountableStore, leptos::ServerFnError>>;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, thiserror::Error, Default, serde::Serialize, serde::Deserialize,
@@ -106,6 +105,10 @@ pub enum AppError {
     UrlPayload,
     #[error("{0}: cannot contain children")]
     CannotContainChildren(String),
+    #[error("Could not find requested countable id")]
+    CountableNotFound,
+    #[error("Unauthorized")]
+    Unauthorized,
 }
 
 impl From<gloo_storage::errors::StorageError> for AppError {

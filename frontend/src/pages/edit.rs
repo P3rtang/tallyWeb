@@ -2,7 +2,7 @@
 use components::{
     MessageJar, Select, SelectionModel, ShowSidebar, Sidebar, SidebarLayout, TreeViewWidget,
 };
-use elements::{Navbar, SortSearch};
+use elements::{Navbar, SortMethod, SortSearch};
 use leptos::*;
 use leptos_router::{use_params, ActionForm, Outlet, Params, A};
 
@@ -17,12 +17,13 @@ stylance::import_style!(
 #[component]
 pub fn EditWindow() -> impl IntoView {
     let preferences = expect_context::<RwSignal<Preferences>>();
-    let counters = expect_context::<RwSignal<CounterList>>();
+    let store = expect_context::<RwSignal<CountableStore>>();
     let screen = expect_context::<Screen>();
+    let sort_method = expect_context::<RwSignal<SortMethod>>();
 
     let sidebar_layout: Signal<SidebarLayout> = create_read_slice(screen.style, |s| (*s).into());
 
-    let selection = create_rw_signal(SelectionModel::<uuid::Uuid, ArcCountable>::new());
+    let selection = create_rw_signal(SelectionModel::<uuid::Uuid, Countable>::new());
     provide_context(selection);
 
     let width = create_rw_signal(400);
@@ -63,18 +64,35 @@ pub fn EditWindow() -> impl IntoView {
         <div style:display="flex">
             <Sidebar display=show_sidebar layout=sidebar_layout width>
                 <nav>
-                    <SortSearch list=counters shown=show_sort_search/>
+                    <SortSearch shown=show_sort_search/>
                 </nav>
                 <TreeViewWidget
-                    each=move || { counters.get().get_filtered_list() }
-                    key=|countable| countable.get_uuid()
+                    each=move || {
+                        let mut root_nodes = store().root_nodes();
+                        root_nodes
+                            .sort_by(|a, b| sort_method()
+                                .sort_by()(
+                                &store.get_untracked(),
+                                &a.uuid().into(),
+                                &b.uuid().into(),
+                            ));
+                        root_nodes
+                    }
+
+                    key=|countable| countable.uuid()
                     each_child=move |countable| {
-                        let mut children = countable.get_children();
-                        children.sort_by(counters.get().sort.sort_by());
+                        let mut children = store().children(&countable.uuid().into());
+                        children
+                            .sort_by(|a, b| sort_method()
+                                .sort_by()(
+                                &store.get_untracked(),
+                                &a.uuid().into(),
+                                &b.uuid().into(),
+                            ));
                         children
                     }
 
-                    view=|key| view! { <TreeViewRow key/> }
+                    view=|countable| view! { <TreeViewRow key=countable.uuid()/> }
                     show_separator=show_sep
                     selection_model=selection
                 />
@@ -92,14 +110,8 @@ pub fn EditWindow() -> impl IntoView {
 
 #[component]
 fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
-    let counters = expect_context::<RwSignal<CounterList>>();
-    let name = move || {
-        counters()
-            .flat
-            .get(&key)
-            .map(|c| c.get_name())
-            .unwrap_or_default()
-    };
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let name = move || store().name(&key.into());
 
     view! {
         <A href=move || key.to_string()>
@@ -112,8 +124,8 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
 
 #[component]
 pub fn EditCountableWindow() -> impl IntoView {
-    let selection = expect_context::<RwSignal<SelectionModel<uuid::Uuid, ArcCountable>>>();
-    let counters = expect_context::<RwSignal<CounterList>>();
+    let selection = expect_context::<SelectionSignal>();
+    let store = expect_context::<RwSignal<CountableStore>>();
     let screen = expect_context::<Screen>();
 
     let key_memo = create_memo(move |old_key| {
@@ -141,9 +153,7 @@ pub fn EditCountableWindow() -> impl IntoView {
         )
     };
 
-    let valid = move || counters().flat.contains_key(&key_memo());
-
-    create_isomorphic_effect(move |_| key_memo.track());
+    let valid = move || store().contains(&key_memo().into());
 
     view! {
         <h1 style:color="white" style:padding="12px 48px">
@@ -168,28 +178,30 @@ struct Key {
 fn EditCounterBox(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
     let rs = expect_context::<StateResource>();
     let session = expect_context::<RwSignal<UserSession>>();
-    let counters = expect_context::<RwSignal<CounterList>>();
+    let store = expect_context::<RwSignal<CountableStore>>();
     let msg = expect_context::<MessageJar>();
     let action = create_server_action::<api::EditCountableForm>();
     let screen = expect_context::<Screen>();
 
-    let kind = create_read_slice(counters, move |c| c.flat[&key()].kind());
+    let kind = create_read_slice(store, move |s| s.kind(&key().into()));
 
     create_effect(move |_| match action.value()() {
         Some(Ok(_)) => {
             leptos_router::use_navigate()(format!("/{}", key()).as_str(), Default::default())
         }
-        Some(Err(err)) => match err {
-            ServerFnError::WrappedServerError(err) => msg.set_err(err),
-            ServerFnError::Registration(err) => msg.set_err(err),
-            ServerFnError::Request(_) => msg.set_err("Could not reach server"),
-            ServerFnError::Response(err) => msg.set_err(err),
-            ServerFnError::ServerError(err) => msg.set_err(err),
-            ServerFnError::Deserialization(err) => msg.set_err(err),
-            ServerFnError::Serialization(err) => msg.set_err(err),
-            ServerFnError::Args(err) => msg.set_err(err),
-            ServerFnError::MissingArg(err) => msg.set_err(err),
-        },
+        Some(Err(err)) => {
+            match err {
+                ServerFnError::WrappedServerError(err) => msg.set_err(err),
+                ServerFnError::Registration(err) => msg.set_err(err),
+                ServerFnError::Request(_) => msg.set_err("Could not reach server"),
+                ServerFnError::Response(err) => msg.set_err(err),
+                ServerFnError::ServerError(err) => msg.set_err(err),
+                ServerFnError::Deserialization(err) => msg.set_err(err),
+                ServerFnError::Serialization(err) => msg.set_err(err),
+                ServerFnError::Args(err) => msg.set_err(err),
+                ServerFnError::MissingArg(err) => msg.set_err(err),
+            };
+        }
         None => {}
     });
 
@@ -251,11 +263,11 @@ fn EditCounterBox(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 
 #[component]
 fn EditName(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
-    let counters = expect_context::<RwSignal<CounterList>>();
+    let store = expect_context::<RwSignal<CountableStore>>();
     let (name, set_name) = create_slice(
-        counters,
-        move |l| l.flat[&key()].get_name(),
-        move |l, name| l.flat[&key()].set_name(name),
+        store,
+        move |s| s.name(&key().into()),
+        move |s, name: String| s.set_name(&key().into(), &name),
     );
 
     let on_input = move |ev| set_name(event_target_value(&ev));
@@ -282,8 +294,8 @@ fn EditName(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 
 #[component]
 fn EditCount(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
-    let counters = expect_context::<RwSignal<CounterList>>();
-    let count = create_read_slice(counters, move |l| l.flat.get(&key()).unwrap().get_count());
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let count = create_read_slice(store, move |s| s.count(&key().into()));
 
     view! {
         <td>
@@ -306,9 +318,8 @@ fn EditCount(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 
 #[component]
 fn EditTime(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
-    let counters = expect_context::<RwSignal<CounterList>>();
-
-    let time = create_read_slice(counters, move |c| c.flat[&key()].get_time());
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let time = create_read_slice(store, move |s| s.time(&key().into()));
 
     let hour_ref = create_node_ref::<html::Input>();
     let min_ref = create_node_ref::<html::Input>();
@@ -413,8 +424,8 @@ fn EditTime(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 
 #[component]
 fn EditHunttype(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
-    let counters = expect_context::<RwSignal<CounterList>>();
-    let hunt_type = move || counters().flat[&key()].get_hunt_type();
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let hunt_type = move || store().hunttype(&key().into());
     let selected = create_memo(move |_| hunt_type().into());
 
     let hunt_option = |ht: Hunttype| -> (&'static str, &'static str) { (ht.repr(), ht.into()) };
@@ -449,8 +460,9 @@ fn EditHunttype(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 
 #[component]
 fn EditCharm(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
-    let counters = expect_context::<RwSignal<CounterList>>();
-    let checked = create_memo(move |_| counters.get().flat[&key.get()].has_charm());
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let checked = create_read_slice(store, move |s| s.has_charm(&key().into()));
+
     view! {
         <td>
             <label for="has-charm">Has Charm</label>

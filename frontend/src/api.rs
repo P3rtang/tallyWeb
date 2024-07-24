@@ -1,26 +1,11 @@
 use super::*;
+use countable_v2::countable::{self, Counter};
 use leptos::*;
-use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "ssr")]
 use actix_web::web::Data;
 #[cfg(feature = "ssr")]
 use leptos_actix::extract;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Countable {
-    Counter(SerCounter),
-    Phase(Phase),
-}
-
-impl From<Countable> for ArcCountable {
-    fn from(val: Countable) -> Self {
-        match val {
-            Countable::Counter(c) => ArcCountable::new(Box::new(c)),
-            Countable::Phase(p) => ArcCountable::new(Box::new(p)),
-        }
-    }
-}
 
 #[cfg(feature = "ssr")]
 pub async fn extract_pool() -> Result<Data<backend::PgPool>, AppError> {
@@ -99,83 +84,6 @@ pub async fn change_password(
     Ok(())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CounterResponse {
-    Counters(Vec<SerCounter>),
-    InvalidUsername,
-    InvalidToken,
-}
-
-#[server(GetCountersByUserName, "/api")]
-pub async fn get_counters_by_user_name(
-    session: UserSession,
-) -> Result<CounterResponse, ServerFnError> {
-    let pool = extract_pool().await?;
-
-    let user = match backend::auth::get_user(&pool, &session.username, session.token).await {
-        Ok(user) => user,
-        Err(backend::BackendError::UserNotFound) => return Ok(CounterResponse::InvalidUsername),
-        Err(backend::BackendError::InvalidToken) => return Ok(CounterResponse::InvalidToken),
-        Err(err) => Err(err)?,
-    };
-
-    let data = user.get_counters(&pool).await?;
-
-    let mut counters = Vec::new();
-    for db_counter in data {
-        counters.push(SerCounter::from_db(&session, db_counter).await?)
-    }
-
-    Ok(CounterResponse::Counters(counters))
-}
-
-#[server(GetCounterById, "/api")]
-pub async fn get_counter_by_id(
-    session: UserSession,
-    counter_id: uuid::Uuid,
-) -> Result<SerCounter, ServerFnError> {
-    let pool = extract_pool().await?;
-    let _ = backend::auth::get_user(&pool, &session.username, session.token).await?;
-    let data =
-        backend::get_counter_by_id(&pool, &session.username, session.token, counter_id).await?;
-
-    Ok(SerCounter::from_db(&session, data).await?)
-}
-
-#[server(GetPhaseById, "/api")]
-pub async fn get_phase_by_id(
-    session: UserSession,
-    phase_id: uuid::Uuid,
-) -> Result<Phase, ServerFnError> {
-    let pool = extract_pool().await?;
-    let data = backend::get_phase_by_id(&pool, &session.username, session.token, phase_id).await?;
-    Ok(data.into())
-}
-
-#[server(GetCountableById, "/api")]
-pub async fn get_countable_by_id(
-    session: UserSession,
-    id: uuid::Uuid,
-) -> Result<Countable, ServerFnError> {
-    let pool = extract_pool().await?;
-
-    if let Ok(counter) =
-        backend::get_counter_by_id(&pool, &session.username, session.token, id).await
-    {
-        return Ok(Countable::Counter(
-            SerCounter::from_db(&session, counter.into()).await?,
-        ));
-    } else if let Ok(phase) =
-        backend::get_phase_by_id(&pool, &session.username, session.token, id).await
-    {
-        return Ok(Countable::Phase(phase.into()));
-    } else {
-        return Err(backend::BackendError::DataNotFound(String::from(
-            "countable",
-        )))?;
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 #[server(EditCountableForm)]
 pub async fn edit_countable_form(
@@ -223,6 +131,7 @@ pub async fn edit_countable_form(
                 .await?;
             backend::phase::set_charm(&mut conn, countable_key, countable_charm.is_some()).await?;
         }
+        _ => (),
     }
 
     conn.commit().await?;
@@ -230,70 +139,56 @@ pub async fn edit_countable_form(
     return Ok(());
 }
 
-#[server(UpdateCountable, "/api")]
-pub async fn update_countable(
-    session: UserSession,
-    countable: Countable,
-) -> Result<(), ServerFnError> {
-    match countable {
-        Countable::Counter(c) => update_counter(session, c).await?,
-        Countable::Phase(p) => update_phase(session, p).await?,
-    };
+#[server(UpdateCountable, "/api/session")]
+pub async fn update_countable_many(list: Vec<countable::Countable>) -> Result<(), ServerFnError> {
+    let pool = extract_pool().await?;
+    let session = session::actix_extract_user().await?;
+
+    let mut tx = pool.begin().await?;
+
+    for countable in list {
+        match countable {
+            countable::Countable::Counter(c) => {
+                if c.lock()?.owner_uuid != session.user_uuid {
+                    Err(AppError::Unauthorized)?
+                }
+                backend::counter::update(&mut tx, c.lock()?.clone().into()).await?
+            }
+            countable::Countable::Phase(p) => {
+                if p.lock()?.owner_uuid != session.user_uuid {
+                    Err(AppError::Unauthorized)?
+                }
+                backend::phase::update(&mut tx, p.lock()?.clone().into()).await?
+            }
+            countable::Countable::Chain(_) => todo!(),
+        }
+    }
+
+    tx.commit().await?;
 
     return Ok(());
 }
 
-#[server(CreateCounter, "/api")]
-pub async fn create_counter(
-    session: UserSession,
-    counter: SerCounter,
-) -> Result<(), ServerFnError> {
-    let pool = extract_pool().await?;
-
-    let _ = backend::update_counter(
-        &pool,
-        &session.username,
-        session.token,
-        counter.to_db().await,
-    )
-    .await?;
-
-    Ok(())
-}
-
 #[server(UpdateCounter, "/api")]
-pub async fn update_counter(
-    session: UserSession,
-    counter: SerCounter,
-) -> Result<(), ServerFnError> {
+pub async fn update_counter(session: UserSession, counter: Counter) -> Result<(), ServerFnError> {
     let pool = extract_pool().await?;
 
-    let _ = backend::update_counter(
-        &pool,
-        &session.username,
-        session.token,
-        counter.to_db().await,
-    )
-    .await?;
-
-    futures::future::try_join_all(
-        counter
-            .phase_list
-            .into_iter()
-            .map(|countable| update_phase(session.clone(), countable))
-            .collect::<Vec<_>>(),
-    )
-    .await?;
+    let _ =
+        backend::update_counter(&pool, &session.username, session.token, counter.into()).await?;
 
     Ok(())
 }
 
-#[server(RemoveCountable, "/api")]
-pub async fn remove_countable(session: UserSession, key: uuid::Uuid) -> Result<(), ServerFnError> {
-    let countable = get_countable_by_id(session.clone(), key).await?;
+#[server(RemoveCountable, "/api/session")]
+pub async fn remove_countable(
+    session: UserSession,
+    countable: Countable,
+) -> Result<(), ServerFnError> {
+    println!("here");
     match countable {
-        Countable::Counter(c) => remove_counter(session, c.uuid).await?,
-        Countable::Phase(p) => remove_phase(session, p.uuid).await?,
+        Countable::Counter(_) => remove_counter(session, countable.uuid()).await?,
+        Countable::Phase(_) => remove_phase(session, countable.uuid()).await?,
+        Countable::Chain(_) => todo!(),
     }
 
     return Ok(());
@@ -317,24 +212,6 @@ pub async fn remove_phase(session: UserSession, phase_id: uuid::Uuid) -> Result<
 
     let _ = backend::auth::get_user(&pool, &session.username, session.token).await?;
     backend::remove_phase(&pool, phase_id).await?;
-
-    Ok(())
-}
-
-#[server(CreatePhase, "/api")]
-pub async fn create_phase(session: UserSession, phase: Phase) -> Result<(), ServerFnError> {
-    let pool = extract_pool().await?;
-
-    backend::update_phase(&pool, &session.username, session.token, phase.to_db()).await?;
-
-    Ok(())
-}
-
-#[server(SavePhase, "/api")]
-pub async fn update_phase(session: UserSession, phase: Phase) -> Result<(), ServerFnError> {
-    let pool = extract_pool().await?;
-
-    backend::update_phase(&pool, &session.username, session.token, phase.to_db()).await?;
 
     Ok(())
 }
@@ -405,49 +282,6 @@ pub async fn save_preferences(
     db_prefs
         .db_set(&pool, &session.username, session.token)
         .await?;
-
-    Ok(())
-}
-
-#[server(SaveMultiple, "/api")]
-pub async fn save_multiple(
-    session: UserSession,
-    counters: Option<Vec<SerCounter>>,
-    phases: Option<Vec<Phase>>,
-) -> Result<(), ServerFnError> {
-    let pool = extract_pool().await?;
-
-    let counters = counters.unwrap_or_default();
-    let phases = phases.unwrap_or_default();
-
-    let save_counter_futures = counters
-        .iter()
-        .map(|c| update_counter(session.clone(), c.clone()))
-        .collect::<Vec<_>>();
-    let mut save_phase_futures = counters
-        .into_iter()
-        .map(|c| {
-            c.phase_list
-                .into_iter()
-                .map(|p| update_phase(session.clone(), p))
-                .collect::<Vec<_>>()
-        })
-        .flatten()
-        .collect::<Vec<_>>();
-
-    save_phase_futures.append(
-        &mut phases
-            .iter()
-            .map(|p| update_phase(session.clone(), p.clone()))
-            .collect::<Vec<_>>(),
-    );
-
-    futures::future::try_join_all(save_counter_futures).await?;
-    futures::future::try_join_all(save_phase_futures).await?;
-
-    for phase in phases {
-        backend::update_phase(&pool, &session.username, session.token, phase.to_db()).await?;
-    }
 
     Ok(())
 }

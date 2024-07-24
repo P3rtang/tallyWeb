@@ -1,24 +1,14 @@
 #![allow(non_snake_case)]
-use chrono::Duration;
 use components::*;
-use js_sys::Date;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
-use serde::{Deserialize, Serialize};
 
 use super::{elements::*, pages::*, preferences::ProvidePreferences, session::*, *};
 
 pub const LEPTOS_OUTPUT_NAME: &str = env!("LEPTOS_OUTPUT_NAME");
 pub const TALLYWEB_VERSION: &str = env!("TALLYWEB_VERSION");
 pub const SIDEBAR_MIN_WIDTH: usize = 280;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CounterResponse {
-    Counters(Vec<SerCounter>),
-    InvalidUsername,
-    InvalidToken,
-}
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -34,9 +24,6 @@ pub fn App() -> impl IntoView {
 
     let show_sidebar = create_rw_signal(ShowSidebar(true));
     provide_context(show_sidebar);
-
-    let save_handler = SaveHandlerCountable::new();
-    provide_context(save_handler);
 
     view! {
         <Stylesheet href=format!("/pkg/{LEPTOS_OUTPUT_NAME}.css")/>
@@ -191,44 +178,6 @@ fn RouteSidebar() -> impl IntoView {
     }
 }
 
-fn timer(selection_signal: SelectionSignal) {
-    const FRAMERATE: i64 = 30;
-    const INTERVAL: Duration = Duration::milliseconds(1000 / FRAMERATE);
-
-    let time = create_signal(0_u32);
-
-    let calc_interval = |now: u32, old: u32| -> Duration {
-        if now < old {
-            Duration::milliseconds((1000 + now - old).into())
-        } else {
-            Duration::milliseconds((now - old).into())
-        }
-    };
-
-    create_effect(move |_| {
-        set_interval(
-            move || {
-                let interval = calc_interval(
-                    Date::new_0().get_milliseconds(),
-                    time.0.try_get().unwrap_or_default(),
-                );
-
-                selection_signal.try_update(|s| {
-                    s.get_selected_keys()
-                        .iter()
-                        .filter_map(|key| s.get(key))
-                        .filter(|c| c.is_active())
-                        .for_each(|c| c.add_time(interval))
-                });
-                time.1.try_set(Date::new_0().get_milliseconds());
-            },
-            INTERVAL
-                .to_std()
-                .unwrap_or(std::time::Duration::from_millis(30)),
-        );
-    });
-}
-
 #[component]
 pub fn HomePage() -> impl IntoView {
     let selection_signal = expect_context::<SelectionSignal>();
@@ -253,79 +202,86 @@ pub fn HomePage() -> impl IntoView {
 
 #[component]
 fn SidebarContent() -> impl IntoView {
-    let show_sort_search = create_rw_signal(true);
-
     let selection_signal = expect_context::<SelectionSignal>();
-    let state = expect_context::<RwSignal<CounterList>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let sort_method = expect_context::<RwSignal<SortMethod>>();
 
+    let show_sort_search = create_rw_signal(true);
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
-    let state_len = create_read_slice(state, |s| s.list.len());
+
+    let each = create_memo(move |_| {
+        let mut root_nodes = store().root_nodes();
+        root_nodes.sort_by(|a, b| {
+            sort_method().sort_by()(&store.get_untracked(), &a.uuid().into(), &b.uuid().into())
+        });
+        root_nodes
+    });
 
     view! {
         <nav>
-            <SortSearch list=state shown=show_sort_search/>
+            <SortSearch shown=show_sort_search/>
         </nav>
         <TreeViewWidget
-            each=move || { state.get().get_filtered_list() }
-            key=|countable| countable.get_uuid()
+            each
+            key=|countable| countable.uuid()
             each_child=move |countable| {
-                let mut children = countable.get_children();
-                children.sort_by(state.get().sort.sort_by());
-                children
+                let key = countable.uuid().into();
+                let children = create_read_slice(
+                    store,
+                    move |s| {
+                        let mut children = s.children(&key);
+                        children
+                            .sort_by(|a, b| sort_method()
+                                .sort_by()(
+                                &store.get_untracked(),
+                                &a.uuid().into(),
+                                &b.uuid().into(),
+                            ));
+                        children
+                    },
+                );
+                children()
             }
 
-            view=|key| view! { <TreeViewRow key/> }
+            view=|countable| view! { <TreeViewRow key=countable.uuid()/> }
             show_separator=show_sep
             selection_model=selection_signal
             on_click=|_, _| ()
         />
 
-        <NewCounterButton state_len/>
+        <NewCounterButton/>
     }
 }
 
 #[component]
 fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
-    let user = expect_context::<RwSignal<UserSession>>();
     let data_resource = expect_context::<StateResource>();
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let save_handler = expect_context::<SaveHandler>();
 
-    let (key, _) = create_signal(key);
-
-    let countable = create_read_slice(selection, move |model| {
-        model.get(&key.get_untracked()).cloned()
-    });
+    let key = store_value(key);
 
     let expand_node = create_write_slice(selection, move |model, _| {
-        if let Some(node) = model.get_node_mut(&key.get_untracked()) {
-            node.is_expanded = true;
+        if let Some(node) = model.get_node_mut(&key()) {
+            node.set_expand(true)
         }
     });
 
-    let click_new_phase = move |e: web_sys::MouseEvent| {
-        e.stop_propagation();
-        create_local_resource(
-            || (),
-            move |_| async move {
-                let n_phase = countable
-                    .get_untracked()
-                    .clone()
-                    .map(|c| c.get_children().len())
-                    .unwrap_or_default();
-                let name = format!("Phase {}", n_phase + 1);
-                if let Some(countable) = countable.get_untracked() {
-                    let user = user.get_untracked();
-                    let new_phase = Phase::new(name, countable.get_uuid(), user.user_uuid);
-                    api::update_phase(user, new_phase)
-                        .await
-                        .expect("Could not create Phase");
-                }
+    let click_new_phase = move |ev: ev::MouseEvent| {
+        ev.stop_propagation();
 
-                data_resource.refetch();
-                expand_node(());
-            },
-        );
+        let phase_number = store.get_untracked().children(&key().into()).len();
+        let name = format!("Phase {}", phase_number + 1);
+
+        store.update(move |s| {
+            let id = s.new_countable(&name, CountableKind::Phase, Some(key().into()));
+            let on_error = move || data_resource.refetch();
+            let _ = save_handler.save(Box::new([s.get(&id).unwrap()].to_vec()), on_error);
+        });
+
+        expand_node(());
     };
 
     let show_context_menu = create_rw_signal(false);
@@ -337,25 +293,18 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
         set_click_location((ev.x(), ev.y()))
     };
 
-    let has_children = countable
-        .get_untracked()
-        .map(|c| !c.get_children().is_empty())
-        .unwrap_or_default();
+    let has_children = move || matches!(store().get(&key().into()), Some(Countable::Counter(_)));
 
     view! {
         <A href=move || key().to_string()>
             <div class="row-body" on:contextmenu=on_right_click>
-                <span>
-                    {move || countable.get_untracked().map(|c| c.get_name()).unwrap_or_default()}
-                </span>
-                <Show when=move || has_children>
+                <span>{move || store().name(&key().into())}</span>
+                <Show when=has_children>
                     <button on:click=click_new_phase>+</button>
                 </Show>
             </div>
         </A>
-        <Show when=move || countable.get_untracked().is_some()>
-            <CountableContextMenu show_overlay=show_context_menu location=click_location key/>
-        </Show>
+        <CountableContextMenu show_overlay=show_context_menu location=click_location key=key()/>
     }
 }
 
@@ -392,41 +341,13 @@ fn UnsetCountable() -> impl IntoView {
     selection.update(|sel| sel.clear_selection())
 }
 
-#[component]
+#[component(transparent)]
 fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
-    let user = expect_context::<RwSignal<UserSession>>();
-    let save_handler = expect_context::<SaveHandlerCountable>();
-
-    let data = create_blocking_resource(user, move |user| async move {
-        match api::get_counters_by_user_name(user).await {
-            Ok(api::CounterResponse::Counters(counters)) => counters,
-            _ => Vec::new(),
-        }
-    });
-
-    provide_context(data);
-
-    let selection = SelectionModel::<uuid::Uuid, ArcCountable>::new();
+    let selection = SelectionModel::<uuid::Uuid, Countable>::new();
     let selection_signal = create_rw_signal(selection);
     provide_context(selection_signal);
+    provide_context(create_rw_signal(SortMethod::default()));
+    provide_context(SaveHandler::new());
 
-    timer(selection_signal);
-
-    let state = create_rw_signal(CounterList::new(&[]));
-    provide_context(state);
-
-    view! {
-        <Transition>
-
-            {
-                let list = match data.get() {
-                    Some(data_list) if !save_handler.is_offline() => data_list.into(),
-                    _ => state.get(),
-                };
-                state.set(list.clone());
-                children()
-            }
-
-        </Transition>
-    }
+    children()
 }

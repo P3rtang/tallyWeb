@@ -1,17 +1,114 @@
-use super::CounterList;
+use super::{CountableId, CountableStore};
 use leptos::*;
 use web_sys::KeyboardEvent;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SortMethod {
+    Id(bool),
+    Name(bool),
+    Count(bool),
+    Time(bool),
+    CreatedAt(bool),
+}
+
+impl SortMethod {
+    pub fn sort_by(
+        &self,
+    ) -> impl Fn(&CountableStore, &CountableId, &CountableId) -> std::cmp::Ordering {
+        match self {
+            Self::Id(false) => |_: &CountableStore, a: &CountableId, b: &CountableId| a.cmp(&b),
+            Self::Id(true) => {
+                |_: &CountableStore, a: &CountableId, b: &CountableId| a.cmp(&b).reverse()
+            }
+            Self::Name(false) => |store: &CountableStore, a: &CountableId, b: &CountableId| {
+                store.name(a).cmp(&store.name(b))
+            },
+            Self::Name(true) => |store: &CountableStore, a: &CountableId, b: &CountableId| {
+                store.name(a).cmp(&store.name(b)).reverse()
+            },
+            Self::Count(false) => |store: &CountableStore, a: &CountableId, b: &CountableId| {
+                store.count(a).cmp(&store.count(b))
+            },
+            Self::Count(true) => |store: &CountableStore, a: &CountableId, b: &CountableId| {
+                store.count(a).cmp(&store.count(b)).reverse()
+            },
+            Self::Time(false) => |store: &CountableStore, a: &CountableId, b: &CountableId| {
+                store.time(a).cmp(&store.time(b))
+            },
+            Self::Time(true) => |store: &CountableStore, a: &CountableId, b: &CountableId| {
+                store.time(a).cmp(&store.time(b)).reverse()
+            },
+            Self::CreatedAt(false) => |store: &CountableStore, a: &CountableId, b: &CountableId| {
+                store.created_at(a).cmp(&store.created_at(b))
+            },
+            Self::CreatedAt(true) => |store: &CountableStore, a: &CountableId, b: &CountableId| {
+                store.created_at(a).cmp(&store.created_at(b)).reverse()
+            },
+        }
+    }
+
+    pub fn toggle(&self) -> Self {
+        match self {
+            Self::Id(b) => Self::Id(!b),
+            Self::Name(b) => Self::Name(!b),
+            Self::Count(b) => Self::Count(!b),
+            Self::Time(b) => Self::Time(!b),
+            Self::CreatedAt(b) => Self::CreatedAt(!b),
+        }
+    }
+
+    pub fn is_reversed(&self) -> bool {
+        match self {
+            Self::Id(b) => *b,
+            Self::Name(b) => *b,
+            Self::Count(b) => *b,
+            Self::Time(b) => *b,
+            Self::CreatedAt(b) => *b,
+        }
+    }
+}
+
+impl Default for SortMethod {
+    fn default() -> Self {
+        Self::CreatedAt(false)
+    }
+}
+
+impl From<String> for SortMethod {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "Name" => Self::Name(false),
+            "Count" => Self::Count(false),
+            "Time" => Self::Time(false),
+            "Id" => Self::Id(false),
+            "CreatedAt" => Self::CreatedAt(false),
+            _ => Default::default(),
+        }
+    }
+}
+
+impl Into<&str> for SortMethod {
+    fn into(self) -> &'static str {
+        match self {
+            Self::Id(_) => "Id",
+            Self::Name(_) => "Name",
+            Self::Count(_) => "Count",
+            Self::Time(_) => "Time",
+            Self::CreatedAt(_) => "CreatedAt",
+        }
+    }
+}
+
 #[component]
-pub fn SortSearch<F>(list: RwSignal<CounterList>, shown: F) -> impl IntoView
+pub fn SortSearch<F>(shown: F) -> impl IntoView
 where
     F: Fn() -> bool + 'static,
 {
-    let (sort_method, set_sort_method) =
-        create_slice(list, |list| list.sort, |list, new| list.sort = new);
+    let sort_method = expect_context::<RwSignal<SortMethod>>();
+
     let select_sort = create_node_ref::<leptos::html::Select>();
     let on_sort = move |_| {
-        set_sort_method.set(
+        sort_method.set(
             select_sort()
                 .map(|nr| nr.value())
                 .unwrap_or_default()
@@ -23,7 +120,7 @@ where
         select_sort().map(|rf| rf.set_value(sort_method.get_untracked().into()))
     });
 
-    let reverse_order = move |_| set_sort_method.set(sort_method().toggle());
+    let reverse_order = move |_| sort_method.update(|s| *s = s.toggle());
     let arrow = move || {
         if sort_method().is_reversed() {
             "fa-solid fa-arrow-down"
@@ -40,7 +137,7 @@ where
         if ev.key() == "Escape" || ev.key() == "Enter" {
             let _ = search_input().unwrap().blur();
         }
-        list.update(|l| l.search(&search_input().unwrap().value()));
+        // store.update(|l| l.search(&search_input().unwrap().value()));
         ev.stop_propagation();
     };
 
