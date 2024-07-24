@@ -114,3 +114,36 @@ pub async fn set_charm(
 
     Ok(())
 }
+
+pub async fn update(tx: &mut PgTx, phase: DbPhase) -> Result<(), BackendError> {
+    sqlx::query!(
+        r#"
+        INSERT INTO phases (uuid, owner_uuid, parent_uuid, name, count, time, hunt_type, has_charm, success, dexnav_encounters, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        ON CONFLICT (uuid) DO UPDATE
+        SET
+            name = $4,
+            count = $5,
+            time = $6,
+            hunt_type = $7,
+            has_charm = $8,
+            success = $9,
+            dexnav_encounters = $10
+        "#,
+        phase.uuid,
+        phase.owner_uuid,
+        phase.parent_uuid,
+        phase.name,
+        phase.count,
+        phase.time,
+        phase.hunt_type as Hunttype,
+        phase.has_charm,
+        phase.success,
+        phase.dexnav_encounters,
+        phase.created_at,
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(())
+}

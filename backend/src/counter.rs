@@ -215,3 +215,23 @@ pub async fn set_charm(
 
     Ok(())
 }
+
+pub async fn update(tx: &mut PgTx, counter: DbCounter) -> Result<(), BackendError> {
+    sqlx::query!(
+        r#"
+        INSERT INTO counters (uuid, owner_uuid, name, created_at)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (uuid) DO UPDATE
+        SET
+            name = $3
+        "#,
+        counter.uuid,
+        counter.owner_uuid,
+        counter.name,
+        counter.created_at,
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(())
+}
