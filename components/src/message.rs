@@ -68,8 +68,8 @@ impl<T: Handle + 'static> MessageJar<T> {
         })
     }
 
-    pub fn has_msg(&self) -> bool {
-        !self.messages.get().is_empty()
+    pub fn is_emtpy(&self) -> bool {
+        self.messages.get().is_empty()
     }
 
     pub fn clear(&self) {
@@ -114,9 +114,7 @@ impl<T: Handle + 'static> MessageJar<T> {
 
     fn msg_timeout_effect(self, key: MessageKey) {
         if let Some(timeout) = self.reset_time {
-            create_effect(move |_| {
-                set_timeout(move || self.fade_out(key), timeout.to_std().unwrap())
-            });
+            set_timeout(move || self.fade_out(key), timeout.to_std().unwrap())
         }
     }
 
@@ -362,7 +360,7 @@ pub fn ProvideMessageSystem() -> impl IntoView {
     //
 
     view! {
-        <Show when=move || msg_jar.has_msg()>
+        <Show when=move || !msg_jar.is_emtpy()>
             <notification-box>
                 <For
                     each=move || msg_jar.get_ordered().get().into_iter().rev()
