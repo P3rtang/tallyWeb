@@ -1,0 +1,39 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO phases (uuid, owner_uuid, parent_uuid, name, count, time, hunt_type, has_charm, success, dexnav_encounters, created_at)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n        ON CONFLICT (uuid) DO UPDATE\n        SET\n            name = $4,\n            count = $5,\n            time = $6,\n            hunt_type = $7,\n            has_charm = $8,\n            success = $9,\n            dexnav_encounters = $10\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Int4",
+        "Int8",
+        {
+          "Custom": {
+            "name": "hunttype",
+            "kind": {
+              "Enum": [
+                "OldOdds",
+                "NewOdds",
+                "SOS",
+                "DexNav",
+                "MasudaGenIV",
+                "MasudaGenV",
+                "MasudaGenVI"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Bool",
+        "Int4",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c8d195a7c79e01a1435acdb61965aecafb6e9b70b706d05f81a7b89adafc8b96"
+}

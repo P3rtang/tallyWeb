@@ -151,7 +151,15 @@ where
     let tree_nodes = move || {
         each()
             .into_iter()
-            .map(|c| TreeNode::<T, S>::new(key, c, each_child, selection_model, 0))
+            .map(|c| {
+                selection_model
+                    .get_untracked()
+                    .get_node(&key(&c))
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        TreeNode::<T, S>::new(key, c, each_child, selection_model, 0)
+                    })
+            })
             .collect::<Vec<_>>()
     };
 
