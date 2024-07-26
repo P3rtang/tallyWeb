@@ -46,20 +46,18 @@ pub fn PreferencesWindow() -> impl IntoView {
             preferences: preferences.get_untracked(),
         });
 
-        message
+        let msg_key = message
+            .with_handle()
             .without_timeout()
-            .as_modal()
             .set_msg_view(SavingMessage);
-
-        let msg_key = message.get_last_key();
 
         create_effect(move |_| match action.value().get() {
             Some(Ok(_)) => {
-                message.fade_out(msg_key.get());
+                // message.fade_out(msg_key);
                 action.value().set_untracked(None)
             }
             Some(Err(err)) => {
-                message.fade_out(msg_key.get());
+                message.fade_out(msg_key);
                 message.set_err(AppError::from(err));
                 action.value().set_untracked(None)
             }

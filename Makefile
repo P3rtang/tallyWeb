@@ -39,11 +39,7 @@ dump-db:
 watch-style:
 	stylance -w ./frontend/ --output-file ./style/bundle.scss
 
-test: recreate-db
-	# run styling tests
-	cargo fmt -q --check --all
-	leptosfmt -q --check .
-	cargo clippy -- -D warnings
+test: recreate-db check-fmt
 	# run program tests
 	cargo leptos test
 	cargo leptos end-to-end -r
@@ -55,4 +51,9 @@ setup-pgadmin:
 
 fmt:
 	cargo fmt -q --all
-	leptosfmt -q .
+	leptosfmt -q *src/*
+
+check-fmt:
+	cargo fmt -q --check --all
+	leptosfmt -q --check *src/*
+	cargo clippy -- -D warnings
