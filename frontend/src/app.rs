@@ -259,7 +259,7 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
     let data_resource = expect_context::<StateResource>();
     let store = expect_context::<RwSignal<CountableStore>>();
-    let save_handler = expect_context::<SaveHandler>();
+    let save_handler = expect_context::<RwSignal<SaveHandlers>>();
 
     let key = store_value(key);
 
@@ -277,8 +277,10 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
 
         store.update(move |s| {
             let id = s.new_countable(&name, CountableKind::Phase, Some(key().into()));
-            let on_error = move || data_resource.refetch();
-            let _ = save_handler.save(Box::new([s.get(&id).unwrap()].to_vec()), on_error);
+            let _ = save_handler().save(
+                Box::new([s.get(&id).unwrap()].to_vec()),
+                Box::new(move |_| data_resource.refetch()),
+            );
         });
 
         expand_node(());
@@ -343,11 +345,27 @@ fn UnsetCountable() -> impl IntoView {
 
 #[component(transparent)]
 fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
+    let msg = expect_context::<MessageJar>();
+
     let selection = SelectionModel::<uuid::Uuid, Countable>::new();
     let selection_signal = create_rw_signal(selection);
     provide_context(selection_signal);
     provide_context(create_rw_signal(SortMethod::default()));
-    provide_context(SaveHandler::new());
+    let save_handlers = create_rw_signal(SaveHandlers::new());
+    save_handlers.update(|sh| sh.connect_handler(Box::new(ServerSaveHandler::new())));
+    create_effect(move |_| {
+        spawn_local(async move {
+            let indexed_handler = indexed::IndexedSaveHandler::new().await;
+            match indexed_handler {
+                Ok(ih) => save_handlers.update(|sh| sh.connect_handler(Box::new(ih))),
+                Err(err) => msg.set_msg(format!(
+                    "Local saving could not be initialised\nGot error: {}",
+                    err
+                )),
+            }
+        })
+    });
+    provide_context(save_handlers);
 
     children()
 }

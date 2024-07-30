@@ -6,16 +6,16 @@ use stylance::import_style;
 pub fn NewCounterButton() -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let resource = expect_context::<StateResource>();
-    let save_handler = expect_context::<SaveHandler>();
+    let save_handler = expect_context::<RwSignal<SaveHandlers>>();
 
     let on_click = move |_| {
         let name = format!("Counter {}", store.get_untracked().root_nodes().len() + 1);
         store.update(|s| {
             let c_id = s.new_countable(&name, CountableKind::Counter, None);
             let p_id = s.new_countable("Phase 1", CountableKind::Phase, Some(c_id));
-            let _ = save_handler.save(
+            let _ = save_handler().save(
                 Box::new([s.get(&c_id).unwrap(), s.get(&p_id).unwrap()].to_vec()),
-                move || resource.refetch(),
+                Box::new(move |_| resource.refetch()),
             );
         });
     };

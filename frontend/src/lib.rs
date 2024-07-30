@@ -109,6 +109,12 @@ pub enum AppError {
     CountableNotFound,
     #[error("Unauthorized")]
     Unauthorized,
+    #[error("Indexed db error: {0}")]
+    Indexed(String),
+    #[error("Javascript error: {0}")]
+    Javascript(String),
+    #[error("Serialization error: {0}")]
+    Serialization(String),
 }
 
 impl From<gloo_storage::errors::StorageError> for AppError {
@@ -153,6 +159,44 @@ impl<T> From<std::sync::TryLockError<std::sync::MutexGuard<'_, T>>> for AppError
 impl<T> From<std::sync::PoisonError<std::sync::MutexGuard<'_, T>>> for AppError {
     fn from(value: std::sync::PoisonError<std::sync::MutexGuard<'_, T>>) -> Self {
         Self::LockMutex(value.to_string())
+    }
+}
+
+impl From<indexed_db::Error<AppError>> for AppError {
+    fn from(value: indexed_db::Error<AppError>) -> Self {
+        match value {
+            indexed_db::Error::NotInBrowser => Self::Indexed(value.to_string()),
+            indexed_db::Error::IndexedDbDisabled => Self::Indexed(value.to_string()),
+            indexed_db::Error::OperationNotSupported => Self::Indexed(value.to_string()),
+            indexed_db::Error::OperationNotAllowed => Self::Indexed(value.to_string()),
+            indexed_db::Error::InvalidKey => Self::Indexed(value.to_string()),
+            indexed_db::Error::VersionMustNotBeZero => Self::Indexed(value.to_string()),
+            indexed_db::Error::VersionTooOld => Self::Indexed(value.to_string()),
+            indexed_db::Error::InvalidCall => Self::Indexed(value.to_string()),
+            indexed_db::Error::InvalidArgument => Self::Indexed(value.to_string()),
+            indexed_db::Error::AlreadyExists => Self::Indexed(value.to_string()),
+            indexed_db::Error::DoesNotExist => Self::Indexed(value.to_string()),
+            indexed_db::Error::DatabaseIsClosed => Self::Indexed(value.to_string()),
+            indexed_db::Error::ObjectStoreWasRemoved => Self::Indexed(value.to_string()),
+            indexed_db::Error::ReadOnly => Self::Indexed(value.to_string()),
+            indexed_db::Error::FailedClone => Self::Indexed(value.to_string()),
+            indexed_db::Error::InvalidRange => Self::Indexed(value.to_string()),
+            indexed_db::Error::CursorCompleted => Self::Indexed(value.to_string()),
+            indexed_db::Error::User(err) => err,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl From<wasm_bindgen::JsValue> for AppError {
+    fn from(value: wasm_bindgen::JsValue) -> Self {
+        Self::Javascript(value.as_string().unwrap_or_default())
+    }
+}
+
+impl From<serde_json::Error> for AppError {
+    fn from(value: serde_json::Error) -> Self {
+        Self::Serialization(value.to_string())
     }
 }
 

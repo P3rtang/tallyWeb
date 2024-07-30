@@ -187,6 +187,7 @@ where
 {
     let is_active = expect_context::<IsActive>();
     let store = expect_context::<RwSignal<CountableStore>>();
+    let save_handler = expect_context::<RwSignal<SaveHandlers>>();
 
     #[allow(unused_variables)]
     let (time, add_time) = create_slice(
@@ -227,8 +228,18 @@ where
         }
     };
 
+    let on_click = move |_| {
+        is_active.toggle();
+        if !is_active.0() {
+            let _ = save_handler().save(
+                Box::new(store.get_untracked().last_child(&key().into())),
+                Box::new(|_| ()),
+            );
+        }
+    };
+
     view! {
-        <div class=class on:click=move |_| is_active.toggle() data-testid="box">
+        <div class=class on:click=on_click data-testid="box">
             <span
                 class=style::title
                 style:display=move || if show_title() { "block" } else { "none" }

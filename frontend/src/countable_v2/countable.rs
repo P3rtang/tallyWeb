@@ -105,6 +105,23 @@ impl CountableStore {
         self.parent_checked(countable).unwrap()
     }
 
+    pub fn last_child_checked(&self, countable: &CountableId) -> Result<Countable, AppError> {
+        let children = self.children_checked(countable)?;
+        if children.is_empty() {
+            return self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)
+                .cloned();
+        } else {
+            return self.last_child_checked(&children.last().unwrap().uuid_checked()?.into());
+        }
+    }
+
+    pub fn last_child(&self, countable: &CountableId) -> Countable {
+        self.last_child_checked(countable).unwrap()
+    }
+
     pub fn kind_checked(&self, countable: &CountableId) -> Result<CountableKind, AppError> {
         Ok(
             match self
@@ -509,7 +526,24 @@ impl CountableStore {
 #[typetag::serde]
 impl Savable for CountableStore {
     fn indexed_db_name(&self) -> String {
-        "CountableStore".into()
+        "Countable".into()
+    }
+
+    fn save_indexed<'a>(
+        &'a self,
+        obj: indexed_db::ObjectStore<AppError>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
+        use wasm_bindgen::JsValue;
+
+        Box::pin(async move {
+            for c in self.store.values() {
+                let key = JsValue::from_str(&c.uuid().to_string());
+                let value = c.as_js();
+
+                obj.put_kv(&key, &value?).await?;
+            }
+            Ok(())
+        })
     }
 
     fn save_endpoint(
@@ -521,12 +555,37 @@ impl Savable for CountableStore {
             cloned.store.into_values().collect(),
         ))
     }
+
+    fn message(&self) -> Option<leptos::View> {
+        None
+    }
+
+    fn clone_box(&self) -> Box<dyn Savable> {
+        Box::new(self.clone())
+    }
 }
 
 #[typetag::serde]
 impl Savable for Vec<Countable> {
     fn indexed_db_name(&self) -> String {
-        "CountableStore".into()
+        "Countable".into()
+    }
+
+    fn save_indexed<'a>(
+        &'a self,
+        obj: indexed_db::ObjectStore<AppError>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
+        use wasm_bindgen::JsValue;
+
+        Box::pin(async move {
+            for c in self {
+                let key = JsValue::from_str(&c.uuid().to_string());
+                let value = c.as_js();
+
+                obj.put_kv(&key, &value?).await?;
+            }
+            Ok(())
+        })
     }
 
     fn save_endpoint(
@@ -534,6 +593,49 @@ impl Savable for Vec<Countable> {
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
     {
         Box::pin(api::update_countable_many(self.clone()))
+    }
+
+    fn message(&self) -> Option<leptos::View> {
+        None
+    }
+
+    fn clone_box(&self) -> Box<dyn Savable> {
+        Box::new(self.clone())
+    }
+}
+
+#[typetag::serde]
+impl Savable for Countable {
+    fn indexed_db_name(&self) -> String {
+        "Countable".into()
+    }
+
+    fn save_indexed<'a>(
+        &'a self,
+        obj: indexed_db::ObjectStore<AppError>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
+        use wasm_bindgen::JsValue;
+        let key = JsValue::from_str(&self.uuid().to_string());
+        let value = self.as_js();
+        Box::pin(async move {
+            obj.put_kv(&key, &value?).await?;
+            Ok(())
+        })
+    }
+
+    fn save_endpoint(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
+    {
+        Box::pin(api::update_countable_many(vec![self.clone()]))
+    }
+
+    fn message(&self) -> Option<leptos::View> {
+        None
+    }
+
+    fn clone_box(&self) -> Box<dyn Savable> {
+        Box::new(self.clone())
     }
 }
 
@@ -652,6 +754,10 @@ impl Countable {
 
     pub fn created_at(&self) -> chrono::NaiveDateTime {
         self.created_at_checked().unwrap()
+    }
+
+    pub fn as_js(&self) -> Result<wasm_bindgen::JsValue, AppError> {
+        Ok(js_sys::JSON::parse(&serde_json::to_string(&self)?)?)
     }
 }
 
