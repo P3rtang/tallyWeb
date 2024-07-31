@@ -13,6 +13,11 @@ services:
 
   tallyweb:
     restart: always
+<<<<<<< HEAD
+=======
+    env_file:
+      - .env
+>>>>>>> origin/main
     image: "p3rtang/tallyweb"
     networks:
       - tallyweb
@@ -21,6 +26,11 @@ services:
 
   tallyweb-dev:
     restart: always
+<<<<<<< HEAD
+=======
+    env_file:
+      - .env
+>>>>>>> origin/main
     image: "p3rtang/tallyweb:dev"
     networks:
       - tallyweb
