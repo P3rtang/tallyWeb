@@ -40,8 +40,6 @@ COPY --from=builder /app/target/site /app/site
 COPY --from=builder /app/Cargo.toml /app/
 WORKDIR /app
 
-COPY .env-docker .env
-
 # Set any required env variables and
 ENV RUST_LOG="info"
 ENV APP_ENVIRONMENT="production"

@@ -13,6 +13,8 @@ services:
 
   tallyweb:
     restart: always
+    env_file:
+      - .env
     image: "p3rtang/tallyweb"
     networks:
       - tallyweb
@@ -21,6 +23,8 @@ services:
 
   tallyweb-dev:
     restart: always
+    env_file:
+      - .env
     image: "p3rtang/tallyweb:dev"
     networks:
       - tallyweb
