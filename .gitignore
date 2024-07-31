@@ -42,4 +42,4 @@ end2end/.gitignore
 style/bundle.scss
 style/_main.scss
 *stylance*
-postgresql/*
+postgresql/

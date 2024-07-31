@@ -40,10 +40,11 @@ jobs:
         path: ~/.cargo
         key: ${{ runner.os }}-cargo_leptos_version-${{ env.CARGO_LEPTOS_VERSION }}
     - if: ${{ steps.cache-cargo-leptos.outputs.cache-hit != 'true' }}
-      name: Install leptos
+      name: Install Cargo dependencies
       run: |
         cargo install cargo-leptos --version ${{ env.CARGO_LEPTOS_VERSION }}
         cargo install stylance-cli
+        cargo install sqlx-cli
 
     - name: Add wasm target
       run: rustup target add wasm32-unknown-unknown
@@ -66,14 +67,22 @@ jobs:
         npm install --save-dev @playwright/test
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
-    - name: Setup postgres from test dump
+    - name: Create github CI user
       run: |
-        psql -U postgres -h localhost -p ${{ job.services.postgres.ports[5432] }} -d postgres -c "CREATE USER p3rtang WITH PASSWORD '${{ secrets.POSTGRES_PASSWORD }}'"
-        psql -U postgres -h localhost -p ${{ job.services.postgres.ports[5432] }} -d postgres -c "ALTER USER p3rtang CREATEDB"
-        psql -U postgres -h localhost -p ${{ job.services.postgres.ports[5432] }} -c "CREATE DATABASE tally_web OWNER p3rtang"
-        psql -U p3rtang -h localhost -p ${{ job.services.postgres.ports[5432] }} -d tally_web -f .github/postgres_setup/test_dump.sql
+        psql -U postgres -h localhost -p $POSTGRES_PORT -d postgres -c "CREATE USER github_ci WITH PASSWORD 'githubCI_pass'"
+        psql -U postgres -h localhost -p $POSTGRES_PORT -d postgres -c "ALTER USER github_ci CREATEDB"
       env:
         PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+    - name: Setup postgres from test dump
+      run: |
+        sqlx database create
+        sqlx migrate run
+        psql -U github_ci -h localhost -p $POSTGRES_PORT -d tally_web -f .github/postgres_setup/setup-test.sql
+      env:
+        PGPASSWORD: githubCI_pass
+        POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
+        DATABASE_URL: postgres://github_ci:githubCI_pass@localhost:${{ job.services.postgres.ports[5432] }}/tally_web
 
     - name: bundle css
       run: stylance ./frontend/ --output-file ./style/bundle.scss
@@ -88,7 +97,7 @@ jobs:
     - name: Run Playwright tests
       run: cargo leptos end-to-end -r
       env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        DATABASE_URL: postgres://githubCI:githubCI-pass@localhost:5432/tally_web
         LEPTOS_OUTPUT_NAME: debug
         TALLYWEB_VERSION: 0.3.0
         LEPTOS_WASM_OPT_VERSION: version_116

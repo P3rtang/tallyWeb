@@ -30,7 +30,7 @@ recreate-db:
 	sqlx database create
 	sqlx migrate run
 
-	psql -U p3rtang -d $(PGDATABASE) -h localhost -p $(POSTGRES_PORT) -w -f "db-backup/dbdump.sql"
+	psql -U p3rtang -d $(PGDATABASE) -h localhost -p $(POSTGRES_PORT) -w -f ".github/postgres_setup/setup-test.sql"
 
 dump-db:
 	mkdir -p db-backup
