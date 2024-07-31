@@ -1,0 +1,36 @@
+services:
+  postgres:
+    restart: always
+    env_file:
+      - .env
+    image: "postgres"
+    networks:
+      - tallyweb
+    ports: 
+      - 5442:5432
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
+
+  tallyweb:
+    restart: always
+    env_file:
+      - .env
+    image: "p3rtang/tallyweb"
+    networks:
+      - tallyweb
+    ports:
+      - 3000:3000
+
+  tallyweb-dev:
+    restart: always
+    env_file:
+      - .env
+    image: "p3rtang/tallyweb:dev"
+    networks:
+      - tallyweb
+    ports:
+      - 3050:3000
+
+networks:
+  tallyweb:
+    name: tallyweb
