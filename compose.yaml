@@ -1,5 +1,5 @@
 services:
-  postgres_tallyweb:
+  postgres:
     restart: always
     env_file:
       - .env

@@ -53,7 +53,7 @@ function perform_backups()
 		    echo "Globals backup"
 
 		    set -o pipefail
-		    if ! pg_dumpall -w -g -h "$HOSTNAME" -p "$POSTGRES_PORT" -U "$POSTGRES_USERNAME" | gzip > $FINAL_BACKUP_DIR"globals".sql.gz.in_progress; then
+		    if ! docker exec -t "$POSTGRES_CONTAINER" pg_dumpall -w -g -h "$HOSTNAME"  -U "$POSTGRES_USERNAME" | gzip > $FINAL_BACKUP_DIR"globals".sql.gz.in_progress; then
 		            echo "[!!ERROR!!] Failed to produce globals backup" 1>&2
 		    else
 		            mv $FINAL_BACKUP_DIR"globals".sql.gz.in_progress $FINAL_BACKUP_DIR"globals".sql.gz
@@ -77,8 +77,8 @@ function perform_backups()
 	
 	echo -e "\n\nPerforming schema-only backups"
 	echo -e "--------------------------------------------\n"
-	
-	SCHEMA_ONLY_DB_LIST=`psql -w -h "$HOSTNAME" -p "$POSTGRES_PORT" -U postgres -At -c "$SCHEMA_ONLY_QUERY" postgres`
+
+	SCHEMA_ONLY_DB_LIST=`docker exec "$POSTGRES_CONTAINER" psql -h "$HOSTNAME" -U postgres -At -c "$SCHEMA_ONLY_QUERY" postgres`
 	
     if [ $SCHEMA_ONLY_DB_LIST ];then
         echo -e "The following databases were matched for schema-only backup:\n${SCHEMA_ONLY_DB_LIST}\n"
@@ -87,7 +87,7 @@ function perform_backups()
         do
                 echo "Schema-only backup of $DATABASE"
             set -o pipefail
-                if ! pg_dump -w -Fp -s -h "$HOSTNAME" -p "$POSTGRES_PORT" -U postgres "$DATABASE" | gzip > $FINAL_BACKUP_DIR"$DATABASE"_SCHEMA.sql.gz.in_progress; then
+                if ! docker exec -t "$POSTGRES_CONTAINER" pg_dump -w -Fp -s -h "$HOSTNAME"  -U postgres "$DATABASE" | gzip > $FINAL_BACKUP_DIR"$DATABASE"_SCHEMA.sql.gz.in_progress; then
                         echo "[!!ERROR!!] Failed to backup database schema of $DATABASE" 1>&2
                 else
                         mv $FINAL_BACKUP_DIR"$DATABASE"_SCHEMA.sql.gz.in_progress $FINAL_BACKUP_DIR"$DATABASE"_SCHEMA.sql.gz
@@ -113,14 +113,14 @@ function perform_backups()
 	echo -e "\n\nPerforming full backups"
 	echo -e "--------------------------------------------\n"
 
-	for DATABASE in `psql -w -h "$HOSTNAME" -p "$POSTGRES_PORT" -U postgres -At -c "$FULL_BACKUP_QUERY" postgres`
+	for DATABASE in `docker exec "$POSTGRES_CONTAINER" psql -w -h "$HOSTNAME"  -U postgres -At -c "$FULL_BACKUP_QUERY" postgres`
 	do
 		if [ $ENABLE_PLAIN_BACKUPS = "yes" ]
 		then
 			echo "Plain backup of $DATABASE"
 	 
 			set -o pipefail
-			if ! pg_dump -w -Fp -h "$HOSTNAME" -p "$POSTGRES_PORT" -U postgres "$DATABASE" | gzip > $FINAL_BACKUP_DIR"$DATABASE".sql.gz.in_progress; then
+			if ! docker exec -t "$POSTGRES_CONTAINER" pg_dump -w -Fp -h "$HOSTNAME"  -U postgres "$DATABASE" | gzip > $FINAL_BACKUP_DIR"$DATABASE".sql.gz.in_progress; then
 				echo "[!!ERROR!!] Failed to produce plain backup database $DATABASE" 1>&2
 			else
 				mv $FINAL_BACKUP_DIR"$DATABASE".sql.gz.in_progress $FINAL_BACKUP_DIR"$DATABASE".sql.gz
@@ -133,7 +133,7 @@ function perform_backups()
 		then
 			echo "Custom backup of $DATABASE"
 	
-			if ! pg_dump -w -Fc -h "$HOSTNAME" -p "$POSTGRES_PORT" -U "$POSTGRES_USERNAME" "$DATABASE" -f $FINAL_BACKUP_DIR"$DATABASE".custom.in_progress; then
+			if ! docker exec -t "$POSTGRES_CONTAINER" pg_dump -w -Fc -h "$HOSTNAME"  -U "$POSTGRES_USERNAME" "$DATABASE" -f $FINAL_BACKUP_DIR"$DATABASE".custom.in_progress; then
 				echo "[!!ERROR!!] Failed to produce custom backup database $DATABASE"
 			else
 				mv $FINAL_BACKUP_DIR"$DATABASE".custom.in_progress $FINAL_BACKUP_DIR"$DATABASE".custom
