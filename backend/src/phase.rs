@@ -1,5 +1,21 @@
 use super::*;
 
+pub async fn edited(tx: &mut PgTx, key: uuid::Uuid) -> Result<(), BackendError> {
+    sqlx::query!(
+        r#"
+        UPDATE phases
+        SET last_edit = $2
+        WHERE uuid = $1
+        "#,
+        key,
+        chrono::Utc::now().naive_utc(),
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(())
+}
+
 pub async fn all_by_user(tx: &mut PgTx, user: uuid::Uuid) -> Result<Vec<DbPhase>, BackendError> {
     let phases = sqlx::query_as!(
         DbPhase,
@@ -15,6 +31,7 @@ pub async fn all_by_user(tx: &mut PgTx, user: uuid::Uuid) -> Result<Vec<DbPhase>
             hunt_type as "hunt_type: Hunttype",
             dexnav_encounters,
             success,
+            last_edit,
             created_at
             FROM phases
         where owner_uuid = $1;
@@ -40,6 +57,8 @@ pub async fn set_name(tx: &mut PgTx, key: uuid::Uuid, name: &str) -> Result<(), 
     .execute(&mut **tx)
     .await?;
 
+    edited(tx, key).await?;
+
     Ok(())
 }
 
@@ -56,6 +75,8 @@ pub async fn set_count(tx: &mut PgTx, key: uuid::Uuid, count: i32) -> Result<(),
     .execute(&mut **tx)
     .await?;
 
+    edited(tx, key).await?;
+
     Ok(())
 }
 
@@ -71,6 +92,8 @@ pub async fn set_time(tx: &mut PgTx, key: uuid::Uuid, time: i64) -> Result<(), B
     )
     .execute(&mut **tx)
     .await?;
+
+    edited(tx, key).await?;
 
     Ok(())
 }
@@ -92,6 +115,8 @@ pub async fn set_hunttype(
     .execute(&mut **tx)
     .await?;
 
+    edited(tx, key).await?;
+
     Ok(())
 }
 
@@ -111,6 +136,8 @@ pub async fn set_charm(
     )
     .execute(&mut **tx)
     .await?;
+
+    edited(tx, key).await?;
 
     Ok(())
 }
@@ -144,6 +171,8 @@ pub async fn update(tx: &mut PgTx, phase: DbPhase) -> Result<(), BackendError> {
     )
     .execute(&mut **tx)
     .await?;
+
+    edited(tx, phase.uuid).await?;
 
     Ok(())
 }

@@ -35,6 +35,34 @@ impl IndexedSaveHandler {
             last_save: (last_sync.0, last_sync.1),
         })
     }
+
+    pub async fn sync_store(&self, store: CountableStore) -> Result<CountableStore, AppError> {
+        let factory = indexed_db::Factory::get()?;
+        let owner = store.owner();
+        let db = factory.open_latest_version("TallyWeb").await?;
+        let map = db.transaction(&["Countable"]).run(move |evt| async move {
+            let mut map = std::collections::HashMap::<CountableId, Countable>::new();
+            let obj = evt.object_store("Countable")?;
+            let vals = obj.get_all(None).await?;
+            // TODO: missing values on the client fail this for loop
+            for val in vals {
+                let countable = Countable::from_js(val)?;
+                if let Some(c) = store.get(&countable.uuid().into()) && c.last_edit() > countable.last_edit() {
+                    map.insert(c.uuid().into(), c.clone());
+                    
+                } else {
+                    map.insert(countable.uuid().into(), countable);
+                }
+            }
+            Ok(map)
+        }).await?;
+
+        leptos::logging::log!("{:?}", map);
+        let store = CountableStore::new(owner, map);
+        self.save(Box::new(store.clone()), Box::new(|_| ()))?;
+
+        Ok(store)
+    }
 }
 
 impl SaveHandler for IndexedSaveHandler {

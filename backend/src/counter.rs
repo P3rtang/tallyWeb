@@ -30,6 +30,7 @@ pub async fn get_children(tx: &mut PgTx, key: uuid::Uuid) -> Result<Vec<DbPhase>
             hunt_type as "hunt_type: Hunttype",
             dexnav_encounters,
             success,
+            last_edit,
             created_at
             FROM phases
         WHERE parent_uuid = $1
@@ -41,6 +42,22 @@ pub async fn get_children(tx: &mut PgTx, key: uuid::Uuid) -> Result<Vec<DbPhase>
     .await?;
 
     Ok(last_child)
+}
+
+pub async fn edited(tx: &mut PgTx, key: uuid::Uuid) -> Result<(), BackendError> {
+    sqlx::query!(
+        r#"
+        UPDATE counters
+        SET last_edit = $2
+        WHERE uuid = $1
+        "#,
+        key,
+        chrono::Utc::now().naive_utc(),
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(())
 }
 
 pub async fn set_name(tx: &mut PgTx, key: uuid::Uuid, name: &str) -> Result<(), BackendError> {
@@ -55,6 +72,8 @@ pub async fn set_name(tx: &mut PgTx, key: uuid::Uuid, name: &str) -> Result<(), 
     )
     .execute(&mut **tx)
     .await?;
+
+    edited(tx, key).await?;
 
     Ok(())
 }
@@ -88,29 +107,10 @@ pub async fn set_count(tx: &mut PgTx, key: uuid::Uuid, count: i32) -> Result<(),
 
     for i in (0..children.len()).rev() {
         if diff + children[i].count <= 0 {
-            sqlx::query!(
-                r#"
-                UPDATE phases
-                SET count = 0
-                WHERE uuid = $1
-                "#,
-                children[i].uuid,
-            )
-            .execute(&mut **tx)
-            .await?;
+            phase::set_count(tx, children[i].uuid, 0).await?;
             diff += children[i].count
         } else {
-            sqlx::query!(
-                r#"
-                UPDATE phases
-                SET count = $2
-                WHERE uuid = $1
-                "#,
-                children[i].uuid,
-                children[i].count + diff,
-            )
-            .execute(&mut **tx)
-            .await?;
+            phase::set_count(tx, children[i].uuid, children[i].count + diff).await?;
             break;
         }
     }
@@ -146,29 +146,10 @@ pub async fn set_time(tx: &mut PgTx, key: uuid::Uuid, time: i64) -> Result<(), B
 
     for i in (0..children.len()).rev() {
         if diff + children[i].time <= 0 {
-            sqlx::query!(
-                r#"
-                UPDATE phases
-                SET time = 0
-                WHERE uuid = $1
-                "#,
-                children[i].uuid,
-            )
-            .execute(&mut **tx)
-            .await?;
+            phase::set_time(tx, children[i].uuid, 0).await?;
             diff += children[i].time
         } else {
-            sqlx::query!(
-                r#"
-                UPDATE phases
-                SET time = $2
-                WHERE uuid = $1
-                "#,
-                children[i].uuid,
-                children[i].time + diff,
-            )
-            .execute(&mut **tx)
-            .await?;
+            phase::set_time(tx, children[i].uuid, children[i].time + diff).await?;
             break;
         }
     }
@@ -184,11 +165,14 @@ pub async fn set_hunttype(
     sqlx::query_unchecked!(
         r#"
         UPDATE phases
-        SET hunt_type = $2
+        SET 
+            hunt_type = $2,
+            last_edit = $3
         WHERE parent_uuid = $1
         "#,
         key,
         hunttype,
+        chrono::Utc::now().naive_utc(),
     )
     .execute(&mut **tx)
     .await?;
@@ -204,11 +188,14 @@ pub async fn set_charm(
     sqlx::query!(
         r#"
         UPDATE phases
-        SET has_charm = $2
+        SET 
+            has_charm = $2,
+            last_edit = $3
         WHERE parent_uuid = $1
         "#,
         key,
         has_charm,
+        chrono::Utc::now().naive_utc(),
     )
     .execute(&mut **tx)
     .await?;
@@ -232,6 +219,8 @@ pub async fn update(tx: &mut PgTx, counter: DbCounter) -> Result<(), BackendErro
     )
     .execute(&mut **tx)
     .await?;
+
+    edited(tx, counter.uuid).await?;
 
     Ok(())
 }

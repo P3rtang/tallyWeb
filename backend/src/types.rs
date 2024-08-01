@@ -34,6 +34,7 @@ pub struct DbCounter {
     pub owner_uuid: uuid::Uuid,
     pub name: String,
     pub created_at: chrono::NaiveDateTime,
+    pub last_edit: chrono::NaiveDateTime,
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -49,6 +50,7 @@ pub struct DbPhase {
     pub dexnav_encounters: Option<i32>,
     pub success: bool,
     pub created_at: chrono::NaiveDateTime,
+    pub last_edit: chrono::NaiveDateTime,
 }
 
 #[derive(Debug)]

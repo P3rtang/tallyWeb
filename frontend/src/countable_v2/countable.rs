@@ -21,6 +21,10 @@ impl CountableStore {
         }
     }
 
+    pub fn owner(&self) -> uuid::Uuid {
+        self.owner
+    }
+
     pub fn contains(&self, countable: &CountableId) -> bool {
         self.store.contains_key(countable)
     }
@@ -756,8 +760,25 @@ impl Countable {
         self.created_at_checked().unwrap()
     }
 
+    pub fn last_edit_checked(&self) -> Result<chrono::NaiveDateTime, AppError> {
+        Ok(match self {
+            Countable::Counter(c) => c.lock()?.last_edit,
+            Countable::Phase(p) => p.lock()?.last_edit,
+            Countable::Chain(_) => todo!(),
+        })
+    }
+
+    pub fn last_edit(&self) -> chrono::NaiveDateTime {
+        self.last_edit_checked().unwrap()
+    }
+
     pub fn as_js(&self) -> Result<wasm_bindgen::JsValue, AppError> {
         Ok(js_sys::JSON::parse(&serde_json::to_string(&self)?)?)
+    }
+
+    pub fn from_js(val: wasm_bindgen::JsValue) -> Result<Self, AppError> {
+        let this = serde_json::from_str(&js_sys::JSON::stringify(&val)?.as_string().unwrap_or_default())?;
+        Ok(this)
     }
 }
 
@@ -792,6 +813,7 @@ impl From<backend::DbCounter> for Countable {
             parent: None,
             children: Vec::new(),
             name: value.name,
+            last_edit: value.last_edit,
             created_at: value.created_at,
         })))
     }
@@ -810,6 +832,7 @@ impl From<backend::DbPhase> for Countable {
             hunt_type: value.hunt_type.into(),
             has_charm: value.has_charm,
             success: value.success,
+            last_edit: value.last_edit,
             created_at: value.created_at,
         })))
     }
@@ -841,6 +864,7 @@ pub struct Counter {
     #[serde(default)]
     pub children: Vec<CountableId>,
     pub name: String,
+    pub last_edit: chrono::NaiveDateTime,
     pub created_at: chrono::NaiveDateTime,
 }
 
@@ -852,6 +876,7 @@ impl Counter {
             parent,
             children: Vec::new(),
             name,
+            last_edit: chrono::Utc::now().naive_utc(),
             created_at: chrono::Utc::now().naive_utc(),
         }
     }
@@ -864,6 +889,7 @@ impl Into<backend::DbCounter> for Counter {
             uuid: self.uuid,
             owner_uuid: self.owner_uuid,
             name: self.name,
+            last_edit: self.last_edit,
             created_at: self.created_at,
         }
     }
@@ -882,6 +908,7 @@ pub struct Phase {
     pub hunt_type: Hunttype,
     pub has_charm: bool,
     pub success: bool,
+    pub last_edit: chrono::NaiveDateTime,
     pub created_at: chrono::NaiveDateTime,
 }
 
@@ -892,6 +919,7 @@ impl Phase {
             owner_uuid,
             parent,
             name,
+            last_edit: chrono::Utc::now().naive_utc(),
             created_at: chrono::Utc::now().naive_utc(),
             ..Default::default()
         }
@@ -912,6 +940,7 @@ impl Into<backend::DbPhase> for Phase {
             has_charm: self.has_charm,
             dexnav_encounters: None,
             success: self.success,
+            last_edit: self.last_edit,
             created_at: self.created_at,
         }
     }

@@ -49,11 +49,11 @@ pub fn App() -> impl IntoView {
                                 <ProvideSessionSignal>
                                     <ProvideScreenSignal>
                                         <ProvidePreferences>
-                                            <ProvideCountableSignals>
-                                                <ProvideStore>
+                                            <ProvideStore>
+                                                <ProvideCountableSignals>
                                                     <Outlet/>
-                                                </ProvideStore>
-                                            </ProvideCountableSignals>
+                                                </ProvideCountableSignals>
+                                            </ProvideStore>
                                         </ProvidePreferences>
                                     </ProvideScreenSignal>
                                 </ProvideSessionSignal>
@@ -346,6 +346,7 @@ fn UnsetCountable() -> impl IntoView {
 #[component(transparent)]
 fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
     let msg = expect_context::<MessageJar>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
     let selection = SelectionModel::<uuid::Uuid, Countable>::new();
     let selection_signal = create_rw_signal(selection);
@@ -357,7 +358,12 @@ fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
         spawn_local(async move {
             let indexed_handler = indexed::IndexedSaveHandler::new().await;
             match indexed_handler {
-                Ok(ih) => save_handlers.update(|sh| sh.connect_handler(Box::new(ih))),
+                Ok(ih) => {
+                    if let Err(err) = ih.sync_store(store.get_untracked()).await {
+                        msg.set_err(err);
+                    };
+                    save_handlers.update(|sh| sh.connect_handler(Box::new(ih)))
+                },
                 Err(err) => msg.set_msg(format!(
                     "Local saving could not be initialised\nGot error: {}",
                     err
