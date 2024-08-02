@@ -36,32 +36,32 @@ impl IndexedSaveHandler {
         })
     }
 
-    pub async fn sync_store(&self, store: CountableStore) -> Result<CountableStore, AppError> {
+    pub async fn sync_store(&self, store: &mut CountableStore) -> Result<(), AppError> {
         let factory = indexed_db::Factory::get()?;
         let owner = store.owner();
         let db = factory.open_latest_version("TallyWeb").await?;
-        let map = db.transaction(&["Countable"]).run(move |evt| async move {
-            let mut map = std::collections::HashMap::<CountableId, Countable>::new();
-            let obj = evt.object_store("Countable")?;
-            let vals = obj.get_all(None).await?;
-            // TODO: missing values on the client fail this for loop
-            for val in vals {
-                let countable = Countable::from_js(val)?;
-                if let Some(c) = store.get(&countable.uuid().into()) && c.last_edit() > countable.last_edit() {
-                    map.insert(c.uuid().into(), c.clone());
-                    
-                } else {
-                    map.insert(countable.uuid().into(), countable);
-                }
-            }
-            Ok(map)
-        }).await?;
+        let map = db
+            .transaction(&["Countable"])
+            .run(move |evt| async move {
+                let obj = evt.object_store("Countable")?;
+                let map = obj
+                    .get_all(None)
+                    .await?
+                    .into_iter()
+                    .map(|v| Countable::from_js(v))
+                    .collect::<Result<Vec<Countable>, AppError>>()?
+                    .into_iter()
+                    .map(|c| (c.uuid().into(), c))
+                    .collect::<std::collections::HashMap<CountableId, Countable>>();
+                Ok(map)
+            })
+            .await?;
 
-        leptos::logging::log!("{:?}", map);
-        let store = CountableStore::new(owner, map);
+        let local_store = CountableStore::new(owner, map);
+        store.merge_checked(local_store)?;
         self.save(Box::new(store.clone()), Box::new(|_| ()))?;
 
-        Ok(store)
+        Ok(())
     }
 }
 

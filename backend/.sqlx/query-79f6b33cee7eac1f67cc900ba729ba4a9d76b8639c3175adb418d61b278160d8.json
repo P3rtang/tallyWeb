@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            uuid,\n            owner_uuid,\n            parent_uuid,\n            name,\n            count,\n            time,\n            has_charm,\n            hunt_type as \"hunt_type: Hunttype\",\n            dexnav_encounters,\n            success,\n            created_at\n            FROM phases\n        WHERE parent_uuid = $1\n        ORDER BY created_at;\n        ",
+  "query": "\n        SELECT \n            uuid,\n            owner_uuid,\n            parent_uuid,\n            name,\n            count,\n            time,\n            has_charm,\n            hunt_type as \"hunt_type: Hunttype\",\n            dexnav_encounters,\n            success,\n            last_edit,\n            created_at\n            FROM phases\n        where owner_uuid = $1;\n        ",
   "describe": {
     "columns": [
       {
@@ -70,6 +70,11 @@
       },
       {
         "ordinal": 10,
+        "name": "last_edit",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 11,
         "name": "created_at",
         "type_info": "Timestamp"
       }
@@ -90,8 +95,9 @@
       false,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "3531a87c7db46262b3b74b59fc057544fa619e8e5a0658cd7c3418e910011387"
+  "hash": "79f6b33cee7eac1f67cc900ba729ba4a9d76b8639c3175adb418d61b278160d8"
 }

@@ -22,6 +22,11 @@
         "ordinal": 3,
         "name": "uuid",
         "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_edit",
+        "type_info": "Timestamp"
       }
     ],
     "parameters": {
@@ -30,6 +35,7 @@
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,

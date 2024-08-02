@@ -75,9 +75,6 @@ impl SaveHandler for ServerSaveHandler {
                     if !is_offline(&err) {
                         msg.without_timeout().set_server_err(&err);
                         on_error(&leptos::ServerFnErrorErr::from(err))
-                    } else {
-                        msg.without_timeout()
-                            .set_msg("Client offline\nWIP: offline modus");
                     }
                 }
                 Some(_) => {

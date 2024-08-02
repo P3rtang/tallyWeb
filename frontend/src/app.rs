@@ -359,11 +359,13 @@ fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
             let indexed_handler = indexed::IndexedSaveHandler::new().await;
             match indexed_handler {
                 Ok(ih) => {
-                    if let Err(err) = ih.sync_store(store.get_untracked()).await {
+                    let mut s = store.get_untracked();
+                    if let Err(err) = ih.sync_store(&mut s).await {
                         msg.set_err(err);
                     };
+                    store.set(s);
                     save_handlers.update(|sh| sh.connect_handler(Box::new(ih)))
-                },
+                }
                 Err(err) => msg.set_msg(format!(
                     "Local saving could not be initialised\nGot error: {}",
                     err

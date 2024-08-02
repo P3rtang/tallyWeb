@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE phases\n        SET hunt_type = $2\n        WHERE parent_uuid = $1\n        ",
+  "query": "\n        UPDATE phases\n        SET \n            hunt_type = $2,\n            last_edit = $3\n        WHERE parent_uuid = $1\n        ",
   "describe": {
     "columns": [],
     "parameters": {
@@ -21,10 +21,11 @@
               ]
             }
           }
-        }
+        },
+        "Timestamp"
       ]
     },
     "nullable": []
   },
-  "hash": "88c588c9edd771189c7646ec995efd57c922cf7366b0e21344395ded9509ae40"
+  "hash": "8b3bc9dd604a349f1359585b08fa34c391e838d0922d3be154d458619f9b1137"
 }

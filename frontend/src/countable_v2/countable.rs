@@ -25,6 +25,23 @@ impl CountableStore {
         self.owner
     }
 
+    pub fn merge_checked(&mut self, other: Self) -> Result<(), AppError> {
+        for (id, other_c) in other.store {
+            if let Some(c) = self.get(&id)
+                && c.last_edit_checked()? > other_c.last_edit_checked()?
+            {
+                continue;
+            } else {
+                self.store.insert(id, other_c);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn merge(&mut self, other: Self) {
+        self.merge_checked(other).unwrap()
+    }
+
     pub fn contains(&self, countable: &CountableId) -> bool {
         self.store.contains_key(countable)
     }
@@ -777,7 +794,11 @@ impl Countable {
     }
 
     pub fn from_js(val: wasm_bindgen::JsValue) -> Result<Self, AppError> {
-        let this = serde_json::from_str(&js_sys::JSON::stringify(&val)?.as_string().unwrap_or_default())?;
+        let this = serde_json::from_str(
+            &js_sys::JSON::stringify(&val)?
+                .as_string()
+                .unwrap_or_default(),
+        )?;
         Ok(this)
     }
 }
