@@ -1,5 +1,4 @@
 use super::*;
-use indexed_db;
 use leptos::{create_effect, expect_context, Signal, WriteSignal};
 use leptos_use::utils::JsonCodec;
 
@@ -48,7 +47,7 @@ impl IndexedSaveHandler {
                     .get_all(None)
                     .await?
                     .into_iter()
-                    .map(|v| Countable::from_js(v))
+                    .map(Countable::from_js)
                     .collect::<Result<Vec<Countable>, AppError>>()?
                     .into_iter()
                     .map(|c| (c.uuid().into(), c))
@@ -74,6 +73,7 @@ impl SaveHandler for IndexedSaveHandler {
         let msg = expect_context::<components::MessageJar>();
         let set_ls = self.last_save.1;
 
+        #[allow(clippy::borrowed_box)]
         let action = leptos::create_action(move |value: &Box<dyn Savable>| {
             let value = value.clone_box();
             async move {

@@ -135,7 +135,7 @@ impl CountableStore {
                 .ok_or(AppError::CountableNotFound)
                 .cloned();
         } else {
-            return self.last_child_checked(&children.last().unwrap().uuid_checked()?.into());
+            self.last_child_checked(&children.last().unwrap().uuid_checked()?.into())
         }
     }
 

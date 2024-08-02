@@ -17,12 +17,10 @@ pub trait Savable {
     fn clone_box(&self) -> Box<dyn Savable>;
 }
 
+pub type ErrorFn = Box<dyn Fn(&dyn Error) + 'static>;
+
 pub trait SaveHandler {
-    fn save(
-        &self,
-        value: Box<dyn Savable>,
-        on_error: Box<dyn Fn(&dyn Error) + 'static>,
-    ) -> Result<(), AppError>;
+    fn save(&self, value: Box<dyn Savable>, on_error: ErrorFn) -> Result<(), AppError>;
     fn clone_box(&self) -> Box<dyn SaveHandler>;
 }
 
@@ -59,11 +57,9 @@ impl SaveHandler for ServerSaveHandler {
         #[allow(clippy::borrowed_box)]
         let action = create_action(move |val: &Box<dyn Savable>| val.save_endpoint());
 
-        let msg_id = if let Some(msg_view) = value.message() {
-            Some(msg.with_handle().set_msg_view(msg_view))
-        } else {
-            None
-        };
+        let msg_id = value
+            .message()
+            .map(|msg_view| msg.with_handle().set_msg_view(msg_view));
         action.dispatch(value);
 
         create_effect(move |_| {
@@ -91,7 +87,7 @@ impl SaveHandler for ServerSaveHandler {
     }
 
     fn clone_box(&self) -> Box<dyn SaveHandler> {
-        Box::new(self.clone())
+        Box::new(*self)
     }
 }
 
@@ -128,9 +124,8 @@ impl SaveHandler for SaveHandlers {
             Ok(())
         };
 
-        res().map_err(|err| {
-            on_error(&err);
-            err
+        res().inspect_err(|err| {
+            on_error(err);
         })?;
 
         Ok(())
