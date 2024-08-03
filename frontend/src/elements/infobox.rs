@@ -24,6 +24,7 @@ impl IsActive {
 pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl IntoView {
     let screen = expect_context::<Screen>();
     let store = expect_context::<RwSignal<CountableStore>>();
+    let save_handler = expect_context::<RwSignal<SaveHandlers>>();
 
     let show_multiple = move || countable_list().len() > 1;
     let show_title = move || !((screen.style)() == ScreenStyle::Portrait || show_multiple());
@@ -36,6 +37,14 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl In
                 key=|key| *key
                 children=move |key| {
                     let is_active = IsActive::default();
+                    create_effect(move |_| {
+                        is_active.0.with(|a| if !a {
+                            let _ = save_handler().save(
+                                Box::new(store.get_untracked().last_child(&key.into())),
+                                Box::new(|_| ()),
+                            );
+                        });
+                    });
                     provide_context(is_active);
                     view! {
                         <Show when=move || store().contains(&key.into())>
@@ -187,7 +196,6 @@ where
 {
     let is_active = expect_context::<IsActive>();
     let store = expect_context::<RwSignal<CountableStore>>();
-    let save_handler = expect_context::<RwSignal<SaveHandlers>>();
 
     #[allow(unused_variables)]
     let (time, add_time) = create_slice(
@@ -204,16 +212,14 @@ where
 
         let handle = set_interval_with_handle(
             move || {
-                let interval = calc_interval(
-                    js_sys::Date::new_0().get_milliseconds(),
-                    time.0.try_get().unwrap_or_default(),
-                );
+                let new_time = js_sys::Date::new_0().get_milliseconds();
+                let interval = calc_interval(new_time, time.0.try_get().unwrap_or_default());
                 if (is_active.0)() {
                     add_time(interval);
                 }
-                time.1.try_set(js_sys::Date::new_0().get_milliseconds());
+                time.1.try_set(new_time);
             },
-            std::time::Duration::from_millis(30),
+            std::time::Duration::from_millis(33),
         );
 
         on_cleanup(|| {
@@ -230,12 +236,6 @@ where
 
     let on_click = move |_| {
         is_active.toggle();
-        if !is_active.0() {
-            let _ = save_handler().save(
-                Box::new(store.get_untracked().last_child(&key().into())),
-                Box::new(|_| ()),
-            );
-        }
     };
 
     view! {
