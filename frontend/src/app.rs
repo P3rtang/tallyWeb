@@ -266,7 +266,9 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     let expand_node = move || {
         request_animation_frame(move || {
             selection.update(|s| {
-                s.get_node_mut(&key()).map(|n| n.set_expand(true));
+                if let Some(node) = s.get_node_mut(&key()) {
+                    node.set_expand(true)
+                }
             })
         })
     };
