@@ -263,11 +263,13 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
 
     let key = store_value(key);
 
-    let expand_node = create_write_slice(selection, move |model, _| {
-        if let Some(node) = model.get_node_mut(&key()) {
-            node.set_expand(true)
-        }
-    });
+    let expand_node = move || {
+        request_animation_frame(move || {
+            selection.update(|s| {
+                s.get_node_mut(&key()).map(|n| n.set_expand(true));
+            })
+        })
+    };
 
     let click_new_phase = move |ev: ev::MouseEvent| {
         ev.stop_propagation();
@@ -283,7 +285,7 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
             );
         });
 
-        expand_node(());
+        expand_node()
     };
 
     let show_context_menu = create_rw_signal(false);
