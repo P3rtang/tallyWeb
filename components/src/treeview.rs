@@ -166,7 +166,7 @@ where
         })
     });
 
-    let tree_nodes = move || {
+    let each = move || {
         nodes()
             .iter()
             .filter_map(|n| selection_model.get_untracked().get_node(&key(n)).cloned())
@@ -177,16 +177,16 @@ where
         <tree-view>
             <ul>
                 <For
-                    each=tree_nodes
+                    each
                     key=move |c| key(&c.row)
                     children=move |item| {
                         view! {
                             <TreeViewRow
                                 item=item.row.clone()
                                 key
-                                selection_model=selection_model
-                                view=view
-                                each_child=each_child
+                                selection_model
+                                view
+                                each_child
                                 on_click
                             >
                                 {view(&item.row)}
@@ -302,62 +302,60 @@ where
     let children = store_value(children);
 
     view! {
-        <Show when=move || node().is_some()>
-            <li style:display="block">
-                <div
-                    style=depth_style
-                    style:background=background
-                    style:display="flex"
-                    class=div_class
-                    on:click=move |ev| {
-                        if let Some(f) = on_click {
-                            if let Some(k) = key_val.try_get_value() {
-                                f(&k, ev);
-                            }
-                        } else {
-                            on_row_click(ev);
+        <li style:display="block">
+            <div
+                style=depth_style
+                style:background=background
+                style:display="flex"
+                class=div_class
+                on:click=move |ev| {
+                    if let Some(f) = on_click {
+                        if let Some(k) = key_val.try_get_value() {
+                            f(&k, ev);
+                        }
+                    } else {
+                        on_row_click(ev);
+                    }
+                }
+            >
+
+                <Show when=move || {
+                    node.try_get_untracked()
+                        .flatten()
+                        .is_some_and(|c| !each_child(&c.row).is_empty())
+                }>
+                    <div
+                        class=caret_class
+                        style:transform=if is_expanded() { "rotate(90deg)" } else { "" }
+                        style:cursor="pointer"
+                        style:font-size="24px"
+                        on:click=on_caret_click
+                    ></div>
+                </Show>
+                {children()}
+            </div>
+            <ul style:display=move || if is_expanded() { "block" } else { "none" }>
+                <For
+                    each=node_children
+                    key=move |item| key(&item)
+                    children=move |item| {
+                        view! {
+                            <TreeViewRow
+                                key
+                                item=item.clone()
+                                selection_model=selection_model
+                                each_child=each_child
+                                view=view
+                                on_click
+                            >
+                                {view(&item)}
+                            </TreeViewRow>
                         }
                     }
-                >
+                />
 
-                    <Show when=move || {
-                        node.try_get_untracked()
-                            .flatten()
-                            .is_some_and(|c| !each_child(&c.row).is_empty())
-                    }>
-                        <div
-                            class=caret_class
-                            style:transform=if is_expanded() { "rotate(90deg)" } else { "" }
-                            style:cursor="pointer"
-                            style:font-size="24px"
-                            on:click=on_caret_click
-                        ></div>
-                    </Show>
-                    {children()}
-                </div>
-                <ul style:display=if is_expanded() { "block" } else { "none" }>
-                    <For
-                        each=node_children
-                        key=key
-                        children=move |item| {
-                            view! {
-                                <TreeViewRow
-                                    key
-                                    item=item.clone()
-                                    selection_model=selection_model
-                                    each_child=each_child
-                                    view=view
-                                    on_click
-                                >
-                                    {view(&item)}
-                                </TreeViewRow>
-                            }
-                        }
-                    />
-
-                </ul>
-            </li>
-        </Show>
+            </ul>
+        </li>
     }
 }
 
