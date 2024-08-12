@@ -80,6 +80,38 @@ impl CountableStore {
         self.new_countable_checked(name, kind, parent).unwrap()
     }
 
+    pub fn filter(&self, filter: impl Fn(&Countable) -> bool) -> Self {
+        let mut store: HashMap<CountableId, Countable> = self
+            .store
+            .iter()
+            .filter(|(_, b)| filter(b))
+            .map(|(a, b)| (*a, b.clone()))
+            .collect();
+
+        // add back any missing parents
+        for i in store.clone().into_keys() {
+            let mut id = i;
+            while let Some(p) = self.parent(&id) {
+                id = p.uuid().into();
+                store.insert(id, p);
+            }
+        }
+
+        Self {
+            owner: self.owner,
+            store,
+            selection: self.selection.clone(),
+        }
+    }
+
+    pub fn remove(&mut self, countable: &CountableId) -> Option<Countable> {
+        for child in self.children_checked(countable).ok()? {
+            self.store.remove(&child.uuid_checked().ok()?.into())?;
+        }
+
+        self.store.remove(countable)
+    }
+
     pub fn root_nodes(&self) -> Vec<Countable> {
         self.store
             .values()
@@ -557,6 +589,7 @@ impl Savable for CountableStore {
         use wasm_bindgen::JsValue;
 
         Box::pin(async move {
+            obj.clear().await?;
             for c in self.store.values() {
                 let key = JsValue::from_str(&c.uuid().to_string());
                 let value = c.as_js();

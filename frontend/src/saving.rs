@@ -1,4 +1,5 @@
 use super::AppError;
+use components::MessageJar;
 use leptos::{create_action, create_effect, expect_context, Signal, WriteSignal};
 use leptos_use::utils::JsonCodec;
 use std::error::Error;
@@ -51,7 +52,7 @@ impl SaveHandler for ServerSaveHandler {
         value: Box<dyn Savable>,
         on_error: Box<dyn Fn(&dyn Error) + 'static>,
     ) -> Result<(), AppError> {
-        let msg = expect_context::<components::MessageJar>();
+        let msg = expect_context::<MessageJar>();
         let set_ls = self.last_save.1;
 
         #[allow(clippy::borrowed_box)]

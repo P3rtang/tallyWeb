@@ -20,12 +20,22 @@ pub fn CountableContextMenu(
     let store = expect_context::<RwSignal<CountableStore>>();
     let state_rsrc = expect_context::<StateResource>();
     let msg = expect_context::<MessageJar>();
-    // TODO: reintroduce saving
-    // let save_handler = expect_context::<SaveHandlerCountable>();
-    //
+    let save_handler = expect_context::<RwSignal<SaveHandlers>>();
+
     let delete_action = create_server_action::<api::RemoveCountable>();
     create_effect(move |_| match delete_action.value()() {
-        Some(Ok(_)) => state_rsrc.refetch(),
+        Some(Ok(_)) => {
+            leptos_router::use_navigate()("/", Default::default());
+            request_animation_frame(move || {
+                store.update(|s| {
+                    s.remove(&key.get_untracked().into());
+                });
+                let _ = save_handler.get_untracked().save(
+                    Box::new(store.get_untracked()),
+                    Box::new(move |_| state_rsrc.refetch()),
+                );
+            })
+        }
         Some(Err(err)) => msg.set_server_err(&err),
         None => {}
     });
