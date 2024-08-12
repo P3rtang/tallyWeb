@@ -184,7 +184,6 @@ pub async fn remove_countable(
     session: UserSession,
     countable: Countable,
 ) -> Result<(), ServerFnError> {
-    println!("here");
     match countable {
         Countable::Counter(_) => remove_counter(session, countable.uuid()).await?,
         Countable::Phase(_) => remove_phase(session, countable.uuid()).await?,
