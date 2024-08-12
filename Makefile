@@ -51,7 +51,8 @@ setup-pgadmin:
 
 fmt:
 	cargo fmt -q --all
-	leptosfmt -q *src/*
+	leptosfmt -q components
+	leptosfmt -q frontend
 
 check-fmt:
 	cargo fmt -q --check --all
