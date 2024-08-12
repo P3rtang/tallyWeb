@@ -337,7 +337,7 @@ where
             <ul style:display=move || if is_expanded() { "block" } else { "none" }>
                 <For
                     each=node_children
-                    key=move |item| key(&item)
+                    key
                     children=move |item| {
                         view! {
                             <TreeViewRow
