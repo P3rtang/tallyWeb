@@ -46,8 +46,8 @@ pub fn SessionFormInput(#[prop(into)] session: MaybeSignal<UserSession>) -> impl
             name="session_user_uuid"
             value=move || session_val()().user_uuid.to_string()
         />
-        <input type="hidden" name="session_username" value=move || session_val()().username/>
-        <input type="hidden" name="session_token" value=move || session_val()().token.to_string()/>
+        <input type="hidden" name="session_username" value=move || session_val()().username />
+        <input type="hidden" name="session_token" value=move || session_val()().token.to_string() />
     }
 }
 

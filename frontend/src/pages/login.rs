@@ -46,7 +46,7 @@ pub fn LoginPage() -> impl IntoView {
 
                 <action-buttons>
                     <div class=style::action_button_el>
-                        <input type="checkbox" name="remember" id="remember"/>
+                        <input type="checkbox" name="remember" id="remember" />
                         <label for="remember">Remember Me</label>
                     </div>
                     <A href="/create-account">

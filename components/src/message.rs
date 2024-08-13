@@ -366,7 +366,7 @@ pub fn ProvideMessageSystem() -> impl IntoView {
                     each=move || msg_jar.get_ordered().get().into_iter().rev()
                     key=|(key, _)| *key
                     children=move |(key, _)| {
-                        view! { <Message key jar=msg_jar/> }
+                        view! { <Message key jar=msg_jar /> }
                     }
                 />
 

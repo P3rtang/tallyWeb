@@ -26,18 +26,18 @@ pub fn App() -> impl IntoView {
     provide_context(show_sidebar);
 
     view! {
-        <Stylesheet href=format!("/pkg/{LEPTOS_OUTPUT_NAME}.css")/>
-        <Stylesheet href="/fa/css/all.css"/>
+        <Stylesheet href=format!("/pkg/{LEPTOS_OUTPUT_NAME}.css") />
+        <Stylesheet href="/fa/css/all.css" />
 
-        <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg"/>
-        <Link href="https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet"/>
+        <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg" />
+        <Link href="https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet" />
 
-        <Meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-        <Meta name="apple-mobile-web-app-capable" content="yes"/>
+        <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <Meta name="apple-mobile-web-app-capable" content="yes" />
 
-        <Title text="TallyWeb"/>
+        <Title text="TallyWeb" />
 
-        <ProvideMessageSystem/>
+        <ProvideMessageSystem />
         <Router>
             <main on:click=close_overlays>
                 <Routes>
@@ -51,7 +51,7 @@ pub fn App() -> impl IntoView {
                                         <ProvidePreferences>
                                             <ProvideStore>
                                                 <ProvideCountableSignals>
-                                                    <Outlet/>
+                                                    <Outlet />
                                                 </ProvideCountableSignals>
                                             </ProvideStore>
                                         </ProvidePreferences>
@@ -65,29 +65,32 @@ pub fn App() -> impl IntoView {
                             path="/"
                             view=|| {
                                 view! {
-                                    <Outlet/>
-                                    <HomePage/>
+                                    <Outlet />
+                                    <HomePage />
                                 }
                             }
                         >
 
-                            <Route path="" view=UnsetCountable/>
-                            <Route path=":key" view=SetCountable/>
+                            <Route path="" view=UnsetCountable />
+                            <Route path=":key" view=SetCountable />
                         </Route>
                         <Route path="/edit" view=EditWindow>
-                            <Route path=":key" view=move || view! { <EditCountableWindow/> }/>
+                            <Route path=":key" view=move || view! { <EditCountableWindow /> } />
                         </Route>
 
-                        <Route path="/preferences" view=move || view! { <PreferencesWindow/> }/>
+                        <Route path="/preferences" view=move || view! { <PreferencesWindow /> } />
 
-                        <Route path="/change-username" view=move || view! { <ChangeAccountInfo/> }/>
-                        <Route path="/change-password" view=ChangePassword/>
-                        <Route path="/privacy-policy" view=PrivacyPolicy/>
+                        <Route
+                            path="/change-username"
+                            view=move || view! { <ChangeAccountInfo /> }
+                        />
+                        <Route path="/change-password" view=ChangePassword />
+                        <Route path="/privacy-policy" view=PrivacyPolicy />
                     </Route>
-                    <TestRoutes/>
-                    <Route path="/login" view=LoginPage/>
-                    <Route path="/create-account" view=CreateAccount/>
-                    <Route path="/*any" view=NotFound/>
+                    <TestRoutes />
+                    <Route path="/login" view=LoginPage />
+                    <Route path="/create-account" view=CreateAccount />
+                    <Route path="/*any" view=NotFound />
                 </Routes>
             </main>
         </Router>
@@ -160,7 +163,7 @@ fn RouteSidebar(children: ChildrenFn) -> impl IntoView {
                 width=sidebar_width
                 attr:class=trans_class
             >
-                <SidebarContent/>
+                <SidebarContent />
                 <Show when=move || (screen.style)() != ScreenStyle::Portrait>
                     <ResizeBar
                         position=sidebar_width
@@ -193,8 +196,8 @@ pub fn HomePage() -> impl IntoView {
     view! {
         <RouteSidebar>
             <div id="HomeGrid">
-                <Navbar show_sidebar/>
-                <InfoBox countable_list=active/>
+                <Navbar show_sidebar />
+                <InfoBox countable_list=active />
             </div>
         </RouteSidebar>
     }
@@ -224,7 +227,7 @@ fn SidebarContent() -> impl IntoView {
 
     view! {
         <nav>
-            <SortSearch shown=show_sort_search search/>
+            <SortSearch shown=show_sort_search search />
         </nav>
         <TreeViewWidget
             each
@@ -248,13 +251,13 @@ fn SidebarContent() -> impl IntoView {
                 children()
             }
 
-            view=|countable| view! { <TreeViewRow key=countable.uuid()/> }
+            view=|countable| view! { <TreeViewRow key=countable.uuid() /> }
             show_separator=show_sep
             selection_model=selection_signal
             on_click=|_, _| ()
         />
 
-        <NewCounterButton/>
+        <NewCounterButton />
     }
 }
 
@@ -329,7 +332,7 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
                 </Show>
             </div>
         </A>
-        <CountableContextMenu show_overlay=show_context_menu location=click_location key/>
+        <CountableContextMenu show_overlay=show_context_menu location=click_location key />
     }
 }
 

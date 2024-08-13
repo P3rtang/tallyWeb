@@ -19,7 +19,7 @@ pub fn ChangeAccountInfo() -> impl IntoView {
     view! {
         <ActionForm action>
             <div class="container login-form">
-                <input type="hidden" name="old_username" value=move || user().username/>
+                <input type="hidden" name="old_username" value=move || user().username />
                 <input
                     type="text"
                     name="new_username"

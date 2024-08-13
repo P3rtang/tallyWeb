@@ -88,8 +88,8 @@ pub fn Select(
             }
         >
 
-            <SelectOver options=options() selection/>
-            <input {..attrs()} type="hidden" node_ref=hidden_select_ref/>
+            <SelectOver options=options() selection />
+            <input {..attrs()} type="hidden" node_ref=hidden_select_ref />
         </Show>
     }
 }

@@ -39,7 +39,7 @@ pub fn EditWindow() -> impl IntoView {
     });
 
     // we need to render the outlet first since it sets the selection key from the url
-    let outlet_view = view! { <Outlet/> };
+    let outlet_view = view! { <Outlet /> };
 
     let sidebar_update_memo =
         create_memo(move |_| ((screen.style)(), selection().get_owned_selected_keys()));
@@ -64,7 +64,7 @@ pub fn EditWindow() -> impl IntoView {
         <div style:display="flex">
             <Sidebar display=show_sidebar layout=sidebar_layout width>
                 <nav>
-                    <SortSearch shown=show_sort_search search=create_rw_signal(String::new())/>
+                    <SortSearch shown=show_sort_search search=create_rw_signal(String::new()) />
                 </nav>
                 <TreeViewWidget
                     each=move || {
@@ -92,7 +92,7 @@ pub fn EditWindow() -> impl IntoView {
                         children
                     }
 
-                    view=|countable| view! { <TreeViewRow key=countable.uuid()/> }
+                    view=|countable| view! { <TreeViewRow key=countable.uuid() /> }
                     show_separator=show_sep
                     selection_model=selection
                 />
@@ -101,7 +101,7 @@ pub fn EditWindow() -> impl IntoView {
                 style:width=move || format!("calc(100vw - {}px)", width())
                 style:min-height=min_height
             >
-                <Navbar show_sidebar/>
+                <Navbar show_sidebar />
                 {outlet_view}
             </section>
         </div>
@@ -162,7 +162,7 @@ pub fn EditCountableWindow() -> impl IntoView {
         <div style:display="flex" style:justify-content="center">
             <Show when=valid>
                 <edit-form class=form_style>
-                    <EditCounterBox key=key_memo/>
+                    <EditCounterBox key=key_memo />
                 </edit-form>
             </Show>
         </div>
@@ -218,25 +218,25 @@ fn EditCounterBox(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 
     view! {
         <ActionForm action>
-            <SessionFormInput session/>
-            <input type="hidden" name="countable_key" value=move || key().to_string()/>
-            <input type="hidden" name="countable_kind" value=move || kind().to_string()/>
+            <SessionFormInput session />
+            <input type="hidden" name="countable_key" value=move || key().to_string() />
+            <input type="hidden" name="countable_kind" value=move || kind().to_string() />
             <table style:display="flex" style:flex-flow="column" class=style::content>
                 <tbody>
                     <tr class=stylance::classes!(style::row, style::text_row)>
-                        <EditName key/>
+                        <EditName key />
                     </tr>
                     <tr class=stylance::classes!(style::row, style::text_row)>
-                        <EditCount key/>
+                        <EditCount key />
                     </tr>
                     <tr class=stylance::classes!(style::row, style::text_row)>
-                        <EditTime key/>
+                        <EditTime key />
                     </tr>
                     <tr class=stylance::classes!(style::row, style::text_row)>
-                        <EditHunttype key/>
+                        <EditHunttype key />
                     </tr>
                     <tr class=style::row>
-                        <EditCharm key/>
+                        <EditCharm key />
                     </tr>
                 </tbody>
             </table>

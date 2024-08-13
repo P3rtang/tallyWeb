@@ -6,7 +6,7 @@ use leptos::*;
 pub fn LoadingMessage() -> impl IntoView {
     view! {
         <div style="display: flex; align-items: center;">
-            <Spinner/>
+            <Spinner />
             <b style="font-size: 20px; padding-left: 24px;">Loading</b>
         </div>
     }
@@ -25,7 +25,7 @@ pub fn LoadingScreen(#[prop(optional)] accent_color: Option<Signal<String>>) -> 
 
     view! {
         <div class="notification-box" style:border=border_style>
-            <LoadingMessage/>
+            <LoadingMessage />
         </div>
     }
 }

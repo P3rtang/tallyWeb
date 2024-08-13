@@ -56,14 +56,14 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl In
                         <Show when=move || store().contains(&key.into())>
                             <div class=style::row>
                                 <Show when=show_multiple>
-                                    <Title key/>
+                                    <Title key />
                                 </Show>
-                                <Count expand=show_multiple key show_title/>
-                                <Time expand=show_multiple key show_title/>
+                                <Count expand=show_multiple key show_title />
+                                <Time expand=show_multiple key show_title />
                                 <Show when=multi_narrow>
-                                    <Progress expand=|| true key show_title/>
-                                    <LastStep expand=show_multiple key show_title/>
-                                    <AverageStep expand=show_multiple key show_title/>
+                                    <Progress expand=|| true key show_title />
+                                    <LastStep expand=show_multiple key show_title />
+                                    <AverageStep expand=show_multiple key show_title />
                                 </Show>
                             </div>
                         </Show>

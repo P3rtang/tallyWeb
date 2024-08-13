@@ -96,7 +96,7 @@ pub fn PreferencesWindow() -> impl IntoView {
         <div style:display="flex" style:height="100%" style:justify-content="center">
             <edit-form class=form_style>
                 <ActionForm action=action on:submit=on_submit>
-                    <SessionFormInput session/>
+                    <SessionFormInput session />
                     <table class=style::content>
                         <tr class=style::row>
                             <td>
@@ -136,7 +136,7 @@ pub fn PreferencesWindow() -> impl IntoView {
 
                         <tr>
                             <td colspan="2">
-                                <hr/>
+                                <hr />
                             </td>
                         </tr>
 
@@ -174,7 +174,7 @@ pub fn PreferencesWindow() -> impl IntoView {
 
                         <tr>
                             <td colspan="2">
-                                <hr/>
+                                <hr />
                             </td>
                         </tr>
 

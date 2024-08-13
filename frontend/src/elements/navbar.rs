@@ -42,8 +42,8 @@ pub fn Navbar(
             </A>
 
             <div style:margin-left="auto" style:display="flex" style:align-items="center">
-                <StatusBar/>
-                <AccountIcon username=move || user.get().username accent_color/>
+                <StatusBar />
+                <AccountIcon username=move || user.get().username accent_color />
             </div>
         </nav>
     }

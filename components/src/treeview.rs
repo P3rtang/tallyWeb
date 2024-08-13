@@ -192,7 +192,7 @@ where
                                 {view(&item.row)}
                             </TreeViewRow>
                             <Show when=show_separator fallback=|| ()>
-                                <hr/>
+                                <hr />
                             </Show>
                         }
                     }

@@ -30,7 +30,7 @@ pub fn PrivacyPolicy() -> impl IntoView {
                                 target="_blank"
                             >
                                 Privacy Policy Generator
-                            </a> .
+                            </a>.
                         </p>
                         <h1>Interpretation and Definitions</h1>
                         <h2>Interpretation</h2>
@@ -208,7 +208,7 @@ pub fn PrivacyPolicy() -> impl IntoView {
                             </li>
                         </ul>
                         <p>
-                            Cookies can be "Persistent" or "Session" Cookies. Persistent Cookies
+                            Cookies can be "Persistent"or "Session"Cookies. Persistent Cookies
                             remain on Your personal computer or mobile device when You go offline,
                             while Session Cookies are deleted as soon as You close Your web browser.
                             You can learn more about cookies on
@@ -217,7 +217,7 @@ pub fn PrivacyPolicy() -> impl IntoView {
                                 target="_blank"
                             >
                                 TermsFeed website
-                            </a> article.
+                            </a>article.
                         </p>
                         <p>
                             We use both Session and Persistent Cookies for the purposes set out below:
@@ -504,7 +504,7 @@ pub fn PrivacyPolicy() -> impl IntoView {
                         <p>
                             We will let You know via email and/or a prominent notice on Our
                             Service, prior to the change becoming effective and update the "Last
-                            updated" date at the top of this Privacy Policy.
+                            updated"date at the top of this Privacy Policy.
                         </p>
                         <p>
                             You are advised to review this Privacy Policy periodically for any

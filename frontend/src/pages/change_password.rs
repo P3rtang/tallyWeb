@@ -33,7 +33,7 @@ pub fn ChangePassword() -> impl IntoView {
     view! {
         <ActionForm action on:submit=on_submit>
             <div class="container login-form">
-                <input type="hidden" name="username" value=move || user().username/>
+                <input type="hidden" name="username" value=move || user().username />
                 <input
                     type="password"
                     name="old_pass"

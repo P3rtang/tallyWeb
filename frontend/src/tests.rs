@@ -15,9 +15,9 @@ async fn failing_server_fn() -> Result<(), ServerFnError> {
 pub fn TestRoutes() -> impl IntoView {
     view! {
         <Route path="/test" view=ShowTests>
-            <Route path="" view=|| ()/>
-            <Route path="message" view=Message/>
-            <Route path="slider" view=Slider/>
+            <Route path="" view=|| () />
+            <Route path="message" view=Message />
+            <Route path="slider" view=Slider />
         </Route>
     }
 }
@@ -45,7 +45,7 @@ pub fn ShowTests() -> impl IntoView {
             <Sidebar display=show_sidebar layout=SidebarLayout::Landscape>
                 <test-list>{test_list.clone()}</test-list>
             </Sidebar>
-            <Outlet/>
+            <Outlet />
         </div>
     }
 }
