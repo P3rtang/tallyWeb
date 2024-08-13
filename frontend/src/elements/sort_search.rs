@@ -1,6 +1,5 @@
 use super::{CountableId, CountableStore};
 use leptos::*;
-use web_sys::KeyboardEvent;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortMethod {
@@ -100,9 +99,9 @@ impl From<SortMethod> for &str {
 }
 
 #[component]
-pub fn SortSearch<F>(shown: F) -> impl IntoView
+pub fn SortSearch<S>(shown: S, search: RwSignal<String>) -> impl IntoView
 where
-    F: Fn() -> bool + 'static,
+    S: Fn() -> bool + 'static,
 {
     let sort_method = expect_context::<RwSignal<SortMethod>>();
 
@@ -116,7 +115,7 @@ where
         )
     };
 
-    create_effect(move |_| {
+    create_isomorphic_effect(move |_| {
         select_sort().map(|rf| rf.set_value(sort_method.get_untracked().into()))
     });
 
@@ -133,12 +132,14 @@ where
 
     let search_input = create_node_ref::<leptos::html::Input>();
 
-    let on_search = move |ev: KeyboardEvent| {
+    let on_search = move |ev: ev::Event| {
+        search.set(event_target_value(&ev));
+    };
+
+    let on_key = move |ev: ev::KeyboardEvent| {
         if ev.key() == "Escape" || ev.key() == "Enter" {
             let _ = search_input().unwrap().blur();
         }
-        // store.update(|l| l.search(&search_input().unwrap().value()));
-        ev.stop_propagation();
     };
 
     create_effect(move |_| {
@@ -173,7 +174,8 @@ where
                         <input
                             id="search-input"
                             node_ref=search_input
-                            on:keyup=on_search
+                            on:keydown=on_key
+                            on:input=on_search
                             on:focusout=move |_| {
                                 if search_input().map(|si| si.value() == "").unwrap_or_default() {
                                     is_searching.set(false)
@@ -191,7 +193,9 @@ where
                         <option value="Name">Name</option>
                         <option value="Count">Count</option>
                         <option value="Time">Time</option>
-                        <option value="CreatedAt">Created At</option>
+                        <option value="CreatedAt" selected>
+                            Created At
+                        </option>
                     </select>
                 </div>
             </div>

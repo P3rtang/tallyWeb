@@ -64,7 +64,7 @@ pub fn EditWindow() -> impl IntoView {
         <div style:display="flex">
             <Sidebar display=show_sidebar layout=sidebar_layout width>
                 <nav>
-                    <SortSearch shown=show_sort_search/>
+                    <SortSearch shown=show_sort_search search=create_rw_signal(String::new())/>
                 </nav>
                 <TreeViewWidget
                     each=move || {

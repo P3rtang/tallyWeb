@@ -24,7 +24,6 @@ impl IsActive {
 pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl IntoView {
     let screen = expect_context::<Screen>();
     let store = expect_context::<RwSignal<CountableStore>>();
-    let save_handler = expect_context::<RwSignal<SaveHandlers>>();
 
     let show_multiple = move || countable_list().len() > 1;
     let show_title = move || !((screen.style)() == ScreenStyle::Portrait || show_multiple());
@@ -38,12 +37,19 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl In
                 children=move |key| {
                     let is_active = IsActive::default();
                     create_effect(move |_| {
-                        is_active.0.with(|a| if !a {
-                            let _ = save_handler().save(
-                                Box::new(store.get_untracked().last_child(&key.into())),
-                                Box::new(|_| ()),
-                            );
-                        });
+                        let save_handler = expect_context::<RwSignal<SaveHandlers>>();
+                        is_active
+                            .0
+                            .with(|a| {
+                                if !a {
+                                    let _ = save_handler
+                                        .get_untracked()
+                                        .save(
+                                            Box::new(store.get_untracked().last_child(&key.into())),
+                                            Box::new(|_| ()),
+                                        );
+                                }
+                            });
                     });
                     provide_context(is_active);
                     view! {
@@ -139,16 +145,27 @@ where
         move |s, count| s.add_count(&key().into(), count),
     );
 
-    let key_listener = window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
-        "Equal" => {
-            is_active.set(true);
-            add_count(1);
+    let key_listener = window_event_listener(ev::keydown, move |ev| {
+        if !document()
+            .active_element()
+            .map(|e| {
+                // TODO: this feels like a hack look into this later
+                e.tag_name() == "INPUT"
+            })
+            .unwrap_or_default()
+        {
+            match ev.code().as_str() {
+                "Equal" => {
+                    is_active.set(true);
+                    add_count(1);
+                }
+                "Minus" => {
+                    add_count(-1);
+                }
+                "KeyP" => is_active.toggle(),
+                _ => {}
+            }
         }
-        "Minus" => {
-            add_count(-1);
-        }
-        "KeyP" => is_active.toggle(),
-        _ => {}
     });
 
     on_cleanup(|| key_listener.remove());

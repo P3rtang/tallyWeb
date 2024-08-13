@@ -61,20 +61,18 @@ pub fn App() -> impl IntoView {
                         }
                     >
 
-                        <Route path="" view=RouteSidebar>
-                            <Route
-                                path="/"
-                                view=|| {
-                                    view! {
-                                        <Outlet/>
-                                        <HomePage/>
-                                    }
+                        <Route
+                            path="/"
+                            view=|| {
+                                view! {
+                                    <Outlet/>
+                                    <HomePage/>
                                 }
-                            >
+                            }
+                        >
 
-                                <Route path="" view=UnsetCountable/>
-                                <Route path=":key" view=SetCountable/>
-                            </Route>
+                            <Route path="" view=UnsetCountable/>
+                            <Route path=":key" view=SetCountable/>
                         </Route>
                         <Route path="/edit" view=EditWindow>
                             <Route path=":key" view=move || view! { <EditCountableWindow/> }/>
@@ -117,7 +115,7 @@ fn NotFound() -> impl IntoView {
 }
 
 #[component]
-fn RouteSidebar() -> impl IntoView {
+fn RouteSidebar(children: ChildrenFn) -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen = expect_context::<Screen>();
@@ -172,7 +170,7 @@ fn RouteSidebar() -> impl IntoView {
                 </Show>
             </Sidebar>
             <section style:flex-grow="1" class=trans_class style:width=section_width>
-                <Outlet/>
+                {children}
             </section>
         </div>
     }
@@ -193,14 +191,16 @@ pub fn HomePage() -> impl IntoView {
     });
 
     view! {
-        <div id="HomeGrid">
-            <Navbar show_sidebar/>
-            <InfoBox countable_list=active/>
-        </div>
+        <RouteSidebar>
+            <div id="HomeGrid">
+                <Navbar show_sidebar/>
+                <InfoBox countable_list=active/>
+            </div>
+        </RouteSidebar>
     }
 }
 
-#[component]
+#[component(transparent)]
 fn SidebarContent() -> impl IntoView {
     let selection_signal = expect_context::<SelectionSignal>();
     let preferences = expect_context::<RwSignal<Preferences>>();
@@ -209,9 +209,13 @@ fn SidebarContent() -> impl IntoView {
 
     let show_sort_search = create_rw_signal(true);
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
+    let search = create_rw_signal(String::new());
+    provide_context(search);
 
     let each = create_memo(move |_| {
-        let mut root_nodes = store().root_nodes();
+        let mut root_nodes = store()
+            .filter(move |c| c.name().to_lowercase().contains(&search().to_lowercase()))
+            .root_nodes();
         root_nodes.sort_by(|a, b| {
             sort_method().sort_by()(&store.get_untracked(), &a.uuid().into(), &b.uuid().into())
         });
@@ -220,7 +224,7 @@ fn SidebarContent() -> impl IntoView {
 
     view! {
         <nav>
-            <SortSearch shown=show_sort_search/>
+            <SortSearch shown=show_sort_search search/>
         </nav>
         <TreeViewWidget
             each
@@ -260,34 +264,49 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     let data_resource = expect_context::<StateResource>();
     let store = expect_context::<RwSignal<CountableStore>>();
     let save_handler = expect_context::<RwSignal<SaveHandlers>>();
+    let search = create_memo(move |_| expect_context::<RwSignal<String>>()());
 
-    let key = store_value(key);
-
-    let expand_node = move || {
+    let expand_node = move |key: uuid::Uuid, expand: bool| {
         request_animation_frame(move || {
             selection.update(|s| {
-                if let Some(node) = s.get_node_mut(&key()) {
-                    node.set_expand(true)
+                if let Some(node) = s.get_node_mut(&key) {
+                    node.set_expand(expand)
                 }
             })
         })
     };
 
+    create_effect(move |_| {
+        if let Some(parent) = store.get_untracked().parent(&key.into()) {
+            if !search().is_empty()
+                && store
+                    .get_untracked()
+                    .name(&key.into())
+                    .to_lowercase()
+                    .contains(&search().to_lowercase())
+            {
+                expand_node(parent.uuid(), true)
+            } else {
+                expand_node(parent.uuid(), false)
+            }
+        }
+    });
+
     let click_new_phase = move |ev: ev::MouseEvent| {
         ev.stop_propagation();
 
-        let phase_number = store.get_untracked().children(&key().into()).len();
+        let phase_number = store.get_untracked().children(&key.into()).len();
         let name = format!("Phase {}", phase_number + 1);
 
         store.update(move |s| {
-            let id = s.new_countable(&name, CountableKind::Phase, Some(key().into()));
+            let id = s.new_countable(&name, CountableKind::Phase, Some(key.into()));
             let _ = save_handler().save(
                 Box::new([s.get(&id).unwrap()].to_vec()),
                 Box::new(move |_| data_resource.refetch()),
             );
         });
 
-        expand_node()
+        request_animation_frame(move || expand_node(key, true))
     };
 
     let show_context_menu = create_rw_signal(false);
@@ -299,18 +318,18 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
         set_click_location((ev.x(), ev.y()))
     };
 
-    let has_children = move || matches!(store().get(&key().into()), Some(Countable::Counter(_)));
+    let has_children = move || matches!(store().get(&key.into()), Some(Countable::Counter(_)));
 
     view! {
-        <A href=move || key().to_string()>
+        <A href=move || key.to_string()>
             <div class="row-body" on:contextmenu=on_right_click>
-                <span>{move || store().name(&key().into())}</span>
+                <span>{move || store().name(&key.into())}</span>
                 <Show when=has_children>
                     <button on:click=click_new_phase>+</button>
                 </Show>
             </div>
         </A>
-        <CountableContextMenu show_overlay=show_context_menu location=click_location key=key()/>
+        <CountableContextMenu show_overlay=show_context_menu location=click_location key/>
     }
 }
 
