@@ -75,13 +75,13 @@ cfg_if::cfg_if! {
             )).await?)
         }
 
-        #[actix_web::get("/privacy-policy")]
+        #[actix_web::get("/privacy-policy.html")]
         async fn privacy_policy(
             leptos_options: actix_web::web::Data<leptos::LeptosOptions>,
         ) -> impl Responder {
             let leptos_options = leptos_options.into_inner();
             let site_root = &leptos_options.site_root;
-            actix_files::NamedFile::open_async(format!("{site_root}/tallyWeb-privacy-policy.html")).await
+            actix_files::NamedFile::open_async(format!("{site_root}/privacy-policy.html")).await
         }
     } else {
         fn main() {

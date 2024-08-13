@@ -85,7 +85,6 @@ pub fn App() -> impl IntoView {
                             view=move || view! { <ChangeAccountInfo /> }
                         />
                         <Route path="/change-password" view=ChangePassword />
-                        <Route path="/privacy-policy" view=PrivacyPolicy />
                     </Route>
                     <TestRoutes />
                     <Route path="/login" view=LoginPage />

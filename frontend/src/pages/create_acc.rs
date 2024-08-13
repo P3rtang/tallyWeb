@@ -66,9 +66,9 @@ pub fn CreateAccount() -> impl IntoView {
             <action-buttons>
                 <div class=style::action_button_el>
                     <input type="checkbox" required />
-                    <A href="/privacy-policy" class=style::accept_ts>
+                    <a rel="external" href="/privacy-policy.html" class=style::accept_ts>
                         <b>{"I have read the Terms&Conditions"}</b>
-                    </A>
+                    </a>
                 </div>
                 <A href="/login">
                     <i class="fa-solid fa-xmark"></i>
