@@ -99,9 +99,10 @@ impl From<SortMethod> for &str {
 }
 
 #[component]
-pub fn SortSearch<S>(shown: S, search: RwSignal<String>) -> impl IntoView
+pub fn SortSearch<S, K>(shown: S, search: RwSignal<String>, on_keydown: K) -> impl IntoView
 where
     S: Fn() -> bool + 'static,
+    K: Fn(ev::KeyboardEvent) + Copy + 'static,
 {
     let sort_method = expect_context::<RwSignal<SortMethod>>();
 
@@ -137,10 +138,33 @@ where
     };
 
     let on_key = move |ev: ev::KeyboardEvent| {
-        if ev.key() == "Escape" || ev.key() == "Enter" {
-            let _ = search_input().unwrap().blur();
+        if ev.key() == "Escape" || ev.key() == "Enter" {}
+
+        match ev.key().as_str() {
+            "Escape" => {
+                if let Some(i) = search_input() {
+                    search.set(String::new());
+                    i.set_value("");
+                    let _ = i.blur();
+                }
+            }
+            "Enter" => {
+                if let Some(i) = search_input() {
+                    let _ = i.blur();
+                }
+            }
+            _ => {}
         }
+
+        on_keydown(ev);
     };
+
+    window_event_listener(ev::keydown, move |ev: ev::KeyboardEvent| {
+        match ev.key().as_str() {
+            "/" => is_searching.set(true),
+            _ => {}
+        }
+    });
 
     create_effect(move |_| {
         is_searching();

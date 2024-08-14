@@ -81,21 +81,26 @@ impl CountableStore {
     }
 
     pub fn filter(&self, filter: impl Fn(&Countable) -> bool) -> Self {
-        let mut store: HashMap<CountableId, Countable> = self
+        let mut store = self.raw_filter(filter);
+        // add back any missing parents
+        for i in store.store.clone().into_keys() {
+            let mut id = i;
+            while let Some(p) = self.parent(&id) {
+                id = p.uuid().into();
+                store.store.insert(id, p);
+            }
+        }
+
+        store
+    }
+
+    pub fn raw_filter(&self, filter: impl Fn(&Countable) -> bool) -> Self {
+        let store: HashMap<CountableId, Countable> = self
             .store
             .iter()
             .filter(|(_, b)| filter(b))
             .map(|(a, b)| (*a, b.clone()))
             .collect();
-
-        // add back any missing parents
-        for i in store.clone().into_keys() {
-            let mut id = i;
-            while let Some(p) = self.parent(&id) {
-                id = p.uuid().into();
-                store.insert(id, p);
-            }
-        }
 
         Self {
             owner: self.owner,
@@ -118,6 +123,10 @@ impl CountableStore {
             .filter(|v| self.parent(&v.uuid().into()).is_none())
             .cloned()
             .collect()
+    }
+
+    pub fn nodes(&self) -> Vec<Countable> {
+        self.store.values().cloned().collect()
     }
 
     pub fn children_checked(&self, countable: &CountableId) -> Result<Vec<Countable>, AppError> {

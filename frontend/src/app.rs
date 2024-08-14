@@ -224,9 +224,24 @@ fn SidebarContent() -> impl IntoView {
         root_nodes
     });
 
+    let on_sort_key = move |ev: ev::KeyboardEvent| match ev.key().as_str() {
+        "Enter" => {
+            let mut nodes = store()
+                .raw_filter(move |c| c.name().to_lowercase().contains(&search().to_lowercase()))
+                .nodes();
+            nodes.sort_by(|a, b| {
+                sort_method().sort_by()(&store.get_untracked(), &a.uuid().into(), &b.uuid().into())
+            });
+            if let Some(first) = nodes.first() {
+                leptos_router::use_navigate()(&first.uuid().to_string(), Default::default());
+            }
+        }
+        _ => {}
+    };
+
     view! {
         <nav>
-            <SortSearch shown=show_sort_search search />
+            <SortSearch shown=show_sort_search search on_keydown=on_sort_key />
         </nav>
         <TreeViewWidget
             each
