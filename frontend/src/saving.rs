@@ -1,7 +1,6 @@
 use super::AppError;
 use components::MessageJar;
-use leptos::{create_action, create_effect, expect_context, Signal, WriteSignal};
-use leptos_use::utils::JsonCodec;
+use leptos::{create_action, create_effect, expect_context};
 use std::error::Error;
 
 #[typetag::serde(tag = "type")]
@@ -27,22 +26,11 @@ pub trait SaveHandler {
 
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
-pub struct ServerSaveHandler {
-    last_save: (
-        Signal<Option<chrono::NaiveDateTime>>,
-        WriteSignal<Option<chrono::NaiveDateTime>>,
-    ),
-}
+pub struct ServerSaveHandler {}
 
 impl ServerSaveHandler {
     pub fn new() -> Self {
-        let last_sync = leptos_use::storage::use_local_storage::<
-            Option<chrono::NaiveDateTime>,
-            JsonCodec,
-        >("server_last_sync");
-        Self {
-            last_save: (last_sync.0, last_sync.1),
-        }
+        Self {}
     }
 }
 
@@ -53,7 +41,6 @@ impl SaveHandler for ServerSaveHandler {
         on_error: Box<dyn Fn(&dyn Error) + 'static>,
     ) -> Result<(), AppError> {
         let msg = expect_context::<MessageJar>();
-        let set_ls = self.last_save.1;
 
         #[allow(clippy::borrowed_box)]
         let action = create_action(move |val: &Box<dyn Savable>| val.save_endpoint());
@@ -78,7 +65,6 @@ impl SaveHandler for ServerSaveHandler {
                     if let Some(id) = msg_id {
                         msg.fade_out(id);
                     }
-                    set_ls(Some(chrono::Utc::now().naive_utc()));
                 }
                 _ => {}
             };
