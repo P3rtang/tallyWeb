@@ -26,6 +26,7 @@ pub fn CountableContextMenu(
     create_effect(move |_| match delete_action.value()() {
         Some(Ok(_)) => {
             leptos_router::use_navigate()("/", Default::default());
+            // TODO: look into removing this animation frame
             request_animation_frame(move || {
                 store.update(|s| {
                     s.remove(&key.get_untracked().into());
@@ -74,6 +75,7 @@ pub fn CountableContextMenu(
                     <span>Edit</span>
                 </div>
             </A>
+            // TODO: look further into this actionform not working
             // <ActionForm action=delete_action>
             <Show when=move || is_phase.get()>
                 <div
@@ -88,7 +90,6 @@ pub fn CountableContextMenu(
                     {move || if is_success() { "Unmark Success" } else { "Mark Success" }}
                 </div>
             </Show>
-            // TODO: look further into this actionform not working
             <div
                 class=stylance::classes!(overlay::row, overlay::interactive)
                 on:click=on_click_delete

@@ -284,27 +284,30 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     let search = create_memo(move |_| expect_context::<RwSignal<String>>()());
 
     let expand_node = move |key: uuid::Uuid, expand: bool| {
-        request_animation_frame(move || {
-            selection.update(|s| {
-                if let Some(node) = s.get_node_mut(&key) {
-                    node.set_expand(expand)
-                }
-            })
+        selection.update(|s| {
+            if let Some(node) = s.get_node_mut(&key) {
+                node.set_expand(expand)
+            }
         })
     };
 
-    create_effect(move |_| {
-        if let Some(parent) = store.get_untracked().parent(&key.into()) {
-            if !search().is_empty()
-                && store
-                    .get_untracked()
-                    .name(&key.into())
-                    .to_lowercase()
-                    .contains(&search().to_lowercase())
-            {
-                expand_node(parent.uuid(), true)
+    let includes_search = create_memo(move |_| {
+        !search().is_empty()
+            && store
+                .get_untracked()
+                .name(&key.into())
+                .to_lowercase()
+                .contains(&search().to_lowercase())
+    });
+    let selected = create_memo(move |_| selection().is_selected(&key));
+    let parent = store.get_untracked().parent(&key.into());
+
+    create_isomorphic_effect(move |_| {
+        if let Some(p) = parent.clone() {
+            if includes_search() || selected() {
+                expand_node(p.uuid(), true)
             } else {
-                expand_node(parent.uuid(), false)
+                expand_node(p.uuid(), false)
             }
         }
     });
@@ -337,10 +340,32 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
 
     let has_children = move || matches!(store().get(&key.into()), Some(Countable::Counter(_)));
 
+    let search_split = create_memo(move |_| {
+        let name = store().name(&key.into()).to_lowercase();
+        if let Some(idx) = name.find(&search().to_lowercase()) {
+            let (first, rest) = name.split_at(idx);
+            let (_, last) = rest.split_at(search().len());
+            Some((first.to_string(), last.to_string()))
+        } else {
+            None
+        }
+    });
+
     view! {
         <A href=move || key.to_string()>
             <div class="row-body" on:contextmenu=on_right_click>
-                <span>{move || store().name(&key.into())}</span>
+                <Show
+                    when=move || search_split().is_some()
+                    fallback=move || view! { <span>{move || store().name(&key.into())}</span> }
+                >
+                    <div>
+                        <span>{move || search_split().unwrap().0}</span>
+                        <span style:background="var(--accent)" style:color="black">
+                            {move || search()}
+                        </span>
+                        <span>{move || search_split().unwrap().1}</span>
+                    </div>
+                </Show>
                 <Show when=has_children>
                     <button on:click=click_new_phase>+</button>
                 </Show>

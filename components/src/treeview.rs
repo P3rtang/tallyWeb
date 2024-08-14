@@ -326,9 +326,10 @@ where
                 }>
                     <div
                         class=caret_class
-                        style:transform=if is_expanded() { "rotate(90deg)" } else { "" }
+                        style:transform=move || if is_expanded() { "rotate(90deg)" } else { "" }
                         style:cursor="pointer"
                         style:font-size="24px"
+                        style:transition="transform 0.24s"
                         on:click=on_caret_click
                     ></div>
                 </Show>

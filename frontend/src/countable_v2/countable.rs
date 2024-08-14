@@ -111,7 +111,7 @@ impl CountableStore {
 
     pub fn remove(&mut self, countable: &CountableId) -> Option<Countable> {
         for child in self.children_checked(countable).ok()? {
-            self.store.remove(&child.uuid_checked().ok()?.into())?;
+            self.remove(&child.uuid_checked().ok()?.into())?;
         }
 
         self.store.remove(countable)
@@ -127,6 +127,14 @@ impl CountableStore {
 
     pub fn nodes(&self) -> Vec<Countable> {
         self.store.values().cloned().collect()
+    }
+
+    pub fn has_child(&self, countable: &CountableId, child: &CountableId) -> bool {
+        self.children(countable)
+            .into_iter()
+            .map(|c| CountableId::from(c))
+            .collect::<Vec<_>>()
+            .contains(child)
     }
 
     pub fn children_checked(&self, countable: &CountableId) -> Result<Vec<Countable>, AppError> {
