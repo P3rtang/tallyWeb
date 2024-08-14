@@ -138,8 +138,6 @@ where
     };
 
     let on_key = move |ev: ev::KeyboardEvent| {
-        if ev.key() == "Escape" || ev.key() == "Enter" {}
-
         match ev.key().as_str() {
             "Escape" => {
                 if let Some(i) = search_input() {
@@ -160,6 +158,7 @@ where
     };
 
     window_event_listener(ev::keydown, move |ev: ev::KeyboardEvent| {
+        #[allow(clippy::single_match)]
         match ev.key().as_str() {
             "/" => is_searching.set(true),
             _ => {}

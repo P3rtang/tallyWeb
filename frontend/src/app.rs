@@ -224,6 +224,7 @@ fn SidebarContent() -> impl IntoView {
         root_nodes
     });
 
+    #[allow(clippy::single_match)]
     let on_sort_key = move |ev: ev::KeyboardEvent| match ev.key().as_str() {
         "Enter" => {
             let mut nodes = store()
@@ -341,6 +342,9 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     let has_children = move || matches!(store().get(&key.into()), Some(Countable::Counter(_)));
 
     let search_split = create_memo(move |_| {
+        if search().is_empty() {
+            return None;
+        }
         let name = store().name(&key.into()).to_lowercase();
         if let Some(idx) = name.find(&search().to_lowercase()) {
             let (first, rest) = name.split_at(idx);
@@ -361,7 +365,7 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
                     <div>
                         <span>{move || search_split().unwrap().0}</span>
                         <span style:background="var(--accent)" style:color="black">
-                            {move || search()}
+                            {search}
                         </span>
                         <span>{move || search_split().unwrap().1}</span>
                     </div>

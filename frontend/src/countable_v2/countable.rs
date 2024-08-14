@@ -132,7 +132,7 @@ impl CountableStore {
     pub fn has_child(&self, countable: &CountableId, child: &CountableId) -> bool {
         self.children(countable)
             .into_iter()
-            .map(|c| CountableId::from(c))
+            .map(CountableId::from)
             .collect::<Vec<_>>()
             .contains(child)
     }
