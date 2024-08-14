@@ -160,7 +160,11 @@ where
     window_event_listener(ev::keydown, move |ev: ev::KeyboardEvent| {
         #[allow(clippy::single_match)]
         match ev.key().as_str() {
-            "/" => is_searching.set(true),
+            "/" => {
+                is_searching.set(true);
+                // disable the default firefox behaviour
+                ev.prevent_default();
+            }
             _ => {}
         }
     });
