@@ -21,6 +21,13 @@ pub fn LoginPage() -> impl IntoView {
 
     create_effect(move |_| server_resp.track());
 
+    #[cfg(not(feature = "ssr"))]
+    spawn_local(async move {
+        if let Err(err) = indexed::IndexedSaveHandler::reset().await {
+            message_jar.set_err(err)
+        }
+    });
+
     view! {
         <ActionForm action=login_action>
             <div class=style::login_form>

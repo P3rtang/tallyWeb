@@ -23,6 +23,20 @@ impl IndexedSaveHandler {
         Ok(Self { version })
     }
 
+    pub async fn reset() -> Result<(), AppError> {
+        let factory = indexed_db::Factory::<AppError>::get()?;
+        let db = factory.open_latest_version("TallyWeb").await?;
+        db.transaction(&["Countable"])
+            .rw()
+            .run(|transaction| async move {
+                transaction.object_store("Countable")?.clear().await?;
+                Ok(())
+            })
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn sync_store(&self, store: &mut CountableStore) -> Result<(), AppError> {
         let factory = indexed_db::Factory::get()?;
         let owner = store.owner();
