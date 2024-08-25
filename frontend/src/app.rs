@@ -420,9 +420,21 @@ fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
     let selection = SelectionModel::<uuid::Uuid, Countable>::new();
     let selection_signal = create_rw_signal(selection);
     provide_context(selection_signal);
+
     provide_context(create_rw_signal(SortMethod::default()));
+
     let save_handlers = create_rw_signal(SaveHandlers::new());
-    save_handlers.update(|sh| sh.connect_handler(Box::new(ServerSaveHandler::new())));
+
+    let server_handler = Box::new(ServerSaveHandler::new());
+    save_handlers.update(|sh| sh.connect_handler(server_handler.clone()));
+
+    // when the page closes, gets minimized or navigated away from save the store
+    window_event_listener(ev::blur, move |_| {
+        if let Err(err) = server_handler.save(Box::new(store.get_untracked()), Box::new(|_| ())) {
+            msg.set_err(err)
+        }
+    });
+
     create_effect(move |_| {
         spawn_local(async move {
             let indexed_handler = indexed::IndexedSaveHandler::new().await;
@@ -432,8 +444,20 @@ fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
                     if let Err(err) = ih.sync_store(&mut s).await {
                         msg.set_err(err);
                     };
-                    store.set(s);
-                    save_handlers.update(|sh| sh.connect_handler(Box::new(ih)))
+                    if let Err(err) = save_handlers
+                        .get_untracked()
+                        .save(Box::new(s.clone()), Box::new(|_| ()))
+                    {
+                        msg.set_err(err);
+                    }
+                    store.set(s.clone());
+                    save_handlers.update(|sh| sh.connect_handler(Box::new(ih)));
+                    if let Err(err) = save_handlers
+                        .get_untracked()
+                        .save(Box::new(s), Box::new(|_| ()))
+                    {
+                        msg.set_err(err)
+                    }
                 }
                 Err(err) => msg.set_msg(format!(
                     "Local saving could not be initialised\nGot error: {}",
