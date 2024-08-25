@@ -277,6 +277,7 @@ pub async fn save_preferences(
         accent_color,
         show_separator: preferences.show_separator,
         multi_select: preferences.multi_select,
+        save_on_pause: preferences.save_on_pause,
     };
     db_prefs
         .db_set(&pool, &session.username, session.token)

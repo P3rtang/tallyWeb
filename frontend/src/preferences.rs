@@ -39,6 +39,7 @@ pub struct Preferences {
     pub accent_color: AccountAccentColor,
     pub show_separator: bool,
     pub multi_select: bool,
+    pub save_on_pause: bool,
 }
 
 impl Preferences {
@@ -49,6 +50,7 @@ impl Preferences {
             accent_color,
             show_separator: false,
             multi_select: false,
+            save_on_pause: true,
         }
     }
 }
@@ -64,6 +66,7 @@ impl Preferences {
                 .unwrap_or(AccountAccentColor::new(user)),
             show_separator: value.show_separator,
             multi_select: value.multi_select,
+            save_on_pause: value.save_on_pause,
         }
     }
 }

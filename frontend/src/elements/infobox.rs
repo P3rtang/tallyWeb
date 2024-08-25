@@ -20,10 +20,19 @@ impl IsActive {
     }
 }
 
+impl FnOnce<()> for IsActive {
+    type Output = bool;
+
+    extern "rust-call" fn call_once(self, _: ()) -> Self::Output {
+        self.0.get()
+    }
+}
+
 #[component]
 pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl IntoView {
     let screen = expect_context::<Screen>();
     let store = expect_context::<RwSignal<CountableStore>>();
+    let preferences = expect_context::<RwSignal<Preferences>>();
 
     let show_multiple = move || countable_list().len() > 1;
     let show_title = move || !((screen.style)() == ScreenStyle::Portrait || show_multiple());
@@ -41,7 +50,7 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl In
                         is_active
                             .0
                             .with(|a| {
-                                if !a {
+                                if !a && preferences.get_untracked().save_on_pause {
                                     let _ = save_handler
                                         .get_untracked()
                                         .save(
@@ -231,7 +240,7 @@ where
             move || {
                 let new_time = js_sys::Date::new_0().get_milliseconds();
                 let interval = calc_interval(new_time, time.0.try_get().unwrap_or_default());
-                if (is_active.0)() {
+                if is_active() {
                     add_time(interval);
                 }
                 time.1.try_set(new_time);

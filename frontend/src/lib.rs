@@ -1,6 +1,8 @@
 #![feature(async_closure)]
 #![feature(let_chains)]
 #![feature(half_open_range_patterns_in_slices)]
+#![feature(fn_traits)]
+#![feature(unboxed_closures)]
 
 use leptos::leptos_dom;
 use wasm_bindgen::{prelude::Closure, JsCast};

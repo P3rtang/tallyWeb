@@ -53,7 +53,7 @@ pub fn PreferencesWindow() -> impl IntoView {
 
         create_effect(move |_| match action.value().get() {
             Some(Ok(_)) => {
-                // message.fade_out(msg_key);
+                message.fade_out(msg_key);
                 action.value().set_untracked(None)
             }
             Some(Err(err)) => {
@@ -133,6 +133,8 @@ pub fn PreferencesWindow() -> impl IntoView {
                                 />
                             </td>
                         </tr>
+
+                        <SaveOnPause />
 
                         <tr>
                             <td colspan="2">
@@ -228,5 +230,29 @@ pub fn PreferencesWindow() -> impl IntoView {
                 </ActionForm>
             </edit-form>
         </div>
+    }
+}
+
+#[component]
+fn SaveOnPause() -> impl IntoView {
+    let preferences = expect_context::<RwSignal<Preferences>>();
+    let (checked, set_checked) =
+        create_slice(preferences, |p| p.save_on_pause, |p, c| p.save_on_pause = c);
+    let on_change = move |_| set_checked(!checked());
+
+    view! {
+        <tr class=style::row>
+            <td>
+                <label for="save-on-pause">Save on pause</label>
+            </td>
+            <td>
+                <Slider
+                    checked
+                    attr:name="preferences[save_on_pause]"
+                    attr:id="save-on-pause"
+                    on:change=on_change
+                />
+            </td>
+        </tr>
     }
 }
