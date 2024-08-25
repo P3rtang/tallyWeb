@@ -1,5 +1,6 @@
 use chrono::TimeDelta;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -10,6 +11,7 @@ pub struct CountableStore {
     owner: uuid::Uuid,
     store: HashMap<CountableId, Countable>,
     selection: Vec<CountableId>,
+    is_changed: RefCell<bool>,
 }
 
 impl CountableStore {
@@ -35,6 +37,9 @@ impl CountableStore {
                 self.store.insert(id, other_c);
             }
         }
+
+        self.is_changed.replace(true);
+
         Ok(())
     }
 
@@ -68,6 +73,9 @@ impl CountableStore {
                 .ok_or(AppError::CountableNotFound)?
                 .add_child_checked(key)?
         }
+
+        self.is_changed.replace(true);
+
         Ok(key)
     }
 
@@ -106,6 +114,7 @@ impl CountableStore {
             owner: self.owner,
             store,
             selection: self.selection.clone(),
+            ..Default::default()
         }
     }
 
@@ -231,6 +240,9 @@ impl CountableStore {
             Countable::Phase(p) => p.lock()?.name = name.into(),
             Countable::Chain(_) => todo!(),
         };
+
+        self.is_changed.replace(true);
+
         Ok(())
     }
 
@@ -265,6 +277,7 @@ impl CountableStore {
     pub fn set_count_checked(&self, countable: &CountableId, count: i32) -> Result<(), AppError> {
         let diff = count - self.count_checked(countable)?;
         self.add_count_checked(countable, diff)?;
+        self.is_changed.replace(true);
         Ok(())
     }
 
@@ -295,6 +308,9 @@ impl CountableStore {
             }
             Countable::Chain(_) => todo!(),
         }
+
+        self.is_changed.replace(true);
+
         Ok(())
     }
 
@@ -331,6 +347,7 @@ impl CountableStore {
     ) -> Result<(), AppError> {
         let diff = time - self.time_checked(countable)?;
         self.add_time_checked(countable, diff)?;
+        self.is_changed.replace(true);
         Ok(())
     }
 
@@ -364,6 +381,9 @@ impl CountableStore {
             }
             Countable::Chain(_) => todo!(),
         }
+
+        self.is_changed.replace(true);
+
         Ok(())
     }
 
@@ -571,6 +591,9 @@ impl CountableStore {
             }
             Countable::Chain(_) => todo!(),
         };
+
+        self.is_changed.replace(true);
+
         Ok(())
     }
 
@@ -605,6 +628,8 @@ impl Savable for CountableStore {
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
         use wasm_bindgen::JsValue;
 
+        self.is_changed.replace(false);
+
         Box::pin(async move {
             obj.clear().await?;
             for c in self.store.values() {
@@ -621,6 +646,7 @@ impl Savable for CountableStore {
         &self,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
     {
+        self.is_changed.replace(false);
         let cloned = self.clone();
         Box::pin(api::update_countable_many(
             cloned.store.into_values().collect(),
@@ -633,6 +659,10 @@ impl Savable for CountableStore {
 
     fn clone_box(&self) -> Box<dyn Savable> {
         Box::new(self.clone())
+    }
+
+    fn has_change(&self) -> bool {
+        *self.is_changed.borrow()
     }
 }
 
@@ -673,6 +703,9 @@ impl Savable for Vec<Countable> {
     fn clone_box(&self) -> Box<dyn Savable> {
         Box::new(self.clone())
     }
+    fn has_change(&self) -> bool {
+        true
+    }
 }
 
 #[typetag::serde]
@@ -707,6 +740,10 @@ impl Savable for Countable {
 
     fn clone_box(&self) -> Box<dyn Savable> {
         Box::new(self.clone())
+    }
+
+    fn has_change(&self) -> bool {
+        true
     }
 }
 

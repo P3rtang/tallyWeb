@@ -430,7 +430,10 @@ fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
 
     // when the page closes, gets minimized or navigated away from save the store
     window_event_listener(ev::blur, move |_| {
-        if let Err(err) = server_handler.save(Box::new(store.get_untracked()), Box::new(|_| ())) {
+        if let Err(err) = save_handlers
+            .get_untracked()
+            .save(Box::new(store.get_untracked()), Box::new(|_| ()))
+        {
             msg.set_err(err)
         }
     });

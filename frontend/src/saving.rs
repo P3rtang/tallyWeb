@@ -15,6 +15,7 @@ pub trait Savable {
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>;
     fn message(&self) -> Option<leptos::View>;
     fn clone_box(&self) -> Box<dyn Savable>;
+    fn has_change(&self) -> bool;
 }
 
 pub type ErrorFn = Box<dyn Fn(&dyn Error) + 'static>;
@@ -40,6 +41,10 @@ impl SaveHandler for ServerSaveHandler {
         value: Box<dyn Savable>,
         on_error: Box<dyn Fn(&dyn Error) + 'static>,
     ) -> Result<(), AppError> {
+        if !value.has_change() {
+            return Ok(());
+        }
+
         let msg = expect_context::<MessageJar>();
 
         #[allow(clippy::borrowed_box)]
