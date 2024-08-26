@@ -117,6 +117,8 @@ pub enum AppError {
     Javascript(String),
     #[error("Serialization error: {0}")]
     Serialization(String),
+    #[error("Incorrect or missing env variable: {0}")]
+    Environment(String),
 }
 
 impl From<gloo_storage::errors::StorageError> for AppError {

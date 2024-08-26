@@ -41,6 +41,8 @@ serde_qs = "0.13.0"
 futures-util = "0.3.30"
 typetag = "0.2.16"
 indexed-db = "0.4.1"
+dotenvy = "0.15.7"
+dotenvy_macro = "0.15.7"
 
 [features]
 csr = ["leptos/csr", "leptos_meta/csr", "leptos_router/csr"]

@@ -1,5 +1,8 @@
 use super::*;
+use dotenvy_macro::dotenv;
 use leptos::{create_effect, expect_context};
+
+const IDB_VERSION: &str = dotenv!("IDB_TALLYWEB_VERSION");
 
 #[allow(dead_code)]
 #[derive(Clone)]
@@ -9,11 +12,14 @@ pub struct IndexedSaveHandler {
 
 impl IndexedSaveHandler {
     pub async fn new() -> Result<Self, AppError> {
-        let version = 1;
+        let version = IDB_VERSION
+            .parse()
+            .map_err(|_| AppError::Environment("IDB_VERSION".to_string()))?;
 
         let factory = indexed_db::Factory::<AppError>::get()?;
         factory
             .open("TallyWeb", version, |evt| async move {
+                evt.database().delete_object_store("Countable")?;
                 let obj_builder = evt.database().build_object_store("Countable");
                 obj_builder.create()?;
                 Ok(())
