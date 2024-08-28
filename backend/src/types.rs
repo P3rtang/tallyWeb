@@ -35,6 +35,7 @@ pub struct DbCounter {
     pub name: String,
     pub created_at: chrono::NaiveDateTime,
     pub last_edit: chrono::NaiveDateTime,
+    pub is_deleted: bool,
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -51,6 +52,7 @@ pub struct DbPhase {
     pub success: bool,
     pub created_at: chrono::NaiveDateTime,
     pub last_edit: chrono::NaiveDateTime,
+    pub is_deleted: bool,
 }
 
 #[derive(Debug)]

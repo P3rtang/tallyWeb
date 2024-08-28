@@ -27,5 +27,6 @@ pub async fn get_countable_store(user: uuid::Uuid) -> Result<CountableStore, Ser
     }
 
     conn.commit().await?;
+
     Ok(CountableStore::new(user, store))
 }

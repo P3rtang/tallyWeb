@@ -31,7 +31,8 @@ pub async fn get_children(tx: &mut PgTx, key: uuid::Uuid) -> Result<Vec<DbPhase>
             dexnav_encounters,
             success,
             last_edit,
-            created_at
+            created_at,
+            is_deleted
             FROM phases
         WHERE parent_uuid = $1
         ORDER BY created_at;
@@ -206,21 +207,54 @@ pub async fn set_charm(
 pub async fn update(tx: &mut PgTx, counter: DbCounter) -> Result<(), BackendError> {
     sqlx::query!(
         r#"
-        INSERT INTO counters (uuid, owner_uuid, name, created_at)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO counters (uuid, owner_uuid, name, created_at, is_deleted)
+        VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (uuid) DO UPDATE
         SET
-            name = $3
+            name = $3,
+            is_deleted = $5
         "#,
         counter.uuid,
         counter.owner_uuid,
         counter.name,
         counter.created_at,
+        counter.is_deleted,
     )
     .execute(&mut **tx)
     .await?;
 
     edited(tx, counter.uuid).await?;
+
+    Ok(())
+}
+
+pub async fn archive(tx: &mut PgTx, key: uuid::Uuid) -> Result<(), BackendError> {
+    sqlx::query!(
+        r#"
+        UPDATE counters
+        SET is_deleted = true
+        WHERE uuid = $1
+        "#,
+        key,
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    sqlx::query!(
+        r#"
+        UPDATE phases
+        SET
+            is_deleted = true,
+            last_edit = $2
+        WHERE parent_uuid = $1
+        "#,
+        key,
+        chrono::Utc::now().naive_utc(),
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    edited(tx, key).await?;
 
     Ok(())
 }

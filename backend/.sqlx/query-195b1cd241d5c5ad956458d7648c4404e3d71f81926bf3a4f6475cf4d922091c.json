@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO phases (uuid, owner_uuid, parent_uuid, name, count, time, hunt_type, has_charm, success, dexnav_encounters, created_at)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n        ON CONFLICT (uuid) DO UPDATE\n        SET\n            name = $4,\n            count = $5,\n            time = $6,\n            hunt_type = $7,\n            has_charm = $8,\n            success = $9,\n            dexnav_encounters = $10\n        ",
+  "query": "\n        INSERT INTO phases (uuid, owner_uuid, parent_uuid, name, count, time, hunt_type, has_charm, success, dexnav_encounters, created_at, is_deleted)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n        ON CONFLICT (uuid) DO UPDATE\n        SET\n            name = $4,\n            count = $5,\n            time = $6,\n            hunt_type = $7,\n            has_charm = $8,\n            success = $9,\n            dexnav_encounters = $10,\n            is_deleted = $12\n        ",
   "describe": {
     "columns": [],
     "parameters": {
@@ -30,10 +30,11 @@
         "Bool",
         "Bool",
         "Int4",
-        "Timestamp"
+        "Timestamp",
+        "Bool"
       ]
     },
     "nullable": []
   },
-  "hash": "c8d195a7c79e01a1435acdb61965aecafb6e9b70b706d05f81a7b89adafc8b96"
+  "hash": "195b1cd241d5c5ad956458d7648c4404e3d71f81926bf3a4f6475cf4d922091c"
 }

@@ -16,27 +16,12 @@ pub fn CountableContextMenu(
     location: ReadSignal<(i32, i32)>,
     #[prop(into)] key: MaybeSignal<uuid::Uuid>,
 ) -> impl IntoView {
-    let user = expect_context::<RwSignal<UserSession>>();
     let store = expect_context::<RwSignal<CountableStore>>();
-    let state_rsrc = expect_context::<StateResource>();
     let msg = expect_context::<MessageJar>();
-    let save_handler = expect_context::<RwSignal<SaveHandlers>>();
 
-    let delete_action = create_server_action::<api::RemoveCountable>();
+    let delete_action = create_server_action::<api::ArchiveCountable>();
     create_effect(move |_| match delete_action.value()() {
-        Some(Ok(_)) => {
-            leptos_router::use_navigate()("/", Default::default());
-            // TODO: look into removing this animation frame
-            request_animation_frame(move || {
-                store.update(|s| {
-                    s.remove(&key.get_untracked().into());
-                });
-                let _ = save_handler.get_untracked().save(
-                    Box::new(store.get_untracked()),
-                    Box::new(move |_| state_rsrc.refetch()),
-                );
-            })
-        }
+        Some(Ok(_)) => leptos_router::use_navigate()("/", Default::default()),
         Some(Err(err)) => msg.set_server_err(&err),
         None => {}
     });
@@ -55,12 +40,13 @@ pub fn CountableContextMenu(
     );
 
     let on_click_delete = move |ev: ev::MouseEvent| {
-        let countable = store.get_untracked().get(&key().into()).unwrap();
         ev.stop_propagation();
         ev.prevent_default();
-        delete_action.dispatch(api::RemoveCountable {
-            session: user.get_untracked(),
-            countable,
+
+        let countable = store.get_untracked().get(&key().into()).unwrap();
+        delete_action.dispatch(api::ArchiveCountable { countable });
+        store.update(|s| {
+            s.archive(&key.get_untracked().into());
         });
     };
 

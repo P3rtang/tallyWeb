@@ -29,8 +29,10 @@ impl CountableStore {
 
     pub fn merge_checked(&mut self, other: Self) -> Result<(), AppError> {
         for (id, other_c) in other.store {
-            if let Some(c) = self.get(&id)
-                && c.last_edit_checked()? > other_c.last_edit_checked()?
+            if other_c.is_archived() {
+                self.store.insert(id, other_c);
+            } else if let Some(c) = self.get(&id)
+                && (c.last_edit_checked()? > other_c.last_edit_checked()? || c.is_archived())
             {
                 continue;
             } else {
@@ -118,12 +120,18 @@ impl CountableStore {
         }
     }
 
-    pub fn remove(&mut self, countable: &CountableId) -> Option<Countable> {
+    pub fn archive(&mut self, countable: &CountableId) -> Option<Countable> {
         for child in self.children_checked(countable).ok()? {
-            self.remove(&child.uuid_checked().ok()?.into())?;
+            self.archive(&child.uuid_checked().ok()?.into())?;
         }
 
-        self.store.remove(countable)
+        match self.get(countable)? {
+            Countable::Counter(c) => c.lock().ok()?.is_deleted = true,
+            Countable::Phase(p) => p.lock().ok()?.is_deleted = true,
+            Countable::Chain(_) => todo!(),
+        }
+
+        self.get(countable)
     }
 
     pub fn root_nodes(&self) -> Vec<Countable> {
@@ -876,6 +884,18 @@ impl Countable {
         self.last_edit_checked().unwrap()
     }
 
+    pub fn is_archived_checked(&self) -> Result<bool, AppError> {
+        Ok(match self {
+            Countable::Counter(c) => c.lock()?.is_deleted,
+            Countable::Phase(p) => p.lock()?.is_deleted,
+            Countable::Chain(_) => todo!(),
+        })
+    }
+
+    pub fn is_archived(&self) -> bool {
+        self.is_archived_checked().unwrap()
+    }
+
     pub fn as_js(&self) -> Result<wasm_bindgen::JsValue, AppError> {
         Ok(js_sys::JSON::parse(&serde_json::to_string(&self)?)?)
     }
@@ -923,6 +943,7 @@ impl From<backend::DbCounter> for Countable {
             name: value.name,
             last_edit: value.last_edit,
             created_at: value.created_at,
+            is_deleted: value.is_deleted,
         })))
     }
 }
@@ -942,6 +963,7 @@ impl From<backend::DbPhase> for Countable {
             success: value.success,
             last_edit: value.last_edit,
             created_at: value.created_at,
+            is_deleted: value.is_deleted,
         })))
     }
 }
@@ -974,6 +996,7 @@ pub struct Counter {
     pub name: String,
     pub last_edit: chrono::NaiveDateTime,
     pub created_at: chrono::NaiveDateTime,
+    pub is_deleted: bool,
 }
 
 impl Counter {
@@ -986,6 +1009,7 @@ impl Counter {
             name,
             last_edit: chrono::Utc::now().naive_utc(),
             created_at: chrono::Utc::now().naive_utc(),
+            is_deleted: false,
         }
     }
 }
@@ -999,6 +1023,7 @@ impl Into<backend::DbCounter> for Counter {
             name: self.name,
             last_edit: self.last_edit,
             created_at: self.created_at,
+            is_deleted: self.is_deleted,
         }
     }
 }
@@ -1018,6 +1043,7 @@ pub struct Phase {
     pub success: bool,
     pub last_edit: chrono::NaiveDateTime,
     pub created_at: chrono::NaiveDateTime,
+    pub is_deleted: bool,
 }
 
 impl Phase {
@@ -1050,6 +1076,7 @@ impl Into<backend::DbPhase> for Phase {
             success: self.success,
             last_edit: self.last_edit,
             created_at: self.created_at,
+            is_deleted: self.is_deleted,
         }
     }
 }

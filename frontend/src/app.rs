@@ -217,6 +217,7 @@ fn SidebarContent() -> impl IntoView {
     let each = create_memo(move |_| {
         let mut root_nodes = store()
             .filter(move |c| c.name().to_lowercase().contains(&search().to_lowercase()))
+            .raw_filter(move |c| !c.is_archived())
             .root_nodes();
         root_nodes.sort_by(|a, b| {
             sort_method().sort_by()(&store.get_untracked(), &a.uuid().into(), &b.uuid().into())
