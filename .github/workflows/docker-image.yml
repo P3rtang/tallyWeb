@@ -18,6 +18,8 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
     - name: Build docker
+      env: 
+        IDB_TALLYWEB_VERSION: ${{ vars.IDB_TALLYWEB_VERSION }}
       run: docker build . --tag p3rtang/tallyweb
     - name: Push docker
       run: docker push p3rtang/tallyweb
