@@ -1,8 +1,7 @@
 use super::*;
-use dotenvy_macro::dotenv;
 use leptos::{create_effect, expect_context};
 
-const IDB_VERSION: &str = dotenv!("IDB_TALLYWEB_VERSION");
+const IDB_VERSION: &str = env!("IDB_TALLYWEB_VERSION");
 
 #[allow(dead_code)]
 #[derive(Clone)]
