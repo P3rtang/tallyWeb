@@ -1,4 +1,5 @@
 use chrono::TimeDelta;
+use leptos::{SignalGetUntracked, SignalUpdateUntracked};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -621,6 +622,60 @@ impl CountableStore {
 
     pub fn created_at(&self, countable: &CountableId) -> chrono::NaiveDateTime {
         self.created_at_checked(countable).unwrap()
+    }
+}
+
+#[typetag::serde]
+impl Savable for leptos::RwSignal<CountableStore> {
+    fn indexed_db_name(&self) -> String {
+        "Countable".into()
+    }
+
+    fn save_indexed<'a>(
+        &'a self,
+        obj: indexed_db::ObjectStore<AppError>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
+        use wasm_bindgen::JsValue;
+
+        self.update_untracked(|s| {
+            s.is_changed.replace(false);
+        });
+
+        Box::pin(async move {
+            obj.clear().await?;
+            for c in self.get_untracked().store.values() {
+                let key = JsValue::from_str(&c.uuid().to_string());
+                let value = c.as_js();
+
+                obj.put_kv(&key, &value?).await?;
+            }
+            Ok(())
+        })
+    }
+
+    fn save_endpoint(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
+    {
+        self.update_untracked(|s| {
+            s.is_changed.replace(false);
+        });
+
+        Box::pin(api::update_countable_many(
+            self.get_untracked().store.into_values().collect(),
+        ))
+    }
+
+    fn message(&self) -> Option<leptos::View> {
+        None
+    }
+
+    fn clone_box(&self) -> Box<dyn Savable> {
+        Box::new(*self)
+    }
+
+    fn has_change(&self) -> bool {
+        *self.get_untracked().is_changed.borrow()
     }
 }
 

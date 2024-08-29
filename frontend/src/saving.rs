@@ -53,7 +53,7 @@ impl SaveHandler for ServerSaveHandler {
         let msg_id = value
             .message()
             .map(|msg_view| msg.with_handle().set_msg_view(msg_view));
-        action.dispatch(value);
+        action.dispatch(value.clone_box());
 
         create_effect(move |_| {
             match action.value()() {

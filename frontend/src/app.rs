@@ -433,7 +433,7 @@ fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
     window_event_listener(ev::blur, move |_| {
         if let Err(err) = save_handlers
             .get_untracked()
-            .save(Box::new(store.get_untracked()), Box::new(|_| ()))
+            .save(Box::new(store), Box::new(|_| ()))
         {
             msg.set_err(err)
         }
@@ -458,7 +458,7 @@ fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
                     save_handlers.update(|sh| sh.connect_handler(Box::new(ih)));
                     if let Err(err) = save_handlers
                         .get_untracked()
-                        .save(Box::new(s), Box::new(|_| ()))
+                        .save(Box::new(store), Box::new(|_| ()))
                     {
                         msg.set_err(err)
                     }

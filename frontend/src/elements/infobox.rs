@@ -62,6 +62,7 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl In
                     });
                     provide_context(is_active);
                     view! {
+                        // TODO: refactor into a component
                         <Show when=move || store().contains(&key.into())>
                             <div class=style::row>
                                 <Show when=show_multiple>
