@@ -85,16 +85,6 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl In
     }
 }
 
-fn format_time(dur: Duration) -> String {
-    format!(
-        "{:>02}:{:02}:{:02},{:03}",
-        dur.num_hours(),
-        dur.num_minutes() % 60,
-        dur.num_seconds() % 60,
-        dur.num_milliseconds() - dur.num_seconds() * 1000,
-    )
-}
-
 fn short_format_time(dur: Duration) -> String {
     match dur {
         dur if dur.num_hours() > 0 => {
@@ -227,7 +217,7 @@ where
     #[allow(unused_variables)]
     let (time, add_time) = create_slice(
         store,
-        move |s| format_time(s.time(&key().into())),
+        move |s| s.time(&key().into()).to_std().unwrap_or_default(),
         move |s, add| s.add_time(&key().into(), add),
     );
 
@@ -273,9 +263,12 @@ where
             >
                 Time
             </span>
-            <span class=style::info style:min-width="7em" data-testid="info">
-                {time}
-            </span>
+            <components::Timer
+                attr:class=style::info
+                attr:data-testid="info"
+                value=time
+                format="%H:%M:%S%.3f"
+            />
         </div>
     }
 }

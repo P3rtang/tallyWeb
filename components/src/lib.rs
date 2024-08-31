@@ -9,6 +9,7 @@ mod select;
 mod sidebar;
 mod slider;
 mod spinner;
+mod time;
 mod tooltip;
 mod treeview;
 
@@ -21,6 +22,7 @@ pub use select::{Select, SelectOption};
 pub use sidebar::*;
 pub use slider::*;
 pub use spinner::*;
+pub use time::{Clock, Timer};
 pub use tooltip::*;
 pub use treeview::*;
 
