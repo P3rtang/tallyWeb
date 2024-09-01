@@ -107,7 +107,15 @@ pub fn Timer(
                     Fixed::TimezoneOffsetZ => todo!(),
                     Fixed::RFC2822 => todo!(),
                     Fixed::RFC3339 => todo!(),
-                    Fixed::Internal(_) => todo!(),
+                    Fixed::Internal(_) => {
+                        if format.contains("%3f") {
+                            write!(writer, "{:03}", value().as_nanos() / 1_000_000 % 1_000)
+                        } else if format.contains("%6f") {
+                            write!(writer, "{:06}", value().as_nanos() / 1_000 % 1_000_000)
+                        } else {
+                            write!(writer, "{:09}", value().as_nanos() % 1_000_000_000)
+                        }
+                    }
                     _ => unreachable!(),
                 },
                 Item::Error => todo!(),
