@@ -85,24 +85,6 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl In
     }
 }
 
-fn short_format_time(dur: Duration) -> String {
-    match dur {
-        dur if dur.num_hours() > 0 => {
-            format!("{:02}h {:02}m", dur.num_hours(), dur.num_minutes() % 60)
-        }
-        dur if dur.num_minutes() > 0 => {
-            format!("{:02}m {:02}s", dur.num_minutes(), dur.num_seconds() % 60)
-        }
-        dur => {
-            format!(
-                "{:02}s {:03}",
-                dur.num_seconds(),
-                dur.num_milliseconds() % 1000
-            )
-        }
-    }
-}
-
 #[component]
 fn Title(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
     let state = expect_context::<SelectionSignal>();
@@ -332,14 +314,29 @@ where
 {
     let store = expect_context::<RwSignal<CountableStore>>();
 
-    let format_time = |millis: Option<Duration>| match millis {
-        None => String::from("---"),
-        Some(m) => short_format_time(m),
-    };
-
+    let last_interaction = create_rw_signal(None::<i64>);
     let on_count = create_read_slice(store, move |s| s.count(&key().into()));
     let time = create_read_slice(store, move |s| s.time(&key().into()));
-    let last_interaction = create_rw_signal(None::<i64>);
+
+    let time_value = create_memo(move |_| {
+        on_count.track();
+        let val = last_interaction
+            .get_untracked()
+            .map(|t| time.get_untracked() - Duration::milliseconds(t));
+        last_interaction.set(Some(time.get_untracked().num_milliseconds()));
+        val
+    });
+
+    let format = create_memo(move |_| {
+        time_value.with(|v| {
+            match v {
+                Some(d) if d.num_hours() > 0 => "%Hh %M",
+                Some(d) if d.num_minutes() > 0 => "%Mm %S",
+                _ => "%Ss %3f",
+            }
+            .to_string()
+        })
+    });
 
     let class = move || {
         stylance::classes! {
@@ -347,6 +344,8 @@ where
             if expand() { Some(style::expand) } else { None }
         }
     };
+
+    let time_style = || stylance::classes!(style::info, style::time);
 
     view! {
         <div class=class>
@@ -356,23 +355,18 @@ where
             >
                 Last Step
             </span>
-            <span class=stylance::classes!(
-                style::info, style::time
-            )>
-                {move || {
-                    on_count
-                        .with(|_| {
-                            let time_str = format_time(
-                                last_interaction
-                                    .get_untracked()
-                                    .map(|t| { time.get_untracked() - Duration::milliseconds(t) }),
-                            );
-                            last_interaction.set(Some(time.get_untracked().num_milliseconds()));
-                            time_str
-                        })
-                }}
-
-            </span>
+            <Show
+                when=move || { time_value().is_some() }
+                fallback=move || {
+                    view! { <span class=time_style>---</span> }
+                }
+            >
+                <components::Timer
+                    attr:class=time_style
+                    value=time_value().unwrap_or_default().to_std().unwrap_or_default()
+                    format
+                />
+            </Show>
         </div>
     }
 }
@@ -392,7 +386,19 @@ where
     let count = create_read_slice(store, move |s| s.count(&key().into()));
     let time = create_read_slice(store, move |s| s.time(&key().into()));
 
-    let step = move || Duration::milliseconds(time().num_milliseconds() / count() as i64);
+    let step =
+        create_memo(move |_| Duration::milliseconds(time().num_milliseconds() / count() as i64));
+
+    let format = create_memo(move |_| {
+        step.with(|v| {
+            match v {
+                d if d.num_hours() > 0 => "%Hh %M",
+                d if d.num_minutes() > 0 => "%Mm %S",
+                _ => "%Ss %3f",
+            }
+            .to_string()
+        })
+    });
 
     let class = move || {
         stylance::classes! {
@@ -400,6 +406,8 @@ where
             if expand() { Some(style::expand) } else { None }
         }
     };
+
+    let time_style = || stylance::classes!(style::info, style::time);
 
     view! {
         <div class=class>
@@ -409,14 +417,18 @@ where
             >
                 Avg Step Time
             </span>
-            <span class=stylance::classes!(
-                style::info, style::time
-            )>
-                {move || {
-                    if count() == 0 { String::from("---") } else { short_format_time(step()) }
-                }}
-
-            </span>
+            <Show
+                when=move || { count() != 0 }
+                fallback=move || {
+                    view! { <span class=time_style>---</span> }
+                }
+            >
+                <components::Timer
+                    attr:class=time_style
+                    value=step().to_std().unwrap_or_default()
+                    format
+                />
+            </Show>
         </div>
     }
 }
