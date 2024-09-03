@@ -73,6 +73,8 @@ pub enum AppError {
     MissingToken,
     #[error("Invalid Token")]
     InvalidToken,
+    #[error("Expired Token")]
+    ExpiredToken,
     #[error("Invalid Username or Password")]
     InvalidSecrets,
     #[error("Invalid Password provided")]

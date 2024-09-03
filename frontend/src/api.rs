@@ -1,6 +1,7 @@
-use super::*;
 use countable_v2::countable::{self, Counter};
 use leptos::*;
+
+use super::*;
 
 #[cfg(feature = "ssr")]
 use actix_web::web::Data;
@@ -16,20 +17,33 @@ pub async fn extract_pool() -> Result<Data<backend::PgPool>, AppError> {
 
 #[server(CheckUser, "/api")]
 pub async fn check_user(session: UserSession) -> Result<(), ServerFnError> {
+    use backend::auth::SessionState;
     let pool = extract_pool().await?;
     match backend::auth::check_user(&pool, &session.username, session.token).await {
-        Ok(()) => return Ok(()),
+        Ok(SessionState::Valid) => Ok(()),
+        Ok(SessionState::Expired) => Err(AppError::ExpiredToken)?,
         Err(err) => {
             leptos_actix::redirect("/login");
-            return Err(err)?;
+            Err(err.into())
         }
     }
 }
 
 #[server(LoginUser, "/api", "Url", "login_user")]
-pub async fn login_user(username: String, password: String) -> Result<UserSession, ServerFnError> {
+pub async fn login_user(
+    username: String,
+    password: String,
+    remember: Option<String>,
+) -> Result<UserSession, ServerFnError> {
     let pool = extract_pool().await?;
-    let user = backend::auth::login_user(&pool, username, password).await?;
+
+    let dur = if remember.is_some() {
+        chrono::Duration::days(30)
+    } else {
+        chrono::Duration::days(1)
+    };
+
+    let user = backend::auth::login_user(&pool, username, password, dur).await?;
 
     let session = UserSession {
         user_uuid: user.uuid,
@@ -62,7 +76,7 @@ pub async fn create_account(
         token: user.token.unwrap(),
     };
 
-    login_user(username, password).await?;
+    login_user(username, password, None).await?;
 
     Ok(session_user)
 }
@@ -342,7 +356,7 @@ async fn change_username(
         token: user.token.unwrap(),
     };
 
-    api::login_user(user.username, password).await?;
+    api::login_user(user.username, password, Some(String::new())).await?;
     leptos_actix::redirect("/preferences");
 
     return Ok(session_user);

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        insert into auth_tokens (uuid, user_uuid)\n        values ($1, $2)\n\n        returning *\n        ",
+  "query": "\n        insert into auth_tokens (uuid, user_uuid, expire_on)\n        values ($1, $2, $3)\n\n        returning *\n        ",
   "describe": {
     "columns": [
       {
@@ -22,7 +22,8 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid"
+        "Uuid",
+        "Timestamp"
       ]
     },
     "nullable": [
@@ -31,5 +32,5 @@
       false
     ]
   },
-  "hash": "fa5ac79c57f568439e2fb97b56f81c2e8c6cdba0097a585e207572d0dbd0a837"
+  "hash": "fa4d703adbaf5701254e320f8fc67de22b37382686f12f1700715451b5464d5b"
 }

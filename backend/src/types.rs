@@ -60,6 +60,7 @@ pub struct DbUser {
     pub uuid: uuid::Uuid,
     pub username: String,
     pub token: Option<uuid::Uuid>,
+    pub token_expire: chrono::NaiveDateTime,
     pub email: Option<String>,
 }
 
