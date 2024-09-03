@@ -43,7 +43,7 @@ pub async fn insert_user(
         Err(err) => return Err(err)?,
     };
 
-    let token = new_token(pool, username, password).await?;
+    let token = new_token(pool, username, password, chrono::Duration::days(1)).await?;
     let user = get_user(pool, username, token.uuid).await?;
 
     Ok(user)
@@ -53,6 +53,7 @@ async fn new_token(
     pool: &PgPool,
     username: &str,
     password: &str,
+    token_dur: chrono::Duration,
 ) -> Result<DbAuthToken, BackendError> {
     struct UserId {
         uuid: uuid::Uuid,
@@ -77,13 +78,14 @@ async fn new_token(
     let token = query_as!(
         DbAuthToken,
         r#"
-        insert into auth_tokens (uuid, user_uuid)
-        values ($1, $2)
+        insert into auth_tokens (uuid, user_uuid, expire_on)
+        values ($1, $2, $3)
 
         returning *
         "#,
         token_uuid,
         id.uuid,
+        chrono::Utc::now().naive_utc().checked_add_signed(token_dur),
     )
     .fetch_one(pool)
     .await?;
@@ -95,6 +97,7 @@ pub async fn login_user(
     pool: &PgPool,
     username: String,
     password: String,
+    token_dur: chrono::Duration,
 ) -> Result<DbUser, BackendError> {
     struct PassUser {
         password: String,
@@ -122,7 +125,7 @@ pub async fn login_user(
         return Err(BackendError::InvalidPassword);
     };
 
-    let token = new_token(pool, &username, &password).await?;
+    let token = new_token(pool, &username, &password, token_dur).await?;
     let user = get_user(pool, &username, token.uuid).await?;
 
     Ok(user)
@@ -224,7 +227,7 @@ pub async fn change_username(
     let user = query_as!(
         DbUser,
         r#"
-        select users.uuid, users.username, tokens.uuid as token, users.email
+        select users.uuid, users.username, tokens.uuid as token, tokens.expire_on as token_expire, users.email
         from users join auth_tokens as tokens on tokens.user_uuid = users.uuid
         where users.username = $1
         "#,
@@ -274,6 +277,7 @@ pub async fn get_user(
             users.uuid as uuid,
             users.username,
             tokens.uuid as token,
+            tokens.expire_on as token_expire,
             users.email
         from users join auth_tokens as tokens on users.uuid = tokens.user_uuid
         where username = $1 and tokens.uuid = $2
@@ -292,10 +296,21 @@ pub async fn get_user(
     Ok(user)
 }
 
+pub enum SessionState {
+    Valid,
+    Expired,
+}
+
 pub async fn check_user(
     pool: &PgPool,
     username: &str,
     token: uuid::Uuid,
-) -> Result<(), BackendError> {
-    get_user(pool, username, token).await.map(|_| ())
+) -> Result<SessionState, BackendError> {
+    let user = get_user(pool, username, token).await?;
+
+    if user.token_expire < chrono::Utc::now().naive_utc() {
+        Ok(SessionState::Expired)
+    } else {
+        Ok(SessionState::Valid)
+    }
 }

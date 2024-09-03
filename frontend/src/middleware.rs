@@ -1,11 +1,13 @@
-use super::UserSession;
 use std::future::{ready, Ready};
 
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    Error,
+    http::header,
+    Error, HttpResponse,
 };
 use futures_util::future::LocalBoxFuture;
+
+use super::UserSession;
 
 // There are two steps in middleware processing.
 // 1. Middleware initialization, middleware factory gets called with
@@ -87,10 +89,18 @@ where
         let fut = self.service.call(req);
 
         Box::pin(async move {
-            backend::auth::check_user(&pool, &session.username, session.token)
-                .await
-                .map_err(|err| actix_web::error::ErrorUnauthorized(err))?;
-            fut.await
+            match backend::auth::check_user(&pool, &session.username, session.token).await {
+                Ok(backend::auth::SessionState::Valid) => fut.await,
+                Ok(backend::auth::SessionState::Expired) => {
+                    let (req, resp) = fut.await?.into_parts();
+                    let resp = HttpResponse::Ok()
+                        .insert_header(("serverfnredirect", "/login"))
+                        .insert_header((header::LOCATION, "/login"))
+                        .message_body(resp.into_body())?;
+                    Ok(ServiceResponse::new(req, resp))
+                }
+                Err(err) => Err(actix_web::error::ErrorUnauthorized(err)),
+            }
         })
     }
 }
