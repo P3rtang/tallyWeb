@@ -1,815 +1,7 @@
-use chrono::TimeDelta;
-use leptos::{SignalGetUntracked, SignalUpdateUntracked};
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use super::*;
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct CountableStore {
-    owner: uuid::Uuid,
-    store: HashMap<CountableId, Countable>,
-    selection: Vec<CountableId>,
-    is_changed: RefCell<bool>,
-}
-
-impl CountableStore {
-    pub fn new(owner: uuid::Uuid, store: HashMap<CountableId, Countable>) -> Self {
-        Self {
-            owner,
-            store,
-            ..Default::default()
-        }
-    }
-
-    pub fn owner(&self) -> uuid::Uuid {
-        self.owner
-    }
-
-    pub fn merge_checked(&mut self, other: Self) -> Result<(), AppError> {
-        for (id, other_c) in other.store {
-            if other_c.is_archived() {
-                self.store.insert(id, other_c);
-            } else if let Some(c) = self.get(&id)
-                && (c.last_edit_checked()? > other_c.last_edit_checked()? || c.is_archived())
-            {
-                continue;
-            } else {
-                self.store.insert(id, other_c);
-            }
-        }
-
-        self.is_changed.replace(true);
-
-        Ok(())
-    }
-
-    pub fn merge(&mut self, other: Self) {
-        self.merge_checked(other).unwrap()
-    }
-
-    pub fn contains(&self, countable: &CountableId) -> bool {
-        self.store.contains_key(countable)
-    }
-
-    pub fn get(&self, countable: &CountableId) -> Option<Countable> {
-        self.store.get(countable).cloned()
-    }
-
-    pub fn len(&self) -> usize {
-        self.store.len()
-    }
-
-    pub fn new_countable_checked(
-        &mut self,
-        name: &str,
-        kind: CountableKind,
-        parent: Option<CountableId>,
-    ) -> Result<CountableId, AppError> {
-        let countable = Countable::new(name, kind, self.owner, parent);
-        let key = countable.clone().into();
-        self.store.insert(key, countable);
-        if let Some(parent) = parent {
-            self.get(&parent)
-                .ok_or(AppError::CountableNotFound)?
-                .add_child_checked(key)?
-        }
-
-        self.is_changed.replace(true);
-
-        Ok(key)
-    }
-
-    pub fn new_countable(
-        &mut self,
-        name: &str,
-        kind: CountableKind,
-        parent: Option<CountableId>,
-    ) -> CountableId {
-        self.new_countable_checked(name, kind, parent).unwrap()
-    }
-
-    pub fn filter(&self, filter: impl Fn(&Countable) -> bool) -> Self {
-        let mut store = self.raw_filter(filter);
-        // add back any missing parents
-        for i in store.store.clone().into_keys() {
-            let mut id = i;
-            while let Some(p) = self.parent(&id) {
-                id = p.uuid().into();
-                store.store.insert(id, p);
-            }
-        }
-
-        store
-    }
-
-    pub fn raw_filter(&self, filter: impl Fn(&Countable) -> bool) -> Self {
-        let store: HashMap<CountableId, Countable> = self
-            .store
-            .iter()
-            .filter(|(_, b)| filter(b))
-            .map(|(a, b)| (*a, b.clone()))
-            .collect();
-
-        Self {
-            owner: self.owner,
-            store,
-            selection: self.selection.clone(),
-            ..Default::default()
-        }
-    }
-
-    pub fn archive(&mut self, countable: &CountableId) -> Option<Countable> {
-        for child in self.children_checked(countable).ok()? {
-            self.archive(&child.uuid_checked().ok()?.into())?;
-        }
-
-        match self.get(countable)? {
-            Countable::Counter(c) => c.lock().ok()?.is_deleted = true,
-            Countable::Phase(p) => p.lock().ok()?.is_deleted = true,
-            Countable::Chain(_) => todo!(),
-        }
-
-        self.get(countable)
-    }
-
-    pub fn root_nodes(&self) -> Vec<Countable> {
-        self.store
-            .values()
-            .filter(|v| self.parent(&v.uuid().into()).is_none())
-            .cloned()
-            .collect()
-    }
-
-    pub fn nodes(&self) -> Vec<Countable> {
-        self.store.values().cloned().collect()
-    }
-
-    pub fn has_child(&self, countable: &CountableId, child: &CountableId) -> bool {
-        self.children(countable)
-            .into_iter()
-            .map(CountableId::from)
-            .collect::<Vec<_>>()
-            .contains(child)
-    }
-
-    pub fn children_checked(&self, countable: &CountableId) -> Result<Vec<Countable>, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => {
-                    let children = c.lock()?.children.clone();
-                    children
-                        .into_iter()
-                        .filter_map(|id| self.store.get(&id).cloned())
-                        .collect()
-                }
-                _ => Vec::new(),
-            },
-        )
-    }
-
-    pub fn children(&self, countable: &CountableId) -> Vec<Countable> {
-        self.children_checked(countable).unwrap()
-    }
-
-    pub fn parent_checked(&self, countable: &CountableId) -> Result<Option<Countable>, AppError> {
-        Ok(match self.store.get(countable) {
-            Some(Countable::Counter(c)) => {
-                c.lock()?.parent.and_then(|id| self.store.get(&id)).cloned()
-            }
-            Some(Countable::Phase(p)) => self.store.get(&p.lock()?.parent).cloned(),
-            Some(Countable::Chain(_)) => todo!(),
-            None => None,
-        })
-    }
-
-    pub fn parent(&self, countable: &CountableId) -> Option<Countable> {
-        self.parent_checked(countable).unwrap()
-    }
-
-    pub fn last_child_checked(&self, countable: &CountableId) -> Result<Countable, AppError> {
-        let children = self.children_checked(countable)?;
-        if children.is_empty() {
-            return self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)
-                .cloned();
-        } else {
-            self.last_child_checked(&children.last().unwrap().uuid_checked()?.into())
-        }
-    }
-
-    pub fn last_child(&self, countable: &CountableId) -> Countable {
-        self.last_child_checked(countable).unwrap()
-    }
-
-    pub fn kind_checked(&self, countable: &CountableId) -> Result<CountableKind, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(_) => CountableKind::Counter,
-                Countable::Phase(_) => CountableKind::Phase,
-                Countable::Chain(_) => CountableKind::Chain,
-            },
-        )
-    }
-
-    pub fn kind(&self, countable: &CountableId) -> CountableKind {
-        self.kind_checked(countable).unwrap()
-    }
-
-    pub fn name_checked(&self, countable: &CountableId) -> Result<String, AppError> {
-        self.store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-            .name_checked()
-    }
-
-    pub fn name(&self, countable: &CountableId) -> String {
-        self.name_checked(countable).unwrap()
-    }
-
-    pub fn set_name_checked(&self, countable: &CountableId, name: &str) -> Result<(), AppError> {
-        match self
-            .store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-        {
-            Countable::Counter(c) => c.lock()?.name = name.into(),
-            Countable::Phase(p) => p.lock()?.name = name.into(),
-            Countable::Chain(_) => todo!(),
-        };
-
-        self.is_changed.replace(true);
-
-        Ok(())
-    }
-
-    pub fn set_name(&self, countable: &CountableId, name: &str) {
-        self.set_name_checked(countable, name).unwrap()
-    }
-
-    pub fn count_checked(&self, countable: &CountableId) -> Result<i32, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => {
-                    let mut sum = 0;
-                    for child in c.lock()?.children.iter() {
-                        sum += self.count_checked(child)?;
-                    }
-                    sum
-                }
-                Countable::Phase(p) => p.lock()?.count,
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn count(&self, countable: &CountableId) -> i32 {
-        self.count_checked(countable).unwrap()
-    }
-
-    pub fn set_count_checked(&self, countable: &CountableId, count: i32) -> Result<(), AppError> {
-        let diff = count - self.count_checked(countable)?;
-        self.add_count_checked(countable, diff)?;
-        self.is_changed.replace(true);
-        Ok(())
-    }
-
-    pub fn set_count(&self, countable: &CountableId, count: i32) {
-        self.set_count_checked(countable, count).unwrap()
-    }
-
-    pub fn add_count_checked(&self, countable: &CountableId, mut add: i32) -> Result<(), AppError> {
-        match self
-            .store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-        {
-            Countable::Counter(c) => {
-                for child in c.lock()?.children.iter().rev() {
-                    let child_count = self.count_checked(child)?;
-                    if child_count + add <= 0 {
-                        self.set_count_checked(child, 0)?;
-                        add += self.count_checked(child)?;
-                    } else {
-                        self.set_count_checked(child, child_count + add)?;
-                        return Ok(());
-                    }
-                }
-            }
-            Countable::Phase(p) => {
-                p.lock()?.count += add;
-            }
-            Countable::Chain(_) => todo!(),
-        }
-
-        self.is_changed.replace(true);
-
-        Ok(())
-    }
-
-    pub fn add_count(&self, countable: &CountableId, add: i32) {
-        self.add_count_checked(countable, add).unwrap();
-    }
-
-    pub fn time_checked(&self, countable: &CountableId) -> Result<TimeDelta, AppError> {
-        match self
-            .store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-        {
-            Countable::Counter(c) => {
-                let mut time = TimeDelta::zero();
-                for child in c.lock()?.children.iter() {
-                    time += self.time_checked(child)?;
-                }
-                Ok(time)
-            }
-            Countable::Phase(p) => Ok(p.lock()?.time),
-            Countable::Chain(_) => todo!(),
-        }
-    }
-
-    pub fn time(&self, countable: &CountableId) -> TimeDelta {
-        self.time_checked(countable).unwrap()
-    }
-
-    pub fn set_time_checked(
-        &self,
-        countable: &CountableId,
-        time: TimeDelta,
-    ) -> Result<(), AppError> {
-        let diff = time - self.time_checked(countable)?;
-        self.add_time_checked(countable, diff)?;
-        self.is_changed.replace(true);
-        Ok(())
-    }
-
-    pub fn set_time(&self, countable: &CountableId, time: TimeDelta) {
-        self.set_time_checked(countable, time).unwrap()
-    }
-
-    pub fn add_time_checked(
-        &self,
-        countable: &CountableId,
-        mut add: TimeDelta,
-    ) -> Result<(), AppError> {
-        match self
-            .store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-        {
-            Countable::Counter(c) => {
-                for child in c.lock()?.children.iter().rev() {
-                    let child_time = self.time_checked(child)?;
-                    if child_time + add <= TimeDelta::zero() {
-                        self.set_time_checked(child, TimeDelta::zero())?;
-                        add += self.time_checked(child)?;
-                    } else {
-                        self.set_time_checked(child, child_time + add)?;
-                    }
-                }
-            }
-            Countable::Phase(p) => {
-                p.lock()?.time += add;
-            }
-            Countable::Chain(_) => todo!(),
-        }
-
-        self.is_changed.replace(true);
-
-        Ok(())
-    }
-
-    pub fn add_time(&self, countable: &CountableId, add: TimeDelta) {
-        self.add_time_checked(countable, add).unwrap();
-    }
-
-    pub fn hunttype_checked(&self, countable: &CountableId) -> Result<Hunttype, AppError> {
-        match self
-            .store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-        {
-            Countable::Counter(c) => {
-                let children = c.lock()?.children.clone();
-
-                let ht = children
-                    .first()
-                    .and_then(|child| self.hunttype_checked(child).ok())
-                    .unwrap_or_default();
-
-                for child in children.iter() {
-                    if self.hunttype_checked(child)? != ht {
-                        return Ok(Hunttype::Mixed);
-                    }
-                }
-                Ok(ht)
-            }
-            Countable::Phase(p) => Ok(p.lock()?.hunt_type),
-            Countable::Chain(_) => todo!(),
-        }
-    }
-
-    pub fn hunttype(&self, countable: &CountableId) -> Hunttype {
-        self.hunttype_checked(countable).unwrap()
-    }
-
-    pub fn rolls_checked(&self, countable: &CountableId) -> Result<usize, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => c
-                    .lock()?
-                    .children
-                    .iter()
-                    .map(|child| self.rolls_checked(child))
-                    .collect::<Result<Vec<_>, AppError>>()?
-                    .into_iter()
-                    .sum(),
-                Countable::Phase(_) => self.hunttype_checked(countable)?.rolls()(
-                    self.count_checked(countable)?,
-                    self.has_charm_checked(countable)?,
-                ),
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn rolls(&self, countable: &CountableId) -> usize {
-        self.rolls_checked(countable).unwrap()
-    }
-
-    pub fn odds_checked(&self, countable: &CountableId) -> Result<f64, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => {
-                    let sum = c
-                        .lock()?
-                        .children
-                        .iter()
-                        .map(|child| {
-                            let odds = self.odds_checked(child)?;
-                            Ok(odds * self.count_checked(child)? as f64)
-                        })
-                        .collect::<Result<Vec<_>, AppError>>()?
-                        .into_iter()
-                        .sum::<f64>();
-                    sum / (self.count_checked(countable)? as f64).max(1.0)
-                }
-                Countable::Phase(p) => p.lock()?.hunt_type.odds(),
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn odds(&self, countable: &CountableId) -> f64 {
-        self.odds_checked(countable).unwrap()
-    }
-
-    pub fn progress_checked(&self, countable: &CountableId) -> Result<f64, AppError> {
-        let prob = 1.0 / self.odds_checked(countable)?;
-        let rolls = self.rolls_checked(countable)?;
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => {
-                    let children_len = c.lock()?.children.len();
-                    let mut chance = 0.0;
-                    for k in 0..((self.completed_checked(countable)? + 1).min(children_len)) {
-                        let combs = n_choose_k(rolls, k);
-                        chance +=
-                            combs * prob.powi(k as i32) * (1.0 - prob).powi((rolls - k) as i32)
-                    }
-
-                    1.0 - chance
-                }
-                Countable::Phase(_) => 1.0 - (1.0 - prob).powi(rolls as i32),
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn progress(&self, countable: &CountableId) -> f64 {
-        self.progress_checked(countable).unwrap()
-    }
-
-    pub fn completed_checked(&self, countable: &CountableId) -> Result<usize, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => c
-                    .lock()?
-                    .children
-                    .iter()
-                    .map(|child| self.completed_checked(child))
-                    .collect::<Result<Vec<_>, AppError>>()?
-                    .into_iter()
-                    .sum(),
-                Countable::Phase(p) => p.lock()?.success.into(),
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn has_charm_checked(&self, countable: &CountableId) -> Result<bool, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => {
-                    let mut has = true;
-                    for child in c.lock()?.children.iter() {
-                        has &= self.has_charm_checked(child)?;
-                    }
-                    has
-                }
-                Countable::Phase(p) => p.lock()?.has_charm,
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn has_charm(&self, countable: &CountableId) -> bool {
-        self.has_charm_checked(countable).unwrap()
-    }
-
-    pub fn is_success_checked(&self, countable: &CountableId) -> Result<bool, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => c
-                    .lock()?
-                    .children
-                    .last()
-                    .and_then(|child| self.is_success_checked(child).ok())
-                    .unwrap_or_default(),
-                Countable::Phase(p) => p.lock()?.success,
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn is_success(&self, countable: &CountableId) -> bool {
-        self.is_success_checked(countable).unwrap()
-    }
-
-    pub fn toggle_success_checked(&self, countable: &CountableId) -> Result<(), AppError> {
-        match self
-            .store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-        {
-            Countable::Counter(_) => {}
-            Countable::Phase(p) => {
-                let success = p.lock()?.success;
-                p.lock()?.success = !success;
-            }
-            Countable::Chain(_) => todo!(),
-        };
-
-        self.is_changed.replace(true);
-
-        Ok(())
-    }
-
-    pub fn toggle_success(&self, countable: &CountableId) {
-        self.toggle_success_checked(countable).unwrap()
-    }
-
-    pub fn created_at_checked(
-        &self,
-        countable: &CountableId,
-    ) -> Result<chrono::NaiveDateTime, AppError> {
-        self.store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-            .created_at_checked()
-    }
-
-    pub fn created_at(&self, countable: &CountableId) -> chrono::NaiveDateTime {
-        self.created_at_checked(countable).unwrap()
-    }
-}
-
-#[typetag::serde]
-impl Savable for leptos::RwSignal<CountableStore> {
-    fn indexed_db_name(&self) -> String {
-        "Countable".into()
-    }
-
-    fn save_indexed<'a>(
-        &'a self,
-        obj: indexed_db::ObjectStore<AppError>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
-        use wasm_bindgen::JsValue;
-
-        self.update_untracked(|s| {
-            s.is_changed.replace(false);
-        });
-
-        Box::pin(async move {
-            obj.clear().await?;
-            for c in self.get_untracked().store.values() {
-                let key = JsValue::from_str(&c.uuid().to_string());
-                let value = c.as_js();
-
-                obj.put_kv(&key, &value?).await?;
-            }
-            Ok(())
-        })
-    }
-
-    fn save_endpoint(
-        &self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
-    {
-        self.update_untracked(|s| {
-            s.is_changed.replace(false);
-        });
-
-        Box::pin(api::update_countable_many(
-            self.get_untracked().store.into_values().collect(),
-        ))
-    }
-
-    fn message(&self) -> Option<leptos::View> {
-        None
-    }
-
-    fn clone_box(&self) -> Box<dyn Savable> {
-        Box::new(*self)
-    }
-
-    fn has_change(&self) -> bool {
-        *self.get_untracked().is_changed.borrow()
-    }
-}
-
-#[typetag::serde]
-impl Savable for CountableStore {
-    fn indexed_db_name(&self) -> String {
-        "Countable".into()
-    }
-
-    fn save_indexed<'a>(
-        &'a self,
-        obj: indexed_db::ObjectStore<AppError>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
-        use wasm_bindgen::JsValue;
-
-        self.is_changed.replace(false);
-
-        Box::pin(async move {
-            obj.clear().await?;
-            for c in self.store.values() {
-                let key = JsValue::from_str(&c.uuid().to_string());
-                let value = c.as_js();
-
-                obj.put_kv(&key, &value?).await?;
-            }
-            Ok(())
-        })
-    }
-
-    fn save_endpoint(
-        &self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
-    {
-        self.is_changed.replace(false);
-        let cloned = self.clone();
-        Box::pin(api::update_countable_many(
-            cloned.store.into_values().collect(),
-        ))
-    }
-
-    fn message(&self) -> Option<leptos::View> {
-        None
-    }
-
-    fn clone_box(&self) -> Box<dyn Savable> {
-        Box::new(self.clone())
-    }
-
-    fn has_change(&self) -> bool {
-        *self.is_changed.borrow()
-    }
-}
-
-#[typetag::serde]
-impl Savable for Vec<Countable> {
-    fn indexed_db_name(&self) -> String {
-        "Countable".into()
-    }
-
-    fn save_indexed<'a>(
-        &'a self,
-        obj: indexed_db::ObjectStore<AppError>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
-        use wasm_bindgen::JsValue;
-
-        Box::pin(async move {
-            for c in self {
-                let key = JsValue::from_str(&c.uuid().to_string());
-                let value = c.as_js();
-
-                obj.put_kv(&key, &value?).await?;
-            }
-            Ok(())
-        })
-    }
-
-    fn save_endpoint(
-        &self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
-    {
-        Box::pin(api::update_countable_many(self.clone()))
-    }
-
-    fn message(&self) -> Option<leptos::View> {
-        None
-    }
-
-    fn clone_box(&self) -> Box<dyn Savable> {
-        Box::new(self.clone())
-    }
-    fn has_change(&self) -> bool {
-        true
-    }
-}
-
-#[typetag::serde]
-impl Savable for Countable {
-    fn indexed_db_name(&self) -> String {
-        "Countable".into()
-    }
-
-    fn save_indexed<'a>(
-        &'a self,
-        obj: indexed_db::ObjectStore<AppError>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
-        use wasm_bindgen::JsValue;
-        let key = JsValue::from_str(&self.uuid().to_string());
-        let value = self.as_js();
-        Box::pin(async move {
-            obj.put_kv(&key, &value?).await?;
-            Ok(())
-        })
-    }
-
-    fn save_endpoint(
-        &self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
-    {
-        Box::pin(api::update_countable_many(vec![self.clone()]))
-    }
-
-    fn message(&self) -> Option<leptos::View> {
-        None
-    }
-
-    fn clone_box(&self) -> Box<dyn Savable> {
-        Box::new(self.clone())
-    }
-
-    fn has_change(&self) -> bool {
-        true
-    }
-}
-
 #[derive(
     Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord,
 )]
@@ -818,6 +10,12 @@ pub struct CountableId(uuid::Uuid);
 impl From<uuid::Uuid> for CountableId {
     fn from(value: uuid::Uuid) -> Self {
         Self(value)
+    }
+}
+
+impl Into<uuid::Uuid> for CountableId {
+    fn into(self) -> uuid::Uuid {
+        self.0
     }
 }
 
@@ -962,6 +160,87 @@ impl Countable {
                 .unwrap_or_default(),
         )?;
         Ok(this)
+    }
+}
+
+#[typetag::serde]
+impl Savable for Vec<Countable> {
+    fn indexed_db_name(&self) -> String {
+        "Countable".into()
+    }
+
+    fn save_indexed<'a>(
+        &'a self,
+        obj: indexed_db::ObjectStore<AppError>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
+        use wasm_bindgen::JsValue;
+
+        Box::pin(async move {
+            for c in self {
+                let key = JsValue::from_str(&c.uuid().to_string());
+                let value = c.as_js();
+
+                obj.put_kv(&key, &value?).await?;
+            }
+            Ok(())
+        })
+    }
+
+    fn save_endpoint(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
+    {
+        Box::pin(api::update_countable_many(self.clone()))
+    }
+
+    fn message(&self) -> Option<leptos::View> {
+        None
+    }
+
+    fn clone_box(&self) -> Box<dyn Savable> {
+        Box::new(self.clone())
+    }
+    fn has_change(&self) -> bool {
+        true
+    }
+}
+
+#[typetag::serde]
+impl Savable for Countable {
+    fn indexed_db_name(&self) -> String {
+        "Countable".into()
+    }
+
+    fn save_indexed<'a>(
+        &'a self,
+        obj: indexed_db::ObjectStore<AppError>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
+        use wasm_bindgen::JsValue;
+        let key = JsValue::from_str(&self.uuid().to_string());
+        let value = self.as_js();
+        Box::pin(async move {
+            obj.put_kv(&key, &value?).await?;
+            Ok(())
+        })
+    }
+
+    fn save_endpoint(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
+    {
+        Box::pin(api::update_countable_many(vec![self.clone()]))
+    }
+
+    fn message(&self) -> Option<leptos::View> {
+        None
+    }
+
+    fn clone_box(&self) -> Box<dyn Savable> {
+        Box::new(self.clone())
+    }
+
+    fn has_change(&self) -> bool {
+        true
     }
 }
 
@@ -1162,7 +441,7 @@ pub enum Masuda {
 }
 
 impl Hunttype {
-    fn rolls(&self) -> impl Fn(i32, bool) -> usize {
+    pub(crate) fn rolls(&self) -> impl Fn(i32, bool) -> usize {
         match self {
             Hunttype::OldOdds => {
                 |count, has_charm: bool| (count * if has_charm { 3 } else { 1 }) as usize
@@ -1186,7 +465,7 @@ impl Hunttype {
         }
     }
 
-    fn odds(&self) -> f64 {
+    pub(crate) fn odds(&self) -> f64 {
         match self {
             Hunttype::OldOdds | Hunttype::Masuda(Masuda::GenIV) => 8192.0,
             _ => 4096.0,
@@ -1288,14 +567,5 @@ impl Into<backend::Hunttype> for Hunttype {
             Self::Masuda(Masuda::GenVI) => backend::Hunttype::MasudaGenVI,
             Self::Mixed => unreachable!(),
         }
-    }
-}
-
-fn n_choose_k(n: usize, k: usize) -> f64 {
-    match (n, k) {
-        (n, k) if k > n => 0.0,
-        (_, 0) => 1.0,
-        (n, k) if k > n / 2 => n_choose_k(n, n - k),
-        (n, k) => n as f64 / k as f64 * n_choose_k(n - 1, k - 1),
     }
 }

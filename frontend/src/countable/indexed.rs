@@ -67,7 +67,7 @@ impl IndexedSaveHandler {
             .await?;
 
         let local_store = CountableStore::new(owner, map);
-        store.merge_checked(local_store)?;
+        store.checked_mut().merge(local_store.checked())?;
         self.save(Box::new(store.clone()), Box::new(|_| ()))?;
 
         Ok(())
