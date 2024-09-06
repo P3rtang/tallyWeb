@@ -242,7 +242,7 @@ fn SidebarContent() -> impl IntoView {
         let key = countable.uuid().into();
         let children = create_read_slice(store, move |s| {
             let mut children = s.children(&key);
-            children.sort_by(|a, b| sort_method().sort_by()(&s, &a, &b));
+            children.sort_by(|a, b| sort_method().sort_by()(s, a, b));
             children
                 .into_iter()
                 .map(|c| store.get_untracked().get(&c))
@@ -298,7 +298,7 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     let parent = store.get_untracked().parent(&key.into());
 
     create_isomorphic_effect(move |_| {
-        if let Some(p) = parent.clone() {
+        if let Some(p) = parent {
             if includes_search() || selected() {
                 expand_node(p.into(), true)
             } else {

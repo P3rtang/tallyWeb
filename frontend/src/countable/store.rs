@@ -682,7 +682,7 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
         let this: CountableStore<BreathFirst, Checked> = unsafe { std::mem::transmute(self) };
         for element in keys {
             store.store.extend(
-                this.all_parents(&element.into())?
+                this.all_parents(&element)?
                     .into_iter()
                     .map(|p| Ok((p, this.get(&p).ok_or(AppError::CountableNotFound)?)))
                     .collect::<Result<HashMap<_, _>, AppError>>()?,
@@ -881,7 +881,7 @@ impl CountableStore<BreathFirst, Checked> {
             if let Some(parent) = store.level_ref().parent(countable)? {
                 all_parents_rec(store, &parent, list)?;
             };
-            return Ok(list);
+            Ok(list)
         }
 
         let mut list = Vec::new();
@@ -890,7 +890,7 @@ impl CountableStore<BreathFirst, Checked> {
             all_parents_rec(self, &parent, &mut list)?;
         };
 
-        return Ok(list);
+        Ok(list)
     }
 }
 

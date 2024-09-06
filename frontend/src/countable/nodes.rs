@@ -13,9 +13,9 @@ impl From<uuid::Uuid> for CountableId {
     }
 }
 
-impl Into<uuid::Uuid> for CountableId {
-    fn into(self) -> uuid::Uuid {
-        self.0
+impl From<CountableId> for uuid::Uuid {
+    fn from(val: CountableId) -> Self {
+        val.0
     }
 }
 
