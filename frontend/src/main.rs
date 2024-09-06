@@ -8,7 +8,7 @@ use std::thread;
 cfg_if::cfg_if! {
     if #[cfg(feature = "ssr")] {
         use actix_files::Files;
-        use frontend::{app, AppError, middleware as mw};
+        use tallyweb_frontend::{app, AppError, middleware as mw};
         use actix_web::*;
         use leptos_actix::{generate_route_list, LeptosRoutes};
         use actix_web::http::StatusCode;
@@ -23,7 +23,7 @@ cfg_if::cfg_if! {
             let routes = generate_route_list(|| view! { <app::App/> });
 
             let pool = backend::create_pool().await.map_err(|err| AppError::DbConnection(err.to_string()))?;
-            let _ = backend::migrate(&pool).await.map_err(|err| println!("{err}"));
+            let _ = sqlx::migrate!("../migrations").run(&pool).await.map_err(|err| println!("{err}"));
 
             HttpServer::new(move || {
                 let leptos_options = &conf.leptos_options;

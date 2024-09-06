@@ -1,7 +1,9 @@
 [package]
-name = "frontend"
-version = "0.3.1"
+name = "tallyweb-frontend"
+version = "0.3.4"
 edition = "2021"
+description = "leptos frontend for the tallyweb site"
+license = "MIT"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -21,8 +23,8 @@ js-sys = "0.3.64"
 web-sys = { version = "0.3.69" }
 serde = { version = "1.0.188", features = ["derive", "rc"] }
 erased-serde = "0.3.31"
-backend = { path = "../backend", optional = true }
-components = { path = "../components" }
+backend = { path = "../backend", version = "0.3", optional = true, package = "tallyweb-backend" }
+components = { version = "0.3", path = "../components", package = "tallyweb-components" }
 serde_json = "1.0.105"
 gloo-storage = "0.3.0"
 rand = "0.8.5"
@@ -43,11 +45,13 @@ typetag = "0.2.16"
 indexed-db = "0.4.1"
 dotenvy = "0.15.7"
 dotenvy_macro = "0.15.7"
+sqlx = { version = "0.7.1", features = ["postgres", "chrono", "runtime-tokio-rustls", "macros", "uuid"], optional = true }
 
 [features]
 csr = ["leptos/csr", "leptos_meta/csr", "leptos_router/csr"]
 hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]
 ssr = [
+    "dep:sqlx",
     "dep:actix-files",
     "dep:actix-web",
     "dep:leptos_actix",
@@ -65,3 +69,6 @@ output_dir = "./style/"
 folders = ["./src/", "./style/"]
 extensions = [".module.scss", ".module.css"]
 class_name_pattern = "tallyweb-[name]-[hash]"
+
+[package.metadata.docs.rs]
+features = ["ssr", "csr", "hydrate"]

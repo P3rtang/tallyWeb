@@ -6,8 +6,6 @@ use leptos_router::*;
 
 use super::{elements::*, pages::*, preferences::ProvidePreferences, session::*, *};
 
-pub const LEPTOS_OUTPUT_NAME: &str = env!("LEPTOS_OUTPUT_NAME");
-pub const TALLYWEB_VERSION: &str = env!("TALLYWEB_VERSION");
 pub const SIDEBAR_MIN_WIDTH: usize = 280;
 
 #[component]

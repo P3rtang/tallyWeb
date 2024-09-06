@@ -1,7 +1,10 @@
 use super::*;
 use leptos::{create_effect, expect_context};
 
+#[cfg(not(docsrs))]
 const IDB_VERSION: &str = env!("IDB_TALLYWEB_VERSION");
+#[cfg(docsrs)]
+const IDB_VERSION: &str = "1";
 
 #[allow(dead_code)]
 #[derive(Clone)]

@@ -12,8 +12,8 @@ panic = "abort"
 
 [[workspace.metadata.leptos]]
 name = "tallyweb"
-bin-package = "frontend"
-lib-package = "frontend"
+bin-package = "tallyweb-frontend"
+lib-package = "tallyweb-frontend"
 
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/site"

@@ -1,3 +1,4 @@
+use super::TALLYWEB_VERSION;
 use leptos::{html::Dialog, *};
 
 stylance::import_style!(
@@ -10,8 +11,6 @@ stylance::import_style!(
     main,
     "../../style/_main.module.scss"
 );
-
-pub const TALLYWEB_VERSION: &str = env!("TALLYWEB_VERSION");
 
 #[component]
 pub fn AboutDialog(
