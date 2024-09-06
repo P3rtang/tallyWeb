@@ -217,9 +217,8 @@ fn SidebarContent() -> impl IntoView {
             .filter(move |c| c.name().to_lowercase().contains(&search().to_lowercase()))
             .raw_filter(move |c| !c.is_archived())
             .root_nodes();
-        root_nodes.sort_by(|a, b| {
-            sort_method().sort_by()(&store.get_untracked(), &a.uuid().into(), &b.uuid().into())
-        });
+        root_nodes
+            .sort_by(|a, b| sort_method().sort_by()(&store(), &a.uuid().into(), &b.uuid().into()));
         root_nodes
     });
 
@@ -239,6 +238,20 @@ fn SidebarContent() -> impl IntoView {
         _ => {}
     };
 
+    let each_child = move |countable: &Countable| {
+        let key = countable.uuid().into();
+        let children = create_read_slice(store, move |s| {
+            let mut children = s.children(&key);
+            children.sort_by(|a, b| sort_method().sort_by()(&s, &a, &b));
+            children
+                .into_iter()
+                .map(|c| store.get_untracked().get(&c))
+                .collect::<Option<Vec<_>>>()
+                .unwrap_or_default()
+        });
+        children()
+    };
+
     view! {
         <nav>
             <SortSearch shown=show_sort_search search on_keydown=on_sort_key />
@@ -246,25 +259,7 @@ fn SidebarContent() -> impl IntoView {
         <TreeViewWidget
             each
             key=|countable| countable.uuid()
-            each_child=move |countable| {
-                let key = countable.uuid().into();
-                let children = create_read_slice(
-                    store,
-                    move |s| {
-                        let mut children = s.children(&key);
-                        children
-                            .sort_by(|a, b| sort_method()
-                                .sort_by()(
-                                &store.get_untracked(),
-                                &a.uuid().into(),
-                                &b.uuid().into(),
-                            ));
-                        children
-                    },
-                );
-                children()
-            }
-
+            each_child
             view=|countable| view! { <TreeViewRow key=countable.uuid() /> }
             show_separator=show_sep
             selection_model=selection_signal
@@ -305,9 +300,9 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     create_isomorphic_effect(move |_| {
         if let Some(p) = parent.clone() {
             if includes_search() || selected() {
-                expand_node(p.uuid(), true)
+                expand_node(p.into(), true)
             } else {
-                expand_node(p.uuid(), false)
+                expand_node(p.into(), false)
             }
         }
     });

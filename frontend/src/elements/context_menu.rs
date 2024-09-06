@@ -46,7 +46,7 @@ pub fn CountableContextMenu(
         let countable = store.get_untracked().get(&key().into()).unwrap();
         delete_action.dispatch(api::ArchiveCountable { countable });
         store.update(|s| {
-            s.archive(&key.get_untracked().into());
+            s.recursive_ref().archive(&key.get_untracked().into());
         });
     };
 

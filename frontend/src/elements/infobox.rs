@@ -28,14 +28,28 @@ impl FnOnce<()> for IsActive {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct HasChange(RwSignal<bool>);
+
+impl HasChange {
+    fn set(&self, set: bool) {
+        self.0.update(|b| *b = set);
+    }
+}
+
+impl FnOnce<()> for HasChange {
+    type Output = bool;
+
+    extern "rust-call" fn call_once(self, _: ()) -> Self::Output {
+        self.0.get()
+    }
+}
+
 #[component]
 pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl IntoView {
     let screen = expect_context::<Screen>();
-    let store = expect_context::<RwSignal<CountableStore>>();
-    let preferences = expect_context::<RwSignal<Preferences>>();
 
-    let show_multiple = move || countable_list().len() > 1;
-    let show_title = move || !((screen.style)() == ScreenStyle::Portrait || show_multiple());
+    let show_multiple = create_memo(move |_| countable_list().len() > 1);
     let multi_narrow = move || !(show_multiple() && ScreenStyle::Portrait == (screen.style)());
 
     view! {
@@ -44,44 +58,66 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl In
                 each=countable_list
                 key=|key| *key
                 children=move |key| {
-                    let is_active = IsActive::default();
-                    create_effect(move |_| {
-                        let save_handler = expect_context::<RwSignal<SaveHandlers>>();
-                        is_active
-                            .0
-                            .with(|a| {
-                                if !a && preferences.get_untracked().save_on_pause {
-                                    let _ = save_handler
-                                        .get_untracked()
-                                        .save(
-                                            Box::new(store.get_untracked().last_child(&key.into())),
-                                            Box::new(|_| ()),
-                                        );
-                                }
-                            });
-                    });
-                    provide_context(is_active);
-                    view! {
-                        // TODO: refactor into a component
-                        <Show when=move || store().contains(&key.into())>
-                            <div class=style::row>
-                                <Show when=show_multiple>
-                                    <Title key />
-                                </Show>
-                                <Count expand=show_multiple key show_title />
-                                <Time expand=show_multiple key show_title />
-                                <Show when=multi_narrow>
-                                    <Progress expand=|| true key show_title />
-                                    <LastStep expand=show_multiple key show_title />
-                                    <AverageStep expand=show_multiple key show_title />
-                                </Show>
-                            </div>
-                        </Show>
-                    }
+                    view! { <InfoBoxPart key show_multiple /> }
                 }
             />
 
         </div>
+    }
+}
+
+#[component]
+pub fn InfoBoxPart(
+    #[prop(into)] key: MaybeSignal<uuid::Uuid>,
+    #[prop(into)] show_multiple: MaybeSignal<bool>,
+) -> impl IntoView {
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let preferences = expect_context::<RwSignal<Preferences>>();
+    let screen = expect_context::<Screen>();
+
+    let show_title = move || !((screen.style)() == ScreenStyle::Portrait || show_multiple());
+    let multi_narrow = move || !(show_multiple() && ScreenStyle::Portrait == (screen.style)());
+
+    let is_active = IsActive::default();
+    provide_context(is_active);
+    let has_change = HasChange::default();
+    provide_context(has_change);
+
+    let last = create_read_slice(store, move |s| {
+        s.get(&s.recursive_ref().last_child(&key().into()))
+    });
+
+    create_effect(move |_| {
+        let save_handler = expect_context::<RwSignal<SaveHandlers>>();
+        is_active.0.with(|a| {
+            if !a && preferences.get_untracked().save_on_pause && has_change.0.get_untracked() {
+                has_change.set(false);
+                if let Some(last) = last() {
+                    let _ = save_handler
+                        .get_untracked()
+                        .save(Box::new(last), Box::new(move |_| has_change.set(true)));
+                }
+            }
+        });
+    });
+
+    on_cleanup(move || is_active.set(false));
+
+    view! {
+        <Show when=move || store().contains(&key().into())>
+            <div class=style::row>
+                <Show when=show_multiple>
+                    <Title key />
+                </Show>
+                <Count expand=show_multiple key show_title />
+                <Time expand=show_multiple key show_title />
+                <Show when=multi_narrow>
+                    <Progress expand=|| true key show_title />
+                    <LastStep expand=show_multiple key show_title />
+                    <AverageStep expand=show_multiple key show_title />
+                </Show>
+            </div>
+        </Show>
     }
 }
 
@@ -119,6 +155,7 @@ where
 {
     let store = expect_context::<RwSignal<CountableStore>>();
     let is_active = expect_context::<IsActive>();
+    let has_change = expect_context::<HasChange>();
     let name = create_read_slice(store, move |s| s.name(&key().into()));
 
     let (get_count, add_count) = create_slice(
@@ -154,10 +191,12 @@ where
 
     let on_count_click = move |_| {
         is_active.set(true);
+        has_change.set(true);
         add_count(1);
     };
 
     let on_minus_click = move |ev: MouseEvent| {
+        has_change.set(true);
         ev.stop_propagation();
         add_count(-1);
     };
@@ -194,6 +233,7 @@ where
     T: Fn() -> bool + Copy + 'static,
 {
     let is_active = expect_context::<IsActive>();
+    let has_change = expect_context::<HasChange>();
     let store = expect_context::<RwSignal<CountableStore>>();
 
     #[allow(unused_variables)]
@@ -234,6 +274,7 @@ where
     };
 
     let on_click = move |_| {
+        has_change.set(true);
         is_active.toggle();
     };
 
