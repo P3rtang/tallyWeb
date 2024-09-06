@@ -62,7 +62,7 @@ pub fn EditWindow() -> impl IntoView {
 
     let each_child = move |countable: &Countable| {
         let mut children = store().children(&countable.uuid().into());
-        children.sort_by(|a, b| sort_method().sort_by()(&store.get_untracked(), &a, &b));
+        children.sort_by(|a, b| sort_method().sort_by()(&store.get_untracked(), a, b));
         children
             .into_iter()
             .map(|c| store.get_untracked().get(&c))
