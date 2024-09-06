@@ -6,5 +6,7 @@ mod signal;
 pub(crate) use super::{api, AppError, Savable, SaveHandler};
 
 // re-export
-pub use countable::{Countable, CountableId, CountableKind, CountableStore, Hunttype, Masuda};
+pub use countable::{
+    Countable, CountableId, CountableKind, CountableStore, Counter, Hunttype, Masuda,
+};
 pub use signal::ProvideStore;

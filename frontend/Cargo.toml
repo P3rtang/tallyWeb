@@ -1,6 +1,6 @@
 [package]
 name = "tallyweb-frontend"
-version = "0.3.4"
+version = "0.3.5"
 edition = "2021"
 description = "leptos frontend for the tallyweb site"
 license = "MIT"
@@ -72,3 +72,4 @@ class_name_pattern = "tallyweb-[name]-[hash]"
 
 [package.metadata.docs.rs]
 features = ["ssr", "csr", "hydrate"]
+rustdoc-args = ["--document-private-items"]

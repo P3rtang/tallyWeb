@@ -1,4 +1,4 @@
-use countable_v2::countable::{self, Counter};
+use countable::{self, Counter};
 use leptos::*;
 
 use super::*;

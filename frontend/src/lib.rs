@@ -25,8 +25,8 @@ pub(crate) mod saving;
 
 use saving::*;
 
-mod countable_v2;
-pub(crate) use countable_v2::*;
+pub mod countable;
+pub(crate) use countable::*;
 
 use cfg_if::cfg_if;
 
