@@ -276,7 +276,7 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     let data_resource = expect_context::<StateResource>();
     let store = expect_context::<RwSignal<CountableStore>>();
     let save_handler = expect_context::<RwSignal<SaveHandlers>>();
-    let search = create_memo(move |_| expect_context::<RwSignal<String>>()());
+    let search = expect_context::<RwSignal<String>>();
 
     let expand_node = move |key: uuid::Uuid, expand: bool| {
         selection.update(|s| {
@@ -301,8 +301,6 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
         if let Some(p) = parent {
             if includes_search() || selected() {
                 expand_node(p.into(), true)
-            } else {
-                expand_node(p.into(), false)
             }
         }
     });
