@@ -157,7 +157,7 @@ where
         on_keydown(ev);
     };
 
-    window_event_listener(ev::keydown, move |ev: ev::KeyboardEvent| {
+    let key_listener = window_event_listener(ev::keydown, move |ev: ev::KeyboardEvent| {
         #[allow(clippy::single_match)]
         match ev.key().as_str() {
             "/" => {
@@ -168,6 +168,8 @@ where
             _ => {}
         }
     });
+
+    on_cleanup(move || key_listener.remove());
 
     create_effect(move |_| {
         is_searching();
