@@ -480,7 +480,7 @@ impl Hunttype {
             Self::Masuda(Masuda::GenIV) => "Masuda (gen IV)",
             Self::Masuda(Masuda::GenV) => "Masuda (gen V)",
             Self::Masuda(Masuda::GenVI) => "Masuda (gen VI+)",
-            Self::Mixed => todo!(),
+            Self::Mixed => "Mixed",
         }
     }
 }
@@ -494,7 +494,7 @@ impl From<Hunttype> for &'static str {
             Hunttype::Masuda(Masuda::GenIV) => "MasudaGenIV",
             Hunttype::Masuda(Masuda::GenV) => "MasudaGenV",
             Hunttype::Masuda(Masuda::GenVI) => "MasudaGenVI",
-            Hunttype::Mixed => todo!(),
+            Hunttype::Mixed => "Mixed",
         }
     }
 }

@@ -3,6 +3,7 @@
 #![feature(half_open_range_patterns_in_slices)]
 #![feature(fn_traits)]
 #![feature(unboxed_closures)]
+#![feature(result_flattening)]
 
 use leptos::leptos_dom;
 use wasm_bindgen::{prelude::Closure, JsCast};
