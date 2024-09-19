@@ -441,25 +441,21 @@ pub enum Masuda {
 }
 
 impl Hunttype {
-    pub(crate) fn rolls(&self) -> impl Fn(i32, bool) -> usize {
+    pub(crate) fn rolls(&self) -> impl Fn(i32, bool) -> i32 {
         match self {
-            Hunttype::OldOdds => {
-                |count, has_charm: bool| (count * if has_charm { 3 } else { 1 }) as usize
-            }
-            Hunttype::NewOdds => {
-                |count, has_charm: bool| (count * if has_charm { 3 } else { 1 }) as usize
-            }
+            Hunttype::OldOdds => |count, has_charm: bool| (count * if has_charm { 3 } else { 1 }),
+            Hunttype::NewOdds => |count, has_charm: bool| (count * if has_charm { 3 } else { 1 }),
             Hunttype::SOS => |count, has_charm: bool| match count {
-                c if c < 10 => (count * if has_charm { 3 } else { 1 }) as usize,
-                c if c < 20 => (10 + (count - 10) * if has_charm { 3 + 4 } else { 1 + 4 }) as usize,
-                c if c < 30 => (60 + (count - 20) * if has_charm { 3 + 8 } else { 1 + 8 }) as usize,
-                _ => (50 + (count - 30) * if has_charm { 3 + 13 } else { 1 + 12 }) as usize,
+                c if c < 10 => count * if has_charm { 3 } else { 1 },
+                c if c < 20 => 10 + (count - 10) * if has_charm { 3 + 4 } else { 1 + 4 },
+                c if c < 30 => 60 + (count - 20) * if has_charm { 3 + 8 } else { 1 + 8 },
+                _ => 50 + (count - 30) * if has_charm { 3 + 13 } else { 1 + 12 },
             },
             Hunttype::Masuda(Masuda::GenIV) => {
-                |count, has_charm: bool| (count * if has_charm { 3 + 4 } else { 1 + 4 }) as usize
+                |count, has_charm: bool| (count * if has_charm { 3 + 4 } else { 1 + 4 })
             }
             Hunttype::Masuda(_) => {
-                |count, has_charm: bool| (count * if has_charm { 3 + 5 } else { 1 + 5 }) as usize
+                |count, has_charm: bool| (count * if has_charm { 3 + 5 } else { 1 + 5 })
             }
             Hunttype::Mixed => unreachable!(),
         }
@@ -566,6 +562,18 @@ impl Into<backend::Hunttype> for Hunttype {
             Self::Masuda(Masuda::GenV) => backend::Hunttype::MasudaGenV,
             Self::Masuda(Masuda::GenVI) => backend::Hunttype::MasudaGenVI,
             Self::Mixed => unreachable!(),
+        }
+    }
+}
+
+impl std::ops::BitOr<Hunttype> for Hunttype {
+    type Output = Hunttype;
+
+    fn bitor(self, rhs: Hunttype) -> Self::Output {
+        if self != rhs {
+            Hunttype::Mixed
+        } else {
+            self
         }
     }
 }

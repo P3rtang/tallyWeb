@@ -100,168 +100,6 @@ where
         self.store.values().cloned().collect()
     }
 
-    pub fn time_checked(&self, countable: &CountableId) -> Result<TimeDelta, AppError> {
-        match self
-            .store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-        {
-            Countable::Counter(c) => {
-                let mut time = TimeDelta::zero();
-                for child in c.lock()?.children.iter() {
-                    time += self.time_checked(child)?;
-                }
-                Ok(time)
-            }
-            Countable::Phase(p) => Ok(p.lock()?.time),
-            Countable::Chain(_) => todo!(),
-        }
-    }
-
-    pub fn hunttype_checked(&self, countable: &CountableId) -> Result<Hunttype, AppError> {
-        match self
-            .store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-        {
-            Countable::Counter(c) => {
-                let children = c.lock()?.children.clone();
-
-                let ht = children
-                    .first()
-                    .and_then(|child| self.hunttype_checked(child).ok())
-                    .unwrap_or_default();
-
-                for child in children.iter() {
-                    if self.hunttype_checked(child)? != ht {
-                        return Ok(Hunttype::Mixed);
-                    }
-                }
-                Ok(ht)
-            }
-            Countable::Phase(p) => Ok(p.lock()?.hunt_type),
-            Countable::Chain(_) => todo!(),
-        }
-    }
-
-    pub fn hunttype(&self, countable: &CountableId) -> Hunttype {
-        self.hunttype_checked(countable).unwrap()
-    }
-
-    pub fn rolls_checked(&self, countable: &CountableId) -> Result<usize, AppError> {
-        let this: &CountableStore<Recursive, Checked> = unsafe { std::mem::transmute(self) };
-
-        Ok(
-            match this
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => c
-                    .lock()?
-                    .children
-                    .iter()
-                    .map(|child| this.rolls_checked(child))
-                    .collect::<Result<Vec<_>, AppError>>()?
-                    .into_iter()
-                    .sum(),
-                Countable::Phase(_) => this.hunttype_checked(countable)?.rolls()(
-                    this.count(countable)?,
-                    this.has_charm_checked(countable)?,
-                ),
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn rolls(&self, countable: &CountableId) -> usize {
-        self.rolls_checked(countable).unwrap()
-    }
-
-    pub fn odds_checked(&self, countable: &CountableId) -> Result<f64, AppError> {
-        let this: &CountableStore<Recursive, Checked> = unsafe { std::mem::transmute(self) };
-
-        Ok(
-            match this
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => {
-                    let sum = c
-                        .lock()?
-                        .children
-                        .iter()
-                        .map(|child| {
-                            let odds = this.odds_checked(child)?;
-                            Ok(odds * this.count(child)? as f64)
-                        })
-                        .collect::<Result<Vec<_>, AppError>>()?
-                        .into_iter()
-                        .sum::<f64>();
-                    sum / (this.count(countable)? as f64).max(1.0)
-                }
-                Countable::Phase(p) => p.lock()?.hunt_type.odds(),
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn odds(&self, countable: &CountableId) -> f64 {
-        self.odds_checked(countable).unwrap()
-    }
-
-    pub fn progress_checked(&self, countable: &CountableId) -> Result<f64, AppError> {
-        let prob = 1.0 / self.odds_checked(countable)?;
-        let rolls = self.rolls_checked(countable)?;
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => {
-                    let children_len = c.lock()?.children.len();
-                    let mut chance = 0.0;
-                    for k in 0..((self.completed_checked(countable)? + 1).min(children_len)) {
-                        let combs = n_choose_k(rolls, k);
-                        chance +=
-                            combs * prob.powi(k as i32) * (1.0 - prob).powi((rolls - k) as i32)
-                    }
-
-                    1.0 - chance
-                }
-                Countable::Phase(_) => 1.0 - (1.0 - prob).powi(rolls as i32),
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn progress(&self, countable: &CountableId) -> f64 {
-        self.progress_checked(countable).unwrap()
-    }
-
-    pub fn completed_checked(&self, countable: &CountableId) -> Result<usize, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => c
-                    .lock()?
-                    .children
-                    .iter()
-                    .map(|child| self.completed_checked(child))
-                    .collect::<Result<Vec<_>, AppError>>()?
-                    .into_iter()
-                    .sum(),
-                Countable::Phase(p) => p.lock()?.success.into(),
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
     pub fn has_charm_checked(&self, countable: &CountableId) -> Result<bool, AppError> {
         Ok(
             match self
@@ -925,7 +763,7 @@ impl CountableStore<Level, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
+          * `CountableId` is not available in the store
           * lock on a `Mutex` fails
 
         [Countable]\
@@ -1010,6 +848,133 @@ impl CountableStore<Level, Checked> {
         self.is_changed.replace(true);
 
         Ok(())
+    }
+
+    /**
+        `Countable Rolls Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(i32)`: The rolls of the `Countable` for the given `CountableId`
+          * `Ok(0)`: The rolls of `countable` is dependant on descendants use recursive instead
+          * `Err(AppError)`
+
+        # Errors
+          * `CountableId` is not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn rolls(&self, countable: &CountableId) -> Result<i32, AppError> {
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(_) => 0,
+                Countable::Phase(_) => self.recursive_ref().hunttype(countable)?.rolls()(
+                    self.count(countable)?,
+                    self.has_charm_checked(countable)?,
+                ),
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
+
+    /**
+        `Countable Odds Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(f64)`: The odds of the `Countable` for the given `CountableId`
+          * `Ok(0.0)`: The odds of `countable` is dependant on descendants use recursive instead
+          * `Err(AppError)`
+
+        # Errors
+          * `CountableId` is not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn odds(&self, countable: &CountableId) -> Result<f64, AppError> {
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(_) => 0.0,
+                Countable::Phase(p) => p.lock()?.hunt_type.odds(),
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
+
+    /**
+        `Countable Progress Checked`
+        
+        This function will calculate the progress on a given `countable`,
+        this means the percentage chance you have to be already done with the hunt.
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(f64)`: The odds of the `Countable` for the given `CountableId`
+          * `Ok(0.0)`: The odds of `countable` is dependant on descendants use recursive instead
+          * `Err(AppError)`
+
+        # Errors
+          * `CountableId` is not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn progress(&self, countable: &CountableId) -> Result<f64, AppError> {
+        let prob = 1.0 / self.odds(countable)?;
+        let rolls = self.rolls(countable)?;
+        Ok(1.0 - (1.0 - prob).powi(rolls as i32))
+    }
+
+    /**
+        `Completed Countable Checked`
+        
+        This function return a boolean on wether the countable has the completed flag toggled
+        To get a number of completed descendants use the recursive version instead
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(bool)`: The completed status of the `Countable` for the given `CountableId`
+          * `Ok(false)`: The completed status of `countable` is dependant on descendants use recursive instead
+          * `Err(AppError)`
+
+        # Errors
+          * `CountableId` is not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn completed(&self, countable: &CountableId) -> Result<bool, AppError> {
+        Ok(match self.get(countable).ok_or(AppError::CountableNotFound)? {
+            Countable::Counter(_) => false,
+            Countable::Phase(p) => p.lock()?.success,
+            Countable::Chain(_) => todo!(),
+        })
     }
 }
 
@@ -1443,6 +1408,225 @@ impl CountableStore<Recursive, Checked> {
 
         Ok(())
     }
+
+    /**
+        `Countable Hunttype Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(Hunttype)`: The hunttype of the `countable` for the given `CountableId`
+          * `Ok(Hunttype::Mixed)`: When children have differing hunttypes
+          * `Err(AppError)`
+
+        # Errors
+          * `countable` or any of its descendants not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [Hunttype]\
+        [AppError]
+    */
+    pub fn hunttype(&self, countable: &CountableId) -> Result<Hunttype, AppError> {
+        Ok(
+            match self.get(countable).ok_or(AppError::CountableNotFound)? {
+                Countable::Counter(_) => {
+                    let mut hunttype: Option<Hunttype> = None;
+                    for child in self.children(countable)? {
+                        if let Some(ht) = hunttype {
+                            hunttype = Some(ht | self.hunttype(&child)?)
+                        } else {
+                            hunttype = Some(self.hunttype(&child)?)
+                        };
+                    }
+                    hunttype.ok_or(AppError::RequiresChild)?
+                }
+                Countable::Phase(p) => p.lock()?.hunt_type,
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
+
+    /**
+        `Recursive Countable Rolls Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(i32)`: The time of the `Countable` for the given `CountableId`
+          * `Err(AppError)`
+
+        # Errors
+          * `CountableId` is not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn rolls(&self, countable: &CountableId) -> Result<i32, AppError> {
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(c) => c
+                    .lock()?
+                    .children
+                    .iter()
+                    .map(|child| self.rolls(child))
+                    .collect::<Result<Vec<_>, AppError>>()?
+                    .into_iter()
+                    .sum(),
+                Countable::Phase(_) => self.hunttype(countable)?.rolls()(
+                    self.count(countable)?,
+                    self.has_charm_checked(countable)?,
+                ),
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
+
+    /**
+        `Recursive Countable Odds Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(f64)`: The odds of the `Countable` for the given `CountableId`
+          * `Err(AppError)`
+
+        # Errors
+          * `CountableId` is not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn odds(&self, countable: &CountableId) -> Result<f64, AppError> {
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(c) => {
+                    let sum = c
+                        .lock()?
+                        .children
+                        .iter()
+                        .map(|child| {
+                            let odds = self.odds(child)?;
+                            Ok(odds * self.count(child)? as f64)
+                        })
+                        .collect::<Result<Vec<_>, AppError>>()?
+                        .into_iter()
+                        .sum::<f64>();
+                    sum / (self.count(countable)? as f64).max(1.0)
+                }
+                Countable::Phase(p) => p.lock()?.hunt_type.odds(),
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
+
+    /**
+        `Recursive Countable Progress Checked`
+        
+        This function will calculate the progress on a given `countable`,
+        this means the percentage chance you have to be already done with the hunt.
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(f64)`: The odds of the `Countable` for the given `CountableId`
+          * `Ok(0.0)`: The odds of `countable` is dependant on descendants use recursive instead
+          * `Err(AppError)`
+
+        # Errors
+          * `CountableId` is not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn progress(&self, countable: &CountableId) -> Result<f64, AppError> {
+        let prob = 1.0 / self.odds(countable)?;
+        let rolls = self.rolls(countable)?;
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(_) => {
+                    let children_len = self.children(countable)?.len();
+                    let mut chance = 0.0;
+                    let completed = self.completed(countable)?;
+                    println!("{}", completed);
+
+                    for k in 0..=((self.completed(countable)? as usize).min(children_len)) {
+                        let combs = if rolls >= 0 {
+                            n_choose_k(rolls as usize, k)
+                        } else {
+                            0.0
+                        };
+                        chance += combs * prob.powi(k as i32) * (1.0 - prob).powi(rolls - k as i32)
+                    }
+
+                    1.0 - chance
+                }
+                Countable::Phase(_) => 1.0 - (1.0 - prob).powi(rolls as i32),
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
+
+    /**
+        `Recursive Countable Completed Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(i32)`: The amount of completed descendants of `countable`
+          * `Err(AppError)`
+
+        # Errors
+          * `CountableId` is not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn completed(&self, countable: &CountableId) -> Result<u32, AppError> {
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(c) => c
+                    .lock()?
+                    .children
+                    .iter()
+                    .map(|child| self.completed(child))
+                    .collect::<Result<Vec<_>, AppError>>()?
+                    .into_iter()
+                    .sum::<u32>(),
+                Countable::Phase(p) => p.lock()?.success.into(),
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
 }
 
 impl CountableStore<Level, UnChecked> {
@@ -1609,6 +1793,111 @@ impl CountableStore<Level, UnChecked> {
     pub fn add_time(&self, countable: &CountableId, time: TimeDelta) {
         match self.checked_ref().add_time(countable, time) {
             Ok(_) | Err(AppError::CountableNotFound) => (),
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Countable Rolls UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `i32`: The rolls of the `Countable` for the given `CountableId`
+          * `0`: The `countable` was not available in `CountableStore`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn rolls(&self, countable: &CountableId) -> i32 {
+        match self.checked_ref().rolls(countable) {
+            Ok(r) => r,
+            Err(AppError::CountableNotFound) | Err(AppError::RequiresChild) => 0,
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Countable Odds UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `i32`: The odds of the `Countable` for the given `CountableId`
+          * `0`: The `countable` was not available in `CountableStore`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn odds(&self, countable: &CountableId) -> f64 {
+        match self.checked_ref().odds(countable) {
+            Ok(r) => r,
+            Err(AppError::CountableNotFound) | Err(AppError::RequiresChild) => 0.0,
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Countable Progress UnChecked`
+        
+        This function will calculate the progress on a given `countable`,
+        this means the percentage chance you have to be already done with the hunt.
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `f64`: The odds of the `Countable` for the given `CountableId`
+          * `0.0`: The odds of `countable` is dependant on descendants use recursive instead 
+                   or the `countable` was not available in `CountableStore`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn progress(&self, countable: &CountableId) -> f64 {
+        match self.checked_ref().progress(countable) {
+            Ok(p) => p,
+            Err(AppError::CountableNotFound) | Err(AppError::RequiresChild) => 0.0,
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Countable Completed UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `bool`: Returns a whether the `countable` has the completed status
+          * `false`: The `countable` was not found in `CountableStore` or
+                     the completed status is dependant on its descendants
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn completed(&self, countable: &CountableId) -> bool {
+        match self.checked_ref().completed(countable) {
+            Ok(b) => b,
+            Err(AppError::CountableNotFound) => false,
             Err(err) => panic!("{err}"),
         }
     }
@@ -1852,6 +2141,138 @@ impl CountableStore<Recursive, UnChecked> {
     pub fn add_time(&self, countable: &CountableId, time: TimeDelta) {
         match self.checked_ref().add_time(countable, time) {
             Ok(_) | Err(AppError::CountableNotFound) => (),
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Countable Hunttype UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Hunttype`: The hunttype of the `countable` for the given `CountableId`
+          * `Hunttype::Mixed`: When descendants have differing hunttypes
+
+        # Panics
+          * `countable` or any of its descendants not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [Hunttype]\
+        [AppError]
+    */
+    pub fn hunttype(&self, countable: &CountableId) -> Hunttype {
+        match self.checked_ref().hunttype(countable) {
+            Ok(t) => t,
+            Err(AppError::CountableNotFound) | Err(AppError::RequiresChild) => Hunttype::Mixed,
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Recursive Countable Rolls UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `i32`: The time of the `Countable` for the given `CountableId`
+          * 0: The `countable` was not available in `CountableStore`
+
+        # Panics
+          * `CountableId` is not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn rolls(&self, countable: &CountableId) -> i32 {
+        match self.checked_ref().rolls(countable) {
+            Ok(r) => r,
+            Err(AppError::CountableNotFound) | Err(AppError::RequiresChild) => 0,
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Recursive Countable Odds UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `i32`: The odds of the `Countable` for the given `CountableId`
+          * `0`: The `countable` was not available in `CountableStore`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn odds(&self, countable: &CountableId) -> f64 {
+        match self.checked_ref().odds(countable) {
+            Ok(r) => r,
+            Err(AppError::CountableNotFound) | Err(AppError::RequiresChild) => 0.0,
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Recursive Countable Progress UnChecked`
+        
+        This function will calculate the progress on a given `countable`,
+        this means the percentage chance you have to be already done with the hunt.
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `f64`: The odds of the `Countable` for the given `CountableId`
+          * `0.0`: The `countable` was not available in `CountableStore`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn progress(&self, countable: &CountableId) -> f64 {
+        match self.checked_ref().progress(countable) {
+            Ok(p) => p,
+            Err(AppError::CountableNotFound) | Err(AppError::RequiresChild) => 0.0,
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Recursive Completed Countable Checked`
+        
+        This function return the total number of descendants with the completed flag set
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `bool`: The completed status of the `Countable` for the given `CountableId`
+          * `false`: The `countable` was not available in `CountableStore`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn completed(&self, countable: &CountableId) -> u32 {
+        match self.checked_ref().completed(countable) {
+            Ok(c) => c,
+            Err(AppError::CountableNotFound) => 0,
             Err(err) => panic!("{err}"),
         }
     }
