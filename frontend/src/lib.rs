@@ -132,6 +132,8 @@ pub enum AppError {
     Serialization(String),
     #[error("Incorrect or missing env variable: {0}")]
     Environment(String),
+    #[error("Countable Requires at least 1 child")]
+    RequiresChild,
 }
 
 impl From<gloo_storage::errors::StorageError> for AppError {

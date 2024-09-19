@@ -313,13 +313,13 @@ where
 {
     let store = expect_context::<RwSignal<CountableStore>>();
 
-    let progress = create_read_slice(store, move |s| s.progress(&key.get_untracked().into()));
-    let rolls = create_read_slice(store, move |s| s.rolls(&key.get_untracked().into()));
-    let odds = create_read_slice(store, move |s| s.odds(&key().into()));
+    let progress = create_read_slice(store, move |s| s.recursive_ref().progress(&key.get_untracked().into()));
+    let rolls = create_read_slice(store, move |s| s.recursive_ref().rolls(&key.get_untracked().into()));
+    let odds = create_read_slice(store, move |s| s.recursive_ref().odds(&key().into()));
 
     let color = move || match progress() {
         num if num < 0.5 => "#50fa7b",
-        num if num < 0.75 && rolls() < odds() as usize => "#fcff10",
+        num if num < 0.75 && rolls() < odds() as i32 => "#fcff10",
         num if num < 0.75 => "#ffb86c",
         _ => "#ff9580",
     };

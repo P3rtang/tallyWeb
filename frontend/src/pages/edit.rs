@@ -428,7 +428,7 @@ fn EditTime(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 #[component]
 fn EditHunttype(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
-    let hunt_type = move || store().hunttype(&key().into());
+    let hunt_type = move || store().recursive_ref().hunttype(&key().into());
     let selected = create_memo(move |_| hunt_type().into());
 
     let hunt_option = |ht: Hunttype| -> (&'static str, &'static str) { (ht.repr(), ht.into()) };
