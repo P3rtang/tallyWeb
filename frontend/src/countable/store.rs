@@ -9,8 +9,8 @@ use super::*;
 pub trait StoreMethod: Default {}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct BreathFirst;
-impl StoreMethod for BreathFirst {}
+pub struct Recursive;
+impl StoreMethod for Recursive {}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Level;
@@ -32,8 +32,7 @@ pub struct CountableStore<M: StoreMethod, C: StoreCheck> {
     pub(crate) store: HashMap<CountableId, Countable>,
     pub(crate) selection: Vec<CountableId>,
     pub(crate) is_changed: RefCell<bool>,
-    phantom_method: std::marker::PhantomData<M>,
-    phantom_check: std::marker::PhantomData<C>,
+    phantom_data: std::marker::PhantomData<(M, C)>,
 }
 
 impl<M, C> CountableStore<M, C>
@@ -65,6 +64,10 @@ where
         self.store.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.store.is_empty()
+    }
+
     pub fn raw_filter(&self, filter: impl Fn(&Countable) -> bool) -> Self {
         let store: HashMap<CountableId, Countable> = self
             .store
@@ -82,11 +85,11 @@ where
     }
 
     pub fn root_nodes(&self) -> Vec<Countable> {
-        let this: &CountableStore<BreathFirst, Checked> = unsafe { std::mem::transmute(self) };
+        let this: &CountableStore<Recursive, Checked> = unsafe { std::mem::transmute(self) };
         this.store
             .values()
             .filter(|v| {
-                this.parent(&v.uuid().into())
+                this.root_parent(&v.uuid().into())
                     .is_ok_and(|p| p == v.uuid().into())
             })
             .cloned()
@@ -95,123 +98,6 @@ where
 
     pub fn nodes(&self) -> Vec<Countable> {
         self.store.values().cloned().collect()
-    }
-
-    pub fn kind_checked(&self, countable: &CountableId) -> Result<CountableKind, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(_) => CountableKind::Counter,
-                Countable::Phase(_) => CountableKind::Phase,
-                Countable::Chain(_) => CountableKind::Chain,
-            },
-        )
-    }
-
-    pub fn kind(&self, countable: &CountableId) -> CountableKind {
-        self.kind_checked(countable).unwrap()
-    }
-
-    pub fn name_checked(&self, countable: &CountableId) -> Result<String, AppError> {
-        self.store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-            .name_checked()
-    }
-
-    pub fn name(&self, countable: &CountableId) -> String {
-        self.name_checked(countable).unwrap()
-    }
-
-    pub fn set_name_checked(&self, countable: &CountableId, name: &str) -> Result<(), AppError> {
-        match self
-            .store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-        {
-            Countable::Counter(c) => c.lock()?.name = name.into(),
-            Countable::Phase(p) => p.lock()?.name = name.into(),
-            Countable::Chain(_) => todo!(),
-        };
-
-        self.is_changed.replace(true);
-
-        Ok(())
-    }
-
-    pub fn set_name(&self, countable: &CountableId, name: &str) {
-        self.set_name_checked(countable, name).unwrap()
-    }
-
-    pub fn count_checked(&self, countable: &CountableId) -> Result<i32, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => {
-                    let mut sum = 0;
-                    for child in c.lock()?.children.iter() {
-                        sum += self.count_checked(child)?;
-                    }
-                    sum
-                }
-                Countable::Phase(p) => p.lock()?.count,
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn count(&self, countable: &CountableId) -> i32 {
-        self.count_checked(countable).unwrap()
-    }
-
-    pub fn set_count_checked(&self, countable: &CountableId, count: i32) -> Result<(), AppError> {
-        let diff = count - self.count_checked(countable)?;
-        self.add_count_checked(countable, diff)?;
-        self.is_changed.replace(true);
-        Ok(())
-    }
-
-    pub fn set_count(&self, countable: &CountableId, count: i32) {
-        self.set_count_checked(countable, count).unwrap()
-    }
-
-    pub fn add_count_checked(&self, countable: &CountableId, mut add: i32) -> Result<(), AppError> {
-        match self
-            .store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-        {
-            Countable::Counter(c) => {
-                for child in c.lock()?.children.iter().rev() {
-                    let child_count = self.count_checked(child)?;
-                    if child_count + add <= 0 {
-                        self.set_count_checked(child, 0)?;
-                        add += self.count_checked(child)?;
-                    } else {
-                        self.set_count_checked(child, child_count + add)?;
-                        return Ok(());
-                    }
-                }
-            }
-            Countable::Phase(p) => {
-                p.lock()?.count += add;
-            }
-            Countable::Chain(_) => todo!(),
-        }
-
-        self.is_changed.replace(true);
-
-        Ok(())
-    }
-
-    pub fn add_count(&self, countable: &CountableId, add: i32) {
-        self.add_count_checked(countable, add).unwrap();
     }
 
     pub fn time_checked(&self, countable: &CountableId) -> Result<TimeDelta, AppError> {
@@ -230,61 +116,6 @@ where
             Countable::Phase(p) => Ok(p.lock()?.time),
             Countable::Chain(_) => todo!(),
         }
-    }
-
-    pub fn time(&self, countable: &CountableId) -> TimeDelta {
-        self.time_checked(countable).unwrap()
-    }
-
-    pub fn set_time_checked(
-        &self,
-        countable: &CountableId,
-        time: TimeDelta,
-    ) -> Result<(), AppError> {
-        let diff = time - self.time_checked(countable)?;
-        self.add_time_checked(countable, diff)?;
-        self.is_changed.replace(true);
-        Ok(())
-    }
-
-    pub fn set_time(&self, countable: &CountableId, time: TimeDelta) {
-        self.set_time_checked(countable, time).unwrap()
-    }
-
-    pub fn add_time_checked(
-        &self,
-        countable: &CountableId,
-        mut add: TimeDelta,
-    ) -> Result<(), AppError> {
-        match self
-            .store
-            .get(countable)
-            .ok_or(AppError::CountableNotFound)?
-        {
-            Countable::Counter(c) => {
-                for child in c.lock()?.children.iter().rev() {
-                    let child_time = self.time_checked(child)?;
-                    if child_time + add <= TimeDelta::zero() {
-                        self.set_time_checked(child, TimeDelta::zero())?;
-                        add += self.time_checked(child)?;
-                    } else {
-                        self.set_time_checked(child, child_time + add)?;
-                    }
-                }
-            }
-            Countable::Phase(p) => {
-                p.lock()?.time += add;
-            }
-            Countable::Chain(_) => todo!(),
-        }
-
-        self.is_changed.replace(true);
-
-        Ok(())
-    }
-
-    pub fn add_time(&self, countable: &CountableId, add: TimeDelta) {
-        self.add_time_checked(countable, add).unwrap();
     }
 
     pub fn hunttype_checked(&self, countable: &CountableId) -> Result<Hunttype, AppError> {
@@ -318,8 +149,10 @@ where
     }
 
     pub fn rolls_checked(&self, countable: &CountableId) -> Result<usize, AppError> {
+        let this: &CountableStore<Recursive, Checked> = unsafe { std::mem::transmute(self) };
+
         Ok(
-            match self
+            match this
                 .store
                 .get(countable)
                 .ok_or(AppError::CountableNotFound)?
@@ -328,13 +161,13 @@ where
                     .lock()?
                     .children
                     .iter()
-                    .map(|child| self.rolls_checked(child))
+                    .map(|child| this.rolls_checked(child))
                     .collect::<Result<Vec<_>, AppError>>()?
                     .into_iter()
                     .sum(),
-                Countable::Phase(_) => self.hunttype_checked(countable)?.rolls()(
-                    self.count_checked(countable)?,
-                    self.has_charm_checked(countable)?,
+                Countable::Phase(_) => this.hunttype_checked(countable)?.rolls()(
+                    this.count(countable)?,
+                    this.has_charm_checked(countable)?,
                 ),
                 Countable::Chain(_) => todo!(),
             },
@@ -346,8 +179,10 @@ where
     }
 
     pub fn odds_checked(&self, countable: &CountableId) -> Result<f64, AppError> {
+        let this: &CountableStore<Recursive, Checked> = unsafe { std::mem::transmute(self) };
+
         Ok(
-            match self
+            match this
                 .store
                 .get(countable)
                 .ok_or(AppError::CountableNotFound)?
@@ -358,13 +193,13 @@ where
                         .children
                         .iter()
                         .map(|child| {
-                            let odds = self.odds_checked(child)?;
-                            Ok(odds * self.count_checked(child)? as f64)
+                            let odds = this.odds_checked(child)?;
+                            Ok(odds * this.count(child)? as f64)
                         })
                         .collect::<Result<Vec<_>, AppError>>()?
                         .into_iter()
                         .sum::<f64>();
-                    sum / (self.count_checked(countable)? as f64).max(1.0)
+                    sum / (this.count(countable)? as f64).max(1.0)
                 }
                 Countable::Phase(p) => p.lock()?.hunt_type.odds(),
                 Countable::Chain(_) => todo!(),
@@ -562,6 +397,7 @@ impl Savable for CountableStore<Level, UnChecked> {
     }
 }
 
+/// Methods to transform `CountableStore` into `Checked` mode
 impl<M: StoreMethod> CountableStore<M, UnChecked> {
     pub fn checked(self) -> CountableStore<M, Checked> {
         unsafe { std::mem::transmute(self) }
@@ -576,6 +412,7 @@ impl<M: StoreMethod> CountableStore<M, UnChecked> {
     }
 }
 
+/// Methods to transform `CountableStore` into `UnChecked` mode
 impl<M: StoreMethod> CountableStore<M, Checked> {
     pub fn unchecked(self) -> CountableStore<M, UnChecked> {
         unsafe { std::mem::transmute(self) }
@@ -590,21 +427,23 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
     }
 }
 
+/// Methods to transform `CountableStore` into `Recursive` mode
 impl<C: StoreCheck> CountableStore<Level, C> {
-    pub fn recursive(self) -> CountableStore<BreathFirst, C> {
+    pub fn recursive(self) -> CountableStore<Recursive, C> {
         unsafe { std::mem::transmute(self) }
     }
 
-    pub fn recursive_ref(&self) -> &CountableStore<BreathFirst, C> {
+    pub fn recursive_ref(&self) -> &CountableStore<Recursive, C> {
         unsafe { std::mem::transmute(self) }
     }
 
-    pub fn recursive_mut(&mut self) -> &mut CountableStore<BreathFirst, C> {
+    pub fn recursive_mut(&mut self) -> &mut CountableStore<Recursive, C> {
         unsafe { std::mem::transmute(self) }
     }
 }
 
-impl<C: StoreCheck> CountableStore<BreathFirst, C> {
+/// Methods to transform `CountableStore` into `Level` mode
+impl<C: StoreCheck> CountableStore<Recursive, C> {
     pub fn level(self) -> CountableStore<Level, C> {
         unsafe { std::mem::transmute(self) }
     }
@@ -658,7 +497,7 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
     }
 
     pub fn archive(&self, countable: &CountableId) -> Result<Countable, AppError> {
-        let this: &CountableStore<BreathFirst, Checked> = unsafe { std::mem::transmute(self) };
+        let this: &CountableStore<Recursive, Checked> = unsafe { std::mem::transmute(self) };
 
         for child in this.children(countable)? {
             this.archive(&child)?;
@@ -670,16 +509,44 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
             Countable::Chain(_) => todo!(),
         }
 
+        self.is_changed.replace(true);
+
         this.get(countable).ok_or(AppError::CountableNotFound)
     }
 
+    /**
+        `CountableStore Filter Checked`
+
+        # Description
+
+        Filter allows filtering tree elements with a `filter` callback.
+        The elements remaining in the store will only be:\
+          * those returning true with the `filter` function
+          * their parents up to the `root element`
+
+        Use `raw_filter` to return a store with only elements matching `filter` and not their parents
+
+        # Arguments
+          * `filter`: `impl Fn(&Countable) -> bool`
+
+        # Returns
+          * `Ok(CountableStore<M, Checked>)`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
     pub fn filter(self, filter: impl Fn(&Countable) -> bool) -> Result<Self, AppError> {
         let mut store = self.raw_filter(filter);
 
         let keys: Vec<CountableId> = store.store.keys().copied().collect();
 
         // add back any missing parents
-        let this: CountableStore<BreathFirst, Checked> = unsafe { std::mem::transmute(self) };
+        let this: CountableStore<Recursive, Checked> = unsafe { std::mem::transmute(self) };
         for element in keys {
             store.store.extend(
                 this.all_parents(&element)?
@@ -690,6 +557,94 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
         }
 
         Ok(store)
+    }
+
+    /**
+        `Countable Kind Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(CountableKind)` for the given `CountableId`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [CountableKind]\
+        [AppError]
+    */
+    pub fn kind(&self, countable: &CountableId) -> Result<CountableKind, AppError> {
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(_) => CountableKind::Counter,
+                Countable::Phase(_) => CountableKind::Phase,
+                Countable::Chain(_) => CountableKind::Chain,
+            },
+        )
+    }
+
+    /**
+        `Countable Name Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(String)`: The name of the `Countable` for the given `CountableId`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn name(&self, countable: &CountableId) -> Result<String, AppError> {
+        self.get(countable)
+            .ok_or(AppError::CountableNotFound)?
+            .name_checked()
+    }
+
+    /**
+        `Set Countable Name Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `name`: &str; The new name for the `Countable`
+
+        # Returns
+          * `Ok(())`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn set_name(&self, countable: &CountableId, name: &str) -> Result<(), AppError> {
+        match self
+            .store
+            .get(countable)
+            .ok_or(AppError::CountableNotFound)?
+        {
+            Countable::Counter(c) => c.lock()?.name = name.into(),
+            Countable::Phase(p) => p.lock()?.name = name.into(),
+            Countable::Chain(_) => todo!(),
+        };
+
+        self.is_changed.replace(true);
+
+        Ok(())
     }
 }
 
@@ -709,8 +664,110 @@ impl<M: StoreMethod> CountableStore<M, UnChecked> {
             .unwrap()
     }
 
+    /**
+        `CountableStore Filter UnChecked`
+
+        # Description
+
+        Filter allows filtering tree elements with a `filter` callback.
+        The elements remaining in the store will only be:\
+          * those returning true with the `filter` function
+          * their parents up to the `root element`
+
+        Use `raw_filter` to return a store with only elements matching `filter` and not their parents
+
+        # Arguments
+          * `filter`: `impl Fn(&Countable) -> bool`
+
+        # Returns
+          * `CountableStore<M, UnChecked>`
+          * `Err(AppError)`
+
+        # Panics
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        To use a version that does not panic use the `Checked` version of `CountableStore` instread
+
+        [Countable]
+    */
     pub fn filter(self, filter: impl Fn(&Countable) -> bool) -> Self {
         self.checked().filter(filter).unwrap().unchecked()
+    }
+
+    /**
+        `Countable Kind UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        #  Returns
+          * `CountableKind` for the given `CountableId`
+
+        # Panics
+          * `CountableId` is not available in the store
+          * lock on a `Mutex` fails
+
+        To use a version that does not panic use the `Checked` version of `CountableStore` instread
+
+        [CountableKind]
+    */
+    pub fn kind(&self, countable: &CountableId) -> CountableKind {
+        match self.checked_ref().kind(countable) {
+            Ok(kind) => kind,
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Countable Name UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `String`: The name for the `Countable` for the given `CountableId`
+          * empty `String`: when the `CountableId` was not in the `CountableStore`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        To use a version that does not panic use the `Checked` version of `CountableStore` instread
+
+        [Countable]
+    */
+    pub fn name(&self, countable: &CountableId) -> String {
+        match self
+            .get(countable)
+            .ok_or(AppError::CountableNotFound)
+            .map(|c| c.name_checked())
+            .flatten()
+        {
+            Ok(name) => name,
+            Err(AppError::CountableNotFound) => String::new(),
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Set Countable Name UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `name`: &str; The new name for the `Countable`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]
+    */
+    pub fn set_name(&self, countable: &CountableId, name: &str) {
+        match self.checked_ref().set_name(countable, name) {
+            Ok(_) | Err(AppError::CountableNotFound) => (),
+            Err(err) => panic!("{err}"),
+        };
+
+        self.is_changed.replace(true);
     }
 }
 
@@ -759,9 +816,217 @@ impl CountableStore<Level, Checked> {
             None => None,
         })
     }
+
+    /**
+        `Countable Count Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(i32)`: The count of the `Countable` for the given `CountableId`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn count(&self, countable: &CountableId) -> Result<i32, AppError> {
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(_) => 0,
+                Countable::Phase(p) => p.lock()?.count,
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
+
+    /**
+        `Set Countable Count Checked`
+
+        Since this function does not recurse
+        it will only change elements that hold a count value themselves not any descendants
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `count`: i32; The new count for the `Countable`
+
+        # Returns
+          * `Ok(())`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn set_count(&self, countable: &CountableId, count: i32) -> Result<(), AppError> {
+        match self.get(countable).ok_or(AppError::CountableNotFound)? {
+            Countable::Counter(_) => (),
+            Countable::Phase(p) => p.lock()?.count = count,
+            Countable::Chain(_) => todo!(),
+        };
+
+        self.is_changed.replace(true);
+
+        Ok(())
+    }
+
+    /**
+        `Add Count Checked`
+
+        Since this function does not recurse
+        it will only change elements that hold a count value themselves not any descendants
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `count`: i32; The count to add to `countable`
+
+        # Returns
+          * `Ok(())`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn add_count(&self, countable: &CountableId, count: i32) -> Result<(), AppError> {
+        match self.get(countable).ok_or(AppError::CountableNotFound)? {
+            Countable::Counter(_) => (),
+            Countable::Phase(p) => p.lock()?.count += count,
+            Countable::Chain(_) => todo!(),
+        };
+
+        self.is_changed.replace(true);
+
+        Ok(())
+    }
+
+    /**
+        `Countable Time Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(TimeDelta)`: The time of the `Countable` for the given `CountableId`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn time(&self, countable: &CountableId) -> Result<TimeDelta, AppError> {
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(_) => TimeDelta::zero(),
+                Countable::Phase(p) => p.lock()?.time,
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
+
+    /**
+        `Set Countable Time Checked`
+
+        Since this function does not recurse
+        it will only change elements that hold a time value themselves not any descendants
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `time`: [TimeDelta]; The new time for the `Countable`
+
+        # Returns
+          * `Ok(())`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn set_time(&self, countable: &CountableId, time: TimeDelta) -> Result<(), AppError> {
+        match self.get(countable).ok_or(AppError::CountableNotFound)? {
+            Countable::Counter(_) => (),
+            Countable::Phase(p) => p.lock()?.time = time,
+            Countable::Chain(_) => todo!(),
+        };
+
+        self.is_changed.replace(true);
+
+        Ok(())
+    }
+
+    /**
+        `Add Time Checked`
+
+        Since this function does not recurse
+        it will only change elements that hold a count value themselves not any descendants
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `time`: [TimeDelta]; The time to add to `countable`
+
+        # Returns
+          * `Ok(())`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn add_time(&self, countable: &CountableId, time: TimeDelta) -> Result<(), AppError> {
+        match self.get(countable).ok_or(AppError::CountableNotFound)? {
+            Countable::Counter(_) => (),
+            Countable::Phase(p) => p.lock()?.time += time,
+            Countable::Chain(_) => todo!(),
+        };
+
+        self.is_changed.replace(true);
+
+        Ok(())
+    }
 }
 
-impl CountableStore<BreathFirst, Checked> {
+impl CountableStore<Recursive, Checked> {
+    /**
+        `Recursive Children Checked`
+
+        Returns this list of all `descendants`.
+        To check for direct children use the `Level` version of this function.
+
+        This function will return an `error` when `CountableId` is not available in the store
+        And will return an `error` when any lock on a `Mutex` fails
+
+        `descendant`: as opposed to `direct` children they include even children of children
+
+        [CountableId]
+    */
     pub fn children(&self, countable: &CountableId) -> Result<Vec<CountableId>, AppError> {
         Ok(
             match self
@@ -781,6 +1046,17 @@ impl CountableStore<BreathFirst, Checked> {
         )
     }
 
+    /**
+        `Recursive Has Child Checked`
+
+        Returns `true` if any component down the tree contains the provided `CountableId`.
+        To check for direct children use the `Level` version of this function.
+
+        This function will return an `error` when `CountableId` is not available in the store
+        And will return an `error` when any lock on a `Mutex` fails
+
+        [CountableId]
+    */
     pub fn has_child(
         &self,
         countable: &CountableId,
@@ -826,7 +1102,7 @@ impl CountableStore<BreathFirst, Checked> {
     }
 
     /**
-        `Recursive Parent Checked`
+        `Root Parent Checked`
 
         Returns the parent `root element` of the given `CountableId`
         When the element is a root node it returns the `CountableId` of the element itself
@@ -838,7 +1114,7 @@ impl CountableStore<BreathFirst, Checked> {
 
         [CountableId]
     */
-    pub fn parent(&self, countable: &CountableId) -> Result<CountableId, AppError> {
+    pub fn root_parent(&self, countable: &CountableId) -> Result<CountableId, AppError> {
         Ok(
             match self
                 .store
@@ -847,12 +1123,12 @@ impl CountableStore<BreathFirst, Checked> {
             {
                 Countable::Counter(c) => {
                     if let Some(parent) = c.lock()?.parent {
-                        self.parent(&parent)?
+                        self.root_parent(&parent)?
                     } else {
                         *countable
                     }
                 }
-                Countable::Phase(p) => self.parent(&p.lock()?.parent)?,
+                Countable::Phase(p) => self.root_parent(&p.lock()?.parent)?,
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -873,7 +1149,7 @@ impl CountableStore<BreathFirst, Checked> {
     */
     pub fn all_parents(&self, countable: &CountableId) -> Result<Vec<CountableId>, AppError> {
         fn all_parents_rec<'a>(
-            store: &'a CountableStore<BreathFirst, Checked>,
+            store: &'a CountableStore<Recursive, Checked>,
             countable: &'a CountableId,
             list: &'a mut Vec<CountableId>,
         ) -> Result<&'a mut Vec<CountableId>, AppError> {
@@ -891,6 +1167,281 @@ impl CountableStore<BreathFirst, Checked> {
         };
 
         Ok(list)
+    }
+
+    /**
+        `Recursive Countable Count Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(i32)`: The count of the `Countable` for the given `CountableId`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn count(&self, countable: &CountableId) -> Result<i32, AppError> {
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(c) => {
+                    let mut sum = 0;
+                    for child in c.lock()?.children.iter() {
+                        sum += self.count(child)?;
+                    }
+                    sum
+                }
+                Countable::Phase(p) => p.lock()?.count,
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
+
+    /**
+        `Recursive Set Count Checked`
+
+        When setting count for a countable in recursive mode the following steps apply in order:
+            1. Calculate the difference between the old and new count
+            2. If the given countable holds its own value add the difference if the value goes below 0 set it to zero and move to the next step
+            3. Add the difference to the last child of the given countable
+            4. If the above results in the count of the last child to go below 0 set it to zero instead and move on to the second to last child with the remainder
+            5. repeat the above until either the count is correctly set when summing all descendants or when all descendants are 0
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `count`: i32; The new count for the `Countable`
+
+        # Returns
+          * `Ok(())`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn set_count(&self, countable: &CountableId, count: i32) -> Result<(), AppError> {
+        let mut diff = count - self.count(countable)?;
+
+        match self.get(countable).ok_or(AppError::CountableNotFound)? {
+            Countable::Counter(_) => {
+                let children = self.children(countable)?;
+                for child in children.into_iter().rev() {
+                    diff += self.count(&child)?;
+                    if diff < 0 {
+                        self.set_count(&child, 0)?
+                    } else {
+                        self.set_count(&child, diff)?;
+                        break;
+                    }
+                }
+            }
+            Countable::Phase(p) => p.lock()?.count += diff,
+            Countable::Chain(_) => todo!(),
+        };
+
+        self.is_changed.replace(true);
+
+        Ok(())
+    }
+
+    /**
+        `Recursive Add Count Checked`
+
+        When setting count for a countable in recursive mode the following steps apply in order:
+            1. Calculate the difference between the old and new count
+            2. If the given countable holds its own value add the difference if the value goes below 0 set it to zero and move to the next step
+            3. Add the difference to the last child of the given countable
+            4. If the above results in the count of the last child to go below 0 set it to zero instead and move on to the second to last child with the remainder
+            5. repeat the above until either the count is correctly set when summing all descendants or when all descendants are 0
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `count`: i32; The count to add to `Countable`
+
+        # Returns
+          * `Ok(())`
+          * `Err(AppError)`
+
+        # Errors
+          * `countable` not found in `CountableStore`
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn add_count(&self, countable: &CountableId, count: i32) -> Result<(), AppError> {
+        let mut diff = count;
+
+        match self.get(countable).ok_or(AppError::CountableNotFound)? {
+            Countable::Counter(_) => {
+                let children = self.children(countable)?;
+                for child in children.into_iter().rev() {
+                    diff += self.count(&child)?;
+                    if diff < 0 {
+                        self.set_count(&child, 0)?
+                    } else {
+                        self.set_count(&child, diff)?;
+                        break;
+                    }
+                }
+            }
+            Countable::Phase(p) => p.lock()?.count += diff,
+            Countable::Chain(_) => todo!(),
+        };
+
+        self.is_changed.replace(true);
+
+        Ok(())
+    }
+
+    /**
+        `Recursive Countable Time Checked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `Ok(TimeDelta)`: The time of the `Countable` for the given `CountableId`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn time(&self, countable: &CountableId) -> Result<TimeDelta, AppError> {
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(c) => {
+                    let mut sum = TimeDelta::zero();
+                    for child in c.lock()?.children.iter() {
+                        sum += self.time(child)?;
+                    }
+                    sum
+                }
+                Countable::Phase(p) => p.lock()?.time,
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
+
+    /**
+        `Recursive Set Time Checked`
+
+        When setting time for a countable in recursive mode the following steps apply in order:
+            1. Calculate the difference between the old and new time
+            2. If the given countable holds its own value add the difference if the value goes below 0 set it to zero and move to the next step
+            3. Add the difference to the last child of the given countable
+            4. If the above results in the time of the last child going below 0 set it to zero instead and move on to the second to last child with the remainder
+            5. repeat the above until either the time is correctly set when summing all descendants or when all descendants are 0
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `time`: [TimeDelta]; The new time for the `Countable`
+
+        # Returns
+          * `Ok(())`
+          * `Err(AppError)`
+
+        # Errors
+          * any parent elements are not available in the store
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn set_time(&self, countable: &CountableId, time: TimeDelta) -> Result<(), AppError> {
+        let mut diff = time - self.time(countable)?;
+
+        match self.get(countable).ok_or(AppError::CountableNotFound)? {
+            Countable::Counter(_) => {
+                let children = self.children(countable)?;
+                for child in children.into_iter().rev() {
+                    diff += self.time(&child)?;
+                    if diff < TimeDelta::zero() {
+                        self.set_time(&child, TimeDelta::zero())?
+                    } else {
+                        self.set_time(&child, diff)?;
+                        break;
+                    }
+                }
+            }
+            Countable::Phase(p) => p.lock()?.time += diff,
+            Countable::Chain(_) => todo!(),
+        };
+
+        self.is_changed.replace(true);
+
+        Ok(())
+    }
+
+    /**
+        `Recursive Add Time Checked`
+
+        When setting time for a countable in recursive mode the following steps apply in order:
+            1. Calculate the difference between the old and new time
+            2. If the given countable holds its own value add the difference if the value goes below 0 set it to zero and move to the next step
+            3. Add the difference to the last child of the given countable
+            4. If the above results in the time of the last child to go below 0 set it to zero instead and move on to the second to last child with the remainder
+            5. repeat the above until either the time is correctly set when summing all descendants or when all descendants are 0
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `time`: [TimeDelta]; The time to add to `Countable`
+
+        # Returns
+          * `Ok(())`
+          * `Err(AppError)`
+
+        # Errors
+          * `countable` not found in `CountableStore`
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn add_time(&self, countable: &CountableId, time: TimeDelta) -> Result<(), AppError> {
+        let mut diff = time;
+
+        match self.get(countable).ok_or(AppError::CountableNotFound)? {
+            Countable::Counter(_) => {
+                let children = self.children(countable)?;
+                for child in children.into_iter().rev() {
+                    diff += self.time(&child)?;
+                    if diff < TimeDelta::zero() {
+                        self.set_time(&child, TimeDelta::zero())?
+                    } else {
+                        self.set_time(&child, diff)?;
+                        break;
+                    }
+                }
+            }
+            Countable::Phase(p) => p.lock()?.time += diff,
+            Countable::Chain(_) => todo!(),
+        };
+
+        self.is_changed.replace(true);
+
+        Ok(())
     }
 }
 
@@ -920,9 +1471,150 @@ impl CountableStore<Level, UnChecked> {
     pub fn parent(&self, countable: &CountableId) -> Option<CountableId> {
         self.checked_ref().parent(countable).unwrap_or_default()
     }
+
+    /**
+        `Countable Count UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `i32`: The count of the `Countable` for the given `CountableId`
+          * `0`: The `CountableId` was not in `CountableStore`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn count(&self, countable: &CountableId) -> i32 {
+        match self.checked_ref().count(countable) {
+            Ok(num) => num,
+            Err(AppError::CountableNotFound) => 0,
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Set Countable Count UnChecked`
+
+        Since this function does not recurse
+        it will only change elements that hold a count value themselves not any descendants
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `count`: i32; The new count for the `Countable`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn set_count(&self, countable: &CountableId, count: i32) -> () {
+        match self.checked_ref().set_count(countable, count) {
+            Ok(_) | Err(AppError::CountableNotFound) => (),
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Add Count UnChecked`
+
+        Since this function does not recurse
+        it will only change elements that hold a count value themselves not any descendants
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `count`: i32; The count to add to `countable`
+
+        # Errors
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn add_count(&self, countable: &CountableId, count: i32) {
+        match self.checked_ref().add_count(countable, count) {
+            Ok(_) | Err(AppError::CountableNotFound) => (),
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Countable Time UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `TimeDelta`: The time of the `Countable` for the given `CountableId`
+          * `TimeDelta::zero()`: The `CountableId` was not found in `CountableStore`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn time(&self, countable: &CountableId) -> TimeDelta {
+        match self.checked_ref().time(countable) {
+            Ok(time) => time,
+            Err(AppError::CountableNotFound) => TimeDelta::zero(),
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Set Countable Time UnChecked`
+
+        Since this function does not recurse
+        it will only change elements that hold a time value themselves not any descendants
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `time`: [TimeDelta]; The new time for the `Countable`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn set_time(&self, countable: &CountableId, time: TimeDelta) {
+        match self.checked_ref().set_time(countable, time) {
+            Ok(_) | Err(AppError::CountableNotFound) => (),
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Add Time UnChecked`
+
+        Since this function does not recurse
+        it will only change elements that hold a count value themselves not any descendants
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `time`: [TimeDelta]; The time to add to `countable`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn add_time(&self, countable: &CountableId, time: TimeDelta) {
+        match self.checked_ref().add_time(countable, time) {
+            Ok(_) | Err(AppError::CountableNotFound) => (),
+            Err(err) => panic!("{err}"),
+        }
+    }
 }
 
-impl CountableStore<BreathFirst, UnChecked> {
+impl CountableStore<Recursive, UnChecked> {
     pub fn children(&self, countable: &CountableId) -> Vec<CountableId> {
         self.clone()
             .checked()
@@ -978,7 +1670,7 @@ impl CountableStore<BreathFirst, UnChecked> {
         [CountableId]
     */
     pub fn parent(&self, countable: &CountableId) -> CountableId {
-        match self.checked_ref().parent(countable) {
+        match self.checked_ref().root_parent(countable) {
             Ok(c) => c,
             Err(AppError::CountableNotFound) => *countable,
             Err(err) => panic!("{err}"),
@@ -1003,6 +1695,164 @@ impl CountableStore<BreathFirst, UnChecked> {
             Ok(l) => l,
             Err(AppError::CountableNotFound) => Vec::new(),
             Err(err) => panic!("{}", err),
+        }
+    }
+
+    /**
+        `Recursive Countable Count UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `i32`: The count of the `Countable` for the given `CountableId`
+          * `0`: The `CountableId` was not in `CounterStore`
+          * `Err(AppError)`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn count(&self, countable: &CountableId) -> i32 {
+        match self.checked_ref().count(countable) {
+            Ok(num) => num,
+            Err(AppError::CountableNotFound) => 0,
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Recursive Set Count UnChecked`
+
+        When setting count for a countable in recursive mode the following steps apply in order:
+            1. Calculate the difference between the old and new count
+            2. If the given countable holds its own value add the difference if the value goes below 0 set it to zero and move to the next step
+            3. Add the difference to the last child of the given countable
+            4. If the above results in the count of the last child to go below 0 set it to zero instead and move on to the second to last child with the remainder
+            5. repeat the above until either the count is correctly set when summing all descendants or when all descendants are 0
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `count`: i32; The new count for the `Countable`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn set_count(&self, countable: &CountableId, count: i32) {
+        match self.checked_ref().set_count(countable, count) {
+            Ok(_) | Err(AppError::CountableNotFound) => (),
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Recursive Add Count Checked`
+
+        When setting count for a countable in recursive mode the following steps apply in order:
+            1. Calculate the difference between the old and new count
+            2. If the given countable holds its own value add the difference if the value goes below 0 set it to zero and move to the next step
+            3. Add the difference to the last child of the given countable
+            4. If the above results in the count of the last child to go below 0 set it to zero instead and move on to the second to last child with the remainder
+            5. repeat the above until either the count is correctly set when summing all descendants or when all descendants are 0
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `count`: i32; The count to add to `Countable`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn add_count(&self, countable: &CountableId, count: i32) {
+        match self.checked_ref().add_count(countable, count) {
+            Ok(_) | Err(AppError::CountableNotFound) => (),
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Recursive Countable Time UnChecked`
+
+        # Arguments
+          * `countable`: &[CountableId]
+
+        # Returns
+          * `TimeDelta`: The time of the `Countable` for the given `CountableId`
+          * `TimeDelta::zero()`: The `CountableId` was not found in `CountableStore`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [TimeDelta]\
+        [AppError]
+    */
+    pub fn time(&self, countable: &CountableId) -> TimeDelta {
+        match self.checked_ref().time(countable) {
+            Ok(time) => time,
+            Err(AppError::CountableNotFound) => TimeDelta::zero(),
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Recursive Set Time UnChecked`
+
+        When setting time for a countable in recursive mode the following steps apply in order:
+            1. Calculate the difference between the old and new time
+            2. If the given countable holds its own value add the difference if the value goes below 0 set it to zero and move to the next step
+            3. Add the difference to the last child of the given countable
+            4. If the above results in the time of the last child going below 0 set it to zero instead and move on to the second to last child with the remainder
+            5. repeat the above until either the time is correctly set when summing all descendants or when all descendants are 0
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `time`: [TimeDelta]; The new time for the `Countable`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn set_time(&self, countable: &CountableId, time: TimeDelta) {
+        match self.checked_ref().set_time(countable, time) {
+            Ok(_) | Err(AppError::CountableNotFound) => (),
+            Err(err) => panic!("{err}"),
+        }
+    }
+
+    /**
+        `Recursive Add Time UnChecked`
+
+        When setting time for a countable in recursive mode the following steps apply in order:
+            1. Calculate the difference between the old and new time
+            2. If the given countable holds its own value add the difference if the value goes below 0 set it to zero and move to the next step
+            3. Add the difference to the last child of the given countable
+            4. If the above results in the time of the last child to go below 0 set it to zero instead and move on to the second to last child with the remainder
+            5. repeat the above until either the time is correctly set when summing all descendants or when all descendants are 0
+
+        # Arguments
+          * `countable`: &[CountableId]
+          * `time`: [TimeDelta]; The time to add to `Countable`
+
+        # Panics
+          * lock on a `Mutex` fails
+
+        [Countable]\
+        [AppError]
+    */
+    pub fn add_time(&self, countable: &CountableId, time: TimeDelta) {
+        match self.checked_ref().add_time(countable, time) {
+            Ok(_) | Err(AppError::CountableNotFound) => (),
+            Err(err) => panic!("{err}"),
         }
     }
 }

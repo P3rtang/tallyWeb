@@ -160,8 +160,8 @@ where
 
     let (get_count, add_count) = create_slice(
         store,
-        move |s| s.count(&key().into()),
-        move |s, count| s.add_count(&key().into(), count),
+        move |s| s.recursive_ref().count(&key().into()),
+        move |s, count| s.recursive_ref().add_count(&key().into(), count),
     );
 
     let key_listener = window_event_listener(ev::keydown, move |ev| {
@@ -239,8 +239,13 @@ where
     #[allow(unused_variables)]
     let (time, add_time) = create_slice(
         store,
-        move |s| s.time(&key().into()).to_std().unwrap_or_default(),
-        move |s, add| s.add_time(&key().into(), add),
+        move |s| {
+            s.recursive_ref()
+                .time(&key().into())
+                .to_std()
+                .unwrap_or_default()
+        },
+        move |s, add| s.recursive_ref().add_time(&key().into(), add),
     );
 
     #[cfg(not(feature = "ssr"))] // run timer only on client

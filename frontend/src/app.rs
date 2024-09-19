@@ -337,8 +337,8 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
         if search().is_empty() {
             return None;
         }
-        let name = store().name(&key.into()).to_lowercase();
-        if let Some(idx) = name.find(&search().to_lowercase()) {
+        let name = store().name(&key.into());
+        if let Some(idx) = name.to_lowercase().find(&search().to_lowercase()) {
             let (first, rest) = name.split_at(idx);
             let (_, last) = rest.split_at(search().len());
             Some((first.to_string(), last.to_string()))

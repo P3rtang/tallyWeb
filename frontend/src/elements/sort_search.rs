@@ -172,7 +172,7 @@ where
     on_cleanup(move || key_listener.remove());
 
     create_effect(move |_| {
-        is_searching();
+        is_searching.track();
         request_animation_frame(move || {
             search_input.get_untracked().map(|si| si.focus());
         })

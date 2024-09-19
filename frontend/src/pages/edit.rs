@@ -82,7 +82,7 @@ pub fn EditWindow() -> impl IntoView {
                 </nav>
                 <TreeViewWidget
                     each=move || {
-                        let mut root_nodes = store().root_nodes();
+                        let mut root_nodes = store().filter(|c| !c.is_archived()).root_nodes();
                         root_nodes
                             .sort_by(|a, b| sort_method()
                                 .sort_by()(
@@ -298,7 +298,7 @@ fn EditName(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 #[component]
 fn EditCount(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
-    let count = create_read_slice(store, move |s| s.count(&key().into()));
+    let count = create_read_slice(store, move |s| s.recursive_ref().count(&key().into()));
 
     view! {
         <td>
@@ -322,7 +322,7 @@ fn EditCount(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 #[component]
 fn EditTime(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
-    let time = create_read_slice(store, move |s| s.time(&key().into()));
+    let time = create_read_slice(store, move |s| s.recursive_ref().time(&key().into()));
 
     let hour_ref = create_node_ref::<html::Input>();
     let min_ref = create_node_ref::<html::Input>();
