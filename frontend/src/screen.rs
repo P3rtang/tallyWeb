@@ -27,6 +27,7 @@ pub struct Screen {
 }
 
 impl Screen {
+    #[cfg(feature = "ssr")]
     pub fn new(size: (usize, usize)) -> Result<Self, AppError> {
         let style = match size {
             (w, h) if w < 600 && h > w => ScreenStyle::Portrait,
