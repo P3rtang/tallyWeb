@@ -15,7 +15,7 @@ reset: recreate-docker recreate-user recreate-db
 recreate-docker:
 	docker stop tallyweb-postgres
 	docker rm tallyweb-postgres
-	docker run -d --name tallyweb-postgres -p $(POSTGRES_PORT):5432 --env-file .env postgres
+	docker run -d --name tallyweb-postgres-1 -p $(POSTGRES_PORT):5432 --env-file .env postgres
 	timeout 10s bash -c "until docker exec $(POSTGRES_CONTAINER) pg_isready ; do sleep .5 ; done"
 
 recreate-user:

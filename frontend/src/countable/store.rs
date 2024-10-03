@@ -372,8 +372,8 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [AppError]
@@ -408,8 +408,8 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [CountableKind]\
         [AppError]
@@ -439,8 +439,8 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [AppError]
@@ -463,8 +463,8 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [AppError]
@@ -666,8 +666,8 @@ impl CountableStore<Level, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [AppError]
@@ -701,8 +701,8 @@ impl CountableStore<Level, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [AppError]
@@ -734,8 +734,8 @@ impl CountableStore<Level, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [AppError]
@@ -763,8 +763,8 @@ impl CountableStore<Level, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * `CountableId` is not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [TimeDelta]\
@@ -799,8 +799,8 @@ impl CountableStore<Level, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [AppError]
@@ -832,8 +832,8 @@ impl CountableStore<Level, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [AppError]
@@ -862,8 +862,8 @@ impl CountableStore<Level, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * `CountableId` is not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [TimeDelta]\
@@ -898,8 +898,8 @@ impl CountableStore<Level, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * `CountableId` is not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [TimeDelta]\
@@ -921,7 +921,7 @@ impl CountableStore<Level, Checked> {
 
     /**
         `Countable Progress Checked`
-        
+
         This function will calculate the progress on a given `countable`,
         this means the percentage chance you have to be already done with the hunt.
 
@@ -934,8 +934,8 @@ impl CountableStore<Level, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * `CountableId` is not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [TimeDelta]\
@@ -949,7 +949,7 @@ impl CountableStore<Level, Checked> {
 
     /**
         `Completed Countable Checked`
-        
+
         This function return a boolean on wether the countable has the completed flag toggled
         To get a number of completed descendants use the recursive version instead
 
@@ -962,19 +962,21 @@ impl CountableStore<Level, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * `CountableId` is not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [TimeDelta]\
         [AppError]
     */
     pub fn completed(&self, countable: &CountableId) -> Result<bool, AppError> {
-        Ok(match self.get(countable).ok_or(AppError::CountableNotFound)? {
-            Countable::Counter(_) => false,
-            Countable::Phase(p) => p.lock()?.success,
-            Countable::Chain(_) => todo!(),
-        })
+        Ok(
+            match self.get(countable).ok_or(AppError::CountableNotFound)? {
+                Countable::Counter(_) => false,
+                Countable::Phase(p) => p.lock()?.success,
+                Countable::Chain(_) => todo!(),
+            },
+        )
     }
 }
 
@@ -1141,15 +1143,12 @@ impl CountableStore<Recursive, Checked> {
           * `countable`: &[CountableId]
 
         # Returns
-          * `Ok(i32)`: The count of the `Countable` for the given `CountableId`
+          * `Ok(i32)`: The count of the `countable` for the given `CountableId`
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
-
-        [Countable]\
-        [AppError]
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
     */
     pub fn count(&self, countable: &CountableId) -> Result<i32, AppError> {
         Ok(
@@ -1190,8 +1189,8 @@ impl CountableStore<Recursive, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [AppError]
@@ -1240,8 +1239,8 @@ impl CountableStore<Recursive, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * `countable` not found in `CountableStore`
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [AppError]
@@ -1282,8 +1281,8 @@ impl CountableStore<Recursive, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [TimeDelta]\
@@ -1328,8 +1327,8 @@ impl CountableStore<Recursive, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * any parent elements are not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [AppError]
@@ -1378,8 +1377,8 @@ impl CountableStore<Recursive, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * `countable` not found in `CountableStore`
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [AppError]
@@ -1421,8 +1420,8 @@ impl CountableStore<Recursive, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * `countable` or any of its descendants not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [Hunttype]\
@@ -1459,8 +1458,8 @@ impl CountableStore<Recursive, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * `CountableId` is not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [TimeDelta]\
@@ -1501,8 +1500,8 @@ impl CountableStore<Recursive, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * `CountableId` is not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [TimeDelta]\
@@ -1537,7 +1536,7 @@ impl CountableStore<Recursive, Checked> {
 
     /**
         `Recursive Countable Progress Checked`
-        
+
         This function will calculate the progress on a given `countable`,
         this means the percentage chance you have to be already done with the hunt.
 
@@ -1550,8 +1549,8 @@ impl CountableStore<Recursive, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * `CountableId` is not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [TimeDelta]\
@@ -1600,8 +1599,8 @@ impl CountableStore<Recursive, Checked> {
           * `Err(AppError)`
 
         # Errors
-          * `CountableId` is not available in the store
-          * lock on a `Mutex` fails
+          * [AppError::CountableNotFound]
+          * [AppError::LockMutex]
 
         [Countable]\
         [TimeDelta]\
@@ -1663,14 +1662,11 @@ impl CountableStore<Level, UnChecked> {
           * `countable`: &[CountableId]
 
         # Returns
-          * `i32`: The count of the `Countable` for the given `CountableId`
-          * `0`: The `CountableId` was not in `CountableStore`
+          * `i32` | The count of the `countable` for the given `CountableId`
+          * `0`   | The `countable` was not found in `CountableStore`
 
         # Panics
           * lock on a `Mutex` fails
-
-        [Countable]\
-        [AppError]
     */
     pub fn count(&self, countable: &CountableId) -> i32 {
         match self.checked_ref().count(countable) {
@@ -1688,13 +1684,10 @@ impl CountableStore<Level, UnChecked> {
 
         # Arguments
           * `countable`: &[CountableId]
-          * `count`: i32; The new count for the `Countable`
+          * `count`: i32 | The new count for the `countable`
 
         # Panics
           * lock on a `Mutex` fails
-
-        [Countable]\
-        [AppError]
     */
     pub fn set_count(&self, countable: &CountableId, count: i32) -> () {
         match self.checked_ref().set_count(countable, count) {
@@ -1711,13 +1704,10 @@ impl CountableStore<Level, UnChecked> {
 
         # Arguments
           * `countable`: &[CountableId]
-          * `count`: i32; The count to add to `countable`
+          * `count`: i32 | The count to add to `countable`
 
-        # Errors
+        # Panics
           * lock on a `Mutex` fails
-
-        [Countable]\
-        [AppError]
     */
     pub fn add_count(&self, countable: &CountableId, count: i32) {
         match self.checked_ref().add_count(countable, count) {
@@ -1733,15 +1723,13 @@ impl CountableStore<Level, UnChecked> {
           * `countable`: &[CountableId]
 
         # Returns
-          * `TimeDelta`: The time of the `Countable` for the given `CountableId`
-          * `TimeDelta::zero()`: The `CountableId` was not found in `CountableStore`
+          * `TimeDelta`: The time of the `countable` for the given `CountableId`
+          * `TimeDelta::zero()`: `countable` was not found in `CountableStore`
 
         # Panics
           * lock on a `Mutex` fails
 
-        [Countable]\
-        [TimeDelta]\
-        [AppError]
+        [TimeDelta]
     */
     pub fn time(&self, countable: &CountableId) -> TimeDelta {
         match self.checked_ref().time(countable) {
@@ -1763,9 +1751,6 @@ impl CountableStore<Level, UnChecked> {
 
         # Panics
           * lock on a `Mutex` fails
-
-        [Countable]\
-        [AppError]
     */
     pub fn set_time(&self, countable: &CountableId, time: TimeDelta) {
         match self.checked_ref().set_time(countable, time) {
@@ -1786,9 +1771,6 @@ impl CountableStore<Level, UnChecked> {
 
         # Panics
           * lock on a `Mutex` fails
-
-        [Countable]\
-        [AppError]
     */
     pub fn add_time(&self, countable: &CountableId, time: TimeDelta) {
         match self.checked_ref().add_time(countable, time) {
@@ -1810,9 +1792,7 @@ impl CountableStore<Level, UnChecked> {
         # Panics
           * lock on a `Mutex` fails
 
-        [Countable]\
-        [TimeDelta]\
-        [AppError]
+        [TimeDelta]
     */
     pub fn rolls(&self, countable: &CountableId) -> i32 {
         match self.checked_ref().rolls(countable) {
@@ -1835,9 +1815,7 @@ impl CountableStore<Level, UnChecked> {
         # Panics
           * lock on a `Mutex` fails
 
-        [Countable]\
-        [TimeDelta]\
-        [AppError]
+        [TimeDelta]
     */
     pub fn odds(&self, countable: &CountableId) -> f64 {
         match self.checked_ref().odds(countable) {
@@ -1849,7 +1827,7 @@ impl CountableStore<Level, UnChecked> {
 
     /**
         `Countable Progress UnChecked`
-        
+
         This function will calculate the progress on a given `countable`,
         this means the percentage chance you have to be already done with the hunt.
 
@@ -1858,15 +1836,13 @@ impl CountableStore<Level, UnChecked> {
 
         # Returns
           * `f64`: The odds of the `Countable` for the given `CountableId`
-          * `0.0`: The odds of `countable` is dependant on descendants use recursive instead 
+          * `0.0`: The odds of `countable` is dependant on descendants use recursive instead
                    or the `countable` was not available in `CountableStore`
 
         # Panics
           * lock on a `Mutex` fails
 
-        [Countable]\
-        [TimeDelta]\
-        [AppError]
+        [TimeDelta]
     */
     pub fn progress(&self, countable: &CountableId) -> f64 {
         match self.checked_ref().progress(countable) {
@@ -1890,9 +1866,7 @@ impl CountableStore<Level, UnChecked> {
         # Panics
           * lock on a `Mutex` fails
 
-        [Countable]\
-        [TimeDelta]\
-        [AppError]
+        [TimeDelta]
     */
     pub fn completed(&self, countable: &CountableId) -> bool {
         match self.checked_ref().completed(countable) {
@@ -2224,7 +2198,7 @@ impl CountableStore<Recursive, UnChecked> {
 
     /**
         `Recursive Countable Progress UnChecked`
-        
+
         This function will calculate the progress on a given `countable`,
         this means the percentage chance you have to be already done with the hunt.
 
@@ -2252,7 +2226,7 @@ impl CountableStore<Recursive, UnChecked> {
 
     /**
         `Recursive Completed Countable Checked`
-        
+
         This function return the total number of descendants with the completed flag set
 
         # Arguments

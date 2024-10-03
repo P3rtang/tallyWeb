@@ -31,6 +31,7 @@ impl IndexedSaveHandler {
         Ok(Self { version })
     }
 
+    #[allow(dead_code)]
     pub async fn reset() -> Result<(), AppError> {
         let factory = indexed_db::Factory::<AppError>::get()?;
         let db = factory.open_latest_version("TallyWeb").await?;
