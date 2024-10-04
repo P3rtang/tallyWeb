@@ -35,7 +35,7 @@ impl<'a> FuzzySort<'a> for SimpleMatch {
     }
 
     fn sort<T: Sortable + 'static>(&self) -> impl FnMut(&T, &T) -> std::cmp::Ordering {
-        return move |a: &T, b: &T| self.score(b.as_str()).cmp(&self.score(a.as_str()));
+        move |a: &T, b: &T| self.score(b.as_str()).cmp(&self.score(a.as_str()))
     }
 }
 

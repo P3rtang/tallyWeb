@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO counters (uuid, owner_uuid, name, created_at, is_deleted)\n        VALUES ($1, $2, $3, $4, $5)\n        ON CONFLICT (uuid) DO UPDATE\n        SET\n            name = $3,\n            is_deleted = $5\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Timestamp",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d18086d4a7f9a0aceb21fc625863ee614445afc25ffbb7395bda20fc64a1c0a6"
+}
