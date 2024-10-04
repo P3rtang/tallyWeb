@@ -120,7 +120,7 @@ where
     }
 
     pub fn is_selected(&self, key: &S) -> bool {
-        return self.selection.get(key).cloned().unwrap_or_default();
+        self.selection.get(key).cloned().unwrap_or_default()
     }
 
     pub fn is_empty(&self) -> bool {

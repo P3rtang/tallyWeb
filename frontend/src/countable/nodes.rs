@@ -499,7 +499,7 @@ impl TryFrom<String> for Hunttype {
     type Error = String;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        return match value.as_str() {
+        match value.as_str() {
             "OldOdds" => Ok(Self::OldOdds),
             "NewOdds" => Ok(Self::NewOdds),
             "SOS" => Ok(Self::SOS),
@@ -509,7 +509,7 @@ impl TryFrom<String> for Hunttype {
             _ => Err(String::from(
                 "Hunttype should be one of the following: OldOdds, NewOdds, SOS, Masuda",
             )),
-        };
+        }
     }
 }
 

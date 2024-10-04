@@ -57,6 +57,11 @@ fmt:
 	leptosfmt -q components
 	leptosfmt -q frontend
 
+check:
+	cargo fmt -q --all --check
+	leptosfmt -q --check .
+	cargo clippy
+
 check-fmt:
 	cargo fmt -q --check --all
 	leptosfmt -q --check *src/*

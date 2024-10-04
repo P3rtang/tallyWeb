@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO preferences (\n                user_uuid,\n                use_default_accent_color,\n                accent_color,\n                show_separator,\n                multi_select,\n                save_on_pause\n            )\n            VALUES ($1, $2, $3, $4, $5, $6)\n            ON CONFLICT (user_uuid) DO UPDATE\n                SET use_default_accent_color = $2,\n                    accent_color = $3,\n                    show_separator = $4,\n                    multi_select = $5,\n                    save_on_pause = $6\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Varchar",
+        "Bool",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c97267162655ae9095a86e3264f2c8b090c8f0d40c607d70411c54192b573471"
+}

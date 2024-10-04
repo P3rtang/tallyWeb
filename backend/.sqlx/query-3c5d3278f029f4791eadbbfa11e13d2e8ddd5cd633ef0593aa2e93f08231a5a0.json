@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            select * from preferences\n            where user_uuid = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "use_default_accent_color",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 1,
+        "name": "accent_color",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "show_separator",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "multi_select",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "save_on_pause",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3c5d3278f029f4791eadbbfa11e13d2e8ddd5cd633ef0593aa2e93f08231a5a0"
+}

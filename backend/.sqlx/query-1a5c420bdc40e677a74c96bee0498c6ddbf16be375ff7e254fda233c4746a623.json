@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        select users.uuid, users.username, tokens.uuid as token, tokens.expire_on as token_expire, users.email\n        from users join auth_tokens as tokens on tokens.user_uuid = users.uuid\n        where users.username = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "token",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "token_expire",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 4,
+        "name": "email",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "1a5c420bdc40e677a74c96bee0498c6ddbf16be375ff7e254fda233c4746a623"
+}

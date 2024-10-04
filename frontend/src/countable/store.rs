@@ -578,8 +578,7 @@ impl<M: StoreMethod> CountableStore<M, UnChecked> {
         match self
             .get(countable)
             .ok_or(AppError::CountableNotFound)
-            .map(|c| c.name_checked())
-            .flatten()
+            .and_then(|c| c.name_checked())
         {
             Ok(name) => name,
             Err(AppError::CountableNotFound) => String::new(),
@@ -944,7 +943,7 @@ impl CountableStore<Level, Checked> {
     pub fn progress(&self, countable: &CountableId) -> Result<f64, AppError> {
         let prob = 1.0 / self.odds(countable)?;
         let rolls = self.rolls(countable)?;
-        Ok(1.0 - (1.0 - prob).powi(rolls as i32))
+        Ok(1.0 - (1.0 - prob).powi(rolls))
     }
 
     /**
@@ -1582,7 +1581,7 @@ impl CountableStore<Recursive, Checked> {
 
                     1.0 - chance
                 }
-                Countable::Phase(_) => 1.0 - (1.0 - prob).powi(rolls as i32),
+                Countable::Phase(_) => 1.0 - (1.0 - prob).powi(rolls),
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -1689,7 +1688,7 @@ impl CountableStore<Level, UnChecked> {
         # Panics
           * lock on a `Mutex` fails
     */
-    pub fn set_count(&self, countable: &CountableId, count: i32) -> () {
+    pub fn set_count(&self, countable: &CountableId, count: i32) {
         match self.checked_ref().set_count(countable, count) {
             Ok(_) | Err(AppError::CountableNotFound) => (),
             Err(err) => panic!("{err}"),
