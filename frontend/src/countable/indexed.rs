@@ -21,7 +21,7 @@ impl IndexedSaveHandler {
         let factory = indexed_db::Factory::<AppError>::get()?;
         factory
             .open("TallyWeb", version, |evt| async move {
-                evt.database().delete_object_store("Countable")?;
+                let _ = evt.database().delete_object_store("Countable");
                 let obj_builder = evt.database().build_object_store("Countable");
                 obj_builder.create()?;
                 Ok(())
