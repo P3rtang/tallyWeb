@@ -1,7 +1,9 @@
 include .env
 export $(shell sed 's/=.*//' .env)
 
-default:
+default: build
+
+build:
 	cargo leptos build
 
 dev:
@@ -15,7 +17,7 @@ reset: recreate-docker recreate-user recreate-db
 recreate-docker:
 	docker stop tallyweb-postgres
 	docker rm tallyweb-postgres
-	docker run -d --name tallyweb-postgres-1 -p $(POSTGRES_PORT):5432 --env-file .env postgres
+	docker run -d --name $(POSTGRES_CONTAINER) -p $(POSTGRES_PORT):5432 --env-file .env postgres
 	timeout 10s bash -c "until docker exec $(POSTGRES_CONTAINER) pg_isready ; do sleep .5 ; done"
 
 recreate-user:
@@ -66,3 +68,10 @@ check-fmt:
 	cargo fmt -q --check --all
 	leptosfmt -q --check *src/*
 	cargo clippy -- -D warnings
+
+watch:
+	bash -c " \
+		trap 'docker compose down' SIGINT; \
+		docker compose up -d postgres-dev; \
+		cargo leptos watch \
+	"
