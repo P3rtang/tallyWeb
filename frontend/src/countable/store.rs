@@ -1567,8 +1567,6 @@ impl CountableStore<Recursive, Checked> {
                 Countable::Counter(_) => {
                     let children_len = self.children(countable)?.len();
                     let mut chance = 0.0;
-                    let completed = self.completed(countable)?;
-                    println!("{}", completed);
 
                     for k in 0..=((self.completed(countable)? as usize).min(children_len)) {
                         let combs = if rolls >= 0 {
