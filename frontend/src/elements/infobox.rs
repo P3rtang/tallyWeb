@@ -365,8 +365,8 @@ where
     let store = expect_context::<RwSignal<CountableStore>>();
 
     let last_interaction = create_rw_signal(None::<i64>);
-    let on_count = create_read_slice(store, move |s| s.count(&key().into()));
-    let time = create_read_slice(store, move |s| s.time(&key().into()));
+    let on_count = create_read_slice(store, move |s| s.recursive_ref().count(&key().into()));
+    let time = create_read_slice(store, move |s| s.recursive_ref().time(&key().into()));
 
     let time_value = create_memo(move |_| {
         on_count.track();
@@ -433,11 +433,14 @@ where
 {
     let store = expect_context::<RwSignal<CountableStore>>();
 
-    let count = create_read_slice(store, move |s| s.count(&key().into()));
-    let time = create_read_slice(store, move |s| s.time(&key().into()));
+    let count = create_read_slice(store, move |s| s.recursive_ref().count(&key().into()));
+    let time = create_read_slice(store, move |s| s.recursive_ref().time(&key().into()));
 
-    let step =
-        create_memo(move |_| Duration::milliseconds(time().num_milliseconds() / count() as i64));
+    let step = create_memo(move |_| {
+        Duration::milliseconds(time().num_milliseconds() / count().max(1) as i64)
+    });
+
+    let timer_value = create_memo(move |_| step().to_std().unwrap_or_default());
 
     let format = create_memo(move |_| {
         step.with(|v| {
@@ -473,11 +476,7 @@ where
                     view! { <span class=time_style>---</span> }
                 }
             >
-                <components::Timer
-                    attr:class=time_style
-                    value=step().to_std().unwrap_or_default()
-                    format
-                />
+                <components::Timer attr:class=time_style value=timer_value format />
             </Show>
         </div>
     }

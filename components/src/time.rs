@@ -33,7 +33,6 @@ pub fn Timer(
     #[prop(optional, default="%H:%M:%S".into(), into)] format: MaybeSignal<String>,
     #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
 ) -> impl IntoView {
-    let value = create_memo(move |_| value.get());
     // TODO: factor this out into function
     let stringified = Signal::derive(move || {
         let format = format();
