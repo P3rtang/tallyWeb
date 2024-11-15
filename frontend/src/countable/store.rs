@@ -752,79 +752,6 @@ impl CountableStore<Level, Checked> {
     }
 
     /**
-        # Step Size Checked
-
-        ## Description
-
-        Returns the step size field of the `Countable`.
-        `Countable` with no step size will return 0.
-
-        ## Arguments
-          * `countable`: &[CountableId]
-
-        ## Returns
-          * `Ok(())`
-          * `Err(AppError)`
-
-        ## Errors
-          * [AppError::CountableNotFound]
-          * [AppError::LockMutex]
-
-        [Countable]\
-        [AppError]
-    */
-    pub fn step_size(&self, countable: &CountableId) -> Result<i32, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(_) => 0,
-                Countable::Phase(p) => p.lock()?.step_size,
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    /**
-        # Increase Count Checked
-
-        ## Description
-
-        This function will add the defined step size of a `Countable` to count.
-
-        ## Arguments
-          * `countable`: &[CountableId]
-
-        ## Returns
-          * `Ok(())`
-          * `Err(AppError)`
-
-        ## Errors
-          * [AppError::CountableNotFound]
-          * [AppError::LockMutex]
-
-        [Countable]\
-        [AppError]
-    */
-    pub fn increase(&self, countable: &CountableId) -> Result<(), AppError> {
-        match self.get(countable).ok_or(AppError::CountableNotFound)? {
-            Countable::Counter(_) => (),
-            Countable::Phase(p) => {
-                if let Ok(mut phase) = p.lock() {
-                    phase.count += phase.step_size
-                }
-            }
-            Countable::Chain(_) => todo!(),
-        }
-
-        self.is_changed.replace(true);
-
-        Ok(())
-    }
-
-    /**
         `Countable Time Checked`
 
         # Arguments
@@ -1343,90 +1270,6 @@ impl CountableStore<Recursive, Checked> {
     }
 
     /**
-        # Recursive Step Size Checked
-
-        ## Description
-
-        Returns the step size field of the `Countable`.
-        `Countable` with no step size will return recurse through all descendants backwards
-        and return the step size of the first eligible.
-
-        ## Arguments
-          * `countable`: &[CountableId]
-
-        ## Returns
-          * `Ok(())`
-          * `Err(AppError)`
-
-        ## Errors
-          * [AppError::CountableNotFound]
-          * [AppError::LockMutex]
-
-        [Countable]\
-        [AppError]
-    */
-    pub fn step_size(&self, countable: &CountableId) -> Result<i32, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(_) => self
-                    .children(countable)?
-                    .iter()
-                    .rev()
-                    .find_map(|child| self.step_size(child).ok())
-                    .ok_or(AppError::RequiresChild)?,
-                Countable::Phase(p) => p.lock()?.step_size,
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    /**
-        # Recursive Increase Count Checked
-
-        ## Description
-
-        This function will add the defined step size of a `Countable` to count.
-        It will recurse through all descendants backwards and apply it to the first applicable descendant.
-
-        ## Arguments
-          * `countable`: &[CountableId]
-
-        ## Returns
-          * `Ok(())`
-          * `Err(AppError)`
-
-        ## Errors
-          * [AppError::CountableNotFound]
-          * [AppError::LockMutex]
-
-        [Countable]\
-        [AppError]
-    */
-    pub fn increase(&self, countable: &CountableId) -> Result<(), AppError> {
-        match self.get(countable).ok_or(AppError::CountableNotFound)? {
-            Countable::Counter(_) => self
-                .children(countable)?
-                .iter()
-                .rev()
-                .try_for_each(|child| -> Result<(), AppError> { self.increase(child) })?,
-            Countable::Phase(p) => {
-                if let Ok(mut phase) = p.lock() {
-                    phase.count += phase.step_size
-                }
-            }
-            Countable::Chain(_) => todo!(),
-        }
-
-        self.is_changed.replace(true);
-
-        Ok(())
-    }
-
-    /**
         `Recursive Countable Time Checked`
 
         # Arguments
@@ -1871,52 +1714,6 @@ impl CountableStore<Level, UnChecked> {
     }
 
     /**
-        # Step Size UnChecked
-
-        ## Description
-
-        Returns the step size field of the `Countable`.
-        `Countable` with no step size will return 0.
-
-        ## Arguments
-          * `countable`: &[CountableId]
-
-        # Panics
-          * lock on a `Mutex` fails
-
-        [Countable]
-    */
-    pub fn step_size(&self, countable: &CountableId) -> i32 {
-        match self.checked_ref().step_size(countable) {
-            Ok(step) => step,
-            Err(AppError::CountableNotFound | AppError::RequiresChild) => 0,
-            Err(err) => panic!("{err}"),
-        }
-    }
-
-    /**
-        # Increase Count UnChecked
-
-        ## Description
-
-        This function will add the defined step size of a `Countable` to count.
-
-        ## Arguments
-          * `countable`: &[CountableId]
-
-        # Panics
-          * lock on a `Mutex` fails
-
-        [Countable]
-    */
-    pub fn increase(&self, countable: &CountableId) {
-        match self.checked_ref().increase(countable) {
-            Ok(_) | Err(AppError::CountableNotFound) => (),
-            Err(err) => panic!("{err}"),
-        }
-    }
-
-    /**
         `Countable Time UnChecked`
 
         # Arguments
@@ -2230,58 +2027,11 @@ impl CountableStore<Recursive, UnChecked> {
         # Panics
           * lock on a `Mutex` fails
 
-        [Countable]
+        [Countable]\
+        [AppError]
     */
     pub fn add_count(&self, countable: &CountableId, count: i32) {
         match self.checked_ref().add_count(countable, count) {
-            Ok(_) | Err(AppError::CountableNotFound) => (),
-            Err(err) => panic!("{err}"),
-        }
-    }
-
-    /**
-        # Recursive Step Size UnChecked
-
-        ## Description
-
-        Returns the step size field of the `Countable`.
-        `Countable` with no step size will return recurse through all descendants backwards
-        and return the step size of the first eligible.
-
-        ## Arguments
-          * `countable`: &[CountableId]
-
-        # Panics
-          * lock on a `Mutex` fails
-
-        [Countable]
-    */
-    pub fn step_size(&self, countable: &CountableId) -> i32 {
-        match self.checked_ref().step_size(countable) {
-            Ok(step) => step,
-            Err(AppError::CountableNotFound | AppError::RequiresChild) => 0,
-            Err(err) => panic!("{err}"),
-        }
-    }
-
-    /**
-        # Recursive Increase Count Checked
-
-        ## Description
-
-        This function will add the defined step size of a `Countable` to count.
-        It will recurse through all descendants backwards and apply it to the first applicable descendant.
-
-        ## Arguments
-          * `countable`: &[CountableId]
-
-        # Panics
-          * lock on a `Mutex` fails
-
-        [Countable]
-    */
-    pub fn increase(&self, countable: &CountableId) {
-        match self.checked_ref().increase(countable) {
             Ok(_) | Err(AppError::CountableNotFound) => (),
             Err(err) => panic!("{err}"),
         }

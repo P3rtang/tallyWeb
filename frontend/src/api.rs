@@ -109,7 +109,6 @@ pub async fn edit_countable_form(
     countable_kind: CountableKind,
     countable_name: String,
     countable_count: i32,
-    countable_step: i32,
     countable_hours: i64,
     countable_mins: i64,
     countable_secs: i64,
@@ -132,7 +131,6 @@ pub async fn edit_countable_form(
         CountableKind::Counter => {
             backend::counter::set_name(&mut conn, countable_key, &countable_name).await?;
             backend::counter::set_count(&mut conn, countable_key, countable_count).await?;
-            backend::counter::set_step(&mut conn, countable_key, countable_step).await?;
             backend::counter::set_time(&mut conn, countable_key, countable_time).await?;
             backend::counter::set_hunttype(&mut conn, countable_key, countable_hunttype.into())
                 .await?;
@@ -142,7 +140,6 @@ pub async fn edit_countable_form(
         CountableKind::Phase => {
             backend::phase::set_name(&mut conn, countable_key, &countable_name).await?;
             backend::phase::set_count(&mut conn, countable_key, countable_count).await?;
-            backend::phase::set_step(&mut conn, countable_key, countable_step).await?;
             backend::phase::set_time(&mut conn, countable_key, countable_time).await?;
             backend::phase::set_hunttype(&mut conn, countable_key, countable_hunttype.into())
                 .await?;

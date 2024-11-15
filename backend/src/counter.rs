@@ -32,8 +32,7 @@ pub async fn get_children(tx: &mut PgTx, key: uuid::Uuid) -> Result<Vec<DbPhase>
             success,
             last_edit,
             created_at,
-            is_deleted,
-            step_size
+            is_deleted
             FROM phases
         WHERE parent_uuid = $1
         ORDER BY created_at;
@@ -115,16 +114,6 @@ pub async fn set_count(tx: &mut PgTx, key: uuid::Uuid, count: i32) -> Result<(),
             phase::set_count(tx, children[i].uuid, children[i].count + diff).await?;
             break;
         }
-    }
-
-    Ok(())
-}
-
-pub async fn set_step(tx: &mut PgTx, key: uuid::Uuid, step: i32) -> Result<(), BackendError> {
-    let children = get_children(tx, key).await?;
-
-    if let Some(child) = children.last() {
-        phase::set_step(tx, child.uuid, step).await?;
     }
 
     Ok(())

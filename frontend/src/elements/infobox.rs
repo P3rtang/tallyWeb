@@ -158,12 +158,11 @@ where
     let has_change = expect_context::<HasChange>();
     let name = create_read_slice(store, move |s| s.name(&key().into()));
 
-    let get_count = create_read_slice(store, move |s| s.recursive_ref().count(&key().into()));
-    let inc_count =
-        create_write_slice(store, move |s, _| s.recursive_ref().increase(&key().into()));
-    let add_count = create_write_slice(store, move |s, count| {
-        s.recursive_ref().add_count(&key().into(), count)
-    });
+    let (get_count, add_count) = create_slice(
+        store,
+        move |s| s.recursive_ref().count(&key().into()),
+        move |s, count| s.recursive_ref().add_count(&key().into(), count),
+    );
 
     let key_listener = window_event_listener(ev::keydown, move |ev| {
         if !document()
@@ -177,7 +176,7 @@ where
             match ev.code().as_str() {
                 "Equal" => {
                     is_active.set(true);
-                    inc_count(());
+                    add_count(1);
                 }
                 "Minus" => {
                     add_count(-1);
@@ -193,7 +192,7 @@ where
     let on_count_click = move |_| {
         is_active.set(true);
         has_change.set(true);
-        inc_count(());
+        add_count(1);
     };
 
     let on_minus_click = move |ev: MouseEvent| {
