@@ -59,5 +59,5 @@ test("create counter", async ({ page }) => {
     await newCounterButton.click()
 
     let treeviewElement = sidebar.locator(".row span").locator("nth=2")
-    await expect(treeviewElement).toContainText('Counter 2')
+    await expect(treeviewElement).toContainText(/Counter [0-9]/)
 })

@@ -1,16 +1,4 @@
 services:
-  postgres-dev:
-    container_name: tallyweb-postgres-dev
-    env_file:
-      - .env
-    image: "postgres"
-    networks:
-      - tallyweb
-    ports: 
-      - 5442:5432
-    volumes:
-      - ./postgresql/data:/var/lib/postgresql/data
-
   postgres:
     restart: always
     env_file:
