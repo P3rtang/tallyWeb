@@ -10,18 +10,16 @@ pub fn ChangeAccountInfo() -> impl IntoView {
 
     let action = create_server_action::<api::ServerChangeAccountInfo>();
 
-    let server_resp = create_memo(move |_| match action.value().get() {
+    create_effect(move |_| match action.value().get() {
         Some(Ok(_)) => message.set_msg("Username succesfully changed"),
         Some(Err(err)) => message.set_err(AppError::from(err)),
         None => {}
     });
 
-    create_effect(move |_| server_resp.track());
-
     view! {
         <ActionForm action>
             <div class="container login-form">
-                <input type="hidden" name="old_username" value=move || user().username/>
+                <input type="hidden" name="old_username" value=move || user().username />
                 <input
                     type="text"
                     name="new_username"

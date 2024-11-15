@@ -5,7 +5,7 @@ use leptos::*;
 pub fn SavingMessage() -> impl IntoView {
     view! {
         <div style="display: flex; align-items: center;">
-            <Spinner/>
+            <Spinner />
             <b style="font-size: 20px; padding-left: 24px;">Saving</b>
         </div>
     }
@@ -32,7 +32,7 @@ pub fn SavingScreen(#[prop(optional)] accent_color: Option<Signal<String>>) -> i
 
     view! {
         <div class="notification-box" style:border=border_style>
-            <SavingMessage/>
+            <SavingMessage />
         </div>
     }
 }

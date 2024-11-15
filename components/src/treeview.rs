@@ -120,7 +120,7 @@ where
     }
 
     pub fn is_selected(&self, key: &S) -> bool {
-        return self.selection.get(key).cloned().unwrap_or_default();
+        self.selection.get(key).cloned().unwrap_or_default()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -144,14 +144,32 @@ where
     T: Debug + Clone + PartialEq + 'static,
     S: Debug + Clone + PartialEq + Eq + Hash + ToString + 'static,
     F: Fn() -> Vec<T> + Copy + 'static,
-    FV: Fn(S) -> IV + Copy + 'static,
+    FV: Fn(&T) -> IV + Copy + 'static,
     IV: IntoView,
     EC: Fn(&T) -> Vec<T> + Copy + 'static,
 {
-    let tree_nodes = move || {
-        each()
-            .into_iter()
-            .map(|c| TreeNode::<T, S>::new(key, c, each_child, selection_model, 0))
+    let nodes = create_memo(move |_| each());
+
+    create_isomorphic_effect(move |_| {
+        each().into_iter().for_each(move |c| {
+            let key_val = store_value(key(&c));
+            if selection_model
+                .get_untracked()
+                .get_node(&key_val())
+                .is_none()
+            {
+                let node = TreeNode::<T, S>::new(key, c, 0);
+                selection_model.update(move |s| {
+                    s.items.insert(key_val(), node);
+                });
+            }
+        })
+    });
+
+    let each = move || {
+        nodes()
+            .iter()
+            .filter_map(|n| selection_model.get_untracked().get_node(&key(n)).cloned())
             .collect::<Vec<_>>()
     };
 
@@ -159,22 +177,22 @@ where
         <tree-view>
             <ul>
                 <For
-                    each=tree_nodes
+                    each
                     key=move |c| key(&c.row)
                     children=move |item| {
                         view! {
                             <TreeViewRow
                                 item=item.row.clone()
                                 key
-                                selection_model=selection_model
-                                view=view
-                                each_child=each_child
+                                selection_model
+                                view
+                                each_child
                                 on_click
                             >
-                                {view(item.get_key())}
+                                {view(&item.row)}
                             </TreeViewRow>
                             <Show when=show_separator fallback=|| ()>
-                                <hr/>
+                                <hr />
                             </Show>
                         }
                     }
@@ -199,7 +217,7 @@ fn TreeViewRow<T, S, FV, IV, EC>(
 where
     T: Debug + Clone + PartialEq + 'static,
     S: Debug + Clone + PartialEq + Eq + Hash + ToString + 'static,
-    FV: Fn(S) -> IV + Copy + 'static,
+    FV: Fn(&T) -> IV + Copy + 'static,
     IV: IntoView,
     EC: Fn(&T) -> Vec<T> + Copy + 'static,
 {
@@ -255,78 +273,90 @@ where
         toggle_expand(())
     };
 
+    let depth = move || node().map(|n| n.depth).unwrap_or_default();
+
     let depth_style = move || {
-        let margin = format!(
-            "{}em",
-            2.0 * node().map(|n| n.depth).unwrap_or_default() as f64
-        );
+        let margin = format!("{}em", 2.0 * depth() as f64);
         let style = format!("padding-left:{};", margin);
         style
     };
 
-    let node_children = create_read_slice(selection_model, move |_| {
-        node().map(|n| each_child(&n.row)).unwrap_or_default()
+    let node_children = create_memo(move |_| each_child(&item));
+
+    create_isomorphic_effect(move |_| {
+        node_children().into_iter().for_each(|c| {
+            let key_val = store_value(key(&c));
+            if selection_model
+                .get_untracked()
+                .get_node(&key_val())
+                .is_none()
+            {
+                let node = TreeNode::<T, S>::new(key, c, depth() + 1);
+                selection_model.update(|s| {
+                    s.items.insert(key_val(), node);
+                });
+            }
+        });
     });
 
     let children = store_value(children);
 
     view! {
-        <Show when=move || node().is_some()>
-            <li style:display="block">
-                <div
-                    style=depth_style
-                    style:background=background
-                    style:display="flex"
-                    class=div_class
-                    on:click=move |ev| {
-                        if let Some(f) = on_click {
-                            if let Some(k) = key_val.try_get_value() {
-                                f(&k, ev);
-                            }
-                        } else {
-                            on_row_click(ev);
+        <li style:display="block">
+            <div
+                style=depth_style
+                style:background=background
+                style:display="flex"
+                class=div_class
+                on:click=move |ev| {
+                    if let Some(f) = on_click {
+                        if let Some(k) = key_val.try_get_value() {
+                            f(&k, ev);
+                        }
+                    } else {
+                        on_row_click(ev);
+                    }
+                }
+            >
+
+                <Show when=move || {
+                    node.try_get_untracked()
+                        .flatten()
+                        .is_some_and(|c| !each_child(&c.row).is_empty())
+                }>
+                    <div
+                        class=caret_class
+                        style:transform=move || if is_expanded() { "rotate(90deg)" } else { "" }
+                        style:cursor="pointer"
+                        style:font-size="24px"
+                        style:transition="transform 0.24s"
+                        on:click=on_caret_click
+                    ></div>
+                </Show>
+                {children()}
+            </div>
+            <ul style:display=move || if is_expanded() { "block" } else { "none" }>
+                <For
+                    each=node_children
+                    key
+                    children=move |item| {
+                        view! {
+                            <TreeViewRow
+                                key
+                                item=item.clone()
+                                selection_model=selection_model
+                                each_child=each_child
+                                view=view
+                                on_click
+                            >
+                                {view(&item)}
+                            </TreeViewRow>
                         }
                     }
-                >
+                />
 
-                    <Show when=move || {
-                        node.try_get_untracked()
-                            .flatten()
-                            .is_some_and(|c| !each_child(&c.row).is_empty())
-                    }>
-                        <div
-                            class=caret_class
-                            style:transform=if is_expanded() { "rotate(90deg)" } else { "" }
-                            style:cursor="pointer"
-                            style:font-size="24px"
-                            on:click=on_caret_click
-                        ></div>
-                    </Show>
-                    {children()}
-                </div>
-                <ul style:display=if is_expanded() { "block" } else { "none" }>
-                    <For
-                        each=node_children
-                        key=key
-                        children=move |item| {
-                            view! {
-                                <TreeViewRow
-                                    key
-                                    item=item.clone()
-                                    selection_model=selection_model
-                                    each_child=each_child
-                                    view=view
-                                    on_click
-                                >
-                                    {view(key(&item))}
-                                </TreeViewRow>
-                            }
-                        }
-                    />
-
-                </ul>
-            </li>
-        </Show>
+            </ul>
+        </li>
     }
 }
 
@@ -347,56 +377,13 @@ where
     T: Clone + 'static + Debug + PartialEq,
     S: Clone + PartialEq + Eq + Hash + 'static,
 {
-    pub fn new<EC>(
-        key: fn(&T) -> S,
-        item: T,
-        each_child: EC,
-        selection_model: RwSignal<SelectionModel<S, T>>,
-        depth: usize,
-    ) -> Self
-    where
-        EC: Fn(&T) -> Vec<T> + Copy + 'static,
-    {
-        let this = if let Some(node) = selection_model.get_untracked().items.get(&key(&item)) {
-            Self {
-                key,
-                row: item.clone(),
-                depth,
-                is_expanded: node.is_expanded,
-            }
-        } else {
-            Self {
-                key,
-                row: item.clone(),
-                depth,
-                is_expanded: false,
-            }
-        };
-
-        selection_model.update(|map| {
-            map.items.insert(key(&this.row), this.clone());
-        });
-
-        each_child(&item).iter().for_each(move |c| {
-            TreeNode::new(key, c.clone(), each_child, selection_model, depth + 1);
-        });
-
-        this
-    }
-
-    pub fn get_key(&self) -> S {
-        (self.key)(&self.row)
-    }
-
-    pub fn insert_child(&self, item: T, selection_model: &mut SelectionModel<S, T>) {
-        let node = TreeNode {
-            key: self.key,
+    pub fn new(key: fn(&T) -> S, item: T, depth: usize) -> Self {
+        Self {
+            key,
             row: item.clone(),
-            depth: self.depth + 1,
+            depth,
             is_expanded: false,
-        };
-
-        selection_model.items.insert((self.key)(&item), node);
+        }
     }
 
     pub fn set_expand(&mut self, do_expand: bool) {

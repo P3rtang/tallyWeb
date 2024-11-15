@@ -39,7 +39,7 @@ pub fn CreateAccount() -> impl IntoView {
             <label for="username">
                 <b>Username</b>
             </label>
-            <input type="text" placeholder="Enter Username" name="username" required/>
+            <input type="text" placeholder="Enter Username" name="username" required />
 
             <label for="password">
                 <b>Password</b>
@@ -65,10 +65,10 @@ pub fn CreateAccount() -> impl IntoView {
 
             <action-buttons>
                 <div class=style::action_button_el>
-                    <input type="checkbox" required/>
-                    <A href="/privacy-policy" class=style::accept_ts>
+                    <input type="checkbox" required />
+                    <a rel="external" href="/privacy-policy.html" class=style::accept_ts>
                         <b>{"I have read the Terms&Conditions"}</b>
-                    </A>
+                    </a>
                 </div>
                 <A href="/login">
                     <i class="fa-solid fa-xmark"></i>

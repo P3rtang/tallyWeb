@@ -1,175 +1,137 @@
-#![allow(dead_code)]
-use super::*;
+use super::AppError;
 use components::MessageJar;
-use gloo_storage::{LocalStorage, Storage};
-use leptos::*;
-use leptos_router::A;
+use leptos::{create_action, create_effect, expect_context};
+use std::error::Error;
 
-pub type SaveCountableAction = Action<(UserSession, Vec<ArcCountable>), Result<(), AppError>>;
-pub type SaveHandlerCountable = SaveHandler<RwSignal<ArcCountable>>;
-
-pub trait Savable: Clone {
-    fn endpoint() -> Action<(UserSession, Vec<Self>), Result<(), AppError>>
-    where
-        Self: Sized;
+#[typetag::serde(tag = "type")]
+pub trait Savable {
+    fn indexed_db_name(&self) -> String;
+    fn save_indexed<'a>(
+        &'a self,
+        obj: indexed_db::ObjectStore<AppError>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>>;
+    fn save_endpoint(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>;
+    fn message(&self) -> Option<leptos::View>;
+    fn clone_box(&self) -> Box<dyn Savable>;
+    fn has_change(&self) -> bool;
 }
 
-pub async fn save_countables(
-    user: UserSession,
-    countables: Vec<ArcCountable>,
-) -> Result<(), AppError> {
-    let mut counters = Vec::<SerCounter>::new();
-    let mut phases = Vec::<Phase>::new();
-    for countable in countables {
-        match countable.kind() {
-            CountableKind::Counter => {
-                let counter = countable
-                    .try_lock()
-                    .map_err(|_| AppError::LockMutex)?
-                    .as_any()
-                    .downcast_ref::<Counter>()
-                    .ok_or(AppError::Internal)?
-                    .clone()
-                    .into();
-                counters.push(counter)
-                // update_counter(user.username.clone(), user.token.clone(), counter).await
-            }
-            CountableKind::Phase => {
-                let phase = countable
-                    .try_lock()
-                    .map_err(|_| AppError::LockMutex)?
-                    .as_any()
-                    .downcast_ref::<Phase>()
-                    .ok_or(AppError::Internal)?
-                    .clone();
-                phases.push(phase)
-                // update_phase(user.username.clone(), user.token.clone(), phase).await
-            }
-        }
-    }
+pub type ErrorFn = Box<dyn Fn(&dyn Error) + 'static>;
 
-    if let Err(err) = api::save_multiple(user, Some(counters), Some(phases)).await {
-        return match err {
-            ServerFnError::Request(_) => Err(AppError::Connection),
-            ServerFnError::ServerError(_) => Err(AppError::Authentication),
-            _ => Err(AppError::Internal),
-        };
-    }
-
-    Ok(())
+pub trait SaveHandler {
+    fn save(&self, value: Box<dyn Savable>, on_error: ErrorFn) -> Result<(), AppError>;
+    fn clone_box(&self) -> Box<dyn SaveHandler>;
 }
 
-pub fn save_to_browser() -> Result<(), gloo_storage::errors::StorageError> {
-    let save_data: Vec<SerCounter> = expect_context::<RwSignal<CounterList>>()
-        .get_untracked()
-        .into();
-    LocalStorage::set("save_data", save_data)
-}
-
+#[allow(dead_code)]
 #[derive(Clone, Copy)]
-pub struct SaveHandler<S>
-where
-    S: Savable + Copy + 'static,
-{
-    data: RwSignal<Vec<S>>,
-    interval: chrono::Duration,
-    is_offline: RwSignal<bool>,
+pub struct ServerSaveHandler {}
+
+impl ServerSaveHandler {
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
-impl<S> SaveHandler<S>
-where
-    S: Savable + Copy + 'static,
-{
+impl SaveHandler for ServerSaveHandler {
+    fn save(
+        &self,
+        value: Box<dyn Savable>,
+        on_error: Box<dyn Fn(&dyn Error) + 'static>,
+    ) -> Result<(), AppError> {
+        if !value.has_change() {
+            return Ok(());
+        }
+
+        let msg = expect_context::<MessageJar>();
+
+        #[allow(clippy::borrowed_box)]
+        let action = create_action(move |val: &Box<dyn Savable>| val.save_endpoint());
+
+        let msg_id = value
+            .message()
+            .map(|msg_view| msg.with_handle().set_msg_view(msg_view));
+        action.dispatch(value.clone_box());
+
+        create_effect(move |_| {
+            match action.value()() {
+                Some(Err(err)) => {
+                    if let Some(id) = msg_id {
+                        msg.fade_out(id);
+                    }
+                    if !is_offline(&err) {
+                        msg.without_timeout().set_server_err(&err);
+                        on_error(&leptos::ServerFnErrorErr::from(err))
+                    }
+                }
+                Some(_) => {
+                    if let Some(id) = msg_id {
+                        msg.fade_out(id);
+                    }
+                }
+                _ => {}
+            };
+        });
+
+        Ok(())
+    }
+
+    fn clone_box(&self) -> Box<dyn SaveHandler> {
+        Box::new(*self)
+    }
+}
+
+fn is_offline(err: &leptos::ServerFnError) -> bool {
+    matches!(err, leptos::ServerFnError::Request(_))
+}
+
+pub struct SaveHandlers {
+    handlers: Vec<Box<dyn SaveHandler>>,
+}
+
+impl SaveHandlers {
     pub fn new() -> Self {
         Self {
-            data: Vec::new().into(),
-            interval: chrono::Duration::minutes(2),
-            is_offline: false.into(),
+            handlers: Vec::new(),
         }
     }
 
-    pub fn change_save_interval(self, interval: chrono::Duration) -> Self {
-        if interval < chrono::Duration::zero() {
-            self
-        } else {
-            Self { interval, ..self }
+    pub fn connect_handler(&mut self, handler: Box<dyn SaveHandler>) {
+        self.handlers.push(handler)
+    }
+}
+
+impl SaveHandler for SaveHandlers {
+    fn save(
+        &self,
+        value: Box<dyn Savable>,
+        on_error: Box<dyn Fn(&dyn Error) + 'static>,
+    ) -> Result<(), AppError> {
+        let res = || -> Result<(), AppError> {
+            for h in self.handlers.iter() {
+                h.save(value.clone_box(), Box::new(|_| ()))?
+            }
+            Ok(())
+        };
+
+        res().inspect_err(|err| {
+            on_error(err);
+        })?;
+
+        Ok(())
+    }
+
+    fn clone_box(&self) -> Box<dyn SaveHandler> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for SaveHandlers {
+    fn clone(&self) -> Self {
+        Self {
+            handlers: self.handlers.iter().map(|h| h.clone_box()).collect(),
         }
-    }
-
-    pub fn init_timer(self, user: UserSession) -> Self {
-        set_interval(
-            move || {
-                if !self.data.get_untracked().is_empty() {
-                    self.save(user.clone())
-                }
-            },
-            self.interval.to_std().unwrap(),
-        );
-        self
-    }
-
-    pub fn save(&self, user: UserSession) {
-        let data = self.data.get_untracked().into_iter().collect::<Vec<_>>();
-        S::endpoint().dispatch((user, data))
-    }
-
-    pub fn add_countable(&self, savable: S) {
-        self.data.update(|d| d.push(savable))
-    }
-
-    pub fn is_offline(&self) -> bool {
-        (self.is_offline)()
-    }
-
-    pub fn set_offline(&self, is_offline: bool) {
-        self.is_offline.set(is_offline)
-    }
-}
-
-#[component]
-pub fn SavingError(err: AppError, is_offline: RwSignal<bool>) -> impl IntoView {
-    let message = expect_context::<MessageJar>();
-
-    let on_offline = move |_| {
-        is_offline.set(true);
-        message.clear();
-        let _ = save_to_browser();
-    };
-
-    view! {
-        <b>{err.to_string()}</b>
-        <button on:click=on_offline>Go Offline</button>
-        <Show when=move || err != AppError::Connection>
-            <A href="/login">
-                <button>Login</button>
-            </A>
-        </Show>
-    }
-}
-
-#[component]
-pub fn AskOfflineData(data: Vec<SerCounter>) -> impl IntoView {
-    let state = expect_context::<RwSignal<CounterList>>();
-    let message = expect_context::<MessageJar>();
-    let user = expect_context::<RwSignal<UserSession>>();
-    let save_handler = expect_context::<SaveHandlerCountable>();
-
-    let load_data = move |_| {
-        state.update(|list| list.load_offline(data.clone()));
-        message.clear();
-        save_handler.save(user.get_untracked())
-    };
-
-    let delete = move |_| {
-        message.clear();
-        LocalStorage::delete("save_data");
-    };
-
-    view! {
-        <b>Offline data found</b>
-
-        <button on:click=load_data>Load data</button>
-        <button on:click=move |_| message.clear()>Ignore</button>
-        <button on:click=delete>Delete</button>
     }
 }

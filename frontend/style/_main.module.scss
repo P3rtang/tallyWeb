@@ -126,6 +126,10 @@ body {
   height: 100vh;
 }
 
+:global(.transition-width) {
+  transition: width 0.32s, transform 0.32s;
+}
+
 aside {
   display: flex;
   position: relative;
@@ -133,11 +137,8 @@ aside {
   flex-wrap: wrap;
   align-content: flex-end;
   overflow-y: auto;
-  z-index: 8;
-
+  z-index: 11;
   height: 100vh;
-  width: 24em;
-  transition: transform 0.32s, width 0.32s, border 0.32s;
 
   @media (max-width: 600px) {
     position: fixed;
@@ -158,7 +159,6 @@ aside {
 
     height: calc(100vh - 80px);
     margin: 12px;
-    width: 24em;
     max-width: 100%;
 
     border-radius: 20px;
@@ -195,6 +195,11 @@ aside {
     font-size: 1.5rem;
     min-height: 1.8em;
     min-width: 200px;
+  }
+
+  resize-bar {
+    // nav is 10
+    z-index: 12;
   }
 }
 
@@ -263,6 +268,7 @@ tree-view {
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    height: 36px;
 
     button {
       height: 36px;

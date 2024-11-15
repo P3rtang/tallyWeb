@@ -46,20 +46,18 @@ pub fn PreferencesWindow() -> impl IntoView {
             preferences: preferences.get_untracked(),
         });
 
-        message
+        let msg_key = message
+            .with_handle()
             .without_timeout()
-            .as_modal()
             .set_msg_view(SavingMessage);
-
-        let msg_key = message.get_last_key();
 
         create_effect(move |_| match action.value().get() {
             Some(Ok(_)) => {
-                message.fade_out(msg_key.get());
+                message.fade_out(msg_key);
                 action.value().set_untracked(None)
             }
             Some(Err(err)) => {
-                message.fade_out(msg_key.get());
+                message.fade_out(msg_key);
                 message.set_err(AppError::from(err));
                 action.value().set_untracked(None)
             }
@@ -98,7 +96,7 @@ pub fn PreferencesWindow() -> impl IntoView {
         <div style:display="flex" style:height="100%" style:justify-content="center">
             <edit-form class=form_style>
                 <ActionForm action=action on:submit=on_submit>
-                    <SessionFormInput session/>
+                    <SessionFormInput session />
                     <table class=style::content>
                         <tr class=style::row>
                             <td>
@@ -136,9 +134,11 @@ pub fn PreferencesWindow() -> impl IntoView {
                             </td>
                         </tr>
 
+                        <SaveOnPause />
+
                         <tr>
                             <td colspan="2">
-                                <hr/>
+                                <hr />
                             </td>
                         </tr>
 
@@ -176,7 +176,7 @@ pub fn PreferencesWindow() -> impl IntoView {
 
                         <tr>
                             <td colspan="2">
-                                <hr/>
+                                <hr />
                             </td>
                         </tr>
 
@@ -230,5 +230,29 @@ pub fn PreferencesWindow() -> impl IntoView {
                 </ActionForm>
             </edit-form>
         </div>
+    }
+}
+
+#[component]
+fn SaveOnPause() -> impl IntoView {
+    let preferences = expect_context::<RwSignal<Preferences>>();
+    let (checked, set_checked) =
+        create_slice(preferences, |p| p.save_on_pause, |p, c| p.save_on_pause = c);
+    let on_change = move |_| set_checked(!checked());
+
+    view! {
+        <tr class=style::row>
+            <td>
+                <label for="save-on-pause">Save on pause</label>
+            </td>
+            <td>
+                <Slider
+                    checked
+                    attr:name="preferences[save_on_pause]"
+                    attr:id="save-on-pause"
+                    on:change=on_change
+                />
+            </td>
+        </tr>
     }
 }

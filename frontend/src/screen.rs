@@ -3,7 +3,7 @@ use components::{MessageJar, SidebarLayout};
 use leptos::*;
 use wasm_bindgen::JsCast;
 
-#[derive(Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 pub enum ScreenStyle {
     Portrait,
     Small,
@@ -20,16 +20,17 @@ impl From<ScreenStyle> for SidebarLayout {
     }
 }
 
-#[derive(Clone, Copy, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Screen {
     pub style: RwSignal<ScreenStyle>,
     pub size: RwSignal<(usize, usize)>,
 }
 
 impl Screen {
+    #[cfg(feature = "ssr")]
     pub fn new(size: (usize, usize)) -> Result<Self, AppError> {
         let style = match size {
-            (w, h) if w < 600 && h > 800 => ScreenStyle::Portrait,
+            (w, h) if w < 600 && h > w => ScreenStyle::Portrait,
             (w, _) if w < 1200 => ScreenStyle::Small,
             _ => ScreenStyle::Big,
         };

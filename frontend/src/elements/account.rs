@@ -63,9 +63,9 @@ where
         </div>
         <Show
             when=move || accent_color.is_some()
-            fallback=move || view! { <AccountOverlay show_overlay/> }
+            fallback=move || view! { <AccountOverlay show_overlay /> }
         >
-            <AccountOverlay show_overlay accent_color=accent_color.unwrap()/>
+            <AccountOverlay show_overlay accent_color=accent_color.unwrap() />
         </Show>
     }
 }
@@ -104,7 +104,7 @@ pub fn AccountOverlay(
                     fa_icon="fa-solid fa-circle-info"
                     text="about"
                 />
-                <hr/>
+                <hr />
                 <AccountOverlayNavigate
                     link="/login"
                     fa_icon="fa-solid fa-right-from-bracket"
@@ -116,9 +116,9 @@ pub fn AccountOverlay(
 
         <Show
             when=move || accent_color.is_some()
-            fallback=move || view! { <AboutDialog open=show_about/> }
+            fallback=move || view! { <AboutDialog open=show_about /> }
         >
-            <AboutDialog open=show_about accent_color=accent_color.unwrap()/>
+            <AboutDialog open=show_about accent_color=accent_color.unwrap() />
         </Show>
     }
 }

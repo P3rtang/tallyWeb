@@ -1,8 +1,10 @@
 [package]
-name = "backend"
-version = "0.3.1"
+name = "tallyweb-backend"
+version = "0.3.6"
 edition = "2021"
 build = "build.rs"
+description = "backend for the tallyweb site"
+license = "MIT"
 
 [lib]
 crate-type = ["rlib"]

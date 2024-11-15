@@ -42,8 +42,8 @@ pub fn Navbar(
             </A>
 
             <div style:margin-left="auto" style:display="flex" style:align-items="center">
-                <StatusBar/>
-                <AccountIcon username=move || user.get().username accent_color/>
+                <StatusBar />
+                <AccountIcon username=move || user.get().username accent_color />
             </div>
         </nav>
     }
@@ -51,14 +51,10 @@ pub fn Navbar(
 
 #[component]
 pub fn StatusBar() -> impl IntoView {
-    let save_handler = expect_context::<super::SaveHandlerCountable>();
-
-    let show_statusbar = move || save_handler.is_offline();
-
     view! {
-        <Show when=show_statusbar>
+        <Show when=|| false>
             <div id="status-bar">
-                <Show when=move || save_handler.is_offline()>
+                <Show when=|| false>
                     <svg
                         style:width="24px"
                         style:height="24px"

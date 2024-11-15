@@ -1,15 +1,14 @@
 #![allow(unused_imports)]
 
+use leptos::*;
 use std::io::Write;
 use std::process::Command;
 use std::thread;
 
-use frontend::*;
-use leptos::*;
-
 cfg_if::cfg_if! {
     if #[cfg(feature = "ssr")] {
         use actix_files::Files;
+        use tallyweb_frontend::{app, AppError, middleware as mw};
         use actix_web::*;
         use leptos_actix::{generate_route_list, LeptosRoutes};
         use actix_web::http::StatusCode;
@@ -24,7 +23,7 @@ cfg_if::cfg_if! {
             let routes = generate_route_list(|| view! { <app::App/> });
 
             let pool = backend::create_pool().await.map_err(|err| AppError::DbConnection(err.to_string()))?;
-            let _ = backend::migrate(&pool).await.map_err(|err| println!("{err}"));
+            let _ = sqlx::migrate!("../migrations").run(&pool).await.map_err(|err| println!("{err}"));
 
             HttpServer::new(move || {
                 let leptos_options = &conf.leptos_options;
@@ -32,7 +31,15 @@ cfg_if::cfg_if! {
 
                 App::new()
                     .wrap(actix_web::middleware::Condition::new(conf.leptos_options.env == leptos_config::Env::PROD, middleware::Compress::default()))
-                    .route("/api/{tail:.*}", leptos_actix::handle_server_fns())
+                    .service(
+                        web::scope("/api")
+                            .service(
+                                web::scope("/session")
+                                    .wrap(mw::CheckSession)
+                                    .route("/{tail:.*}", leptos_actix::handle_server_fns())
+                            )
+                            .route("/{tail:.*}", leptos_actix::handle_server_fns())
+                    )
                     .service(privacy_policy)
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
                     .service(Files::new("/fa", format!("{site_root}/font_awesome")))
@@ -68,13 +75,13 @@ cfg_if::cfg_if! {
             )).await?)
         }
 
-        #[actix_web::get("/privacy-policy")]
+        #[actix_web::get("/privacy-policy.html")]
         async fn privacy_policy(
             leptos_options: actix_web::web::Data<leptos::LeptosOptions>,
         ) -> impl Responder {
             let leptos_options = leptos_options.into_inner();
             let site_root = &leptos_options.site_root;
-            actix_files::NamedFile::open_async(format!("{site_root}/tallyWeb-privacy-policy.html")).await
+            actix_files::NamedFile::open_async(format!("{site_root}/privacy-policy.html")).await
         }
     } else {
         fn main() {

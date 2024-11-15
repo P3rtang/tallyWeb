@@ -1,23 +1,12 @@
 #![allow(non_snake_case)]
-use chrono::Duration;
 use components::*;
-use js_sys::Date;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
-use serde::{Deserialize, Serialize};
 
 use super::{elements::*, pages::*, preferences::ProvidePreferences, session::*, *};
 
-pub const LEPTOS_OUTPUT_NAME: &str = env!("LEPTOS_OUTPUT_NAME");
-pub const TALLYWEB_VERSION: &str = env!("TALLYWEB_VERSION");
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CounterResponse {
-    Counters(Vec<SerCounter>),
-    InvalidUsername,
-    InvalidToken,
-}
+pub const SIDEBAR_MIN_WIDTH: usize = 280;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -34,22 +23,19 @@ pub fn App() -> impl IntoView {
     let show_sidebar = create_rw_signal(ShowSidebar(true));
     provide_context(show_sidebar);
 
-    let save_handler = SaveHandlerCountable::new();
-    provide_context(save_handler);
-
     view! {
-        <Stylesheet href=format!("/pkg/{LEPTOS_OUTPUT_NAME}.css")/>
-        <Stylesheet href="/fa/css/all.css"/>
+        <Stylesheet href=format!("/pkg/{LEPTOS_OUTPUT_NAME}.css") />
+        <Stylesheet href="/fa/css/all.css" />
 
-        <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg"/>
-        <Link href="https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet"/>
+        <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg" />
+        <Link href="https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet" />
 
-        <Meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-        <Meta name="apple-mobile-web-app-capable" content="yes"/>
+        <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <Meta name="apple-mobile-web-app-capable" content="yes" />
 
-        <Title text="TallyWeb"/>
+        <Title text="TallyWeb" />
 
-        <ProvideMessageSystem/>
+        <ProvideMessageSystem />
         <Router>
             <main on:click=close_overlays>
                 <Routes>
@@ -61,9 +47,11 @@ pub fn App() -> impl IntoView {
                                 <ProvideSessionSignal>
                                     <ProvideScreenSignal>
                                         <ProvidePreferences>
-                                            <ProvideCountableSignals>
-                                                <Outlet/>
-                                            </ProvideCountableSignals>
+                                            <ProvideStore>
+                                                <ProvideCountableSignals>
+                                                    <Outlet />
+                                                </ProvideCountableSignals>
+                                            </ProvideStore>
                                         </ProvidePreferences>
                                     </ProvideScreenSignal>
                                 </ProvideSessionSignal>
@@ -71,35 +59,35 @@ pub fn App() -> impl IntoView {
                         }
                     >
 
-                        <Route path="" view=RouteSidebar>
-                            <Route
-                                path="/"
-                                view=|| {
-                                    view! {
-                                        <Outlet/>
-                                        <HomePage/>
-                                    }
+                        <Route
+                            path="/"
+                            view=|| {
+                                view! {
+                                    <Outlet />
+                                    <HomePage />
                                 }
-                            >
+                            }
+                        >
 
-                                <Route path="" view=UnsetCountable/>
-                                <Route path=":key" view=SetCountable/>
-                            </Route>
+                            <Route path="" view=UnsetCountable />
+                            <Route path=":key" view=SetCountable />
                         </Route>
                         <Route path="/edit" view=EditWindow>
-                            <Route path=":key" view=move || view! { <EditCountableWindow/> }/>
+                            <Route path=":key" view=move || view! { <EditCountableWindow /> } />
                         </Route>
 
-                        <Route path="/preferences" view=move || view! { <PreferencesWindow/> }/>
+                        <Route path="/preferences" view=move || view! { <PreferencesWindow /> } />
 
-                        <Route path="/change-username" view=move || view! { <ChangeAccountInfo/> }/>
-                        <Route path="/change-password" view=ChangePassword/>
-                        <Route path="/privacy-policy" view=PrivacyPolicy/>
+                        <Route
+                            path="/change-username"
+                            view=move || view! { <ChangeAccountInfo /> }
+                        />
+                        <Route path="/change-password" view=ChangePassword />
                     </Route>
-                    <TestRoutes/>
-                    <Route path="/login" view=LoginPage/>
-                    <Route path="/create-account" view=CreateAccount/>
-                    <Route path="/*any" view=NotFound/>
+                    <TestRoutes />
+                    <Route path="/login" view=LoginPage />
+                    <Route path="/create-account" view=CreateAccount />
+                    <Route path="/*any" view=NotFound />
                 </Routes>
             </main>
         </Router>
@@ -127,7 +115,7 @@ fn NotFound() -> impl IntoView {
 }
 
 #[component]
-fn RouteSidebar() -> impl IntoView {
+fn RouteSidebar(children: ChildrenFn) -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen = expect_context::<Screen>();
@@ -152,54 +140,40 @@ fn RouteSidebar() -> impl IntoView {
         }
     });
 
-    view! {
-        <div style:display="flex">
-            <Sidebar display=show_sidebar layout=sidebar_layout width=sidebar_width>
-                <SidebarContent/>
-            </Sidebar>
-            <section style:flex-grow="1" style:transition="width .5s" style:width=section_width>
-                <Outlet/>
-            </section>
-        </div>
-    }
-}
+    let suppress_transition = create_rw_signal(false);
+    let trans_class = move || (!suppress_transition()).then_some("transition-width");
 
-fn timer(selection_signal: SelectionSignal) {
-    const FRAMERATE: i64 = 30;
-    const INTERVAL: Duration = Duration::milliseconds(1000 / FRAMERATE);
-
-    let time = create_signal(0_u32);
-
-    let calc_interval = |now: u32, old: u32| -> Duration {
-        if now < old {
-            Duration::milliseconds((1000 + now - old).into())
+    let on_resize = move |ev: ev::DragEvent| {
+        if ev.client_x() as usize > SIDEBAR_MIN_WIDTH {
+            suppress_transition.set(true);
+            sidebar_width.update(|w| *w = ev.client_x() as usize);
         } else {
-            Duration::milliseconds((now - old).into())
+            suppress_transition.set(false);
         }
     };
 
-    create_effect(move |_| {
-        set_interval(
-            move || {
-                let interval = calc_interval(
-                    Date::new_0().get_milliseconds(),
-                    time.0.try_get().unwrap_or_default(),
-                );
-
-                selection_signal.try_update(|s| {
-                    s.get_selected_keys()
-                        .iter()
-                        .filter_map(|key| s.get(key))
-                        .filter(|c| c.is_active())
-                        .for_each(|c| c.add_time(interval))
-                });
-                time.1.try_set(Date::new_0().get_milliseconds());
-            },
-            INTERVAL
-                .to_std()
-                .unwrap_or(std::time::Duration::from_millis(30)),
-        );
-    });
+    view! {
+        <div style:display="flex">
+            <Sidebar
+                display=show_sidebar
+                layout=sidebar_layout
+                width=sidebar_width
+                attr:class=trans_class
+            >
+                <SidebarContent />
+                <Show when=move || (screen.style)() != ScreenStyle::Portrait>
+                    <ResizeBar
+                        position=sidebar_width
+                        direction=Direction::Vertical
+                        on:drag=on_resize
+                    />
+                </Show>
+            </Sidebar>
+            <section style:flex-grow="1" class=trans_class style:width=section_width>
+                {children}
+            </section>
+        </div>
+    }
 }
 
 #[component]
@@ -217,88 +191,135 @@ pub fn HomePage() -> impl IntoView {
     });
 
     view! {
-        <div id="HomeGrid">
-            <Navbar show_sidebar/>
-            <InfoBox countable_list=active/>
-        </div>
+        <RouteSidebar>
+            <div id="HomeGrid">
+                <Navbar show_sidebar />
+                <InfoBox countable_list=active />
+            </div>
+        </RouteSidebar>
     }
 }
 
-#[component]
+#[component(transparent)]
 fn SidebarContent() -> impl IntoView {
-    let show_sort_search = create_rw_signal(true);
-
     let selection_signal = expect_context::<SelectionSignal>();
-    let state = expect_context::<RwSignal<CounterList>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let sort_method = expect_context::<RwSignal<SortMethod>>();
 
+    let show_sort_search = create_rw_signal(true);
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
-    let state_len = create_read_slice(state, |s| s.list.len());
+    let search = create_rw_signal(String::new());
+    provide_context(search);
+
+    let each = create_memo(move |_| {
+        let mut root_nodes = store()
+            .filter(move |c| c.name().to_lowercase().contains(&search().to_lowercase()))
+            .raw_filter(move |c| !c.is_archived())
+            .root_nodes();
+        root_nodes
+            .sort_by(|a, b| sort_method().sort_by()(&store(), &a.uuid().into(), &b.uuid().into()));
+        root_nodes
+    });
+
+    #[allow(clippy::single_match)]
+    let on_sort_key = move |ev: ev::KeyboardEvent| match ev.key().as_str() {
+        "Enter" => {
+            let mut nodes = store()
+                .raw_filter(move |c| c.name().to_lowercase().contains(&search().to_lowercase()))
+                .nodes();
+            nodes.sort_by(|a, b| {
+                sort_method().sort_by()(&store.get_untracked(), &a.uuid().into(), &b.uuid().into())
+            });
+            if let Some(first) = nodes.first() {
+                leptos_router::use_navigate()(&first.uuid().to_string(), Default::default());
+            }
+        }
+        _ => {}
+    };
+
+    let each_child = move |countable: &Countable| {
+        let key = countable.uuid().into();
+        let children = create_read_slice(store, move |s| {
+            let mut children = s.children(&key);
+            children.sort_by(|a, b| sort_method().sort_by()(s, a, b));
+            children
+                .into_iter()
+                .map(|c| store.get_untracked().get(&c))
+                .collect::<Option<Vec<_>>>()
+                .unwrap_or_default()
+        });
+        children()
+    };
 
     view! {
         <nav>
-            <SortSearch list=state shown=show_sort_search/>
+            <SortSearch shown=show_sort_search search on_keydown=on_sort_key />
         </nav>
         <TreeViewWidget
-            each=move || { state.get().get_filtered_list() }
-            key=|countable| countable.get_uuid()
-            each_child=move |countable| {
-                let mut children = countable.get_children();
-                children.sort_by(state.get().sort.sort_by());
-                children
-            }
-
-            view=|key| view! { <TreeViewRow key/> }
+            each
+            key=|countable| countable.uuid()
+            each_child
+            view=|countable| view! { <TreeViewRow key=countable.uuid() /> }
             show_separator=show_sep
             selection_model=selection_signal
             on_click=|_, _| ()
         />
 
-        <NewCounterButton state_len/>
+        <NewCounterButton />
     }
 }
 
 #[component]
 fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
-    let user = expect_context::<RwSignal<UserSession>>();
     let data_resource = expect_context::<StateResource>();
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let save_handler = expect_context::<RwSignal<SaveHandlers>>();
+    let search = expect_context::<RwSignal<String>>();
 
-    let (key, _) = create_signal(key);
+    let expand_node = move |key: uuid::Uuid, expand: bool| {
+        selection.update(|s| {
+            if let Some(node) = s.get_node_mut(&key) {
+                node.set_expand(expand)
+            }
+        })
+    };
 
-    let countable = create_read_slice(selection, move |model| {
-        model.get(&key.get_untracked()).cloned()
+    let includes_search = create_memo(move |_| {
+        !search().is_empty()
+            && store
+                .get_untracked()
+                .name(&key.into())
+                .to_lowercase()
+                .contains(&search().to_lowercase())
     });
+    let selected = create_memo(move |_| selection().is_selected(&key));
+    let parent = store.get_untracked().parent(&key.into());
 
-    let expand_node = create_write_slice(selection, move |model, _| {
-        if let Some(node) = model.get_node_mut(&key.get_untracked()) {
-            node.is_expanded = true;
+    create_isomorphic_effect(move |_| {
+        if let Some(p) = parent {
+            if includes_search() || selected() {
+                expand_node(p.into(), true)
+            }
         }
     });
 
-    let click_new_phase = move |e: web_sys::MouseEvent| {
-        e.stop_propagation();
-        create_local_resource(
-            || (),
-            move |_| async move {
-                let n_phase = countable
-                    .get_untracked()
-                    .clone()
-                    .map(|c| c.get_children().len())
-                    .unwrap_or_default();
-                let name = format!("Phase {}", n_phase + 1);
-                if let Some(countable) = countable.get_untracked() {
-                    let user = user.get_untracked();
-                    let new_phase = Phase::new(name, countable.get_uuid(), user.user_uuid);
-                    api::update_phase(user, new_phase)
-                        .await
-                        .expect("Could not create Phase");
-                }
+    let click_new_phase = move |ev: ev::MouseEvent| {
+        ev.stop_propagation();
 
-                data_resource.refetch();
-                expand_node(());
-            },
-        );
+        let phase_number = store.get_untracked().children(&key.into()).len();
+        let name = format!("Phase {}", phase_number + 1);
+
+        store.update(move |s| {
+            let id = s.new_countable(&name, CountableKind::Phase, Some(key.into()));
+            let _ = save_handler().save(
+                Box::new([s.get(&id).unwrap()].to_vec()),
+                Box::new(move |_| data_resource.refetch()),
+            );
+        });
+
+        request_animation_frame(move || expand_node(key, true))
     };
 
     let show_context_menu = create_rw_signal(false);
@@ -310,25 +331,43 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
         set_click_location((ev.x(), ev.y()))
     };
 
-    let has_children = countable
-        .get_untracked()
-        .map(|c| !c.get_children().is_empty())
-        .unwrap_or_default();
+    let has_children = move || matches!(store().get(&key.into()), Some(Countable::Counter(_)));
+
+    let search_split = create_memo(move |_| {
+        if search().is_empty() {
+            return None;
+        }
+        let name = store().name(&key.into());
+        if let Some(idx) = name.to_lowercase().find(&search().to_lowercase()) {
+            let (first, rest) = name.split_at(idx);
+            let (_, last) = rest.split_at(search().len());
+            Some((first.to_string(), last.to_string()))
+        } else {
+            None
+        }
+    });
 
     view! {
-        <A href=move || key().to_string()>
+        <A href=move || key.to_string()>
             <div class="row-body" on:contextmenu=on_right_click>
-                <span>
-                    {move || countable.get_untracked().map(|c| c.get_name()).unwrap_or_default()}
-                </span>
-                <Show when=move || has_children>
+                <Show
+                    when=move || search_split().is_some()
+                    fallback=move || view! { <span>{move || store().name(&key.into())}</span> }
+                >
+                    <div>
+                        <span>{move || search_split().unwrap().0}</span>
+                        <span style:background="var(--accent)" style:color="black">
+                            {search}
+                        </span>
+                        <span>{move || search_split().unwrap().1}</span>
+                    </div>
+                </Show>
+                <Show when=has_children>
                     <button on:click=click_new_phase>+</button>
                 </Show>
             </div>
         </A>
-        <Show when=move || countable.get_untracked().is_some()>
-            <CountableContextMenu show_overlay=show_context_menu location=click_location key/>
-        </Show>
+        <CountableContextMenu show_overlay=show_context_menu location=click_location key />
     }
 }
 
@@ -365,41 +404,64 @@ fn UnsetCountable() -> impl IntoView {
     selection.update(|sel| sel.clear_selection())
 }
 
-#[component]
+#[component(transparent)]
 fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
-    let user = expect_context::<RwSignal<UserSession>>();
-    let save_handler = expect_context::<SaveHandlerCountable>();
+    let msg = expect_context::<MessageJar>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
-    let data = create_blocking_resource(user, move |user| async move {
-        match api::get_counters_by_user_name(user).await {
-            Ok(api::CounterResponse::Counters(counters)) => counters,
-            _ => Vec::new(),
-        }
-    });
-
-    provide_context(data);
-
-    let selection = SelectionModel::<uuid::Uuid, ArcCountable>::new();
+    let selection = SelectionModel::<uuid::Uuid, Countable>::new();
     let selection_signal = create_rw_signal(selection);
     provide_context(selection_signal);
 
-    timer(selection_signal);
+    provide_context(create_rw_signal(SortMethod::default()));
 
-    let state = create_rw_signal(CounterList::new(&[]));
-    provide_context(state);
+    let save_handlers = create_rw_signal(SaveHandlers::new());
 
-    view! {
-        <Transition>
+    let server_handler = Box::new(ServerSaveHandler::new());
+    save_handlers.update(|sh| sh.connect_handler(server_handler.clone()));
 
-            {
-                let list = match data.get() {
-                    Some(data_list) if !save_handler.is_offline() => data_list.into(),
-                    _ => state.get(),
-                };
-                state.set(list.clone());
-                children()
+    // when the page closes, gets minimized or navigated away from save the store
+    window_event_listener(ev::blur, move |_| {
+        if let Err(err) = save_handlers
+            .get_untracked()
+            .save(Box::new(store), Box::new(|_| ()))
+        {
+            msg.set_err(err)
+        }
+    });
+
+    create_effect(move |_| {
+        spawn_local(async move {
+            let indexed_handler = indexed::IndexedSaveHandler::new().await;
+            match indexed_handler {
+                Ok(ih) => {
+                    let mut s = store.get_untracked();
+                    if let Err(err) = ih.sync_store(&mut s).await {
+                        msg.set_err(err);
+                    };
+                    if let Err(err) = save_handlers
+                        .get_untracked()
+                        .save(Box::new(s.clone()), Box::new(|_| ()))
+                    {
+                        msg.set_err(err);
+                    }
+                    store.set(s.clone());
+                    save_handlers.update(|sh| sh.connect_handler(Box::new(ih)));
+                    if let Err(err) = save_handlers
+                        .get_untracked()
+                        .save(Box::new(store), Box::new(|_| ()))
+                    {
+                        msg.set_err(err)
+                    }
+                }
+                Err(err) => msg.set_msg(format!(
+                    "Local saving could not be initialised\nGot error: {}",
+                    err
+                )),
             }
+        })
+    });
+    provide_context(save_handlers);
 
-        </Transition>
-    }
+    children()
 }

@@ -8,12 +8,48 @@ use web_sys::MouseEvent;
 
 stylance::import_style!(style, "infobox.module.scss");
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct IsActive(RwSignal<bool>);
+impl IsActive {
+    fn toggle(&self) {
+        self.0.update(|b| *b = !*b)
+    }
+
+    fn set(&self, set: bool) {
+        self.0.update(|b| *b = set);
+    }
+}
+
+impl FnOnce<()> for IsActive {
+    type Output = bool;
+
+    extern "rust-call" fn call_once(self, _: ()) -> Self::Output {
+        self.0.get()
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct HasChange(RwSignal<bool>);
+
+impl HasChange {
+    fn set(&self, set: bool) {
+        self.0.update(|b| *b = set);
+    }
+}
+
+impl FnOnce<()> for HasChange {
+    type Output = bool;
+
+    extern "rust-call" fn call_once(self, _: ()) -> Self::Output {
+        self.0.get()
+    }
+}
+
 #[component]
 pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl IntoView {
     let screen = expect_context::<Screen>();
 
-    let show_multiple = move || countable_list().len() > 1;
-    let show_title = move || !((screen.style)() == ScreenStyle::Portrait || show_multiple());
+    let show_multiple = create_memo(move |_| countable_list().len() > 1);
     let multi_narrow = move || !(show_multiple() && ScreenStyle::Portrait == (screen.style)());
 
     view! {
@@ -22,20 +58,7 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl In
                 each=countable_list
                 key=|key| *key
                 children=move |key| {
-                    view! {
-                        <div class=style::row>
-                            <Show when=show_multiple>
-                                <Title key/>
-                            </Show>
-                            <Count expand=show_multiple key show_title/>
-                            <Time expand=show_multiple key show_title/>
-                            <Show when=multi_narrow>
-                                <Progress expand=|| true key show_title/>
-                                <LastStep expand=show_multiple key show_title/>
-                                <AverageStep expand=show_multiple key show_title/>
-                            </Show>
-                        </div>
-                    }
+                    view! { <InfoBoxPart key show_multiple /> }
                 }
             />
 
@@ -43,31 +66,58 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl In
     }
 }
 
-fn format_time(dur: Duration) -> String {
-    format!(
-        "{:>02}:{:02}:{:02},{:03}",
-        dur.num_hours(),
-        dur.num_minutes() % 60,
-        dur.num_seconds() % 60,
-        dur.num_milliseconds() - dur.num_seconds() * 1000,
-    )
-}
+#[component]
+pub fn InfoBoxPart(
+    #[prop(into)] key: MaybeSignal<uuid::Uuid>,
+    #[prop(into)] show_multiple: MaybeSignal<bool>,
+) -> impl IntoView {
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let preferences = expect_context::<RwSignal<Preferences>>();
+    let screen = expect_context::<Screen>();
 
-fn short_format_time(dur: Duration) -> String {
-    match dur {
-        dur if dur.num_hours() > 0 => {
-            format!("{:02}h {:02}m", dur.num_hours(), dur.num_minutes() % 60)
-        }
-        dur if dur.num_minutes() > 0 => {
-            format!("{:02}m {:02}s", dur.num_minutes(), dur.num_seconds() % 60)
-        }
-        dur => {
-            format!(
-                "{:02}s {:03}",
-                dur.num_seconds(),
-                dur.num_milliseconds() % 1000
-            )
-        }
+    let show_title = move || !((screen.style)() == ScreenStyle::Portrait || show_multiple());
+    let multi_narrow = move || !(show_multiple() && ScreenStyle::Portrait == (screen.style)());
+
+    let is_active = IsActive::default();
+    provide_context(is_active);
+    let has_change = HasChange::default();
+    provide_context(has_change);
+
+    let last = create_read_slice(store, move |s| {
+        s.get(&s.recursive_ref().last_child(&key().into()))
+    });
+
+    create_effect(move |_| {
+        let save_handler = expect_context::<RwSignal<SaveHandlers>>();
+        is_active.0.with(|a| {
+            if !a && preferences.get_untracked().save_on_pause && has_change.0.get_untracked() {
+                has_change.set(false);
+                if let Some(last) = last() {
+                    let _ = save_handler
+                        .get_untracked()
+                        .save(Box::new(last), Box::new(move |_| has_change.set(true)));
+                }
+            }
+        });
+    });
+
+    on_cleanup(move || is_active.set(false));
+
+    view! {
+        <Show when=move || store().contains(&key().into())>
+            <div class=style::row>
+                <Show when=show_multiple>
+                    <Title key />
+                </Show>
+                <Count expand=show_multiple key show_title />
+                <Time expand=show_multiple key show_title />
+                <Show when=multi_narrow>
+                    <Progress expand=|| true key show_title />
+                    <LastStep expand=show_multiple key show_title />
+                    <AverageStep expand=show_multiple key show_title />
+                </Show>
+            </div>
+        </Show>
     }
 }
 
@@ -76,7 +126,7 @@ fn Title(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
     let state = expect_context::<SelectionSignal>();
 
     let get_name = create_read_slice(state, move |state| {
-        state.get(&key()).map(|c| c.get_name()).unwrap_or_default()
+        state.get(&key()).map(|c| c.name()).unwrap_or_default()
     });
 
     view! {
@@ -103,60 +153,50 @@ where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
 {
-    let user = expect_context::<RwSignal<UserSession>>();
-    let state = expect_context::<SelectionSignal>();
-
-    let get_name = create_read_slice(state, move |state| {
-        state.get(&key()).map(|c| c.get_name()).unwrap_or_default()
-    });
-
-    let toggle_paused = create_write_slice(state, move |s, _| {
-        if let Some(item) = s.get_mut(&key()) {
-            item.set_active(!item.is_active());
-            let save_handler = expect_context::<SaveHandlerCountable>();
-            save_handler.add_countable(item.clone().into());
-            save_handler.save(user.get_untracked())
-        }
-    });
-
-    let unpause = create_write_slice(state, move |s, _| {
-        if let Some(item) = s.get_mut(&key()) {
-            item.set_active(true)
-        };
-    });
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let is_active = expect_context::<IsActive>();
+    let has_change = expect_context::<HasChange>();
+    let name = create_read_slice(store, move |s| s.name(&key().into()));
 
     let (get_count, add_count) = create_slice(
-        state,
-        move |state| state.get(&key()).map(|c| c.get_count()).unwrap_or_default(),
-        move |state, count| {
-            if let Some(c) = state.get(&key()) {
-                c.add_count(count);
-                let save_handler = expect_context::<SaveHandlerCountable>();
-                save_handler.add_countable(c.clone().into());
-            }
-        },
+        store,
+        move |s| s.recursive_ref().count(&key().into()),
+        move |s, count| s.recursive_ref().add_count(&key().into(), count),
     );
 
-    let key_listener = window_event_listener(ev::keypress, move |ev| match ev.code().as_str() {
-        "Equal" => {
-            unpause(());
-            add_count(1);
+    let key_listener = window_event_listener(ev::keydown, move |ev| {
+        if !document()
+            .active_element()
+            .map(|e| {
+                // TODO: this feels like a hack look into this later
+                e.tag_name() == "INPUT"
+            })
+            .unwrap_or_default()
+        {
+            match ev.code().as_str() {
+                "Equal" => {
+                    is_active.set(true);
+                    add_count(1);
+                }
+                "Minus" => {
+                    add_count(-1);
+                }
+                "KeyP" => is_active.toggle(),
+                _ => {}
+            }
         }
-        "Minus" => {
-            add_count(-1);
-        }
-        "KeyP" => toggle_paused(()),
-        _ => {}
     });
 
     on_cleanup(|| key_listener.remove());
 
     let on_count_click = move |_| {
-        unpause(());
+        is_active.set(true);
+        has_change.set(true);
         add_count(1);
     };
 
     let on_minus_click = move |ev: MouseEvent| {
+        has_change.set(true);
         ev.stop_propagation();
         add_count(-1);
     };
@@ -177,7 +217,7 @@ where
                 class=style::title
                 style:display=move || if show_title() { "block" } else { "none" }
             >
-                {get_name}
+                {name}
             </span>
             <span class=style::info data-testid="info">
                 {get_count}
@@ -192,26 +232,44 @@ where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
 {
-    let state = expect_context::<SelectionSignal>();
-    let user = expect_context::<RwSignal<UserSession>>();
+    let is_active = expect_context::<IsActive>();
+    let has_change = expect_context::<HasChange>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
-    let toggle_paused = create_write_slice(state, move |s, _| {
-        if let Some(item) = s.get_mut(&key()) {
-            item.set_active(!item.is_active());
-            let save_handler = expect_context::<SaveHandlerCountable>();
-            save_handler.add_countable(item.clone().into());
-            save_handler.save(user.get_untracked())
-        }
-    });
+    #[allow(unused_variables)]
+    let (time, add_time) = create_slice(
+        store,
+        move |s| {
+            s.recursive_ref()
+                .time(&key().into())
+                .to_std()
+                .unwrap_or_default()
+        },
+        move |s, add| s.recursive_ref().add_time(&key().into(), add),
+    );
 
-    let time = create_read_slice(state, move |state| {
-        format_time(
-            state
-                .get(&key())
-                .map(|c| c.get_time())
-                .unwrap_or(Duration::zero()),
-        )
-    });
+    #[cfg(not(feature = "ssr"))] // run timer only on client
+    {
+        let time = create_signal(0_u32);
+        let calc_interval =
+            |now: u32, old: u32| Duration::milliseconds(((1000 + now - old) % 1000).into());
+
+        let handle = set_interval_with_handle(
+            move || {
+                let new_time = js_sys::Date::new_0().get_milliseconds();
+                let interval = calc_interval(new_time, time.0.try_get().unwrap_or_default());
+                if is_active() {
+                    add_time(interval);
+                }
+                time.1.try_set(new_time);
+            },
+            std::time::Duration::from_millis(33),
+        );
+
+        on_cleanup(|| {
+            let _ = handle.map(|h| h.clear());
+        });
+    }
 
     let class = move || {
         stylance::classes! {
@@ -220,17 +278,25 @@ where
         }
     };
 
+    let on_click = move |_| {
+        has_change.set(true);
+        is_active.toggle();
+    };
+
     view! {
-        <div class=class on:click=toggle_paused data-testid="box">
+        <div class=class on:click=on_click data-testid="box">
             <span
                 class=style::title
                 style:display=move || if show_title() { "block" } else { "none" }
             >
                 Time
             </span>
-            <span class=style::info style:min-width="7em" data-testid="info">
-                {time}
-            </span>
+            <components::Timer
+                attr:class=style::info
+                attr:data-testid="info"
+                value=time
+                format="%H:%M:%S%.3f"
+            />
         </div>
     }
 }
@@ -245,26 +311,19 @@ where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
 {
-    let state = expect_context::<SelectionSignal>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
-    let progress = create_read_slice(state, move |state| {
-        state
-            .get(&key())
-            .map(|c| c.get_progress())
-            .unwrap_or_default()
+    let progress = create_read_slice(store, move |s| {
+        s.recursive_ref().progress(&key.get_untracked().into())
     });
-
-    let rolls = create_read_slice(state, move |state| {
-        state.get(&key()).map(|c| c.get_rolls()).unwrap_or_default()
+    let rolls = create_read_slice(store, move |s| {
+        s.recursive_ref().rolls(&key.get_untracked().into())
     });
-
-    let odds = create_read_slice(state, move |state| {
-        state.get(&key()).map(|c| c.get_odds()).unwrap_or_default()
-    });
+    let odds = create_read_slice(store, move |s| s.recursive_ref().odds(&key().into()));
 
     let color = move || match progress() {
         num if num < 0.5 => "#50fa7b",
-        num if num < 0.75 && rolls() < odds() => "#fcff10",
+        num if num < 0.75 && rolls() < odds() as i32 => "#fcff10",
         num if num < 0.75 => "#ffb86c",
         _ => "#ff9580",
     };
@@ -303,25 +362,31 @@ where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
 {
-    let state = expect_context::<SelectionSignal>();
-
-    let format_time = |millis: Option<Duration>| match millis {
-        None => String::from("---"),
-        Some(m) => short_format_time(m),
-    };
-
-    let on_count = create_read_slice(state, move |state| {
-        state.get(&key()).map(|c| c.get_count()).unwrap_or_default()
-    });
-
-    let time = create_read_slice(state, move |state| {
-        state
-            .get(&key())
-            .map(|c| c.get_time())
-            .unwrap_or(Duration::zero())
-    });
+    let store = expect_context::<RwSignal<CountableStore>>();
 
     let last_interaction = create_rw_signal(None::<i64>);
+    let on_count = create_read_slice(store, move |s| s.recursive_ref().count(&key().into()));
+    let time = create_read_slice(store, move |s| s.recursive_ref().time(&key().into()));
+
+    let time_value = create_memo(move |_| {
+        on_count.track();
+        let val = last_interaction
+            .get_untracked()
+            .map(|t| time.get_untracked() - Duration::milliseconds(t));
+        last_interaction.set(Some(time.get_untracked().num_milliseconds()));
+        val
+    });
+
+    let format = create_memo(move |_| {
+        time_value.with(|v| {
+            match v {
+                Some(d) if d.num_hours() > 0 => "%Hh %M",
+                Some(d) if d.num_minutes() > 0 => "%Mm %S",
+                _ => "%Ss %3f",
+            }
+            .to_string()
+        })
+    });
 
     let class = move || {
         stylance::classes! {
@@ -329,6 +394,8 @@ where
             if expand() { Some(style::expand) } else { None }
         }
     };
+
+    let time_style = || stylance::classes!(style::info, style::time);
 
     view! {
         <div class=class>
@@ -338,23 +405,18 @@ where
             >
                 Last Step
             </span>
-            <span class=stylance::classes!(
-                style::info, style::time
-            )>
-                {move || {
-                    on_count
-                        .with(|_| {
-                            let time_str = format_time(
-                                last_interaction
-                                    .get_untracked()
-                                    .map(|t| { time.get_untracked() - Duration::milliseconds(t) }),
-                            );
-                            last_interaction.set(Some(time.get_untracked().num_milliseconds()));
-                            time_str
-                        })
-                }}
-
-            </span>
+            <Show
+                when=move || { time_value().is_some() }
+                fallback=move || {
+                    view! { <span class=time_style>---</span> }
+                }
+            >
+                <components::Timer
+                    attr:class=time_style
+                    value=time_value().unwrap_or_default().to_std().unwrap_or_default()
+                    format
+                />
+            </Show>
         </div>
     }
 }
@@ -369,20 +431,27 @@ where
     E: Fn() -> bool + Copy + 'static,
     T: Fn() -> bool + Copy + 'static,
 {
-    let state = expect_context::<SelectionSignal>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
-    let count = create_read_slice(state, move |state| {
-        state.get(&key()).map(|c| c.get_count()).unwrap_or_default()
+    let count = create_read_slice(store, move |s| s.recursive_ref().count(&key().into()));
+    let time = create_read_slice(store, move |s| s.recursive_ref().time(&key().into()));
+
+    let step = create_memo(move |_| {
+        Duration::milliseconds(time().num_milliseconds() / count().max(1) as i64)
     });
 
-    let time = create_read_slice(state, move |state| {
-        state
-            .get(&key())
-            .map(|c| c.get_time())
-            .unwrap_or(Duration::zero())
-    });
+    let timer_value = create_memo(move |_| step().to_std().unwrap_or_default());
 
-    let step = move || Duration::milliseconds(time().num_milliseconds() / count() as i64);
+    let format = create_memo(move |_| {
+        step.with(|v| {
+            match v {
+                d if d.num_hours() > 0 => "%Hh %M",
+                d if d.num_minutes() > 0 => "%Mm %S",
+                _ => "%Ss %3f",
+            }
+            .to_string()
+        })
+    });
 
     let class = move || {
         stylance::classes! {
@@ -390,6 +459,8 @@ where
             if expand() { Some(style::expand) } else { None }
         }
     };
+
+    let time_style = || stylance::classes!(style::info, style::time);
 
     view! {
         <div class=class>
@@ -399,14 +470,14 @@ where
             >
                 Avg Step Time
             </span>
-            <span class=stylance::classes!(
-                style::info, style::time
-            )>
-                {move || {
-                    if count() == 0 { String::from("---") } else { short_format_time(step()) }
-                }}
-
-            </span>
+            <Show
+                when=move || { count() != 0 }
+                fallback=move || {
+                    view! { <span class=time_style>---</span> }
+                }
+            >
+                <components::Timer attr:class=time_style value=timer_value format />
+            </Show>
         </div>
     }
 }

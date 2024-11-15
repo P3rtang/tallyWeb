@@ -1,7 +1,9 @@
 include .env
 export $(shell sed 's/=.*//' .env)
 
-default:
+default: build
+
+build:
 	cargo leptos build
 
 dev:
@@ -15,7 +17,7 @@ reset: recreate-docker recreate-user recreate-db
 recreate-docker:
 	docker stop tallyweb-postgres
 	docker rm tallyweb-postgres
-	docker run -d --name tallyweb-postgres -p $(POSTGRES_PORT):5432 --env-file .env postgres
+	docker run -d --name $(POSTGRES_CONTAINER) -p $(POSTGRES_PORT):5432 --env-file .env postgres
 	timeout 10s bash -c "until docker exec $(POSTGRES_CONTAINER) pg_isready ; do sleep .5 ; done"
 
 recreate-user:
@@ -23,6 +25,9 @@ recreate-user:
 	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "CREATE USER $(POSTGRES_USERNAME) PASSWORD '$(POSTGRES_PASSWORD)' CREATEDB"
 
 recreate-db:
+	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c " \
+		select pg_terminate_backend(pid) from pg_stat_activity where datname='$(PGDATABASE)'; \
+	"
 	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "DROP DATABASE IF EXISTS $(PGDATABASE)"
 	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "CREATE DATABASE $(PGDATABASE) OWNER $(POSTGRES_USERNAME)"
 
@@ -30,7 +35,7 @@ recreate-db:
 	sqlx database create
 	sqlx migrate run
 
-	psql -U p3rtang -d $(PGDATABASE) -h localhost -p $(POSTGRES_PORT) -w -f "db-backup/dbdump.sql"
+	psql -U p3rtang -d $(PGDATABASE) -h localhost -p $(POSTGRES_PORT) -w -f ".github/postgres_setup/setup-test.sql"
 
 dump-db:
 	mkdir -p db-backup
@@ -39,11 +44,7 @@ dump-db:
 watch-style:
 	stylance -w ./frontend/ --output-file ./style/bundle.scss
 
-test: recreate-db
-	# run styling tests
-	cargo fmt -q --check --all
-	leptosfmt -q --check .
-	cargo clippy -- -D warnings
+test: recreate-db check-fmt
 	# run program tests
 	cargo leptos test
 	cargo leptos end-to-end -r
@@ -55,4 +56,22 @@ setup-pgadmin:
 
 fmt:
 	cargo fmt -q --all
-	leptosfmt -q .
+	leptosfmt -q components
+	leptosfmt -q frontend
+
+check:
+	cargo fmt -q --all --check
+	leptosfmt -q --check .
+	cargo clippy
+
+check-fmt:
+	cargo fmt -q --check --all
+	leptosfmt -q --check *src/*
+	cargo clippy -- -D warnings
+
+watch:
+	bash -c " \
+		trap 'docker compose down' SIGINT; \
+		docker compose up -d postgres-dev; \
+		cargo leptos watch \
+	"

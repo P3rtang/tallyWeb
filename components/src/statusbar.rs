@@ -18,7 +18,7 @@ impl Display for KeyNotFound {
 pub fn StatusBar(status_bar: StatusBar) -> impl IntoView {
     view! {
         <Show when=move || !status_bar.is_empty()>
-            <For each=status_bar.items key=|i| i.key.clone() children=move |i| i.view/>
+            <For each=status_bar.items key=|i| i.key.clone() children=move |i| i.view />
         // <div id="status-bar">
         // <Show when=|| true>
         // <svg style:width="24px" style:height="24px" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">

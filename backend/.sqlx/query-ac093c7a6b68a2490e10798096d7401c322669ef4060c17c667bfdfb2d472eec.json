@@ -1,0 +1,109 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            uuid,\n            owner_uuid,\n            parent_uuid,\n            name,\n            count,\n            time,\n            has_charm,\n            hunt_type as \"hunt_type: Hunttype\",\n            dexnav_encounters,\n            success,\n            last_edit,\n            created_at,\n            is_deleted\n            FROM phases\n        where owner_uuid = $1;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "owner_uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "parent_uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "time",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "has_charm",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "hunt_type: Hunttype",
+        "type_info": {
+          "Custom": {
+            "name": "hunttype",
+            "kind": {
+              "Enum": [
+                "OldOdds",
+                "NewOdds",
+                "SOS",
+                "DexNav",
+                "MasudaGenIV",
+                "MasudaGenV",
+                "MasudaGenVI"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "dexnav_encounters",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "success",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_edit",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 12,
+        "name": "is_deleted",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ac093c7a6b68a2490e10798096d7401c322669ef4060c17c667bfdfb2d472eec"
+}

@@ -1,7 +1,9 @@
 [package]
-name = "components"
-version = "0.3.1"
+name = "tallyweb-components"
+version = "0.3.6"
 edition = "2021"
+description = "The leptos components for the tallyweb site"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -9,12 +11,13 @@ edition = "2021"
 chrono = "0.4.31"
 leptos = { version = "0.6", features = ["nightly"] }
 leptos_router = { version = "0.6", features = ["nightly"] }
-wasm-bindgen = "=0.2.92"
+wasm-bindgen = "0.2.95"
 js-sys = "0.3.64"
-web-sys = { version = "0.3.64", features = ["Storage", "Element", "Document"] }
+web-sys = { version = "0.3.64", features = ["Storage", "Element", "Document", "DomRect"] }
 rand = "0.8.5"
 dyn-clone = "1.0.16"
 stylance = { version = "0.5.0", features = ["nightly"] }
+fuzzy-sort = { version = "0.1", package = "tallyweb-fuzzy-sort" }
 
 [package.metadata.stylance]
 output_dir = "./style/"

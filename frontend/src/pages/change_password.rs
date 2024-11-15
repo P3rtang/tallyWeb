@@ -24,18 +24,16 @@ pub fn ChangePassword() -> impl IntoView {
         }
     };
 
-    let server_resp = create_memo(move |_| match action.value().get() {
+    create_effect(move |_| match action.value().get() {
         Some(Ok(_)) => message.set_msg("Password succesfully changed"),
         Some(Err(err)) => message.set_err(err.to_string()),
         None => {}
     });
 
-    create_effect(move |_| server_resp.track());
-
     view! {
         <ActionForm action on:submit=on_submit>
             <div class="container login-form">
-                <input type="hidden" name="username" value=move || user().username/>
+                <input type="hidden" name="username" value=move || user().username />
                 <input
                     type="password"
                     name="old_pass"

@@ -112,21 +112,6 @@ pub async fn create_pool() -> Result<PgPool, sqlx::error::Error> {
     Ok(pool)
 }
 
-pub async fn recreate_db() -> Result<(), sqlx::error::Error> {
-    let pool = create_pool().await?;
-    execute_multi_file(&pool, "../../postgres/00-recreate-db.sql").await?;
-    execute_multi_file(&pool, "../../postgres/01-create-schema.sql").await?;
-    Ok(())
-}
-
-pub async fn execute_multi_file(pool: &PgPool, _path: &str) -> Result<(), sqlx::error::Error> {
-    let file = include_str!("../../postgres/00-recreate-db.sql");
-    for line in file.split(';') {
-        sqlx::query(line).execute(pool).await?;
-    }
-    Ok(())
-}
-
 pub async fn get_counter_by_id(
     pool: &PgPool,
     username: &str,
@@ -280,12 +265,6 @@ pub async fn remove_phase(pool: &PgPool, phase_id: uuid::Uuid) -> Result<(), sql
     )
     .execute(pool)
     .await?;
-
-    Ok(())
-}
-
-pub async fn migrate(pool: &PgPool) -> Result<(), sqlx::Error> {
-    sqlx::migrate!("../migrations").run(pool).await?;
 
     Ok(())
 }
