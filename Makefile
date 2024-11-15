@@ -46,8 +46,12 @@ watch-style:
 
 test: recreate-db check-fmt
 	# run program tests
-	cargo leptos test
-	cargo leptos end-to-end -r
+	bash -c " \
+		trap 'docker compose down' SIGINT; \
+		docker compose up -d postgres; \
+		cargo leptos test; \
+		cargo leptos end-to-end -r; \
+	"
 
 setup-pgadmin:
 	docker stop pgadmin
@@ -72,6 +76,13 @@ check-fmt:
 watch:
 	bash -c " \
 		trap 'docker compose down' SIGINT; \
-		docker compose up -d postgres-dev; \
+		docker compose up -d postgres; \
 		cargo leptos watch \
+	"
+
+start:
+	bash -c " \
+		trap 'docker compose down' SIGINT; \
+		docker compose up -d postgres; \
+		cargo leptos serve \
 	"
