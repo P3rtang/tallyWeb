@@ -298,6 +298,7 @@ impl From<backend::DbPhase> for Countable {
             last_edit: value.last_edit,
             created_at: value.created_at,
             is_deleted: value.is_deleted,
+            step_size: value.step_size,
         })))
     }
 }
@@ -378,6 +379,7 @@ pub struct Phase {
     pub last_edit: chrono::NaiveDateTime,
     pub created_at: chrono::NaiveDateTime,
     pub is_deleted: bool,
+    pub step_size: i32,
 }
 
 impl Phase {
@@ -411,6 +413,7 @@ impl Into<backend::DbPhase> for Phase {
             last_edit: self.last_edit,
             created_at: self.created_at,
             is_deleted: self.is_deleted,
+            step_size: self.step_size,
         }
     }
 }

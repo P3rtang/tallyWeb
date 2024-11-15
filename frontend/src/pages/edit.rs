@@ -233,6 +233,9 @@ fn EditCounterBox(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
                         <EditCount key />
                     </tr>
                     <tr class=stylance::classes!(style::row, style::text_row)>
+                        <EditStepSize key />
+                    </tr>
+                    <tr class=stylance::classes!(style::row, style::text_row)>
                         <EditTime key />
                     </tr>
                     <tr class=stylance::classes!(style::row, style::text_row)>
@@ -312,6 +315,30 @@ fn EditCount(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
                     prop:value=count
                     id="change-count"
                     name="countable_count"
+                    style:text-align="end"
+                />
+            </div>
+        </td>
+    }
+}
+
+#[component]
+fn EditStepSize(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let step = create_read_slice(store, move |s| s.recursive_ref().step_size(&key().into()));
+
+    view! {
+        <td>
+            <label for="change-step">Step size</label>
+        </td>
+        <td>
+            <div class=style::boxed>
+                <input
+                    type="number"
+                    value=step
+                    prop:value=step
+                    id="change-step"
+                    name="countable_step"
                     style:text-align="end"
                 />
             </div>

@@ -31,7 +31,7 @@ pub fn App() -> impl IntoView {
         <Link href="https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet" />
 
         <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <Meta name="apple-mobile-web-app-capable" content="yes" />
+        <Meta name="mobile-web-app-capable" content="yes" />
 
         <Title text="TallyWeb" />
 
