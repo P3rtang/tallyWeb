@@ -24,6 +24,21 @@
     }
   }
 
+  .sidebar {
+    nav {
+      position: sticky;
+      background: $body-background;
+    }
+
+    * {
+      scrollbar-width: none;
+    }
+  }
+
+  .sidebar *::-webkit-scrollbar {
+    display: none;
+  }
+
   &.auto-hide {
     @container (max-width: 1200px) {
       .sidebar {

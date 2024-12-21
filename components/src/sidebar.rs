@@ -39,7 +39,7 @@ pub fn Sidebar(
 
     view! {
         <aside {..attrs} style=aside_transform>
-            <side-bar data-testid="test-sidebar" style=sidebar_style>
+            <side-bar data-testid="test-sidebar" style=sidebar_style style:scrollbar-width="none">
                 {children()}
             </side-bar>
         </aside>
