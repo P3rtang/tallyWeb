@@ -1,12 +1,13 @@
 use super::*;
-use components::{CloseOverlays, ShowSidebar, ToolTip};
+use components::{CloseOverlays, ToolTip};
 use leptos::*;
 use leptos_router::A;
 
 #[component]
 pub fn Navbar(
     #[prop(default=true.into(), into)] has_sidebar: MaybeSignal<bool>,
-    #[prop(default=ShowSidebar(false).into(), into)] show_sidebar: RwSignal<ShowSidebar>,
+    #[prop(default = false.into(), into)] show_sidebar: MaybeSignal<bool>,
+    #[prop(optional)] on_close_sidebar: Option<std::rc::Rc<dyn Fn(bool)>>,
 ) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
@@ -14,7 +15,13 @@ pub fn Navbar(
 
     let accent_color = create_read_slice(preferences, |pref| pref.accent_color.0.clone());
 
-    let toggle_sidebar = move |_| show_sidebar.update(|s| s.0 = !s.0);
+    let on_close_sidebar = StoredValue::new(on_close_sidebar);
+
+    let toggle_sidebar = move |_| {
+        if let Some(f) = on_close_sidebar.get_value() {
+            f(!show_sidebar())
+        }
+    };
     let close_overlays = move |_| close_overlay_signal.update(|_| ());
 
     let home_img_ref = create_node_ref::<html::Img>();
