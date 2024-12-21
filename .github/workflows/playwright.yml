@@ -97,7 +97,7 @@ jobs:
     - name: Run Playwright tests
       run: cargo leptos end-to-end -r
       env:
-        DATABASE_URL: postgres://githubCI:githubCI-pass@localhost:5432/tally_web
+        DATABASE_URL: postgres://githubCI:githubCI_pass@localhost:5432/tally_web
         LEPTOS_OUTPUT_NAME: debug
         TALLYWEB_VERSION: 0.3.0
         LEPTOS_WASM_OPT_VERSION: version_116
