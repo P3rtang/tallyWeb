@@ -65,6 +65,7 @@ pub fn Page(
     #[prop(optional, into)] sidebar: Option<Sidebar>,
     #[prop(into, default=true.into())] show_sidebar: MaybeSignal<bool>,
     #[prop(optional, into, default=Color::default().into())] accent: MaybeSignal<Color>,
+    #[prop(optional, into, default=false.into())] auto_hide_sidebar: MaybeSignal<bool>,
 ) -> impl IntoView {
     let (sidebar_width, set_sidebar_width) = create_signal(400);
 
@@ -82,10 +83,14 @@ pub fn Page(
     };
 
     let (has_transition, set_has_transition) = create_signal(true);
-    let trans_class = move || {
-        has_transition()
-            .then_some("transition-width")
-            .unwrap_or_default()
+    let sidebar_classes = move || {
+        format!(
+            "{} {}",
+            style::sidebar,
+            has_transition()
+                .then_some("transition-width")
+                .unwrap_or_default()
+        )
     };
 
     let handle_resize = move |ev: ev::DragEvent| {
@@ -99,10 +104,15 @@ pub fn Page(
 
     let css_vars = move || format!("--accent: {};", accent.get());
 
+    let page_classes =
+        move || stylance::classes!(style::page, auto_hide_sidebar().then_some(style::auto_hide));
+
     view! {
-        <div class=style::page style=css_vars>
+        <div class=page_classes style=css_vars>
             <Show when=has_sidebar>
-                <div class=trans_class>{sidebar.get_value().unwrap()(sidebar_width.into())}</div>
+                <div class=sidebar_classes>
+                    {sidebar.get_value().unwrap()(sidebar_width.into())}
+                </div>
             </Show>
             <ResizeBar direction=Direction::Vertical position=sidebar_width on:drag=handle_resize />
             <div class=style::body>
