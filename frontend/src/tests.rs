@@ -42,7 +42,7 @@ pub fn ShowTests() -> impl IntoView {
 
     let sidebar: Box<dyn Fn(MaybeSignal<usize>) -> Fragment> = Box::new(move |width| {
         view! {
-            <Sidebar display=ShowSidebar(true) layout=SidebarLayout::Landscape width=width>
+            <Sidebar layout=SidebarLayout::Landscape width=width>
                 <test-list>{test_list()}</test-list>
             </Sidebar>
         }
@@ -50,7 +50,7 @@ pub fn ShowTests() -> impl IntoView {
     });
 
     view! {
-        <Page sidebar=sidebar>
+        <Page sidebar=sidebar auto_hide_sidebar=true>
             <Outlet />
         </Page>
     }

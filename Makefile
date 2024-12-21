@@ -25,17 +25,13 @@ recreate-user:
 	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "CREATE USER $(POSTGRES_USERNAME) PASSWORD '$(POSTGRES_PASSWORD)' CREATEDB"
 
 recreate-db:
-	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c " \
-		select pg_terminate_backend(pid) from pg_stat_activity where datname='$(PGDATABASE)'; \
+	bash -c " \
+		trap 'docker compose down' SIGINT;	\
+		docker compose up -d postgres-dev;	\
+											\
+		# run program tests 				\
+		./scripts/recreate-db.sh 			\
 	"
-	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "DROP DATABASE IF EXISTS $(PGDATABASE)"
-	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "CREATE DATABASE $(PGDATABASE) OWNER $(POSTGRES_USERNAME)"
-
-	# setup sqlx migrations
-	sqlx database create
-	sqlx migrate run
-
-	psql -U p3rtang -d $(PGDATABASE) -h localhost -p $(POSTGRES_PORT) -w -f ".github/postgres_setup/setup-test.sql"
 
 dump-db:
 	mkdir -p db-backup
@@ -72,6 +68,13 @@ check-fmt:
 	cargo fmt -q --check --all
 	leptosfmt -q --check *src/*
 	cargo clippy -- -D warnings
+
+serve:
+	bash -c " \
+		trap 'docker compose down' SIGINT; \
+		docker compose up -d postgres-dev; \
+		cargo leptos serve \
+	"
 
 watch:
 	bash -c " \

@@ -23,6 +23,21 @@
       background: var(--content-background);
     }
   }
+
+  &.auto-hide {
+    @container (max-width: 1200px) {
+      .sidebar {
+        display: none;
+      }
+
+      padding: 0px;
+
+      >div {
+        border: unset;
+        border-radius: 0px;
+      }
+    }
+  }
 }
 
 @container wide (min-width: 800px) {
