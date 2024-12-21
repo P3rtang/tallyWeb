@@ -170,7 +170,10 @@ pub fn HomePage() -> impl IntoView {
         Box::new(move |width| view! { <HomeSidebar width /> }.into());
 
     let navbar: Box<dyn Fn() -> Fragment> = Box::new(move || {
-        view! { <Navbar show_sidebar=Signal::derive(move || show_sidebar().0) /> }.into()
+        let on_close_sidebar: std::rc::Rc<dyn Fn(bool)> =
+            std::rc::Rc::new(move |show| show_sidebar.set(ShowSidebar(show)));
+        view! { <Navbar show_sidebar=Signal::derive(move || show_sidebar().0) on_close_sidebar /> }
+            .into()
     });
 
     view! {

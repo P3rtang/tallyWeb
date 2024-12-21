@@ -34,7 +34,12 @@ pub fn Navbar(
                 on:click=toggle_sidebar
                 disabled=move || !has_sidebar()
             >
-                <i class="fa-solid fa-bars"></i>
+                <img
+                    height="32px"
+                    width="32px"
+                    style
+                    src="icons/sidebar-left-svgrepo-com-white.svg"
+                />
             </button>
             <A href="/">
                 <img
