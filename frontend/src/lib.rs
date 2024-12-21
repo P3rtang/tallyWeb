@@ -134,6 +134,8 @@ pub enum AppError {
     Environment(String),
     #[error("Countable Requires at least 1 leaf node")]
     RequiresChild,
+    #[error("Encountered an invalid `string` while parsing `Color`")]
+    InvalidColor,
 }
 
 impl From<gloo_storage::errors::StorageError> for AppError {

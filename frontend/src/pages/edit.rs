@@ -11,7 +11,7 @@ use super::*;
 stylance::import_style!(
     #[allow(dead_code)]
     style,
-    "../../style/edit.module.scss"
+    "./style/edit.module.scss"
 );
 
 #[component]
@@ -21,44 +21,27 @@ pub fn EditWindow() -> impl IntoView {
     let screen = expect_context::<Screen>();
     let sort_method = expect_context::<RwSignal<SortMethod>>();
 
+    let accent = create_read_slice(preferences, |p| {
+        Color::try_from(p.accent_color.clone().0.as_str()).unwrap_or_default()
+    });
+
     let sidebar_layout: Signal<SidebarLayout> = create_read_slice(screen.style, |s| (*s).into());
 
     let selection = create_rw_signal(SelectionModel::<uuid::Uuid, Countable>::new());
     provide_context(selection);
 
-    let width = create_rw_signal(400);
     let show_sort_search = create_rw_signal(true);
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
 
-    let show_sidebar = create_rw_signal(ShowSidebar(false));
-
-    let min_height = create_memo(move |_| match (screen.style)() {
-        ScreenStyle::Portrait => Some("110vh"),
-        ScreenStyle::Small => None,
-        ScreenStyle::Big => None,
-    });
-
     // we need to render the outlet first since it sets the selection key from the url
-    let outlet_view = view! { <Outlet /> };
+    let outlet_view = StoredValue::new(view! { <Outlet /> });
 
-    let sidebar_update_memo =
-        create_memo(move |_| ((screen.style)(), selection().get_owned_selected_keys()));
+    let (show_side, set_show_sidebar) = create_signal(
+        selection.get_untracked().is_empty() && screen.style.get_untracked() == ScreenStyle::Big,
+    );
 
-    create_isomorphic_effect(move |_| match sidebar_update_memo.get() {
-        (ScreenStyle::Portrait, e) => {
-            width.set(0);
-            logging::log!("{}", e.is_empty());
-            show_sidebar.set(ShowSidebar(e.is_empty()));
-        }
-        (ScreenStyle::Small, e) => {
-            width.set(0);
-            show_sidebar.set(ShowSidebar(e.is_empty()));
-        }
-        (ScreenStyle::Big, _) => {
-            width.set(400);
-            show_sidebar.set(ShowSidebar(true));
-        }
-    });
+    let show_sidebar =
+        Signal::derive(move || show_side() || screen.style.get() == ScreenStyle::Big);
 
     let each_child = move |countable: &Countable| {
         let mut children = store().children(&countable.uuid().into());
@@ -70,9 +53,13 @@ pub fn EditWindow() -> impl IntoView {
             .unwrap_or_default()
     };
 
-    view! {
-        <div style:display="flex">
-            <Sidebar display=show_sidebar layout=sidebar_layout width>
+    let sidebar: Box<dyn Fn(MaybeSignal<usize>) -> Fragment> = Box::new(move |width| {
+        view! {
+            <Sidebar
+                display=Signal::derive(move || ShowSidebar(show_sidebar.get()))
+                layout=sidebar_layout
+                width
+            >
                 <nav>
                     <SortSearch
                         shown=show_sort_search
@@ -100,14 +87,21 @@ pub fn EditWindow() -> impl IntoView {
                     selection_model=selection
                 />
             </Sidebar>
-            <section
-                style:width=move || format!("calc(100vw - {}px)", width())
-                style:min-height=min_height
-            >
-                <Navbar show_sidebar />
-                {outlet_view}
-            </section>
-        </div>
+        }
+        .into()
+    });
+
+    let navbar: Box<dyn Fn() -> Fragment> = Box::new(move || {
+        let on_close_sidebar: std::rc::Rc<dyn Fn(bool)> =
+            std::rc::Rc::new(move |open| set_show_sidebar(open));
+
+        view! { <Navbar show_sidebar on_close_sidebar /> }.into()
+    });
+
+    view! {
+        <Page sidebar navbar show_sidebar accent>
+            {move || outlet_view.get_value()}
+        </Page>
     }
 }
 
@@ -159,16 +153,11 @@ pub fn EditCountableWindow() -> impl IntoView {
     let valid = move || store().contains(&key_memo().into());
 
     view! {
-        <h1 style:color="white" style:padding="12px 48px">
-            Edit
-        </h1>
-        <div style:display="flex" style:justify-content="center">
-            <Show when=valid>
-                <edit-form class=form_style>
-                    <EditCounterBox key=key_memo />
-                </edit-form>
-            </Show>
-        </div>
+        <Show when=valid>
+            <div class=form_style>
+                <EditCounterBox key=key_memo />
+            </div>
+        </Show>
     }
 }
 

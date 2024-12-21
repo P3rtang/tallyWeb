@@ -76,7 +76,18 @@ pub fn App() -> impl IntoView {
                             <Route path=":key" view=move || view! { <EditCountableWindow /> } />
                         </Route>
 
-                        <Route path="/preferences" view=move || view! { <PreferencesWindow /> } />
+                        <Route path="/preferences" view=move || view! { <PreferencesWindow /> }>
+                            <Route path="styling" view=move || view! { <StylingPreferences /> } />
+                            <Route path="account" view=move || view! { <AccountPreferences /> } />
+                            <Route path="misc" view=move || view! { <MiscPreferences /> } />
+                            <Route
+                                path=""
+                                view=move || {
+                                    let nav = use_navigate();
+                                    nav("preferences/styling", Default::default());
+                                }
+                            />
+                        </Route>
 
                         <Route
                             path="/change-username"
@@ -115,23 +126,12 @@ fn NotFound() -> impl IntoView {
 }
 
 #[component]
-fn RouteSidebar(children: ChildrenFn) -> impl IntoView {
+fn HomeSidebar(width: MaybeSignal<usize>) -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen = expect_context::<Screen>();
 
     let sidebar_layout: Signal<SidebarLayout> = create_read_slice(screen.style, |s| (*s).into());
-
-    let sidebar_width = create_rw_signal(400);
-    provide_context(sidebar_width);
-
-    let section_width = create_memo(move |_| {
-        if show_sidebar().0 {
-            format!("calc(100vw - {}px)", sidebar_width())
-        } else {
-            String::from("100vw")
-        }
-    });
 
     create_isomorphic_effect(move |_| {
         if screen.style.get() != ScreenStyle::Big {
@@ -140,46 +140,22 @@ fn RouteSidebar(children: ChildrenFn) -> impl IntoView {
         }
     });
 
-    let suppress_transition = create_rw_signal(false);
-    let trans_class = move || (!suppress_transition()).then_some("transition-width");
-
-    let on_resize = move |ev: ev::DragEvent| {
-        if ev.client_x() as usize > SIDEBAR_MIN_WIDTH {
-            suppress_transition.set(true);
-            sidebar_width.update(|w| *w = ev.client_x() as usize);
-        } else {
-            suppress_transition.set(false);
-        }
-    };
-
     view! {
-        <div style:display="flex">
-            <Sidebar
-                display=show_sidebar
-                layout=sidebar_layout
-                width=sidebar_width
-                attr:class=trans_class
-            >
-                <SidebarContent />
-                <Show when=move || (screen.style)() != ScreenStyle::Portrait>
-                    <ResizeBar
-                        position=sidebar_width
-                        direction=Direction::Vertical
-                        on:drag=on_resize
-                    />
-                </Show>
-            </Sidebar>
-            <section style:flex-grow="1" class=trans_class style:width=section_width>
-                {children}
-            </section>
-        </div>
+        <Sidebar display=show_sidebar layout=sidebar_layout width>
+            <SidebarContent />
+        </Sidebar>
     }
 }
 
 #[component]
 pub fn HomePage() -> impl IntoView {
-    let selection_signal = expect_context::<SelectionSignal>();
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
+    let selection_signal = expect_context::<SelectionSignal>();
+    let preferences = expect_context::<RwSignal<Preferences>>();
+
+    let accent = create_read_slice(preferences, |p| {
+        Color::try_from(p.accent_color.clone().0.as_str()).unwrap_or_default()
+    });
 
     let active = create_memo(move |_| {
         selection_signal
@@ -190,13 +166,17 @@ pub fn HomePage() -> impl IntoView {
             .collect()
     });
 
+    let sidebar: Box<dyn Fn(MaybeSignal<usize>) -> Fragment> =
+        Box::new(move |width| view! { <HomeSidebar width /> }.into());
+
+    let navbar: Box<dyn Fn() -> Fragment> = Box::new(move || {
+        view! { <Navbar show_sidebar=Signal::derive(move || show_sidebar().0) /> }.into()
+    });
+
     view! {
-        <RouteSidebar>
-            <div id="HomeGrid">
-                <Navbar show_sidebar />
-                <InfoBox countable_list=active />
-            </div>
-        </RouteSidebar>
+        <Page sidebar navbar show_sidebar=Signal::derive(move || show_sidebar().0) accent>
+            <InfoBox countable_list=active />
+        </Page>
     }
 }
 

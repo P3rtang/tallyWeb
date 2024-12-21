@@ -23,7 +23,7 @@ pub fn Sidebar(
             "transform: TranslateX(-2px); width: 0px; overflow-x: hidden;".into()
         }
         (SidebarLayout::Landscape, true) => {
-            format!("border-right: 2px solid #FFFFFF80; width: {}px;", width())
+            format!("width: {}px;", width())
         }
         (SidebarLayout::Portrait, true) => "width: 100vw;".into(),
 

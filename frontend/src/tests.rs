@@ -2,6 +2,7 @@ use super::*;
 use components::{self, MessageJar, ShowSidebar, Sidebar, SidebarLayout};
 use leptos::*;
 use leptos_router::{Outlet, Route, A};
+use pages::Page;
 
 stylance::import_style!(style, "tests.module.scss");
 
@@ -24,29 +25,34 @@ pub fn TestRoutes() -> impl IntoView {
 
 #[component]
 pub fn ShowTests() -> impl IntoView {
-    let show_sidebar = create_rw_signal(ShowSidebar(true));
-    provide_context(show_sidebar);
+    let test_list = StoredValue::new(
+        vec![("Messages", "message"), ("Slider", "slider")]
+            .into_iter()
+            .map(|(key, href)| {
+                view! {
+                    <A href>
+                        <div class=style::entry>
+                            <span>{key}</span>
+                        </div>
+                    </A>
+                }
+            })
+            .collect_view(),
+    );
 
-    let test_list = vec![("Messages", "message"), ("Slider", "slider")]
-        .into_iter()
-        .map(|(key, href)| {
-            view! {
-                <A href>
-                    <div class=style::entry>
-                        <span>{key}</span>
-                    </div>
-                </A>
-            }
-        })
-        .collect_view();
+    let sidebar: Box<dyn Fn(MaybeSignal<usize>) -> Fragment> = Box::new(move |width| {
+        view! {
+            <Sidebar display=ShowSidebar(true) layout=SidebarLayout::Landscape width=width>
+                <test-list>{test_list()}</test-list>
+            </Sidebar>
+        }
+        .into()
+    });
 
     view! {
-        <div style:display="flex">
-            <Sidebar display=show_sidebar layout=SidebarLayout::Landscape>
-                <test-list>{test_list.clone()}</test-list>
-            </Sidebar>
+        <Page sidebar=sidebar>
             <Outlet />
-        </div>
+        </Page>
     }
 }
 

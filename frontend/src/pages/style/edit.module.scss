@@ -5,28 +5,39 @@
 }
 
 .form {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
   font-size: 24px;
   color: lightgray;
-  display: block;
   padding: 8px;
+
+  form {
+    display: flex;
+    flex-grow: 1;
+    flex-direction: column;
+    max-height: 100%;
+  }
 
   &.portrait {
     font-size: 21px;
   }
 
   &.big, &.small {
-    background: $component-bg-color-dark;
-    border: 2px solid var(--accent);
     border-radius: 24px;
-
-    .content {
-      margin: 24px 48px;
-    }
   }
 
   .content {
-    margin: 16px;
+    display:  flex;
+    flex-grow: 1;
+    align-items: center;
     border-collapse: collapse;
+    max-height: 100%;
+    overflow-y: auto;
+
+    >div {
+      flex-grow: 1;
+    }
 
     .row {
       height: 3em;
@@ -37,6 +48,12 @@
 
       td:first-child {
         border-radius: 12px 0px 0px 12px;
+      }
+
+      @container (min-width: 1200px) {
+        td:not(:first-child) {
+          padding-left: 32px;
+        }
       }
 
       td:last-child {
@@ -119,7 +136,6 @@
       padding: 12px;
       bottom: 0px;
       left: 0px;
-      position: absolute;
       width: 100%;
     }
 
@@ -192,5 +208,69 @@
     img {
       transition: transform 0.32s;
     }
+  }
+}
+
+.list-view  {
+  width: 100%;
+  padding: 8px;
+  padding-top: 12px;
+
+  * {
+    color: white;
+  }
+
+  a {
+    text-decoration: none;
+  }
+
+  a[aria-current="page"] {
+    .row.selectable {
+      background: var(--accent);
+
+      * {
+        color: black;
+      }
+    }
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+
+    min-height: 1.6em;
+    padding: 2px;
+    margin: 6px 2px;
+
+    font-size: 1.4rem;
+    border-radius: 1.2rem;
+
+    &.selectable:hover {
+      background: lighten($body-background, 5%)
+    }
+  }
+
+  .row-body {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    height: 36px;
+    padding: 0px 16px;
+  }
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+  align-items: center;
+
+  >*:not(:first-child) {
+    min-height: 3rem;
+    align-items: center;
+  }
+
+  >*:not(input[hidden]) {
+    display: flex;
   }
 }
