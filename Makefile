@@ -15,8 +15,8 @@ dev:
 reset: recreate-docker recreate-user recreate-db
 
 recreate-docker:
-	docker stop tallyweb-postgres
-	docker rm tallyweb-postgres
+	docker stop postgres
+	docker rm postgres
 	docker run -d --name $(POSTGRES_CONTAINER) -p $(POSTGRES_PORT):5432 --env-file .env postgres
 	timeout 10s bash -c "until docker exec $(POSTGRES_CONTAINER) pg_isready ; do sleep .5 ; done"
 
@@ -25,13 +25,7 @@ recreate-user:
 	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "CREATE USER $(POSTGRES_USERNAME) PASSWORD '$(POSTGRES_PASSWORD)' CREATEDB"
 
 recreate-db:
-	bash -c " \
-		trap 'docker compose down' SIGINT;	\
-		docker compose up -d postgres-dev;	\
-											\
-		# run program tests 				\
-		./scripts/recreate-db.sh 			\
-	"
+	sh ./scripts/recreate-db.sh $(POSTGRES_PORT) $(PGDATABASE) $(POSTGRES_USERNAME)
 
 dump-db:
 	mkdir -p db-backup
@@ -41,13 +35,10 @@ watch-style:
 	stylance -w ./frontend/ --output-file ./style/bundle.scss
 
 test: recreate-db check-fmt
-	# run program tests
-	bash -c " \
-		trap 'docker compose down' SIGINT; \
-		docker compose up -d postgres; \
-		cargo leptos test; \
-		cargo leptos end-to-end -r; \
-	"
+	docker compose up -d postgres
+	cargo leptos test
+	cargo leptos end-to-end -r
+	docker compose down
 
 setup-pgadmin:
 	docker stop pgadmin
@@ -72,7 +63,7 @@ check-fmt:
 serve:
 	bash -c " \
 		trap 'docker compose down' SIGINT; \
-		docker compose up -d postgres-dev; \
+		docker compose up -d postgres; \
 		cargo leptos serve \
 	"
 
