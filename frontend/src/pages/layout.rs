@@ -84,7 +84,7 @@ pub fn Page(
     let (has_transition, set_has_transition) = create_signal(true);
     let trans_class = move || {
         has_transition()
-            .then(|| "transition-width")
+            .then_some("transition-width")
             .unwrap_or_default()
     };
 
@@ -117,6 +117,7 @@ pub fn Page(
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Color {
+    #[allow(clippy::upper_case_acronyms)]
     RGB(u8, u8, u8),
 }
 

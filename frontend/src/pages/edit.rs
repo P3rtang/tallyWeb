@@ -92,8 +92,7 @@ pub fn EditWindow() -> impl IntoView {
     });
 
     let navbar: Box<dyn Fn() -> Fragment> = Box::new(move || {
-        let on_close_sidebar: std::rc::Rc<dyn Fn(bool)> =
-            std::rc::Rc::new(move |open| set_show_sidebar(open));
+        let on_close_sidebar: std::rc::Rc<dyn Fn(bool)> = std::rc::Rc::new(set_show_sidebar);
 
         view! { <Navbar show_sidebar on_close_sidebar /> }.into()
     });
