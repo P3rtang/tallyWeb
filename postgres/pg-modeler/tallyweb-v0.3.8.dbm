@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+CAUTION: Do not modify this file unless you know what you are doing.
+ Unexpected results may occur if the code is changed deliberately.
+-->
+<dbmodel pgmodeler-ver="1.2.0-alpha1" use-changelog="false" max-obj-count="7"
+	 last-position="0,0" last-zoom="1" scene-rect="-28,0,2292.15,1076.8"
+	 default-schema="public" default-owner="postgres"
+	 layers="Default layer"
+	 active-layers="0"
+	 layer-name-colors="#000000"
+	 layer-rect-colors="#b4b4b4"
+	 show-layer-names="false" show-layer-rects="false">
+<role name="p3rtang"
+ createdb="true"
+ inherit="true"
+ login="true"
+ password="********">
+</role>
+
+<database name="tally_web" encoding="UTF8" lc-collate="en_US.utf8" lc-ctype="en_US.utf8" is-template="false" allow-conns="true">
+	<role name="p3rtang"/>
+	<tablespace name="pg_default"/>
+</database>
+
+<schema name="public" layers="0" rect-visible="true" fill-color="#e1e1e1" name-color="#000000" sql-disabled="true">
+</schema>
+
+<table name="_sqlx_migrations" layers="0" collapse-mode="2" faded-out="true" max-obj-count="7" z-value="0">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<position x="0" y="80"/>
+	<column name="version" not-null="true">
+		<type name="bigint" length="0"/>
+	</column>
+	<column name="description" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="installed_on" not-null="true" default-value="now()">
+		<type name="timestamp with time zone" length="0" with-timezone="true"/>
+	</column>
+	<column name="success" not-null="true">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="checksum" not-null="true">
+		<type name="bytea" length="0"/>
+	</column>
+	<column name="execution_time" not-null="true">
+		<type name="bigint" length="0"/>
+	</column>
+	<constraint name="_sqlx_migrations_pkey" type="pk-constr" table="public._sqlx_migrations">
+		<columns names="version" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<usertype name="hunttype" configuration="enumeration">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<enumeration label="OldOdds"/>
+	<enumeration label="NewOdds"/>
+	<enumeration label="SOS"/>
+	<enumeration label="DexNav"/>
+	<enumeration label="MasudaGenIV"/>
+	<enumeration label="MasudaGenV"/>
+	<enumeration label="MasudaGenVI"/>
+</usertype>
+
+<table name="counters" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<position x="520" y="80"/>
+	<column name="name" not-null="true">
+		<type name="character varying" length="0"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="owner_uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="uuid" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="last_edit" not-null="true" default-value="now()">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="is_deleted" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<constraint name="counters_pkey" type="pk-constr" table="public.counters">
+		<columns names="uuid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="phases" layers="0" collapse-mode="2" max-obj-count="16" z-value="0">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<position x="480" y="400"/>
+	<column name="name" not-null="true">
+		<type name="character varying" length="0"/>
+	</column>
+	<column name="count" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="time" not-null="true">
+		<type name="bigint" length="0"/>
+	</column>
+	<column name="hunt_type" not-null="true">
+		<type name="public.hunttype" length="0"/>
+	</column>
+	<column name="has_charm" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="dexnav_encounters">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="owner_uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="parent_uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="uuid" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="success" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="last_edit" not-null="true" default-value="now()">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="is_deleted" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="step_size" not-null="true" default-value="1">
+		<type name="integer" length="0"/>
+		<comment> <![CDATA[Step size indicates the amount needed to add to count, when an add_count command is given in the `CountableStore`.]]> </comment>
+	</column>
+	<constraint name="phases_primary_key" type="pk-constr" table="public.phases">
+		<columns names="uuid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="users" layers="0" collapse-mode="2" max-obj-count="4" z-value="0">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<position x="1020" y="320"/>
+	<column name="username" not-null="true">
+		<type name="character varying" length="0"/>
+	</column>
+	<column name="password" not-null="true">
+		<type name="character varying" length="0"/>
+	</column>
+	<column name="email">
+		<type name="character varying" length="0"/>
+	</column>
+	<column name="uuid" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid" length="0"/>
+	</column>
+	<constraint name="users_username_key" type="uq-constr" table="public.users">
+		<columns names="username" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="users_pkey" type="pk-constr" table="public.users">
+		<columns names="uuid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="auth_tokens" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<position x="1560" y="120"/>
+	<column name="expire_on" not-null="true" default-value="(now() + '1 day'::interval day)">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="user_uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="uuid" not-null="true" default-value="uuid_generate_v4()">
+		<type name="uuid" length="0"/>
+	</column>
+	<constraint name="auth_tokens_pkey" type="pk-constr" table="public.auth_tokens">
+		<columns names="uuid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="preferences" layers="0" collapse-mode="2" max-obj-count="8" z-value="0">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<position x="1540" y="500"/>
+	<column name="use_default_accent_color" not-null="true" default-value="true">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="accent_color">
+		<type name="character varying" length="0"/>
+	</column>
+	<column name="show_separator" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="multi_select" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="user_uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="save_on_pause" not-null="true" default-value="true">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="show_body_border" not-null="true" default-value="true">
+		<type name="boolean" length="0"/>
+	</column>
+	<constraint name="preferences_pkey" type="pk-constr" table="public.preferences">
+		<columns names="user_uuid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<extension name="uuid-ossp" cur-version="1.1">
+	<schema name="public"/>
+	<comment> <![CDATA[generate universally unique identifiers (UUIDs)]]> </comment>
+</extension>
+
+<constraint name="owner_foreign_key" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.counters">
+	<columns names="owner_uuid" ref-type="src-columns"/>
+	<columns names="uuid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="owner_foreign_key" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.phases">
+	<columns names="owner_uuid" ref-type="src-columns"/>
+	<columns names="uuid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="parent_foreign_key" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.counters" table="public.phases">
+	<columns names="parent_uuid" ref-type="src-columns"/>
+	<columns names="uuid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="user_foreign_key" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.auth_tokens">
+	<columns names="user_uuid" ref-type="src-columns"/>
+	<columns names="uuid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="user_foreign_key" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.preferences">
+	<columns names="user_uuid" ref-type="src-columns"/>
+	<columns names="uuid" ref-type="dst-columns"/>
+</constraint>
+
+<relationship name="rel_phases_users" type="relfk" layers="0"
+	 src-table="public.phases"
+	 dst-table="public.users" reference-fk="owner_foreign_key"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_phases_counters" type="relfk" layers="0"
+	 src-table="public.phases"
+	 dst-table="public.counters" reference-fk="parent_foreign_key"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_preferences_users" type="relfk" layers="0"
+	 src-table="public.preferences"
+	 dst-table="public.users" reference-fk="user_foreign_key"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_auth_tokens_users" type="relfk" layers="0"
+	 src-table="public.auth_tokens"
+	 dst-table="public.users" reference-fk="user_foreign_key"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_counters_users" type="relfk" layers="0"
+	 src-table="public.counters"
+	 dst-table="public.users" reference-fk="owner_foreign_key"
+	 src-required="false" dst-required="true"/>
+
+</dbmodel>

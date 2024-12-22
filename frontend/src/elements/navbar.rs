@@ -38,7 +38,13 @@ pub fn Navbar(
                     height="32px"
                     width="32px"
                     style
-                    src="/icons/sidebar-left-svgrepo-com-white.svg"
+                    src=move || {
+                        if show_sidebar() {
+                            "/icons/sidebar-left-closed-svgrepo-com-white.svg"
+                        } else {
+                            "/icons/sidebar-left-svgrepo-com-white.svg"
+                        }
+                    }
                 />
             </button>
             <A href="/">

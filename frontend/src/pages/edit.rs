@@ -25,6 +25,8 @@ pub fn EditWindow() -> impl IntoView {
         Color::try_from(p.accent_color.clone().0.as_str()).unwrap_or_default()
     });
 
+    let show_body_border = create_read_slice(preferences, |p| p.show_body_border);
+
     let sidebar_layout: Signal<SidebarLayout> = create_read_slice(screen.style, |s| (*s).into());
 
     let selection = create_rw_signal(SelectionModel::<uuid::Uuid, Countable>::new());
@@ -36,12 +38,9 @@ pub fn EditWindow() -> impl IntoView {
     // we need to render the outlet first since it sets the selection key from the url
     let outlet_view = StoredValue::new(view! { <Outlet /> });
 
-    let (show_side, set_show_sidebar) = create_signal(
-        selection.get_untracked().is_empty() && screen.style.get_untracked() == ScreenStyle::Big,
+    let (show_sidebar, set_show_sidebar) = create_signal(
+        selection.get_untracked().is_empty() || screen.style.get_untracked() == ScreenStyle::Big,
     );
-
-    let show_sidebar =
-        Signal::derive(move || show_side() || screen.style.get() == ScreenStyle::Big);
 
     let each_child = move |countable: &Countable| {
         let mut children = store().children(&countable.uuid().into());
@@ -56,7 +55,7 @@ pub fn EditWindow() -> impl IntoView {
     let sidebar: Box<dyn Fn(MaybeSignal<usize>) -> Fragment> = Box::new(move |width| {
         view! {
             <Sidebar
-                display=Signal::derive(move || ShowSidebar(show_sidebar.get()))
+                display=Signal::derive(move || ShowSidebar(show_sidebar()))
                 layout=sidebar_layout
                 width
             >
@@ -98,7 +97,7 @@ pub fn EditWindow() -> impl IntoView {
     });
 
     view! {
-        <Page sidebar navbar show_sidebar accent>
+        <Page sidebar navbar accent show_sidebar show_body_border>
             {move || outlet_view.get_value()}
         </Page>
     }
