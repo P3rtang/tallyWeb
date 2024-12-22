@@ -157,6 +157,8 @@ pub fn HomePage() -> impl IntoView {
         Color::try_from(p.accent_color.clone().0.as_str()).unwrap_or_default()
     });
 
+    let show_body_border = create_read_slice(preferences, |p| p.show_body_border);
+
     let active = create_memo(move |_| {
         selection_signal
             .get()
@@ -176,8 +178,10 @@ pub fn HomePage() -> impl IntoView {
             .into()
     });
 
+    let show_sidebar = Signal::derive(move || show_sidebar().0);
+
     view! {
-        <Page sidebar navbar show_sidebar=Signal::derive(move || show_sidebar().0) accent>
+        <Page sidebar navbar accent show_sidebar show_body_border>
             <InfoBox countable_list=active />
         </Page>
     }

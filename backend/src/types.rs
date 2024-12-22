@@ -130,6 +130,7 @@ pub struct DbPreferences {
     pub show_separator: bool,
     pub multi_select: bool,
     pub save_on_pause: bool,
+    pub show_body_border: bool,
 }
 
 impl DbPreferences {
@@ -170,15 +171,17 @@ impl DbPreferences {
                 accent_color,
                 show_separator,
                 multi_select,
-                save_on_pause
+                save_on_pause,
+                show_body_border
             )
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             ON CONFLICT (user_uuid) DO UPDATE
                 SET use_default_accent_color = $2,
                     accent_color = $3,
                     show_separator = $4,
                     multi_select = $5,
-                    save_on_pause = $6
+                    save_on_pause = $6,
+                    show_body_border = $7
             "#,
             user.uuid,
             self.use_default_accent_color,
@@ -186,6 +189,7 @@ impl DbPreferences {
             self.show_separator,
             self.multi_select,
             self.save_on_pause,
+            self.show_body_border,
         )
         .execute(pool)
         .await?;

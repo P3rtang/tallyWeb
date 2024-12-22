@@ -40,6 +40,7 @@ pub struct Preferences {
     pub show_separator: bool,
     pub multi_select: bool,
     pub save_on_pause: bool,
+    pub show_body_border: bool,
 }
 
 impl Preferences {
@@ -51,6 +52,7 @@ impl Preferences {
             show_separator: false,
             multi_select: false,
             save_on_pause: true,
+            show_body_border: true,
         }
     }
 }
@@ -67,6 +69,7 @@ impl Preferences {
             show_separator: value.show_separator,
             multi_select: value.multi_select,
             save_on_pause: value.save_on_pause,
+            show_body_border: value.show_body_border,
         }
     }
 }

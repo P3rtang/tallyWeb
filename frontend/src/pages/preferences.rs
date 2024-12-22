@@ -33,6 +33,8 @@ pub fn PreferencesWindow() -> impl IntoView {
         Color::try_from(p.accent_color.clone().0.as_str()).unwrap_or_default()
     });
 
+    let show_body_border = create_read_slice(preferences, |p| p.show_body_border);
+
     let on_submit = move |ev: SubmitEvent| {
         ev.prevent_default();
 
@@ -99,7 +101,7 @@ pub fn PreferencesWindow() -> impl IntoView {
                     <For
                         each=|| vec!["styling", "account", "misc"]
                         key=|item| item.to_string()
-                        children=move |item| view! { <TreeViewRow name=item /> }
+                        children=move |item| view! { <ListViewRow name=item /> }
                     />
                 </div>
             </Sidebar>
@@ -108,7 +110,7 @@ pub fn PreferencesWindow() -> impl IntoView {
     });
 
     view! {
-        <Page navbar sidebar show_sidebar accent>
+        <Page navbar sidebar accent show_sidebar show_body_border>
             <edit-form class=form_style>
                 <ActionForm action=action on:submit=on_submit>
                     <SessionFormInput session />
@@ -171,6 +173,10 @@ pub fn StylingPreferences() -> impl IntoView {
         set_accent_color(color)
     };
 
+    let handle_border_change = move |ev: Event| {
+        preferences.update(|p| p.show_body_border = event_target_checked(&ev));
+    };
+
     view! {
         <>
             <div>
@@ -188,6 +194,11 @@ pub fn StylingPreferences() -> impl IntoView {
                     type="hidden"
                     name="preference[multi_select]"
                     value=preferences.get_untracked().multi_select
+                />
+                <input
+                    type="hidden"
+                    name="preference[show_body_border]"
+                    value=preferences.get_untracked().show_body_border
                 />
             </div>
 
@@ -217,6 +228,14 @@ pub fn StylingPreferences() -> impl IntoView {
                     prop:value=accent_color
                 />
             </div>
+
+            <BoolOption
+                label="Show Body Border".to_string()
+                checked=preferences.get_untracked().show_body_border
+                attr:name="preferences[show_body_border]"
+                attr:id="show-body-border"
+                on:change=handle_border_change
+            />
 
             <SaveOnPause />
         </>
@@ -305,7 +324,39 @@ fn SaveOnPause() -> impl IntoView {
 }
 
 #[component]
-fn TreeViewRow(name: &'static str) -> impl IntoView {
+fn BoolOption(
+    #[prop(into, optional)] label: Option<MaybeSignal<String>>,
+    #[prop(into)] checked: MaybeSignal<bool>,
+    #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
+) -> impl IntoView {
+    let id = StoredValue::new(
+        attrs
+            .iter()
+            .find(|item| item.0 == "id")
+            .map(|item| item.1.clone()),
+    );
+
+    let label = Signal::derive(move || label.as_ref().map(|item| item()));
+
+    view! {
+        <Show when=move || label().is_some()>
+            <label
+                for=move || {
+                    id.get_value().map(|attr| attr.as_nameless_value_string()).unwrap_or_default()
+                }
+                style:grid-column=1
+            >
+                {label().unwrap()}
+            </label>
+        </Show>
+        <div style:grid-column=2>
+            <Slider checked {..attrs} />
+        </div>
+    }
+}
+
+#[component]
+fn ListViewRow(name: &'static str) -> impl IntoView {
     view! {
         <A href=|| name.to_string()>
             <div class=stylance::classes!(style::row, style::selectable)>

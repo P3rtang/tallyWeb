@@ -32,6 +32,11 @@
         "ordinal": 5,
         "name": "save_on_pause",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "show_body_border",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -42,6 +47,7 @@
     "nullable": [
       false,
       true,
+      false,
       false,
       false,
       false,
