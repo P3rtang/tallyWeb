@@ -66,6 +66,7 @@ pub fn Page(
     #[prop(into, default=true.into())] show_sidebar: MaybeSignal<bool>,
     #[prop(optional, into, default=Color::default().into())] accent: MaybeSignal<Color>,
     #[prop(optional, into, default=false.into())] auto_hide_sidebar: MaybeSignal<bool>,
+    #[prop(optional, into, default=true.into())] show_body_border: MaybeSignal<bool>,
 ) -> impl IntoView {
     let (sidebar_width, set_sidebar_width) = create_signal(400);
 
@@ -118,7 +119,9 @@ pub fn Page(
             <div class=style::body>
                 <Show when=has_navbar>{navbar.get_value().unwrap()}</Show>
                 <div class=content_class>
-                    <div>{children}</div>
+                    <div style:border=move || {
+                        show_body_border().then_some("2px solid var(--accent)")
+                    }>{children}</div>
                 </div>
             </div>
         </div>
