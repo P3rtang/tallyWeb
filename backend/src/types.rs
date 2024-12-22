@@ -53,6 +53,7 @@ pub struct DbPhase {
     pub created_at: chrono::NaiveDateTime,
     pub last_edit: chrono::NaiveDateTime,
     pub is_deleted: bool,
+    pub step_size: i32,
 }
 
 #[derive(Debug)]
@@ -136,7 +137,7 @@ impl DbPreferences {
         let data = match query_as!(
             DbPreferences,
             r#"
-            select * from preferences
+            select user_uuid, use_default_accent_color, accent_color, show_separator, multi_select, save_on_pause from preferences
             where user_uuid = $1
             "#,
             user_uuid,

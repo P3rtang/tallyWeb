@@ -15,8 +15,8 @@ dev:
 reset: recreate-docker recreate-user recreate-db
 
 recreate-docker:
-	docker stop tallyweb-postgres
-	docker rm tallyweb-postgres
+	docker stop postgres
+	docker rm postgres
 	docker run -d --name $(POSTGRES_CONTAINER) -p $(POSTGRES_PORT):5432 --env-file .env postgres
 	timeout 10s bash -c "until docker exec $(POSTGRES_CONTAINER) pg_isready ; do sleep .5 ; done"
 
@@ -25,17 +25,7 @@ recreate-user:
 	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "CREATE USER $(POSTGRES_USERNAME) PASSWORD '$(POSTGRES_PASSWORD)' CREATEDB"
 
 recreate-db:
-	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c " \
-		select pg_terminate_backend(pid) from pg_stat_activity where datname='$(PGDATABASE)'; \
-	"
-	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "DROP DATABASE IF EXISTS $(PGDATABASE)"
-	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "CREATE DATABASE $(PGDATABASE) OWNER $(POSTGRES_USERNAME)"
-
-	# setup sqlx migrations
-	sqlx database create
-	sqlx migrate run
-
-	psql -U p3rtang -d $(PGDATABASE) -h localhost -p $(POSTGRES_PORT) -w -f ".github/postgres_setup/setup-test.sql"
+	sh ./scripts/recreate-db.sh $(POSTGRES_PORT) $(PGDATABASE) $(POSTGRES_USERNAME)
 
 dump-db:
 	mkdir -p db-backup
@@ -45,9 +35,10 @@ watch-style:
 	stylance -w ./frontend/ --output-file ./style/bundle.scss
 
 test: recreate-db check-fmt
-	# run program tests
+	docker compose up -d postgres
 	cargo leptos test
 	cargo leptos end-to-end -r
+	docker compose down
 
 setup-pgadmin:
 	docker stop pgadmin
@@ -69,9 +60,23 @@ check-fmt:
 	leptosfmt -q --check *src/*
 	cargo clippy -- -D warnings
 
+serve:
+	bash -c " \
+		trap 'docker compose down' SIGINT; \
+		docker compose up -d postgres; \
+		cargo leptos serve \
+	"
+
 watch:
 	bash -c " \
 		trap 'docker compose down' SIGINT; \
-		docker compose up -d postgres-dev; \
+		docker compose up -d postgres; \
 		cargo leptos watch \
+	"
+
+start:
+	bash -c " \
+		trap 'docker compose down' SIGINT; \
+		docker compose up -d postgres; \
+		cargo leptos serve \
 	"

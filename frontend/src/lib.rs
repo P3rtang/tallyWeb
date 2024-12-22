@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 #![feature(let_chains)]
 #![feature(half_open_range_patterns_in_slices)]
 #![feature(fn_traits)]
@@ -132,7 +131,7 @@ pub enum AppError {
     Serialization(String),
     #[error("Incorrect or missing env variable: {0}")]
     Environment(String),
-    #[error("Countable Requires at least 1 child")]
+    #[error("Countable Requires at least 1 leaf node")]
     RequiresChild,
 }
 

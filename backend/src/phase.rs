@@ -33,7 +33,8 @@ pub async fn all_by_user(tx: &mut PgTx, user: uuid::Uuid) -> Result<Vec<DbPhase>
             success,
             last_edit,
             created_at,
-            is_deleted
+            is_deleted,
+            step_size
             FROM phases
         where owner_uuid = $1;
         "#,
@@ -90,6 +91,24 @@ pub async fn set_time(tx: &mut PgTx, key: uuid::Uuid, time: i64) -> Result<(), B
         "#,
         key,
         time,
+    )
+    .execute(&mut **tx)
+    .await?;
+
+    edited(tx, key).await?;
+
+    Ok(())
+}
+
+pub async fn set_step(tx: &mut PgTx, key: uuid::Uuid, step: i32) -> Result<(), BackendError> {
+    sqlx::query!(
+        r#"
+        UPDATE phases
+        SET step_size = $2
+        WHERE uuid = $1
+        "#,
+        key,
+        step,
     )
     .execute(&mut **tx)
     .await?;
