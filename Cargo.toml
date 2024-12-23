@@ -15,6 +15,8 @@ name = "tallyweb"
 bin-package = "tallyweb-frontend"
 lib-package = "tallyweb-frontend"
 
+output-name = "tallyweb_0.3.8"
+
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/site"
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
