@@ -4,7 +4,9 @@ export $(shell sed 's/=.*//' .env)
 default: build
 
 build:
+	docker compose up -d postgres
 	cargo leptos build
+	docker compose down
 
 dev:
 	# install dependencies

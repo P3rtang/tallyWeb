@@ -36,7 +36,7 @@ pub mod middleware;
 cfg_if! {
     if #[cfg(docsrs)] {
         pub const LEPTOS_OUTPUT_NAME: &str = "docsrs";
-        pub const TALLYWEB_VERSION: &str = "0.3.6";
+        pub const TALLYWEB_VERSION: &str = "0.3.8";
     } else {
         pub const LEPTOS_OUTPUT_NAME: &str = env!("LEPTOS_OUTPUT_NAME");
         pub const TALLYWEB_VERSION: &str = env!("TALLYWEB_VERSION");

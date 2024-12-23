@@ -1,6 +1,6 @@
 [package]
 name = "tallyweb-backend"
-version = "0.3.6"
+version = "0.3.8"
 edition = "2021"
 build = "build.rs"
 description = "backend for the tallyweb site"
