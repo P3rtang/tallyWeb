@@ -1,3 +1,4 @@
+use super::*;
 use leptos::*;
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -10,9 +11,11 @@ pub enum Direction {
 #[component]
 pub fn ResizeBar(
     direction: Direction,
-    #[prop(into)] position: MaybeSignal<usize>,
+    #[prop(into)] position: Prop<usize>,
     #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
 ) -> impl IntoView {
+    let position = StoredValue::new(position);
+
     let cursor = match direction {
         Direction::Vertical => "col-resize",
         Direction::Horizontal => "row-resize",
@@ -29,8 +32,8 @@ pub fn ResizeBar(
     };
 
     let pos = move || match direction {
-        Direction::Vertical => (None, Some(format!("{}px", position() - 6))),
-        Direction::Horizontal => (Some(format!("{}px", position() - 6)), None),
+        Direction::Vertical => (None, Some(format!("{}px", position.get_value()() - 6))),
+        Direction::Horizontal => (Some(format!("{}px", position.get_value()() - 6)), None),
     };
 
     view! {

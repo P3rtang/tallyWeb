@@ -1,8 +1,8 @@
 use super::*;
 use components::{self, MessageJar, ShowSidebar, Sidebar, SidebarLayout};
+use elements::{FromClosure, OnResize, Page, PageContent, PageSidebar};
 use leptos::*;
 use leptos_router::{Outlet, Route, A};
-use pages::Page;
 
 stylance::import_style!(style, "tests.module.scss");
 
@@ -40,18 +40,19 @@ pub fn ShowTests() -> impl IntoView {
             .collect_view(),
     );
 
-    let sidebar: Box<dyn Fn(MaybeSignal<usize>) -> Fragment> = Box::new(move |width| {
-        view! {
-            <Sidebar layout=SidebarLayout::Landscape width=width>
-                <test-list>{test_list()}</test-list>
-            </Sidebar>
-        }
-        .into()
-    });
+    let (width, set_width) = create_signal(400);
+    let on_resize = OnResize::from_closure(set_width);
 
     view! {
-        <Page sidebar=sidebar auto_hide_sidebar=true>
-            <Outlet />
+        <Page>
+            <PageContent slot>
+                <Outlet />
+            </PageContent>
+            <PageSidebar is_shown=true auto_hide=true on_resize slot>
+                <Sidebar layout=SidebarLayout::Landscape width>
+                    <test-list>{test_list()}</test-list>
+                </Sidebar>
+            </PageSidebar>
         </Page>
     }
 }

@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 use components::*;
+use elements::FromClosure;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -126,7 +127,7 @@ fn NotFound() -> impl IntoView {
 }
 
 #[component]
-fn HomeSidebar(width: MaybeSignal<usize>) -> impl IntoView {
+fn HomeSidebar(#[prop(into)] width: MaybeSignal<usize>) -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen = expect_context::<Screen>();
@@ -157,7 +158,7 @@ pub fn HomePage() -> impl IntoView {
         Color::try_from(p.accent_color.clone().0.as_str()).unwrap_or_default()
     });
 
-    let show_body_border = create_read_slice(preferences, |p| p.show_body_border);
+    let hide_border = create_read_slice(preferences, |p| !p.show_body_border);
 
     let active = create_memo(move |_| {
         selection_signal
@@ -168,21 +169,26 @@ pub fn HomePage() -> impl IntoView {
             .collect()
     });
 
-    let sidebar: Box<dyn Fn(MaybeSignal<usize>) -> Fragment> =
-        Box::new(move |width| view! { <HomeSidebar width /> }.into());
+    let (width, set_width) = create_signal(400);
 
-    let navbar: Box<dyn Fn() -> Fragment> = Box::new(move || {
-        let on_close_sidebar: std::rc::Rc<dyn Fn(bool)> =
-            std::rc::Rc::new(move |show| show_sidebar.set(ShowSidebar(show)));
-        view! { <Navbar show_sidebar=Signal::derive(move || show_sidebar().0) on_close_sidebar /> }
-            .into()
-    });
+    let on_resize = OnResize::from_closure(set_width);
+    let on_close_sidebar = StoredValue::new(OnClose::from_closure(move |show| {
+        show_sidebar.set(ShowSidebar(show))
+    }));
 
     let show_sidebar = Signal::derive(move || show_sidebar().0);
 
     view! {
-        <Page sidebar navbar accent show_sidebar show_body_border>
-            <InfoBox countable_list=active />
+        <Page accent>
+            <PageContent hide_border slot>
+                <InfoBox countable_list=active />
+            </PageContent>
+            <PageSidebar width is_shown=show_sidebar on_resize slot>
+                <HomeSidebar width />
+            </PageSidebar>
+            <PageNavbar slot>
+                <Navbar show_sidebar on_close_sidebar=on_close_sidebar.get_value() />
+            </PageNavbar>
         </Page>
     }
 }
