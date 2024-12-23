@@ -1,6 +1,8 @@
 #![allow(unused_braces)]
 use components::{MessageJar, SavingMessage, ShowSidebar, Sidebar, SidebarLayout, Slider};
-use elements::Navbar;
+use elements::{
+    Color, FromClosure, Navbar, OnClose, OnResize, Page, PageContent, PageNavbar, PageSidebar,
+};
 use leptos::*;
 use leptos_router::{ActionForm, Outlet, A};
 use web_sys::{Event, SubmitEvent};
@@ -33,7 +35,7 @@ pub fn PreferencesWindow() -> impl IntoView {
         Color::try_from(p.accent_color.clone().0.as_str()).unwrap_or_default()
     });
 
-    let show_body_border = create_read_slice(preferences, |p| p.show_body_border);
+    let hide_border = create_read_slice(preferences, |p| !p.show_body_border);
 
     let on_submit = move |ev: SubmitEvent| {
         ev.prevent_default();
@@ -80,71 +82,70 @@ pub fn PreferencesWindow() -> impl IntoView {
     let (show_sidebar, set_show_sidebar) =
         create_signal(screen.style.get_untracked() == ScreenStyle::Big);
 
-    let navbar: Box<dyn Fn() -> Fragment> = Box::new(move || {
-        let on_close_sidebar: std::rc::Rc<dyn Fn(bool)> =
-            std::rc::Rc::new(move |_| set_show_sidebar(!show_sidebar()));
-
-        view! { <Navbar on_close_sidebar></Navbar> }.into()
-    });
-
     let sidebar_layout: Signal<SidebarLayout> = create_read_slice(screen.style, |s| (*s).into());
 
-    let sidebar: Box<dyn Fn(MaybeSignal<usize>) -> Fragment> = Box::new(move |width| {
-        view! {
-            <Sidebar
-                display=Signal::derive(move || ShowSidebar(show_sidebar()))
-                width
-                layout=sidebar_layout
-            >
-                <div style:height="60px" />
-                <div class=style::list_view>
-                    <For
-                        each=|| vec!["styling", "account", "misc"]
-                        key=|item| item.to_string()
-                        children=move |item| view! { <ListViewRow name=item /> }
-                    />
-                </div>
-            </Sidebar>
-        }
-        .into()
-    });
+    let (width, set_width) = create_signal(400);
+
+    let on_resize = OnResize::from_closure(set_width);
+    let on_close_sidebar = StoredValue::new(OnClose::from_closure(set_show_sidebar));
 
     view! {
-        <Page navbar sidebar accent show_sidebar show_body_border>
-            <edit-form class=form_style>
-                <ActionForm action=action on:submit=on_submit>
-                    <SessionFormInput session />
-                    <div class=style::content style:flex-direction="column">
-                        <div>
-                            <div class=style::grid>
-                                <Outlet />
+        <Page accent>
+            <PageContent hide_border slot>
+                <edit-form class=form_style>
+                    <ActionForm action=action on:submit=on_submit>
+                        <SessionFormInput session />
+                        <div class=style::content style:flex-direction="column">
+                            <div>
+                                <div class=style::grid>
+                                    <Outlet />
+                                </div>
                             </div>
+                            <action-buttons
+                                style:display="flex"
+                                style:justify-content="space-between"
+                                style:width="100%"
+                                class=move || {
+                                    stylance::classes!(
+                                        style::action_buttons, match (screen.style) () {
+                                    ScreenStyle::Portrait => Some(style::fixed), ScreenStyle::Small =>
+                                    None, ScreenStyle::Big => None, }
+                                    )
+                                }
+                            >
+                                <action-start></action-start>
+                                <action-end>
+                                    <button type="button" on:click=undo_changes>
+                                        <span>Undo</span>
+                                    </button>
+                                    <button type="submit" class=style::confirm>
+                                        <span>Save</span>
+                                    </button>
+                                </action-end>
+                            </action-buttons>
                         </div>
-                        <action-buttons
-                            style:display="flex"
-                            style:justify-content="space-between"
-                            style:width="100%"
-                            class=move || {
-                                stylance::classes!(
-                                    style::action_buttons, match (screen.style) () {
-                                ScreenStyle::Portrait => Some(style::fixed), ScreenStyle::Small =>
-                                None, ScreenStyle::Big => None, }
-                                )
-                            }
-                        >
-                            <action-start></action-start>
-                            <action-end>
-                                <button type="button" on:click=undo_changes>
-                                    <span>Undo</span>
-                                </button>
-                                <button type="submit" class=style::confirm>
-                                    <span>Save</span>
-                                </button>
-                            </action-end>
-                        </action-buttons>
+                    </ActionForm>
+                </edit-form>
+            </PageContent>
+            <PageSidebar is_shown=show_sidebar on_resize slot>
+                <Sidebar
+                    display=Signal::derive(move || ShowSidebar(show_sidebar()))
+                    width
+                    layout=sidebar_layout
+                >
+                    <div style:height="60px" />
+                    <div class=style::list_view>
+                        <For
+                            each=|| vec!["styling", "account", "misc"]
+                            key=|item| item.to_string()
+                            children=move |item| view! { <ListViewRow name=item /> }
+                        />
                     </div>
-                </ActionForm>
-            </edit-form>
+                </Sidebar>
+            </PageSidebar>
+            <PageNavbar slot>
+                <Navbar show_sidebar on_close_sidebar=on_close_sidebar.get_value() />
+            </PageNavbar>
         </Page>
     }
 }

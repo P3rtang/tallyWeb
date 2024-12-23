@@ -1,3 +1,5 @@
+#![feature(unboxed_closures)]
+#![feature(fn_traits)]
 #![feature(let_chains)]
 
 mod loading_screen;
@@ -12,6 +14,7 @@ mod spinner;
 mod time;
 mod tooltip;
 mod treeview;
+mod types;
 
 pub use loading_screen::*;
 pub use message::{MessageKey, ProvideMessageSystem};
@@ -25,6 +28,7 @@ pub use spinner::*;
 pub use time::{Clock, Timer};
 pub use tooltip::*;
 pub use treeview::*;
+pub use types::*;
 
 pub type MessageJar = message::MessageJar<message::NoHandle>;
 

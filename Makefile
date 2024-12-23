@@ -36,6 +36,7 @@ watch-style:
 
 test: recreate-db check-fmt
 	docker compose up -d postgres
+	sleep 1
 	cargo leptos test
 	cargo leptos end-to-end -r
 	docker compose down
@@ -56,9 +57,12 @@ check:
 	cargo clippy
 
 check-fmt:
+	docker compose up -d postgres
+	sleep 1
 	cargo fmt -q --check --all
 	leptosfmt -q --check *src/*
 	cargo clippy -- -D warnings
+	docker compose down
 
 serve:
 	bash -c " \

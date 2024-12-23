@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 
+use dotenvy::var;
 use leptos::*;
 use std::io::Write;
 use std::process::Command;
@@ -16,8 +17,12 @@ cfg_if::cfg_if! {
 
         #[tokio::main]
         async fn main() -> Result<(), AppError> {
-            let conf = get_configuration(None).await.unwrap();
+            let mut conf = get_configuration(Some("./Cargo.toml")).await.unwrap();
             let addr = conf.leptos_options.site_addr;
+
+            if let Ok(env) = var("APP_ENVIRONMENT") {
+                conf.leptos_options.env = env.as_str().into();
+            }
 
             // Generate the list of routes in your Leptos App
             let routes = generate_route_list(|| view! { <app::App/> });

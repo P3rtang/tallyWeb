@@ -65,11 +65,12 @@
     }
 
     >div {
+      border: 2px solid var(--accent);
       border-radius: 12px;
       padding: 24px;
     }
 
-    &.full_width {
+    &.full-width {
       padding: 0px;
 
       >div {

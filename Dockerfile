@@ -42,7 +42,7 @@ WORKDIR /app
 
 # Set any required env variables and
 ENV RUST_LOG="info"
-ENV APP_ENVIRONMENT="production"
+ENV APP_ENVIRONMENT="PROD"
 ENV LEPTOS_SITE_ADDR="0.0.0.0:3000"
 ENV LEPTOS_SITE_ROOT="site"
 ENV LEPTOS_WASM_OPT_VERSION="version_116"

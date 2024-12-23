@@ -3,11 +3,21 @@ use components::{CloseOverlays, ToolTip};
 use leptos::*;
 use leptos_router::A;
 
+pub type OnClose = std::rc::Rc<dyn Fn(bool)>;
+
+impl FromClosure<bool> for OnClose {
+    type Output = ();
+
+    fn from_closure(closure: impl Fn(bool) -> Self::Output + 'static) -> Self {
+        std::rc::Rc::new(closure)
+    }
+}
+
 #[component]
 pub fn Navbar(
     #[prop(default=true.into(), into)] has_sidebar: MaybeSignal<bool>,
     #[prop(default = false.into(), into)] show_sidebar: MaybeSignal<bool>,
-    #[prop(optional)] on_close_sidebar: Option<std::rc::Rc<dyn Fn(bool)>>,
+    #[prop(optional)] on_close_sidebar: Option<OnClose>,
 ) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
     let preferences = expect_context::<RwSignal<Preferences>>();

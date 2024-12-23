@@ -1,4 +1,6 @@
 docker compose up -d postgres
+
+sleep 1
 psql -U postgres -d postgres -h localhost -p $POSTGRES_PORT -w -c " \
     select pg_terminate_backend(pid) from pg_stat_activity where datname='$PGDATABASE'; \
 "

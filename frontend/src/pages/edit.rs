@@ -2,7 +2,10 @@
 use components::{
     MessageJar, Select, SelectionModel, ShowSidebar, Sidebar, SidebarLayout, TreeViewWidget,
 };
-use elements::{Navbar, SortMethod, SortSearch};
+use elements::{
+    Color, FromClosure, Navbar, OnClose, OnResize, Page, PageContent, PageNavbar, PageSidebar,
+    SortMethod, SortSearch,
+};
 use leptos::*;
 use leptos_router::{use_params, ActionForm, Outlet, Params, A};
 
@@ -25,7 +28,7 @@ pub fn EditWindow() -> impl IntoView {
         Color::try_from(p.accent_color.clone().0.as_str()).unwrap_or_default()
     });
 
-    let show_body_border = create_read_slice(preferences, |p| p.show_body_border);
+    let hide_border = create_read_slice(preferences, |p| !p.show_body_border);
 
     let sidebar_layout: Signal<SidebarLayout> = create_read_slice(screen.style, |s| (*s).into());
 
@@ -52,53 +55,53 @@ pub fn EditWindow() -> impl IntoView {
             .unwrap_or_default()
     };
 
-    let sidebar: Box<dyn Fn(MaybeSignal<usize>) -> Fragment> = Box::new(move |width| {
-        view! {
-            <Sidebar
-                display=Signal::derive(move || ShowSidebar(show_sidebar()))
-                layout=sidebar_layout
-                width
-            >
-                <nav>
-                    <SortSearch
-                        shown=show_sort_search
-                        search=create_rw_signal(String::new())
-                        on_keydown=|_| ()
-                    />
-                </nav>
-                <TreeViewWidget
-                    each=move || {
-                        let mut root_nodes = store().filter(|c| !c.is_archived()).root_nodes();
-                        root_nodes
-                            .sort_by(|a, b| sort_method()
-                                .sort_by()(
-                                &store.get_untracked(),
-                                &a.uuid().into(),
-                                &b.uuid().into(),
-                            ));
-                        root_nodes
-                    }
+    let (width, set_width) = create_signal(400);
 
-                    key=|countable| countable.uuid()
-                    each_child
-                    view=|countable| view! { <TreeViewRow key=countable.uuid() /> }
-                    show_separator=show_sep
-                    selection_model=selection
-                />
-            </Sidebar>
-        }
-        .into()
-    });
-
-    let navbar: Box<dyn Fn() -> Fragment> = Box::new(move || {
-        let on_close_sidebar: std::rc::Rc<dyn Fn(bool)> = std::rc::Rc::new(set_show_sidebar);
-
-        view! { <Navbar show_sidebar on_close_sidebar /> }.into()
-    });
+    let on_resize = OnResize::from_closure(set_width);
+    let on_close_sidebar = StoredValue::new(OnClose::from_closure(set_show_sidebar));
 
     view! {
-        <Page sidebar navbar accent show_sidebar show_body_border>
-            {move || outlet_view.get_value()}
+        <Page accent>
+            <PageContent hide_border slot>
+                {move || outlet_view.get_value()}
+            </PageContent>
+            <PageSidebar is_shown=show_sidebar on_resize slot>
+                <Sidebar
+                    display=Signal::derive(move || ShowSidebar(show_sidebar()))
+                    layout=sidebar_layout
+                    width
+                >
+                    <nav>
+                        <SortSearch
+                            shown=show_sort_search
+                            search=create_rw_signal(String::new())
+                            on_keydown=|_| ()
+                        />
+                    </nav>
+                    <TreeViewWidget
+                        each=move || {
+                            let mut root_nodes = store().filter(|c| !c.is_archived()).root_nodes();
+                            root_nodes
+                                .sort_by(|a, b| sort_method()
+                                    .sort_by()(
+                                    &store.get_untracked(),
+                                    &a.uuid().into(),
+                                    &b.uuid().into(),
+                                ));
+                            root_nodes
+                        }
+
+                        key=|countable| countable.uuid()
+                        each_child
+                        view=|countable| view! { <TreeViewRow key=countable.uuid() /> }
+                        show_separator=show_sep
+                        selection_model=selection
+                    />
+                </Sidebar>
+            </PageSidebar>
+            <PageNavbar slot>
+                <Navbar show_sidebar on_close_sidebar=on_close_sidebar.get_value() />
+            </PageNavbar>
         </Page>
     }
 }
