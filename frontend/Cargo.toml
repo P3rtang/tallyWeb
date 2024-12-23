@@ -1,6 +1,6 @@
 [package]
 name = "tallyweb-frontend"
-version = "0.3.6"
+version = "0.3.8"
 edition = "2021"
 description = "leptos frontend for the tallyweb site"
 license = "MIT"
