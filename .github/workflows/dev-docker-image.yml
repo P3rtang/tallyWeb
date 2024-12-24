@@ -22,6 +22,6 @@ jobs:
         echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env-docker
         echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env-docker
     - name: Build docker
-      run: docker build . --tag p3rtang/tallyweb:dev
+      run: docker build . --tag p3rtang/tallyweb:dev --build-arg OUT_NAME="tallyweb_$(tr -dc a-z0-9 </dev/urandom | head -c 10)"
     - name: Push docker
       run: docker push p3rtang/tallyweb:dev

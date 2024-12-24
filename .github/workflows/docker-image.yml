@@ -20,6 +20,6 @@ jobs:
     - name: Build docker
       env: 
         IDB_TALLYWEB_VERSION: ${{ vars.IDB_TALLYWEB_VERSION }}
-      run: docker build . --tag p3rtang/tallyweb
+      run: docker build . --tag p3rtang/tallyweb --build-arg OUT_NAME="tallyweb_$(tr -dc a-z0-9 </dev/urandom | head -c 10)"
     - name: Push docker
       run: docker push p3rtang/tallyweb
