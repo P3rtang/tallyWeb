@@ -1,4 +1,4 @@
-use leptos::*;
+use leptos::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SidebarLayout {
@@ -12,13 +12,12 @@ pub struct ShowSidebar(pub bool);
 
 #[component(transparent)]
 pub fn Sidebar(
-    #[prop(optional, into, default=ShowSidebar(true).into())] display: MaybeSignal<ShowSidebar>,
-    #[prop(optional, into, default=400.into())] width: MaybeSignal<usize>,
-    #[prop(optional, into, default=SidebarLayout::Hover.into())] layout: MaybeSignal<SidebarLayout>,
-    #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
+    #[prop(optional, into, default=ShowSidebar(true).into())] display: Signal<ShowSidebar>,
+    #[prop(optional, into, default=400.into())] width: Signal<usize>,
+    #[prop(optional, into, default=SidebarLayout::Hover.into())] layout: Signal<SidebarLayout>,
     children: ChildrenFn,
 ) -> impl IntoView {
-    let aside_transform = move || match (layout(), display().0) {
+    let aside_transform = Signal::derive(move || match (layout(), display().0) {
         (SidebarLayout::Landscape, false) => {
             "transform: TranslateX(-2px); width: 0px; overflow-x: hidden;".into()
         }
@@ -29,16 +28,16 @@ pub fn Sidebar(
 
         (_, false) => "transform: TranslateX(-120%);".into(),
         (_, true) => Default::default(),
-    };
+    });
 
-    let sidebar_style = move || match layout() {
+    let sidebar_style = Signal::derive(move || match layout() {
         SidebarLayout::Landscape => format!("width: {}px", width()),
         SidebarLayout::Hover => format!("width: {}px", width() - 12),
         SidebarLayout::Portrait => String::new(),
-    };
+    });
 
     view! {
-        <aside {..attrs} style=aside_transform>
+        <aside style=aside_transform>
             <side-bar data-testid="test-sidebar" style=sidebar_style style:scrollbar-width="none">
                 {children()}
             </side-bar>

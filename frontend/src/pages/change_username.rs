@@ -1,16 +1,16 @@
 use super::*;
 use components::MessageJar;
-use leptos::*;
-use leptos_router::{ActionForm, A};
+use leptos::{form::ActionForm, prelude::*};
+use leptos_router::components::A;
 
 #[component]
 pub fn ChangeAccountInfo() -> impl IntoView {
     let message = expect_context::<MessageJar>();
     let user = expect_context::<RwSignal<UserSession>>();
 
-    let action = create_server_action::<api::ServerChangeAccountInfo>();
+    let action = ServerAction::<api::ServerChangeAccountInfo>::new();
 
-    create_effect(move |_| match action.value().get() {
+    Effect::new(move |_| match action.value().get() {
         Some(Ok(_)) => message.set_msg("Username succesfully changed"),
         Some(Err(err)) => message.set_err(AppError::from(err)),
         None => {}

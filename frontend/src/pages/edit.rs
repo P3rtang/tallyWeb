@@ -6,8 +6,12 @@ use elements::{
     Color, FromClosure, Navbar, OnClose, OnResize, Page, PageContent, PageNavbar, PageSidebar,
     SortMethod, SortSearch,
 };
-use leptos::*;
-use leptos_router::{use_params, ActionForm, Outlet, Params, A};
+use leptos::{ev, html, prelude::*};
+use leptos_router::{
+    components::*,
+    hooks::{use_navigate, use_params},
+    params::Params,
+};
 
 use super::*;
 
@@ -32,16 +36,16 @@ pub fn EditWindow() -> impl IntoView {
 
     let sidebar_layout: Signal<SidebarLayout> = create_read_slice(screen.style, |s| (*s).into());
 
-    let selection = create_rw_signal(SelectionModel::<uuid::Uuid, Countable>::new());
+    let selection = RwSignal::new(SelectionModel::<uuid::Uuid, Countable>::new());
     provide_context(selection);
 
-    let show_sort_search = create_rw_signal(true);
+    let show_sort_search = RwSignal::new(true);
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
 
     // we need to render the outlet first since it sets the selection key from the url
-    let outlet_view = StoredValue::new(view! { <Outlet /> });
+    let outlet_view = move || view! { <Outlet /> };
 
-    let (show_sidebar, set_show_sidebar) = create_signal(
+    let (show_sidebar, set_show_sidebar) = signal(
         selection.get_untracked().is_empty() || screen.style.get_untracked() == ScreenStyle::Big,
     );
 
@@ -55,7 +59,7 @@ pub fn EditWindow() -> impl IntoView {
             .unwrap_or_default()
     };
 
-    let (width, set_width) = create_signal(400);
+    let (width, set_width) = signal(400);
 
     let on_resize = OnResize::from_closure(set_width);
     let on_close_sidebar = StoredValue::new(OnClose::from_closure(set_show_sidebar));
@@ -63,7 +67,7 @@ pub fn EditWindow() -> impl IntoView {
     view! {
         <Page accent>
             <PageContent hide_border slot>
-                {move || outlet_view.get_value()}
+                {outlet_view}
             </PageContent>
             <PageSidebar is_shown=show_sidebar on_resize slot>
                 <Sidebar
@@ -74,7 +78,7 @@ pub fn EditWindow() -> impl IntoView {
                     <nav>
                         <SortSearch
                             shown=show_sort_search
-                            search=create_rw_signal(String::new())
+                            search=RwSignal::new(String::new())
                             on_keydown=|_| ()
                         />
                     </nav>
@@ -126,7 +130,7 @@ pub fn EditCountableWindow() -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let screen = expect_context::<Screen>();
 
-    let key_memo = create_memo(move |old_key| {
+    let key_memo = Memo::new(move |old_key| {
         let new_key = use_params::<Key>()()
             .ok()
             .and_then(|p| uuid::Uuid::parse_str(&p.key).ok());
@@ -168,20 +172,18 @@ struct Key {
 }
 
 #[component]
-fn EditCounterBox(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+fn EditCounterBox(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
     let rs = expect_context::<StateResource>();
     let session = expect_context::<RwSignal<UserSession>>();
     let store = expect_context::<RwSignal<CountableStore>>();
     let msg = expect_context::<MessageJar>();
-    let action = create_server_action::<api::EditCountableForm>();
+    let action = ServerAction::<api::EditCountableForm>::new();
     let screen = expect_context::<Screen>();
 
     let kind = create_read_slice(store, move |s| s.kind(&key().into()));
 
-    create_effect(move |_| match action.value()() {
-        Some(Ok(_)) => {
-            leptos_router::use_navigate()(format!("/{}", key()).as_str(), Default::default())
-        }
+    Effect::new(move |_| match action.value()() {
+        Some(Ok(_)) => use_navigate()(format!("/{}", key()).as_str(), Default::default()),
         Some(Err(err)) => {
             match err {
                 ServerFnError::WrappedServerError(err) => msg.set_err(err),
@@ -198,10 +200,10 @@ fn EditCounterBox(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
         None => {}
     });
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         if let Some(Ok(_)) = action.value()() {
             rs.refetch();
-            leptos_router::use_navigate()(format!("/{}", key()).as_str(), Default::default())
+            use_navigate()(format!("/{}", key()).as_str(), Default::default())
         }
     });
 
@@ -258,7 +260,7 @@ fn EditCounterBox(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 }
 
 #[component]
-fn EditName(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+fn EditName(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let (name, set_name) = create_slice(
         store,
@@ -289,7 +291,7 @@ fn EditName(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 }
 
 #[component]
-fn EditCount(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+fn EditCount(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let count = create_read_slice(store, move |s| s.recursive_ref().count(&key().into()));
 
@@ -313,7 +315,7 @@ fn EditCount(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 }
 
 #[component]
-fn EditStepSize(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+fn EditStepSize(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let step = create_read_slice(store, move |s| s.recursive_ref().step_size(&key().into()));
 
@@ -337,17 +339,17 @@ fn EditStepSize(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 }
 
 #[component]
-fn EditTime(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+fn EditTime(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let time = create_read_slice(store, move |s| s.recursive_ref().time(&key().into()));
 
-    let hour_ref = create_node_ref::<html::Input>();
-    let min_ref = create_node_ref::<html::Input>();
-    let sec_ref = create_node_ref::<html::Input>();
-    let millis_ref = create_node_ref::<html::Input>();
+    let hour_ref = NodeRef::<html::Input>::new();
+    let min_ref = NodeRef::<html::Input>::new();
+    let sec_ref = NodeRef::<html::Input>::new();
+    let millis_ref = NodeRef::<html::Input>::new();
 
     let limit_num = |ev: ev::Event, node_ref: NodeRef<html::Input>, min, max| {
-        if let Some(node) = node_ref() {
+        if let Some(node) = node_ref.get() {
             let mut new_val = event_target_value(&ev);
             if new_val.parse::<i64>().is_ok_and(|v| min <= v && v < max) {
             } else if !new_val.is_empty() {
@@ -367,7 +369,7 @@ fn EditTime(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
         if time.try_get().is_none() {
             return;
         }
-        if let Some(node) = node_ref() {
+        if let Some(node) = node_ref.get() {
             if let Ok(num) = node.value().parse::<i32>() {
                 node.set_value(format!("{:0w$}", num, w = w).as_str());
             } else if node.value() == "" {
@@ -443,10 +445,10 @@ fn EditTime(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 }
 
 #[component]
-fn EditHunttype(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+fn EditHunttype(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let hunt_type = move || store().recursive_ref().hunttype(&key().into());
-    let selected = create_memo(move |_| hunt_type().into());
+    let selected = Memo::new(move |_| hunt_type().into());
 
     let hunt_option = |ht: Hunttype| -> (&'static str, &'static str) { (ht.repr(), ht.into()) };
 
@@ -469,7 +471,7 @@ fn EditHunttype(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
                 <Select
                     attr:id="change-hunttype"
                     attr:name="countable_hunttype"
-                    attr:value=hunt_type
+                    attr:value=move || hunt_type().as_str()
                     selected
                     options
                 />
@@ -479,7 +481,7 @@ fn EditHunttype(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 }
 
 #[component]
-fn EditCharm(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+fn EditCharm(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let checked = create_read_slice(store, move |s| s.has_charm(&key().into()));
 

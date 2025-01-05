@@ -1,5 +1,5 @@
 use chrono::format::*;
-use leptos::*;
+use leptos::prelude::*;
 use std::io::Write;
 
 const MINUTE_SECONDS: u64 = 60;
@@ -8,9 +8,8 @@ const DAY_SECONDS: u64 = HOUR_SECONDS * 24;
 
 #[component]
 pub fn Clock(
-    #[prop(optional, into)] value: Option<MaybeSignal<std::time::Duration>>,
-    #[prop(optional, default="%H:%M:%S".into(), into)] format: MaybeSignal<String>,
-    #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
+    #[prop(optional, into)] value: Option<Signal<std::time::Duration>>,
+    #[prop(optional, default="%H:%M:%S".into(), into)] format: Signal<String>,
 ) -> impl IntoView {
     let time = move || {
         if let Some(v) = value {
@@ -24,14 +23,13 @@ pub fn Clock(
         }
     };
 
-    view! { <span {..attrs}>{time}</span> }
+    view! { <span>{time}</span> }
 }
 
 #[component]
 pub fn Timer(
-    #[prop(into)] value: MaybeSignal<std::time::Duration>,
-    #[prop(optional, default="%H:%M:%S".into(), into)] format: MaybeSignal<String>,
-    #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
+    #[prop(into)] value: Signal<std::time::Duration>,
+    #[prop(optional, default="%H:%M:%S".into(), into)] format: Signal<String>,
 ) -> impl IntoView {
     // TODO: factor this out into function
     let stringified = Signal::derive(move || {
@@ -126,5 +124,5 @@ pub fn Timer(
         String::from_utf8(writer).unwrap_or_default()
     });
 
-    view! { <span {..attrs}>{stringified}</span> }
+    view! { <span>{stringified}</span> }
 }

@@ -1,19 +1,13 @@
-use leptos::*;
+use leptos::prelude::*;
 
 #[component]
-pub fn Progressbar<F, C>(
-    progress: F,
-    color: C,
-    #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
-    children: ChildrenFn,
-) -> impl IntoView
+pub fn Progressbar<F, C>(progress: F, color: C, children: ChildrenFn) -> impl IntoView
 where
-    F: Fn() -> f64 + Copy + 'static,
-    C: Fn() -> &'static str + Copy + 'static,
+    F: Fn() -> f64 + Copy + Sync + Send + 'static,
+    C: Fn() -> &'static str + Copy + Sync + Send + 'static,
 {
     view! {
         <progress-bar
-            {..attrs}
             style:display="flex"
             style:justify-content="center"
             style:align-items="center"

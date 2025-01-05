@@ -1,5 +1,5 @@
 use super::{CountableId, CountableStore};
-use leptos::*;
+use leptos::{ev, prelude::*};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortMethod {
@@ -101,23 +101,26 @@ impl From<SortMethod> for &str {
 #[component]
 pub fn SortSearch<S, K>(shown: S, search: RwSignal<String>, on_keydown: K) -> impl IntoView
 where
-    S: Fn() -> bool + 'static,
-    K: Fn(ev::KeyboardEvent) + Copy + 'static,
+    S: Fn() -> bool + Sync + Send + 'static,
+    K: Fn(ev::KeyboardEvent) + Copy + Sync + Send + 'static,
 {
     let sort_method = expect_context::<RwSignal<SortMethod>>();
 
-    let select_sort = create_node_ref::<leptos::html::Select>();
+    let select_sort = NodeRef::<leptos::html::Select>::new();
     let on_sort = move |_| {
         sort_method.set(
-            select_sort()
+            select_sort
+                .get()
                 .map(|nr| nr.value())
                 .unwrap_or_default()
                 .into(),
         )
     };
 
-    create_isomorphic_effect(move |_| {
-        select_sort().map(|rf| rf.set_value(sort_method.get_untracked().into()))
+    Effect::new_isomorphic(move |_| {
+        select_sort
+            .get()
+            .map(|rf| rf.set_value(sort_method.get_untracked().into()))
     });
 
     let reverse_order = move |_| sort_method.update(|s| *s = s.toggle());
@@ -129,9 +132,9 @@ where
         }
     };
 
-    let is_searching = create_rw_signal(false);
+    let is_searching = RwSignal::new(false);
 
-    let search_input = create_node_ref::<leptos::html::Input>();
+    let search_input = NodeRef::<leptos::html::Input>::new();
 
     let on_search = move |ev: ev::Event| {
         search.set(event_target_value(&ev));
@@ -140,14 +143,14 @@ where
     let on_key = move |ev: ev::KeyboardEvent| {
         match ev.key().as_str() {
             "Escape" => {
-                if let Some(i) = search_input() {
+                if let Some(i) = search_input.get() {
                     search.set(String::new());
                     i.set_value("");
                     let _ = i.blur();
                 }
             }
             "Enter" => {
-                if let Some(i) = search_input() {
+                if let Some(i) = search_input.get() {
                     let _ = i.blur();
                 }
             }
@@ -171,7 +174,7 @@ where
 
     on_cleanup(move || key_listener.remove());
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         is_searching.track();
         request_animation_frame(move || {
             search_input.get_untracked().map(|si| si.focus());
@@ -206,7 +209,8 @@ where
                             on:keydown=on_key
                             on:input=on_search
                             on:focusout=move |_| {
-                                if search_input().map(|si| si.value() == "").unwrap_or_default() {
+                                if search_input.get().map(|si| si.value() == "").unwrap_or_default()
+                                {
                                     is_searching.set(false)
                                 }
                             }

@@ -1,0 +1,38 @@
+.overlay {
+  top: 72px;
+  right: 24px;
+
+  background: $element-bg-color-dark;
+
+  border: 2px solid var(--accent);
+  padding: 12px;
+
+  border-radius: 12px;
+
+  * {
+    font-size: 21px;
+  }
+
+  .row {
+    display: block;
+    min-width: 14rem;
+    padding: 12px;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+
+    i, span {
+      margin: 4px;
+      margin-right: 8px;
+    }
+
+    >div {
+      display: flex;
+      align-items: center;
+    }
+
+    &:hover {
+      background: darken($element-bg-color-dark, 5%);
+    }
+  }
+}

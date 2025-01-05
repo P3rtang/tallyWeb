@@ -34,7 +34,7 @@ dump-db:
 	docker exec -t $(POSTGRES_CONTAINER) pg_dump --data-only -U p3rtang -d tally_web > "db-backup/dbdump.sql"
 
 watch-style:
-	stylance -w ./frontend/ --output-file ./style/bundle.scss
+	stylance -w ./frontend_v0-7/ --output-file ./style/bundle.scss
 
 test: recreate-db check-fmt
 	docker compose up -d postgres
@@ -77,7 +77,7 @@ watch:
 	bash -c " \
 		trap 'docker compose down' SIGINT; \
 		docker compose up -d postgres; \
-		cargo leptos watch \
+		cargo leptos watch --hot-reload \
 	"
 
 start:

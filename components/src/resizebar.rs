@@ -9,11 +9,7 @@ pub enum Direction {
 }
 
 #[component]
-pub fn ResizeBar(
-    direction: Direction,
-    #[prop(into)] position: Prop<usize>,
-    #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
-) -> impl IntoView {
+pub fn ResizeBar(direction: Direction, #[prop(into)] position: Prop<usize>) -> impl IntoView {
     let position = StoredValue::new(position);
 
     let cursor = match direction {
@@ -31,9 +27,14 @@ pub fn ResizeBar(
         Direction::Horizontal => "12px",
     };
 
-    let pos = move || match direction {
-        Direction::Vertical => (None, Some(format!("{}px", position.get_value()() - 6))),
-        Direction::Horizontal => (Some(format!("{}px", position.get_value()() - 6)), None),
+    let top = move || match direction {
+        Direction::Vertical => "".to_string(),
+        Direction::Horizontal => format!("{}px", position.get_value()() - 6),
+    };
+
+    let left = move || match direction {
+        Direction::Vertical => format!("{}px", position.get_value()() - 6),
+        Direction::Horizontal => "".to_string(),
     };
 
     view! {
@@ -42,10 +43,9 @@ pub fn ResizeBar(
             style:min-width=width
             style:min-height=height
             style:position="fixed"
-            style:top=move || pos().0
-            style:left=move || pos().1
+            style:top=top
+            style:left=left
             draggable="true"
-            {..attrs}
         >
             <div style:min-height="100%" style:min-width="100%"></div>
         </resize-bar>

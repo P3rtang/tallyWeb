@@ -188,12 +188,17 @@ impl Savable for Vec<Countable> {
 
     fn save_endpoint(
         &self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
-    {
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<(), leptos::prelude::ServerFnError>>
+                + Send
+                + Sync,
+        >,
+    > {
         Box::pin(api::update_countable_many(self.clone()))
     }
 
-    fn message(&self) -> Option<leptos::View> {
+    fn message(&self) -> Option<leptos::prelude::ViewFn> {
         None
     }
 
@@ -226,12 +231,17 @@ impl Savable for Countable {
 
     fn save_endpoint(
         &self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
-    {
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<(), leptos::prelude::ServerFnError>>
+                + Send
+                + Sync,
+        >,
+    > {
         Box::pin(api::update_countable_many(vec![self.clone()]))
     }
 
-    fn message(&self) -> Option<leptos::View> {
+    fn message(&self) -> Option<leptos::prelude::ViewFn> {
         None
     }
 
@@ -482,6 +492,10 @@ impl Hunttype {
             Self::Mixed => "Mixed",
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        (*self).into()
+    }
 }
 
 impl From<Hunttype> for &'static str {
@@ -519,23 +533,6 @@ impl TryFrom<String> for Hunttype {
 impl From<Hunttype> for components::SelectOption {
     fn from(val: Hunttype) -> Self {
         (val.repr(), val.into()).into()
-    }
-}
-
-impl From<Hunttype> for leptos::Attribute {
-    fn from(val: Hunttype) -> Self {
-        let str: &'static str = val.into();
-        leptos::Attribute::String(str.into())
-    }
-}
-
-impl leptos::IntoAttribute for Hunttype {
-    fn into_attribute(self) -> leptos::Attribute {
-        self.into()
-    }
-
-    fn into_attribute_boxed(self: Box<Self>) -> leptos::Attribute {
-        (*self).into()
     }
 }
 

@@ -1,109 +1,133 @@
 #![allow(non_snake_case)]
 use components::*;
 use elements::FromClosure;
-use leptos::*;
+use leptos::{ev, prelude::*};
 use leptos_meta::*;
-use leptos_router::*;
+use leptos_router::{
+    components::*,
+    hooks::{use_navigate, use_params},
+    params::Params,
+    path, MatchNestedRoutes,
+};
 
-use super::{elements::*, pages::*, preferences::ProvidePreferences, session::*, *};
+use super::{elements::*, pages::*, session::*, *};
 
 pub const SIDEBAR_MIN_WIDTH: usize = 280;
 
+pub fn shell(options: LeptosOptions) -> impl IntoView {
+    view! {
+        <!DOCTYPE html> 
+        <html lang="en">
+            <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <AutoReload options=options.clone() />
+                <HydrationScripts options />
+                <MetaTags />
+            </head>
+            <body>
+                <App />
+            </body>
+        </html>
+    }
+}
+
 #[component]
 pub fn App() -> impl IntoView {
-    // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
-
-    let close_overlay_signal = create_rw_signal(CloseOverlays());
-    provide_context(close_overlay_signal);
-
-    let close_overlays = move |_| {
-        close_overlay_signal.update(|_| ());
-    };
-
-    let show_sidebar = create_rw_signal(ShowSidebar(true));
-    provide_context(show_sidebar);
-
     view! {
+        <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <Meta name="mobile-web-app-capable" content="yes" />
+
         <Stylesheet href=format!("/pkg/{LEPTOS_OUTPUT_NAME}.css") />
         <Stylesheet href="/fa/css/all.css" />
 
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.svg" />
         <Link href="https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet" />
 
-        <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <Meta name="mobile-web-app-capable" content="yes" />
-
         <Title text="TallyWeb" />
 
+        <Body />
+    }
+}
+
+#[component(transparent)]
+pub fn Body() -> impl IntoView {
+    let close_overlay_signal = RwSignal::new(CloseOverlays());
+    provide_context(close_overlay_signal);
+
+    let close_overlays = move |_| {
+        close_overlay_signal.update(|_| ());
+    };
+
+    let show_sidebar = RwSignal::new(ShowSidebar(true));
+    provide_context(show_sidebar);
+
+    view! {
         <ProvideMessageSystem />
         <Router>
             <main on:click=close_overlays>
-                <Routes>
-                    <Route
-                        path=""
-                        ssr=SsrMode::Async
-                        view=|| {
-                            view! {
-                                <ProvideSessionSignal>
-                                    <ProvideScreenSignal>
-                                        <ProvidePreferences>
-                                            <ProvideStore>
-                                                <ProvideCountableSignals>
-                                                    <Outlet />
-                                                </ProvideCountableSignals>
-                                            </ProvideStore>
-                                        </ProvidePreferences>
-                                    </ProvideScreenSignal>
-                                </ProvideSessionSignal>
-                            }
-                        }
-                    >
-
-                        <Route
-                            path="/"
-                            view=|| {
-                                view! {
-                                    <Outlet />
-                                    <HomePage />
-                                }
-                            }
-                        >
-
-                            <Route path="" view=UnsetCountable />
-                            <Route path=":key" view=SetCountable />
-                        </Route>
-                        <Route path="/edit" view=EditWindow>
-                            <Route path=":key" view=move || view! { <EditCountableWindow /> } />
-                        </Route>
-
-                        <Route path="/preferences" view=move || view! { <PreferencesWindow /> }>
-                            <Route path="styling" view=move || view! { <StylingPreferences /> } />
-                            <Route path="account" view=move || view! { <AccountPreferences /> } />
-                            <Route path="misc" view=move || view! { <MiscPreferences /> } />
-                            <Route
-                                path=""
-                                view=move || {
-                                    let nav = use_navigate();
-                                    nav("preferences/styling", Default::default());
-                                }
-                            />
-                        </Route>
-
-                        <Route
-                            path="/change-username"
-                            view=move || view! { <ChangeAccountInfo /> }
-                        />
-                        <Route path="/change-password" view=ChangePassword />
-                    </Route>
+                <Routes fallback=NotFound>
+                    <RootRoutes />
                     <TestRoutes />
-                    <Route path="/login" view=LoginPage />
-                    <Route path="/create-account" view=CreateAccount />
-                    <Route path="/*any" view=NotFound />
+                    <Route path=path!("/login") view=LoginPage />
+                    <Route path=path!("/create-account") view=CreateAccount />
                 </Routes>
             </main>
         </Router>
     }
+}
+
+#[component(transparent)]
+pub fn RootRoutes() -> impl MatchNestedRoutes + Clone {
+    view! {
+        <ParentRoute
+            path=path!("")
+            view=|| {
+                let future = session_signal();
+                view! {
+                    <Await future blocking=true let:_>
+                        <Outlet />
+                    </Await>
+                }
+            }
+        >
+
+            <ParentRoute
+                path=path!("")
+                view=|| {
+                    view! {
+                        <HomePage />
+                        <Outlet />
+                    }
+                }
+            >
+
+                <Route path=path!("") view=UnsetCountable />
+                <Route path=path!(":key") view=SetCountable />
+            </ParentRoute>
+            <ParentRoute path=path!("/edit") view=EditWindow>
+                <Route path=path!(":key") view=EditCountableWindow />
+            </ParentRoute>
+
+            <ParentRoute path=path!("/preferences") view=PreferencesWindow>
+                <Route path=path!("styling") view=StylingPreferences />
+                <Route path=path!("account") view=AccountPreferences />
+                <Route path=path!("misc") view=MiscPreferences />
+                <Route
+                    path=path!("")
+                    view=move || {
+                        let nav = use_navigate();
+                        nav("preferences/styling", Default::default());
+                    }
+                />
+            </ParentRoute>
+
+            <Route path=path!("/change-username") view=move || view! { <ChangeAccountInfo /> } />
+            <Route path=path!("/change-password") view=move || view! { <ChangePassword /> } />
+        </ParentRoute>
+    }
+    .into_inner()
 }
 
 /// 404 - Not Found
@@ -127,14 +151,14 @@ fn NotFound() -> impl IntoView {
 }
 
 #[component]
-fn HomeSidebar(#[prop(into)] width: MaybeSignal<usize>) -> impl IntoView {
+fn HomeSidebar(#[prop(into)] width: Signal<usize>) -> impl IntoView {
     let selection = expect_context::<SelectionSignal>();
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
     let screen = expect_context::<Screen>();
 
     let sidebar_layout: Signal<SidebarLayout> = create_read_slice(screen.style, |s| (*s).into());
 
-    create_isomorphic_effect(move |_| {
+    Effect::new_isomorphic(move |_| {
         if screen.style.get() != ScreenStyle::Big {
             let sel_memo = create_read_slice(selection, |sel| sel.is_empty());
             sel_memo.with(|sel| show_sidebar.update(|s| *s = ShowSidebar(*sel)));
@@ -150,9 +174,14 @@ fn HomeSidebar(#[prop(into)] width: MaybeSignal<usize>) -> impl IntoView {
 
 #[component]
 pub fn HomePage() -> impl IntoView {
+    let owner = Owner::current().unwrap();
+    leptos::logging::log!("-------------------------");
+    leptos::logging::log!("homepage: {:?}", owner.ancestry());
+    leptos::logging::log!("-------------------------");
+
     let show_sidebar = expect_context::<RwSignal<ShowSidebar>>();
-    let selection_signal = expect_context::<SelectionSignal>();
     let preferences = expect_context::<RwSignal<Preferences>>();
+    let selection_signal = expect_context::<SelectionSignal>();
 
     let accent = create_read_slice(preferences, |p| {
         Color::try_from(p.accent_color.clone().0.as_str()).unwrap_or_default()
@@ -160,7 +189,7 @@ pub fn HomePage() -> impl IntoView {
 
     let hide_border = create_read_slice(preferences, |p| !p.show_body_border);
 
-    let active = create_memo(move |_| {
+    let active = Memo::new(move |_| {
         selection_signal
             .get()
             .get_selected_keys()
@@ -169,7 +198,7 @@ pub fn HomePage() -> impl IntoView {
             .collect()
     });
 
-    let (width, set_width) = create_signal(400);
+    let (width, set_width) = signal(400);
 
     let on_resize = OnResize::from_closure(set_width);
     let on_close_sidebar = StoredValue::new(OnClose::from_closure(move |show| {
@@ -200,12 +229,12 @@ fn SidebarContent() -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let sort_method = expect_context::<RwSignal<SortMethod>>();
 
-    let show_sort_search = create_rw_signal(true);
+    let show_sort_search = RwSignal::new(true);
     let show_sep = create_read_slice(preferences, |pref| pref.show_separator);
-    let search = create_rw_signal(String::new());
+    let search = RwSignal::new(String::new());
     provide_context(search);
 
-    let each = create_memo(move |_| {
+    let each = Memo::new(move |_| {
         let mut root_nodes = store()
             .filter(move |c| c.name().to_lowercase().contains(&search().to_lowercase()))
             .raw_filter(move |c| !c.is_archived())
@@ -225,7 +254,7 @@ fn SidebarContent() -> impl IntoView {
                 sort_method().sort_by()(&store.get_untracked(), &a.uuid().into(), &b.uuid().into())
             });
             if let Some(first) = nodes.first() {
-                leptos_router::use_navigate()(&first.uuid().to_string(), Default::default());
+                use_navigate()(&first.uuid().to_string(), Default::default());
             }
         }
         _ => {}
@@ -279,7 +308,7 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
         })
     };
 
-    let includes_search = create_memo(move |_| {
+    let includes_search = Memo::new(move |_| {
         !search().is_empty()
             && store
                 .get_untracked()
@@ -287,10 +316,10 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
                 .to_lowercase()
                 .contains(&search().to_lowercase())
     });
-    let selected = create_memo(move |_| selection().is_selected(&key));
+    let selected = Memo::new(move |_| selection().is_selected(&key));
     let parent = store.get_untracked().parent(&key.into());
 
-    create_isomorphic_effect(move |_| {
+    Effect::new(move |_| {
         if let Some(p) = parent {
             if includes_search() || selected() {
                 expand_node(p.into(), true)
@@ -315,8 +344,8 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
         request_animation_frame(move || expand_node(key, true))
     };
 
-    let show_context_menu = create_rw_signal(false);
-    let (click_location, set_click_location) = create_signal((0, 0));
+    let show_context_menu = RwSignal::new(false);
+    let (click_location, set_click_location) = signal((0, 0));
     let on_right_click = move |ev: web_sys::MouseEvent| {
         ev.prevent_default();
         expect_context::<RwSignal<CloseOverlays>>().update(|_| ());
@@ -326,7 +355,7 @@ fn TreeViewRow(key: uuid::Uuid) -> impl IntoView {
 
     let has_children = move || matches!(store().get(&key.into()), Some(Countable::Counter(_)));
 
-    let search_split = create_memo(move |_| {
+    let search_split = Memo::new(move |_| {
         if search().is_empty() {
             return None;
         }
@@ -373,7 +402,7 @@ fn SetCountable() -> impl IntoView {
 
     let selection = expect_context::<SelectionSignal>();
 
-    let key_memo = create_memo(move |old_key| {
+    let key_memo = Memo::new(move |old_key| {
         let new_key = use_params::<Key>()
             .get()
             .ok()
@@ -388,7 +417,7 @@ fn SetCountable() -> impl IntoView {
         new_key
     });
 
-    create_isomorphic_effect(move |_| key_memo.track());
+    Effect::new_isomorphic(move |_| key_memo.track());
 }
 
 #[component]
@@ -397,18 +426,19 @@ fn UnsetCountable() -> impl IntoView {
     selection.update(|sel| sel.clear_selection())
 }
 
-#[component(transparent)]
-fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
+async fn provide_model() -> Result<(), AppError> {
+    let owner = Owner::current().unwrap();
+
     let msg = expect_context::<MessageJar>();
     let store = expect_context::<RwSignal<CountableStore>>();
 
     let selection = SelectionModel::<uuid::Uuid, Countable>::new();
-    let selection_signal = create_rw_signal(selection);
-    provide_context(selection_signal);
+    let selection_signal = RwSignal::new(selection);
+    owner.with(move || provide_context(selection_signal));
 
-    provide_context(create_rw_signal(SortMethod::default()));
+    owner.with(move || provide_context(RwSignal::new(SortMethod::default())));
 
-    let save_handlers = create_rw_signal(SaveHandlers::new());
+    let save_handlers = RwSignal::new(SaveHandlers::new());
 
     let server_handler = Box::new(ServerSaveHandler::new());
     save_handlers.update(|sh| sh.connect_handler(server_handler.clone()));
@@ -423,38 +453,38 @@ fn ProvideCountableSignals(children: ChildrenFn) -> impl IntoView {
         }
     });
 
-    create_effect(move |_| {
-        spawn_local(async move {
-            let indexed_handler = indexed::IndexedSaveHandler::new().await;
-            match indexed_handler {
-                Ok(ih) => {
-                    let mut s = store.get_untracked();
-                    if let Err(err) = ih.sync_store(&mut s).await {
-                        msg.set_err(err);
-                    };
-                    if let Err(err) = save_handlers
-                        .get_untracked()
-                        .save(Box::new(s.clone()), Box::new(|_| ()))
-                    {
-                        msg.set_err(err);
-                    }
-                    store.set(s.clone());
-                    save_handlers.update(|sh| sh.connect_handler(Box::new(ih)));
-                    if let Err(err) = save_handlers
-                        .get_untracked()
-                        .save(Box::new(store), Box::new(|_| ()))
-                    {
-                        msg.set_err(err)
-                    }
-                }
-                Err(err) => msg.set_msg(format!(
-                    "Local saving could not be initialised\nGot error: {}",
-                    err
-                )),
-            }
-        })
-    });
-    provide_context(save_handlers);
+    // Effect::new(move |_| {
+    //     spawn_local(async move {
+    //         let indexed_handler = indexed::IndexedSaveHandler::new().await;
+    //         match indexed_handler {
+    //             Ok(ih) => {
+    //                 let mut s = store.get_untracked();
+    //                 if let Err(err) = ih.sync_store(&mut s).await {
+    //                     msg.set_err(err);
+    //                 };
+    //                 if let Err(err) = save_handlers
+    //                     .get_untracked()
+    //                     .save(Box::new(s.clone()), Box::new(|_| ()))
+    //                 {
+    //                     msg.set_err(err);
+    //                 }
+    //                 store.set(s.clone());
+    //                 save_handlers.update(|sh| sh.connect_handler(Box::new(ih)));
+    //                 if let Err(err) = save_handlers
+    //                     .get_untracked()
+    //                     .save(Box::new(store), Box::new(|_| ()))
+    //                 {
+    //                     msg.set_err(err)
+    //                 }
+    //             }
+    //             Err(err) => msg.set_msg(format!(
+    //                 "Local saving could not be initialised\nGot error: {}",
+    //                 err
+    //             )),
+    //         }
+    //     })
+    // });
+    owner.with(move || provide_context(save_handlers));
 
-    children()
+    Ok(())
 }

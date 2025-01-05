@@ -13,11 +13,12 @@ mod slider;
 mod spinner;
 mod time;
 mod tooltip;
+mod tree;
 mod treeview;
 mod types;
 
 pub use loading_screen::*;
-pub use message::{MessageKey, ProvideMessageSystem};
+pub use message::{Message, MessageKey, ProvideMessageSystem};
 pub use progressbar::*;
 pub use resizebar::{Direction, ResizeBar};
 pub use saving_screen::*;
@@ -27,25 +28,25 @@ pub use slider::*;
 pub use spinner::*;
 pub use time::{Clock, Timer};
 pub use tooltip::*;
+pub use tree::{Caret, CaretState, ChildWrapper, RowWrapper, Separator, Tree, WrappedRowState};
 pub use treeview::*;
 pub use types::*;
 
 pub type MessageJar = message::MessageJar<message::NoHandle>;
 
-use leptos::{logging::warn, *};
+use leptos::{logging::warn, prelude::*};
 
 #[derive(Debug, Clone)]
 pub struct CloseOverlays();
 
 #[component]
 pub fn Overlay(
-    #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
     show_overlay: RwSignal<bool>,
     location: ReadSignal<(i32, i32)>,
     children: ChildrenFn,
 ) -> impl IntoView {
     if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>() {
-        create_effect(move |_| {
+        Effect::new(move |_| {
             close_signal.track();
             show_overlay.set(false);
         });
@@ -53,17 +54,12 @@ pub fn Overlay(
         warn!("No `close overlay` signal available");
     }
 
-    let location_style = move || {
-        format!(
-            "left: {}px; top: {}px;",
-            location().0 + 10,
-            location().1 + 10
-        )
-    };
+    let left = move || format!("{}px", location().0 + 10);
+    let top = move || format!("{}px", location().1 + 10);
 
     view! {
         <Show when=move || { show_overlay.get() } fallback=|| ()>
-            <div style=location_style() {..attrs.clone()}>
+            <div style:left=left style:top=top>
                 {children()}
             </div>
         </Show>

@@ -1,5 +1,5 @@
 use components::{Direction, FromEmptyClosure as FC, Prop, ResizeBar};
-use leptos::*;
+use leptos::{ev, prelude::*};
 
 stylance::import_style!(style, "./../pages/style/page.module.scss");
 
@@ -7,9 +7,6 @@ pub const SIDEBAR_MIN_WIDTH: usize = 280;
 
 #[slot]
 pub struct PageContent {
-    #[prop(attrs)]
-    attrs: Vec<(&'static str, Attribute)>,
-
     #[prop(default = false.into(), into)]
     hide_border: Prop<bool>,
 
@@ -19,9 +16,6 @@ pub struct PageContent {
 #[derive(Clone)]
 #[slot]
 pub struct PageSidebar {
-    #[prop(attrs)]
-    attrs: Vec<(&'static str, Attribute)>,
-
     #[prop(default = false.into(), into)]
     is_shown: Prop<bool>,
 
@@ -29,7 +23,7 @@ pub struct PageSidebar {
     auto_hide: Prop<bool>,
 
     #[prop(default = 400.into(), into)]
-    width: MaybeSignal<usize>,
+    width: Signal<usize>,
 
     #[prop(optional)]
     on_resize: Option<OnResize>,
@@ -37,40 +31,37 @@ pub struct PageSidebar {
     children: ChildrenFn,
 }
 
-pub type OnResize = std::rc::Rc<dyn Fn(usize)>;
+pub type OnResize = std::sync::Arc<dyn Fn(usize) + Send + Sync>;
 
 pub trait FromClosure<T> {
     type Output;
 
-    fn from_closure(closure: impl Fn(T) -> Self::Output + 'static) -> Self;
+    fn from_closure(closure: impl Fn(T) -> Self::Output + Send + Sync + 'static) -> Self;
 }
 
 impl FromClosure<usize> for OnResize {
     type Output = ();
 
-    fn from_closure(closure: impl Fn(usize) + 'static) -> Self {
-        std::rc::Rc::new(closure)
+    fn from_closure(closure: impl Fn(usize) + Send + Sync + 'static) -> Self {
+        std::sync::Arc::new(closure)
     }
 }
 
 #[derive(Clone)]
 #[slot]
 pub struct PageNavbar {
-    #[prop(attrs)]
-    attrs: Vec<(&'static str, Attribute)>,
-
     children: ChildrenFn,
 }
 
 #[component]
 pub fn Page(
-    mut page_content: PageContent,
+    page_content: PageContent,
     #[prop(optional)] page_sidebar: Option<PageSidebar>,
     #[prop(optional)] page_navbar: Option<PageNavbar>,
-    #[prop(optional, into, default=Color::default().into())] accent: MaybeSignal<Color>,
+    #[prop(optional, into, default=Color::default().into())] accent: Signal<Color>,
 ) -> impl IntoView {
-    let navbar = store_value(page_navbar);
-    let sidebar = store_value(page_sidebar);
+    let navbar = StoredValue::new(page_navbar);
+    let sidebar = StoredValue::new(page_sidebar);
 
     let has_navbar = move || navbar.get_value().is_some();
     let has_sidebar = move || sidebar.get_value().is_some();
@@ -78,7 +69,7 @@ pub fn Page(
     let show_sidebar = move || sidebar.get_value().is_some_and(|sb| (sb.is_shown)());
     let sidebar_width = move || sidebar.get_value().map(|sb| (sb.width)());
 
-    let (has_transition, set_has_transition) = create_signal(true);
+    let (has_transition, set_has_transition) = signal(true);
     let sidebar_classes = move || {
         format!(
             "{} {}",
@@ -100,7 +91,7 @@ pub fn Page(
         }
     };
 
-    let css_vars = move || format!("--accent: {};", accent.get());
+    let css_vars = move || format!("--accent: {}", accent.get());
 
     let page_classes = move || {
         stylance::classes!(
@@ -114,16 +105,12 @@ pub fn Page(
 
     let sidebar_in_view = move || show_sidebar() && has_sidebar();
 
-    page_content.attrs.push((
-        "class",
-        (move || {
-            stylance::classes!(
-                style::content,
-                (!sidebar_in_view()).then_some(style::full_width)
-            )
-        })
-        .into_attribute(),
-    ));
+    let classes = move || {
+        stylance::classes!(
+            style::content,
+            (!sidebar_in_view()).then_some(style::full_width)
+        )
+    };
 
     let position = StoredValue::new(Prop::<usize>::from_closure(move || {
         sidebar_width().unwrap_or(0)
@@ -140,11 +127,11 @@ pub fn Page(
                 />
             </Show>
             <div class=style::body>
-                <Show when=has_navbar>{navbar.get_value().unwrap().children}</Show>
-                <div {..page_content.attrs}>
+                <Show when=has_navbar>{(navbar.get_value().unwrap().children)()}</Show>
+                <div class=classes>
                     <div style:border=move || {
-                        (page_content.hide_border)().then_some("none")
-                    }>{(page_content.children)().into_view()}</div>
+                        if (page_content.hide_border)() { "none" } else { "" }
+                    }>{(page_content.children)()}</div>
                 </div>
             </div>
         </div>

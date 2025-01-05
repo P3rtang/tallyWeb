@@ -1,6 +1,6 @@
 use super::*;
-use leptos::*;
-use leptos_router::{ActionForm, A};
+use leptos::{form::ActionForm, prelude::*};
+use leptos_router::components::A;
 
 stylance::import_style!(
     #[allow(dead_code)]
@@ -10,19 +10,19 @@ stylance::import_style!(
 
 #[component]
 pub fn LoginPage() -> impl IntoView {
-    let login_action = create_server_action::<api::LoginUser>();
+    let login_action = ServerAction::<api::LoginUser>::new();
     let message_jar = expect_context::<components::MessageJar>();
 
-    let server_resp = create_memo(move |_| {
+    let server_resp = Memo::new(move |_| {
         if let Some(Err(err)) = login_action.value().get() {
             message_jar.set_err(AppError::from(err))
         }
     });
 
-    create_effect(move |_| server_resp.track());
+    Effect::new(move |_| server_resp.track());
 
     #[cfg(not(feature = "ssr"))]
-    spawn_local(async move {
+    leptos::task::spawn_local(async move {
         if let Err(err) = indexed::IndexedSaveHandler::reset().await {
             message_jar.set_err(err)
         }

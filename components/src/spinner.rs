@@ -1,4 +1,4 @@
-use leptos::*;
+use leptos::prelude::*;
 
 #[component]
 pub fn Spinner(#[prop(default = 32)] size: usize) -> impl IntoView {
@@ -20,6 +20,6 @@ pub fn Spinner(#[prop(default = 32)] size: usize) -> impl IntoView {
     );
     view! {
         <style>{style}</style>
-        <div class="loader"></div>
+        <div class:loader=true></div>
     }
 }

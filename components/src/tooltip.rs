@@ -1,16 +1,21 @@
-use leptos::*;
+use leptos::{ev, html, prelude::*};
+use wasm_bindgen::JsCast;
 
 #[component]
-pub fn ToolTip<T: html::ElementDescriptor + Clone + 'static>(
+pub fn ToolTip<T>(
     parent_node: NodeRef<T>,
     #[prop(optional, default=std::time::Duration::from_secs(1))] delay: std::time::Duration,
     children: ChildrenFn,
-) -> impl IntoView {
-    let is_shown = create_rw_signal(false);
-    let is_hovering = create_rw_signal(false);
-    let mouse_pos = create_rw_signal((0, 0));
+) -> impl IntoView
+where
+    T: html::ElementType + Clone + 'static,
+    T::Output: JsCast + Clone + ElementExt + 'static,
+{
+    let is_shown = RwSignal::new(false);
+    let is_hovering = RwSignal::new(false);
+    let mouse_pos = RwSignal::new((0, 0));
 
-    if let Some(element) = parent_node.get_untracked() {
+    if let Some(element) = parent_node.get() {
         let _ = element.clone().on(ev::mouseover, move |_: ev::MouseEvent| {
             is_hovering.set(true);
             set_timeout(

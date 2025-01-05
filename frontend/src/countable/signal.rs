@@ -1,22 +1,23 @@
 use super::super::UserSession;
 use super::*;
 use components::MessageJar;
-use leptos::*;
+use leptos::prelude::*;
 
-#[component(transparent)]
-pub fn ProvideStore(children: ChildrenFn) -> impl IntoView {
+pub async fn provide_store() -> Result<(), AppError> {
+    let owner = Owner::current().unwrap();
+
     let user = expect_context::<RwSignal<UserSession>>();
     let msg = expect_context::<MessageJar>();
 
-    let store_resource = create_blocking_resource(user, move |user| async move {
+    let store_resource = Resource::new_blocking(user, move |user| async move {
         server::get_countable_store(user.user_uuid).await
     });
-    provide_context(store_resource);
+    owner.with(move || provide_context(store_resource));
 
-    let store = create_rw_signal(CountableStore::default());
-    provide_context(store);
+    let store = RwSignal::new(CountableStore::default());
+    owner.with(move || provide_context(store));
 
-    create_isomorphic_effect(move |_| match store_resource.get() {
+    Effect::new_isomorphic(move |_| match store_resource.get() {
         Some(Ok(s)) => {
             store.set(s);
         }
@@ -26,16 +27,7 @@ pub fn ProvideStore(children: ChildrenFn) -> impl IntoView {
         None => {}
     });
 
-    view! {
-        <Await future=move || server::get_countable_store(user.get_untracked().user_uuid) let:res>
+    store.set(store_resource.await?);
 
-            {
-                if let Ok(data) = res {
-                    store.set(data.clone());
-                }
-                children()
-            }
-
-        </Await>
-    }
+    Ok(())
 }

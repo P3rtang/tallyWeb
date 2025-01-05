@@ -3,8 +3,8 @@ use components::{MessageJar, SavingMessage, ShowSidebar, Sidebar, SidebarLayout,
 use elements::{
     Color, FromClosure, Navbar, OnClose, OnResize, Page, PageContent, PageNavbar, PageSidebar,
 };
-use leptos::*;
-use leptos_router::{ActionForm, Outlet, A};
+use leptos::{attribute_interceptor::AttributeInterceptor, form::ActionForm, prelude::*};
+use leptos_router::components::{Outlet, A};
 use web_sys::{Event, SubmitEvent};
 
 stylance::import_style!(
@@ -29,7 +29,7 @@ pub fn PreferencesWindow() -> impl IntoView {
     let pref_resource = expect_context::<PrefResource>();
     let screen = expect_context::<Screen>();
 
-    let action = create_server_action::<api::SavePreferences>();
+    let action = ServerAction::<api::SavePreferences>::new();
 
     let accent = create_read_slice(preferences, |p| {
         Color::try_from(p.accent_color.clone().0.as_str()).unwrap_or_default()
@@ -50,17 +50,15 @@ pub fn PreferencesWindow() -> impl IntoView {
         let msg_key = message
             .with_handle()
             .without_timeout()
-            .set_msg_view(SavingMessage);
+            .set_msg_view(SavingMessage.into());
 
-        create_effect(move |_| match action.value().get() {
+        Effect::new(move |_| match action.value().get() {
             Some(Ok(_)) => {
                 message.fade_out(msg_key);
-                action.value().set_untracked(None)
             }
             Some(Err(err)) => {
                 message.fade_out(msg_key);
                 message.set_err(AppError::from(err));
-                action.value().set_untracked(None)
             }
             None => {}
         });
@@ -79,12 +77,11 @@ pub fn PreferencesWindow() -> impl IntoView {
         )
     };
 
-    let (show_sidebar, set_show_sidebar) =
-        create_signal(screen.style.get_untracked() == ScreenStyle::Big);
+    let (show_sidebar, set_show_sidebar) = signal(screen.style.get_untracked() == ScreenStyle::Big);
 
     let sidebar_layout: Signal<SidebarLayout> = create_read_slice(screen.style, |s| (*s).into());
 
-    let (width, set_width) = create_signal(400);
+    let (width, set_width) = signal(400);
 
     let on_resize = OnResize::from_closure(set_width);
     let on_close_sidebar = StoredValue::new(OnClose::from_closure(set_show_sidebar));
@@ -203,10 +200,10 @@ pub fn StylingPreferences() -> impl IntoView {
                 />
             </div>
 
-            <label for="use-default-color" class="title" style:grid-column=1>
+            <label for="use-default-color" class="title" style:grid-column="1">
                 Use Default Accent Color
             </label>
-            <div style:grid-column=2>
+            <div style:grid-column="2">
                 <Slider
                     checked=preferences.get_untracked().use_default_accent_color
                     attr:name="preferences[use_default_accent_color]"
@@ -214,10 +211,10 @@ pub fn StylingPreferences() -> impl IntoView {
                     on:change=on_default_checked
                 />
             </div>
-            <label for="accent-color" class="title" style:grid-column=1>
+            <label for="accent-color" class="title" style:grid-column="1">
                 Accent Color
             </label>
-            <div style:grid-column=2>
+            <div style:grid-column="2">
                 <input
                     type="color"
                     name="preferences[accent_color]"
@@ -234,7 +231,7 @@ pub fn StylingPreferences() -> impl IntoView {
                 label="Show Body Border".to_string()
                 checked=preferences.get_untracked().show_body_border
                 attr:name="preferences[show_body_border]"
-                attr:id="show-body-border"
+                id="show-body-border"
                 on:change=handle_border_change
             />
 
@@ -246,20 +243,20 @@ pub fn StylingPreferences() -> impl IntoView {
 #[component]
 pub fn AccountPreferences() -> impl IntoView {
     view! {
-        <span for="change-username" class="title" style:grid-column=1>
+        <span class:title=true style:grid-column="1">
             Change Username
         </span>
-        <div style:grid-column=2>
-            <A class=style::edit href="/change-username">
+        <div style:grid-column="2">
+            <A href="/change-username" attr:class=style::edit>
                 <i class="fa-solid fa-arrow-right"></i>
             </A>
         </div>
 
-        <span class="title" style:grid-column=1 style:grid-column=1>
+        <span class="title" style:grid-column="1">
             Change Password
         </span>
-        <div style:grid-column=2>
-            <A class=style::edit href="/change-password">
+        <div style:grid-column="2">
+            <A href="/change-password" attr:class=style::edit>
                 <i class="fa-solid fa-arrow-right"></i>
             </A>
         </div>
@@ -276,10 +273,10 @@ pub fn MiscPreferences() -> impl IntoView {
     let on_multi_checked = move |_: Event| preferences.update(|p| p.multi_select = !p.multi_select);
 
     view! {
-        <label for="show-separator" class="title" style:grid-column=1>
+        <label for="show-separator" class="title" style:grid-column="1">
             Show Treeview Separator
         </label>
-        <div style:grid-column=2>
+        <div style:grid-column="2">
             <Slider
                 checked=preferences.get_untracked().show_separator
                 attr:name="preferences[show_separator]"
@@ -288,10 +285,10 @@ pub fn MiscPreferences() -> impl IntoView {
             />
         </div>
 
-        <label for="multi-select" class="title" style:grid-column=1>
+        <label for="multi-select" class="title" style:grid-column="1">
             Use Multi Select (experimental)
         </label>
-        <div style:grid-column=2>
+        <div style:grid-column="2">
             <Slider
                 checked=preferences.get_untracked().multi_select
                 attr:name="preferences[multi_select]"
@@ -310,10 +307,10 @@ fn SaveOnPause() -> impl IntoView {
     let on_change = move |_| set_checked(!checked());
 
     view! {
-        <label for="save-on-pause" style:grid-column=1>
+        <label for="save-on-pause" style:grid-column="1">
             Save on pause
         </label>
-        <div style:grid-column=2>
+        <div style:grid-column="2">
             <Slider
                 checked
                 attr:name="preferences[save_on_pause]"
@@ -326,33 +323,21 @@ fn SaveOnPause() -> impl IntoView {
 
 #[component]
 fn BoolOption(
-    #[prop(into, optional)] label: Option<MaybeSignal<String>>,
-    #[prop(into)] checked: MaybeSignal<bool>,
-    #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
+    #[prop(into)] id: Signal<String>,
+    #[prop(into, optional)] label: Option<Signal<String>>,
+    #[prop(into)] checked: Signal<bool>,
 ) -> impl IntoView {
-    let id = StoredValue::new(
-        attrs
-            .iter()
-            .find(|item| item.0 == "id")
-            .map(|item| item.1.clone()),
-    );
-
-    let label = Signal::derive(move || label.as_ref().map(|item| item()));
-
     view! {
-        <Show when=move || label().is_some()>
-            <label
-                for=move || {
-                    id.get_value().map(|attr| attr.as_nameless_value_string()).unwrap_or_default()
-                }
-                style:grid-column=1
-            >
-                {label().unwrap()}
-            </label>
-        </Show>
-        <div style:grid-column=2>
-            <Slider checked {..attrs} />
-        </div>
+        <AttributeInterceptor let:attrs>
+            <Show when=move || label.is_some()>
+                <label for=id style:grid-column="1">
+                    {label.unwrap()()}
+                </label>
+            </Show>
+            <div style:grid-column="2">
+                <Slider checked attr:id=move || id() {..attrs} />
+            </div>
+        </AttributeInterceptor>
     }
 }
 

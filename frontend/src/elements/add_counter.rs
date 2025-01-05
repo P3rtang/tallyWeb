@@ -1,5 +1,5 @@
 use super::*;
-use leptos::*;
+use leptos::prelude::*;
 use stylance::import_style;
 
 #[component]
