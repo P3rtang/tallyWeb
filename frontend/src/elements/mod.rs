@@ -12,7 +12,7 @@ pub use about::AboutDialog;
 pub use account::{letter_to_three_digit_hash, AccountIcon};
 pub use add_counter::*;
 pub use context_menu::*;
-pub use infobox::*;
+pub use infobox::InfoBox;
 pub use navbar::*;
 pub use page::*;
 pub use sort_search::*;

@@ -1,9 +1,7 @@
-#![allow(non_snake_case)]
-
 use super::*;
 use components::CloseOverlays;
-use leptos::{logging::debug_warn, *};
-use leptos_router::A;
+use leptos::{logging::debug_warn, prelude::*};
+use leptos_router::components::A;
 
 stylance::import_style!(
     #[allow(dead_code)]
@@ -30,7 +28,7 @@ pub fn AccountIcon<F>(
     #[prop(optional)] accent_color: Option<Signal<String>>,
 ) -> impl IntoView
 where
-    F: Fn() -> String + 'static,
+    F: Fn() -> String + Sync + Send + 'static,
 {
     let initial = move || {
         username()
@@ -46,7 +44,7 @@ where
             .unwrap_or_default()
     };
 
-    let show_overlay = create_rw_signal(false);
+    let show_overlay = RwSignal::new(false);
     let open_overlay = move |ev: web_sys::MouseEvent| {
         ev.stop_propagation();
         show_overlay.update(|s| *s = !*s);
@@ -76,7 +74,7 @@ pub fn AccountOverlay(
     #[prop(optional)] accent_color: Option<Signal<String>>,
 ) -> impl IntoView {
     if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>() {
-        create_effect(move |_| {
+        Effect::new(move |_| {
             close_signal.track();
             show_overlay.set(false);
         });
@@ -84,7 +82,7 @@ pub fn AccountOverlay(
         debug_warn!("No `close overlay` signal available");
     }
 
-    let show_about = create_rw_signal(false);
+    let show_about = RwSignal::new(false);
 
     view! {
         <Show when=show_overlay fallback=|| ()>
@@ -169,7 +167,7 @@ pub fn AccountOverlayNavigate(
     #[prop(optional)] text: Option<&'static str>,
 ) -> impl IntoView {
     view! {
-        <A href=link class=if !show_link { "remove-underline" } else { "" }>
+        <A href=link attr:class=if !show_link { "remove-underline" } else { "" }>
             <div
                 class=stylance::classes!(overlay::row, overlay::interactive)
                 on:click=move |_| {

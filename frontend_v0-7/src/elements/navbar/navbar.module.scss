@@ -1,0 +1,27 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+
+  >* {
+    margin: 0px 8px;
+  }
+
+  .icon {
+    height: 42px;
+    width: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &.round {
+      overflow: hidden;
+      border-radius: 100%;
+    }
+  }
+
+  .sidebar-toggle {
+    padding: 4px;
+  }
+}

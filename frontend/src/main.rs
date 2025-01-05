@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
 use dotenvy::var;
-use leptos::*;
 use std::io::Write;
 use std::process::Command;
 use std::thread;
@@ -11,13 +10,15 @@ cfg_if::cfg_if! {
         use actix_files::Files;
         use tallyweb_frontend::{app, AppError, middleware as mw};
         use actix_web::*;
+        use leptos::{prelude::*, config};
         use leptos_actix::{generate_route_list, LeptosRoutes};
+        use leptos_meta::MetaTags;
         use actix_web::http::StatusCode;
         use actix_web::HttpRequest;
 
         #[tokio::main]
-        async fn main() -> Result<(), AppError> {
-            let mut conf = get_configuration(Some("./Cargo.toml")).await.unwrap();
+        async fn main() -> std::result::Result<(), AppError> {
+            let mut conf = config::get_configuration(Some("./Cargo.toml")).unwrap();
             let addr = conf.leptos_options.site_addr;
 
             if let Ok(env) = var("APP_ENVIRONMENT") {
@@ -35,7 +36,7 @@ cfg_if::cfg_if! {
                 let site_root = &leptos_options.site_root;
 
                 App::new()
-                    .wrap(actix_web::middleware::Condition::new(conf.leptos_options.env == leptos_config::Env::PROD, middleware::Compress::default()))
+                    .wrap(actix_web::middleware::Condition::new(conf.leptos_options.env == config::Env::PROD, middleware::Compress::default()))
                     .service(
                         web::scope("/api")
                             .service(
@@ -52,9 +53,10 @@ cfg_if::cfg_if! {
                     // // serve the favicon from /favicon.ico
                     .service(favicon)
                     .leptos_routes(
-                        leptos_options.to_owned(),
-                        routes.to_owned(),
-                        || view! { <app::App/> },
+                        routes.to_owned(), {
+                            let leptos_options = leptos_options.clone();
+                            move || app::shell(leptos_options.clone())
+                        },
                     )
                     .app_data(web::Data::new(leptos_options.to_owned()))
                     .app_data(web::Data::new(pool.clone()))
@@ -71,7 +73,7 @@ cfg_if::cfg_if! {
 
         #[actix_web::get("/favicon.svg")]
         async fn favicon(
-            leptos_options: actix_web::web::Data<leptos::LeptosOptions>,
+            leptos_options: actix_web::web::Data<config::LeptosOptions>,
         ) -> actix_web::Result<actix_files::NamedFile> {
             let leptos_options = leptos_options.into_inner();
             let site_root = &leptos_options.site_root;
@@ -82,7 +84,7 @@ cfg_if::cfg_if! {
 
         #[actix_web::get("/privacy-policy.html")]
         async fn privacy_policy(
-            leptos_options: actix_web::web::Data<leptos::LeptosOptions>,
+            leptos_options: actix_web::web::Data<config::LeptosOptions>,
         ) -> impl Responder {
             let leptos_options = leptos_options.into_inner();
             let site_root = &leptos_options.site_root;

@@ -1,5 +1,5 @@
-use leptos::*;
-use leptos_router::{ActionForm, A};
+use leptos::{ev, form::ActionForm, prelude::*};
+use leptos_router::components::A;
 
 use super::*;
 use components::MessageJar;
@@ -9,22 +9,22 @@ pub fn ChangePassword() -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
     let message = expect_context::<MessageJar>();
 
-    let action = create_server_action::<api::ChangePassword>();
+    let action = ServerAction::<api::ChangePassword>::new();
 
-    let new_pass_ref = create_node_ref::<leptos::html::Input>();
-    let new_pass_repeat_ref = create_node_ref::<leptos::html::Input>();
+    let new_pass_ref = NodeRef::<leptos::html::Input>::new();
+    let new_pass_repeat_ref = NodeRef::<leptos::html::Input>::new();
 
     let on_submit = move |ev: ev::SubmitEvent| {
-        if new_pass_ref().unwrap().value() != new_pass_repeat_ref().unwrap().value() {
+        if new_pass_ref.get().unwrap().value() != new_pass_repeat_ref.get().unwrap().value() {
             message.set_err("Passwords do not match");
             ev.prevent_default();
-        } else if new_pass_ref().unwrap().value().len() < 8 {
+        } else if new_pass_ref.get().unwrap().value().len() < 8 {
             message.set_err("Password should be longer than 8 characters");
             ev.prevent_default();
         }
     };
 
-    create_effect(move |_| match action.value().get() {
+    Effect::new(move |_| match action.value().get() {
         Some(Ok(_)) => message.set_msg("Password succesfully changed"),
         Some(Err(err)) => message.set_err(err.to_string()),
         None => {}

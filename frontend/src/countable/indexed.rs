@@ -1,5 +1,7 @@
+#![allow(dead_code)]
+
 use super::*;
-use leptos::{create_effect, expect_context};
+use leptos::prelude::{expect_context, Effect};
 
 #[cfg(not(docsrs))]
 const IDB_VERSION: &str = env!("IDB_TALLYWEB_VERSION");
@@ -84,7 +86,7 @@ impl SaveHandler for IndexedSaveHandler {
         let msg = expect_context::<components::MessageJar>();
 
         #[allow(clippy::borrowed_box)]
-        let action = leptos::create_action(move |value: &Box<dyn Savable>| {
+        let action = leptos::prelude::Action::new_local(move |value: &Box<dyn Savable>| {
             let value = value.clone_box();
             async move {
                 let factory = indexed_db::Factory::<AppError>::get()?;
@@ -109,7 +111,7 @@ impl SaveHandler for IndexedSaveHandler {
         action.dispatch(value);
 
         #[allow(clippy::single_match)]
-        create_effect(move |_| match action.value()() {
+        Effect::new(move |_| match action.value()() {
             Some(Err(err)) => {
                 on_error(&err);
                 msg.without_timeout().set_err(err)

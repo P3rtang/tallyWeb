@@ -1,6 +1,8 @@
+#![allow(dead_code)]
+
 use super::{connect_on_window_resize, AppError};
 use components::{MessageJar, SidebarLayout};
-use leptos::*;
+use leptos::{logging, prelude::*};
 use wasm_bindgen::JsCast;
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
@@ -36,13 +38,13 @@ impl Screen {
         };
 
         Ok(Self {
-            style: create_rw_signal(style),
-            size: create_rw_signal(size),
+            style: RwSignal::new(style),
+            size: RwSignal::new(size),
         })
     }
 
     pub fn update(&self) -> Result<(), AppError> {
-        let width = leptos_dom::window()
+        let width = leptos::leptos_dom::helpers::window()
             .inner_width()
             .map_err(|val| AppError::WindowSize(val.as_string().unwrap_or_default()))?
             .as_f64()
@@ -50,7 +52,7 @@ impl Screen {
                 "Unable to convert JsValue to f64".to_string(),
             ))? as usize;
 
-        let height = leptos_dom::window()
+        let height = leptos::leptos_dom::helpers::window()
             .inner_height()
             .map_err(|val| AppError::WindowSize(val.as_string().unwrap_or_default()))?
             .as_f64()
@@ -90,8 +92,8 @@ impl Screen {
 impl Default for Screen {
     fn default() -> Self {
         Self {
-            style: create_rw_signal(ScreenStyle::Big),
-            size: create_rw_signal((1920, 1080)),
+            style: RwSignal::new(ScreenStyle::Big),
+            size: RwSignal::new((1920, 1080)),
         }
     }
 }
@@ -111,34 +113,25 @@ pub async fn get_screen_cookie() -> Result<Screen, ServerFnError> {
     return Ok(Screen::new(size)?);
 }
 
-async fn get_screen() -> Screen {
-    get_screen_cookie().await.unwrap_or_default()
-}
+pub async fn provide_screen() -> Result<(), AppError> {
+    let owner = Owner::current().unwrap();
 
-#[component(transparent)]
-pub fn ProvideScreenSignal(children: ChildrenFn) -> impl IntoView {
-    view! {
-        <Await future=get_screen let:screen>
+    let screen = get_screen_cookie().await.unwrap_or_default();
 
-            {
-                let s = *screen;
-                create_effect(move |_| {
-                    let _ = s.update();
-                    connect_on_window_resize(
-                        Box::new(move || {
-                            if let Err(err) = s.update() {
-                                if let Some(msg) = use_context::<MessageJar>() {
-                                    msg.set_err(err.clone())
-                                }
-                                logging::warn!("{}", err)
-                            }
-                        }),
-                    )
-                });
-                provide_context(s);
-                children()
+    #[cfg(feature = "csr")]
+    Effect::new(move |_| {
+        let _ = screen.update();
+        connect_on_window_resize(Box::new(move || {
+            if let Err(err) = screen.update() {
+                if let Some(msg) = use_context::<MessageJar>() {
+                    msg.set_err(err.clone())
+                }
+                logging::warn!("{}", err)
             }
+        }))
+    });
 
-        </Await>
-    }
+    owner.with(move || provide_context(screen));
+
+    Ok(())
 }

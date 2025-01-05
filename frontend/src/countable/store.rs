@@ -1,8 +1,8 @@
 use chrono::TimeDelta;
-use leptos::{SignalGetUntracked, SignalUpdateUntracked};
+use leptos::prelude::{GetUntracked, UpdateUntracked};
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::Mutex;
 
 use super::*;
 
@@ -31,7 +31,7 @@ pub struct CountableStore<M: StoreMethod, C: StoreCheck> {
     pub(crate) owner: uuid::Uuid,
     pub(crate) store: HashMap<CountableId, Countable>,
     pub(crate) selection: Vec<CountableId>,
-    pub(crate) is_changed: RefCell<bool>,
+    pub(crate) is_changed: std::sync::Arc<Mutex<bool>>,
     phantom_data: std::marker::PhantomData<(M, C)>,
 }
 
@@ -161,7 +161,7 @@ where
             Countable::Chain(_) => todo!(),
         };
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(true);
 
         Ok(())
     }
@@ -197,7 +197,7 @@ impl Savable for CountableStore<Level, UnChecked> {
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
         use wasm_bindgen::JsValue;
 
-        self.is_changed.replace(false);
+        let _ = self.is_changed.replace(false);
 
         Box::pin(async move {
             obj.clear().await?;
@@ -213,16 +213,21 @@ impl Savable for CountableStore<Level, UnChecked> {
 
     fn save_endpoint(
         &self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
-    {
-        self.is_changed.replace(false);
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<(), leptos::prelude::ServerFnError>>
+                + Send
+                + Sync,
+        >,
+    > {
+        let _ = self.is_changed.replace(false);
         let cloned = self.clone();
         Box::pin(api::update_countable_many(
             cloned.store.into_values().collect(),
         ))
     }
 
-    fn message(&self) -> Option<leptos::View> {
+    fn message(&self) -> Option<leptos::prelude::ViewFn> {
         None
     }
 
@@ -231,7 +236,7 @@ impl Savable for CountableStore<Level, UnChecked> {
     }
 
     fn has_change(&self) -> bool {
-        *self.is_changed.borrow()
+        self.is_changed.lock().map(|ic| *ic).unwrap_or_default()
     }
 }
 
@@ -309,7 +314,7 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
             }
         }
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -329,7 +334,7 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
                 .add_child_checked(key)?
         }
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(key)
     }
@@ -347,7 +352,7 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
             Countable::Chain(_) => todo!(),
         }
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         this.get(countable).ok_or(AppError::CountableNotFound)
     }
@@ -480,7 +485,7 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
             Countable::Chain(_) => todo!(),
         };
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -604,7 +609,7 @@ impl<M: StoreMethod> CountableStore<M, UnChecked> {
             Err(err) => panic!("{err}"),
         };
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
     }
 }
 
@@ -713,7 +718,7 @@ impl CountableStore<Level, Checked> {
             Countable::Chain(_) => todo!(),
         };
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -746,7 +751,7 @@ impl CountableStore<Level, Checked> {
             Countable::Chain(_) => todo!(),
         };
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -819,7 +824,7 @@ impl CountableStore<Level, Checked> {
             Countable::Chain(_) => todo!(),
         }
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -884,7 +889,7 @@ impl CountableStore<Level, Checked> {
             Countable::Chain(_) => todo!(),
         };
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -917,7 +922,7 @@ impl CountableStore<Level, Checked> {
             Countable::Chain(_) => todo!(),
         };
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -1287,7 +1292,7 @@ impl CountableStore<Recursive, Checked> {
             Countable::Chain(_) => todo!(),
         };
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -1337,7 +1342,7 @@ impl CountableStore<Recursive, Checked> {
             Countable::Chain(_) => todo!(),
         };
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -1421,7 +1426,7 @@ impl CountableStore<Recursive, Checked> {
             Countable::Chain(_) => todo!(),
         }
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -1509,7 +1514,7 @@ impl CountableStore<Recursive, Checked> {
             Countable::Chain(_) => todo!(),
         };
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -1559,7 +1564,7 @@ impl CountableStore<Recursive, Checked> {
             Countable::Chain(_) => todo!(),
         };
 
-        self.is_changed.replace(true);
+        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -2500,7 +2505,7 @@ impl CountableStore<Recursive, UnChecked> {
 }
 
 #[typetag::serde]
-impl Savable for leptos::RwSignal<CountableStore<Level, UnChecked>> {
+impl Savable for leptos::prelude::RwSignal<CountableStore<Level, UnChecked>> {
     fn indexed_db_name(&self) -> String {
         "Countable".into()
     }
@@ -2512,7 +2517,7 @@ impl Savable for leptos::RwSignal<CountableStore<Level, UnChecked>> {
         use wasm_bindgen::JsValue;
 
         self.update_untracked(|s| {
-            s.is_changed.replace(false);
+            let _ = s.is_changed.replace(false);
         });
 
         Box::pin(async move {
@@ -2529,10 +2534,15 @@ impl Savable for leptos::RwSignal<CountableStore<Level, UnChecked>> {
 
     fn save_endpoint(
         &self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>
-    {
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Result<(), leptos::prelude::ServerFnError>>
+                + Send
+                + Sync,
+        >,
+    > {
         self.update_untracked(|s| {
-            s.is_changed.replace(false);
+            let _ = s.is_changed.replace(false);
         });
 
         Box::pin(api::update_countable_many(
@@ -2540,7 +2550,7 @@ impl Savable for leptos::RwSignal<CountableStore<Level, UnChecked>> {
         ))
     }
 
-    fn message(&self) -> Option<leptos::View> {
+    fn message(&self) -> Option<leptos::prelude::ViewFn> {
         None
     }
 
@@ -2549,7 +2559,11 @@ impl Savable for leptos::RwSignal<CountableStore<Level, UnChecked>> {
     }
 
     fn has_change(&self) -> bool {
-        *self.get_untracked().is_changed.borrow()
+        self.get_untracked()
+            .is_changed
+            .lock()
+            .map(|ic| *ic)
+            .unwrap_or(false)
     }
 }
 

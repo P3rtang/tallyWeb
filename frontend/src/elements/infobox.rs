@@ -3,7 +3,7 @@
 use super::*;
 use chrono::Duration;
 use components::Progressbar;
-use leptos::*;
+use leptos::{ev, prelude::*};
 use web_sys::MouseEvent;
 
 stylance::import_style!(style, "infobox.module.scss");
@@ -49,7 +49,7 @@ impl FnOnce<()> for HasChange {
 pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl IntoView {
     let screen = expect_context::<Screen>();
 
-    let show_multiple = create_memo(move |_| countable_list().len() > 1);
+    let show_multiple = Memo::new(move |_| countable_list().len() > 1);
     let multi_narrow = move || !(show_multiple() && ScreenStyle::Portrait == (screen.style)());
 
     view! {
@@ -68,8 +68,8 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<uuid::Uuid>>) -> impl In
 
 #[component]
 pub fn InfoBoxPart(
-    #[prop(into)] key: MaybeSignal<uuid::Uuid>,
-    #[prop(into)] show_multiple: MaybeSignal<bool>,
+    #[prop(into)] key: Signal<uuid::Uuid>,
+    #[prop(into)] show_multiple: Signal<bool>,
 ) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let preferences = expect_context::<RwSignal<Preferences>>();
@@ -87,7 +87,7 @@ pub fn InfoBoxPart(
         s.get(&s.recursive_ref().last_child(&key().into()))
     });
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         let save_handler = expect_context::<RwSignal<SaveHandlers>>();
         is_active.0.with(|a| {
             if !a && preferences.get_untracked().save_on_pause && has_change.0.get_untracked() {
@@ -122,7 +122,7 @@ pub fn InfoBoxPart(
 }
 
 #[component]
-fn Title(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
+fn Title(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
     let state = expect_context::<SelectionSignal>();
 
     let get_name = create_read_slice(state, move |state| {
@@ -144,14 +144,10 @@ fn Title(#[prop(into)] key: MaybeSignal<uuid::Uuid>) -> impl IntoView {
 }
 
 #[component]
-fn Count<T, E>(
-    #[prop(into)] key: MaybeSignal<uuid::Uuid>,
-    expand: E,
-    show_title: T,
-) -> impl IntoView
+fn Count<T, E>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
 where
-    E: Fn() -> bool + Copy + 'static,
-    T: Fn() -> bool + Copy + 'static,
+    E: Fn() -> bool + Copy + Send + Sync + 'static,
+    T: Fn() -> bool + Copy + Send + Sync + 'static,
 {
     let store = expect_context::<RwSignal<CountableStore>>();
     let is_active = expect_context::<IsActive>();
@@ -228,10 +224,10 @@ where
 }
 
 #[component]
-fn Time<T, E>(#[prop(into)] key: MaybeSignal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
+fn Time<T, E>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
 where
-    E: Fn() -> bool + Copy + 'static,
-    T: Fn() -> bool + Copy + 'static,
+    E: Fn() -> bool + Copy + Send + Sync + 'static,
+    T: Fn() -> bool + Copy + Send + Sync + 'static,
 {
     let is_active = expect_context::<IsActive>();
     let has_change = expect_context::<HasChange>();
@@ -251,7 +247,7 @@ where
 
     #[cfg(not(feature = "ssr"))] // run timer only on client
     {
-        let time = create_signal(0_u32);
+        let time = signal(0_u32);
         let calc_interval =
             |now: u32, old: u32| Duration::milliseconds(((1000 + now - old) % 1000).into());
 
@@ -266,10 +262,6 @@ where
             },
             std::time::Duration::from_millis(33),
         );
-
-        on_cleanup(|| {
-            let _ = handle.map(|h| h.clear());
-        });
     }
 
     let class = move || {
@@ -303,14 +295,10 @@ where
 }
 
 #[component]
-fn Progress<T, E>(
-    #[prop(into)] key: MaybeSignal<uuid::Uuid>,
-    expand: E,
-    show_title: T,
-) -> impl IntoView
+fn Progress<T, E>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
 where
-    E: Fn() -> bool + Copy + 'static,
-    T: Fn() -> bool + Copy + 'static,
+    E: Fn() -> bool + Copy + Send + Sync + 'static,
+    T: Fn() -> bool + Copy + Send + Sync + 'static,
 {
     let store = expect_context::<RwSignal<CountableStore>>();
 
@@ -329,7 +317,7 @@ where
         _ => "#ff9580",
     };
 
-    let class = move || {
+    let classes = move || {
         stylance::classes! {
             style::rowbox,
             if expand() { Some(style::expand) } else { None }
@@ -337,7 +325,7 @@ where
     };
 
     view! {
-        <div class=class>
+        <div class=classes>
             <span
                 class=style::title
                 style:display=move || if show_title() { "block" } else { "none" }
@@ -354,22 +342,18 @@ where
 }
 
 #[component]
-fn LastStep<E, T>(
-    #[prop(into)] key: MaybeSignal<uuid::Uuid>,
-    expand: E,
-    show_title: T,
-) -> impl IntoView
+fn LastStep<E, T>(#[prop(into)] key: Signal<uuid::Uuid>, expand: E, show_title: T) -> impl IntoView
 where
-    E: Fn() -> bool + Copy + 'static,
-    T: Fn() -> bool + Copy + 'static,
+    E: Fn() -> bool + Copy + Sync + Send + 'static,
+    T: Fn() -> bool + Copy + Sync + Send + 'static,
 {
     let store = expect_context::<RwSignal<CountableStore>>();
 
-    let last_interaction = create_rw_signal(None::<i64>);
+    let last_interaction = RwSignal::new(None::<i64>);
     let on_count = create_read_slice(store, move |s| s.recursive_ref().count(&key().into()));
     let time = create_read_slice(store, move |s| s.recursive_ref().time(&key().into()));
 
-    let time_value = create_memo(move |_| {
+    let time_value = Memo::new(move |_| {
         on_count.track();
         let val = last_interaction
             .get_untracked()
@@ -378,7 +362,7 @@ where
         val
     });
 
-    let format = create_memo(move |_| {
+    let format = Memo::new(move |_| {
         time_value.with(|v| {
             match v {
                 Some(d) if d.num_hours() > 0 => "%Hh %M",
@@ -389,17 +373,17 @@ where
         })
     });
 
-    let class = move || {
+    let classes = move || {
         stylance::classes! {
             style::rowbox,
-            if expand() { Some(style::expand) } else { None }
+            expand().then_some(style::expand)
         }
     };
 
     let time_style = || stylance::classes!(style::info, style::time);
 
     view! {
-        <div class=class>
+        <div class=classes>
             <span
                 class=style::title
                 style:display=move || if show_title() { "block" } else { "none" }
@@ -424,26 +408,26 @@ where
 
 #[component]
 fn AverageStep<E, T>(
-    #[prop(into)] key: MaybeSignal<uuid::Uuid>,
+    #[prop(into)] key: Signal<uuid::Uuid>,
     expand: E,
     show_title: T,
 ) -> impl IntoView
 where
-    E: Fn() -> bool + Copy + 'static,
-    T: Fn() -> bool + Copy + 'static,
+    E: Fn() -> bool + Copy + Sync + Send + 'static,
+    T: Fn() -> bool + Copy + Sync + Send + 'static,
 {
     let store = expect_context::<RwSignal<CountableStore>>();
 
     let count = create_read_slice(store, move |s| s.recursive_ref().count(&key().into()));
     let time = create_read_slice(store, move |s| s.recursive_ref().time(&key().into()));
 
-    let step = create_memo(move |_| {
+    let step = Memo::new(move |_| {
         Duration::milliseconds(time().num_milliseconds() / count().max(1) as i64)
     });
 
-    let timer_value = create_memo(move |_| step().to_std().unwrap_or_default());
+    let timer_value = Memo::new(move |_| step().to_std().unwrap_or_default());
 
-    let format = create_memo(move |_| {
+    let format = Memo::new(move |_| {
         step.with(|v| {
             match v {
                 d if d.num_hours() > 0 => "%Hh %M",

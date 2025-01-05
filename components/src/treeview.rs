@@ -5,33 +5,33 @@
 use core::fmt::Debug;
 use std::{collections::HashMap, hash::Hash};
 
-use leptos::{ev::MouseEvent, *};
+use leptos::{ev::MouseEvent, prelude::*};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SelectionModel<S, T>
+pub struct SelectionModel<SelectionKey, T>
 where
-    S: Clone + PartialEq + Eq + Hash + 'static,
-    T: Clone + 'static + Debug + PartialEq,
+    SelectionKey: Clone + Debug + Send + Sync + PartialEq + Eq + Hash + 'static,
+    T: Debug + Clone + PartialEq + Send + Sync + 'static,
 {
-    items: HashMap<S, TreeNode<T, S>>,
-    selection: HashMap<S, bool>,
+    items: HashMap<SelectionKey, TreeNode<T, SelectionKey>>,
+    selection: HashMap<SelectionKey, bool>,
     multi_select: bool,
 }
 
-impl<S, T> Default for SelectionModel<S, T>
+impl<SelectionKey, T> Default for SelectionModel<SelectionKey, T>
 where
-    S: Clone + PartialEq + Eq + Hash + 'static,
-    T: Clone + 'static + Debug + PartialEq,
+    SelectionKey: Clone + Debug + Send + Sync + PartialEq + Eq + Hash + 'static,
+    T: Debug + Clone + PartialEq + Send + Sync + 'static,
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<S, T> SelectionModel<S, T>
+impl<SelectionKey, T> SelectionModel<SelectionKey, T>
 where
-    S: Clone + PartialEq + Eq + Hash + 'static,
-    T: Clone + 'static + Debug + PartialEq,
+    SelectionKey: Clone + Debug + Send + Sync + PartialEq + Eq + Hash + 'static,
+    T: Debug + Clone + PartialEq + Send + Sync + 'static,
 {
     pub fn new() -> Self {
         Self {
@@ -45,19 +45,19 @@ where
         self.multi_select = multi_select
     }
 
-    pub fn get(&self, key: &S) -> Option<&T> {
+    pub fn get(&self, key: &SelectionKey) -> Option<&T> {
         Some(&self.items.get(key)?.row)
     }
 
-    pub fn get_mut(&mut self, key: &S) -> Option<&mut T> {
+    pub fn get_mut(&mut self, key: &SelectionKey) -> Option<&mut T> {
         Some(&mut self.items.get_mut(key)?.row)
     }
 
-    pub fn get_node(&self, key: &S) -> Option<&TreeNode<T, S>> {
+    pub fn get_node(&self, key: &SelectionKey) -> Option<&TreeNode<T, SelectionKey>> {
         self.items.get(key)
     }
 
-    pub fn get_node_mut(&mut self, key: &S) -> Option<&mut TreeNode<T, S>> {
+    pub fn get_node_mut(&mut self, key: &SelectionKey) -> Option<&mut TreeNode<T, SelectionKey>> {
         self.items.get_mut(key)
     }
 
@@ -65,14 +65,14 @@ where
         self.selection.clear();
     }
 
-    pub fn select(&mut self, key: &S) {
+    pub fn select(&mut self, key: &SelectionKey) {
         if !self.multi_select {
             self.selection.clear();
         }
         self.selection.insert(key.clone(), true);
     }
 
-    pub fn toggle(&mut self, key: &S) {
+    pub fn toggle(&mut self, key: &SelectionKey) {
         let current_value = self.is_selected(key);
         if !self.multi_select {
             self.selection.clear();
@@ -98,7 +98,7 @@ where
             .collect()
     }
 
-    pub fn get_selected_keys(&self) -> Vec<&S> {
+    pub fn get_selected_keys(&self) -> Vec<&SelectionKey> {
         self.selection
             .iter()
             .filter(|(k, b)| **b && self.items.contains_key(k))
@@ -106,7 +106,7 @@ where
             .collect()
     }
 
-    pub fn get_owned_selected_keys(&self) -> Vec<S> {
+    pub fn get_owned_selected_keys(&self) -> Vec<SelectionKey> {
         self.selection
             .iter()
             .filter(|(k, b)| **b && self.items.contains_key(k))
@@ -115,11 +115,11 @@ where
             .collect()
     }
 
-    pub fn remove_item(&mut self, key: &S) -> Option<T> {
+    pub fn remove_item(&mut self, key: &SelectionKey) -> Option<T> {
         Some(self.items.remove(key)?.row)
     }
 
-    pub fn is_selected(&self, key: &S) -> bool {
+    pub fn is_selected(&self, key: &SelectionKey) -> bool {
         self.selection.get(key).cloned().unwrap_or_default()
     }
 
@@ -129,38 +129,38 @@ where
 }
 
 #[component]
-pub fn TreeViewWidget<T, F, S, FV, IV, EC>(
+pub fn TreeViewWidget<T, F, SelectionKey, FV, IV, EC>(
     each: F,
-    key: fn(&T) -> S,
+    key: fn(&T) -> SelectionKey,
     each_child: EC,
     view: FV,
     #[prop(default=create_signal(false).0.into(), into)] show_separator: Signal<bool>,
     #[prop(default=create_rw_signal(SelectionModel::default()), into)] selection_model: RwSignal<
-        SelectionModel<S, T>,
+        SelectionModel<SelectionKey, T>,
     >,
-    #[prop(optional)] on_click: Option<fn(&S, MouseEvent)>,
+    #[prop(optional)] on_click: Option<fn(&SelectionKey, MouseEvent)>,
 ) -> impl IntoView
 where
-    T: Debug + Clone + PartialEq + 'static,
-    S: Debug + Clone + PartialEq + Eq + Hash + ToString + 'static,
-    F: Fn() -> Vec<T> + Copy + 'static,
-    FV: Fn(&T) -> IV + Copy + 'static,
-    IV: IntoView,
-    EC: Fn(&T) -> Vec<T> + Copy + 'static,
+    SelectionKey: Clone + Debug + Send + Sync + PartialEq + Eq + Hash + 'static,
+    T: Debug + Clone + PartialEq + Send + Sync + 'static,
+    IV: IntoView + 'static,
+    F: Fn() -> Vec<T> + Copy + Sync + Send + 'static,
+    FV: Fn(&T) -> IV + Copy + Sync + Send + 'static,
+    EC: Fn(&T) -> Vec<T> + Copy + Sync + Send + 'static,
 {
-    let nodes = create_memo(move |_| each());
+    let nodes = Memo::new(move |_| each());
 
-    create_isomorphic_effect(move |_| {
+    Effect::new_isomorphic(move |_| {
         each().into_iter().for_each(move |c| {
-            let key_val = store_value(key(&c));
+            let key_val = StoredValue::new(key(&c));
             if selection_model
                 .get_untracked()
-                .get_node(&key_val())
+                .get_node(&key_val.get_value())
                 .is_none()
             {
-                let node = TreeNode::<T, S>::new(key, c, 0);
+                let node = TreeNode::<T, SelectionKey>::new(key, c, 0);
                 selection_model.update(move |s| {
-                    s.items.insert(key_val(), node);
+                    s.items.insert(key_val.get_value(), node);
                 });
             }
         })
@@ -205,37 +205,39 @@ where
 }
 
 #[component]
-fn TreeViewRow<T, S, FV, IV, EC>(
+fn TreeViewRow<T, SelectionKey, FV, IV, EC>(
     children: ChildrenFn,
     item: T,
-    key: fn(&T) -> S,
+    key: fn(&T) -> SelectionKey,
     each_child: EC,
     view: FV,
-    selection_model: RwSignal<SelectionModel<S, T>>,
-    on_click: Option<fn(&S, MouseEvent)>,
+    selection_model: RwSignal<SelectionModel<SelectionKey, T>>,
+    on_click: Option<fn(&SelectionKey, MouseEvent)>,
 ) -> impl IntoView
 where
-    T: Debug + Clone + PartialEq + 'static,
-    S: Debug + Clone + PartialEq + Eq + Hash + ToString + 'static,
-    FV: Fn(&T) -> IV + Copy + 'static,
-    IV: IntoView,
-    EC: Fn(&T) -> Vec<T> + Copy + 'static,
+    SelectionKey: Clone + Debug + Send + Sync + PartialEq + Eq + Hash + 'static,
+    T: Debug + Clone + PartialEq + Send + Sync + 'static,
+    FV: Fn(&T) -> IV + Copy + Send + Sync + 'static,
+    IV: IntoView + 'static,
+    EC: Fn(&T) -> Vec<T> + Copy + Send + Sync + 'static,
 {
-    let key_val = store_value(key(&item));
+    let key_val = StoredValue::new(key(&item));
 
-    let node = create_read_slice(selection_model, move |sm| sm.items.get(&key_val()).cloned());
+    let node = create_read_slice(selection_model, move |sm| {
+        sm.items.get(&key_val.get_value()).cloned()
+    });
 
     let (is_expanded, toggle_expand) = create_slice(
         selection_model,
         move |model| {
             model
                 .items
-                .get(&key_val())
+                .get(&key_val.get_value())
                 .map(|n| n.is_expanded)
                 .unwrap_or_default()
         },
         move |model, _| {
-            if let Some(node) = model.items.get_mut(&key_val()) {
+            if let Some(node) = model.items.get_mut(&key_val.get_value()) {
                 node.toggle_expand()
             };
         },
@@ -243,22 +245,13 @@ where
 
     let (is_selected, set_selected) = create_slice(
         selection_model,
-        move |model| model.is_selected(&key_val()),
-        move |model, _| model.select(&key_val()),
+        move |model| model.is_selected(&key_val.get_value()),
+        move |model, _| model.select(&key_val.get_value()),
     );
 
     let caret_class = move || "caret fa-solid fa-caret-right";
 
-    let div_class = move || {
-        let mut class = String::from("selectable row");
-        if is_selected() {
-            class += " selected"
-        }
-
-        class
-    };
-
-    let background = create_memo(move |_| {
+    let background = Memo::new(move |_| {
         if is_selected() {
             "var(--accent, #3584E4)"
         } else {
@@ -275,39 +268,35 @@ where
 
     let depth = move || node().map(|n| n.depth).unwrap_or_default();
 
-    let depth_style = move || {
-        let margin = format!("{}em", 2.0 * depth() as f64);
-        let style = format!("padding-left:{};", margin);
-        style
-    };
+    let node_children = Memo::new(move |_| each_child(&item));
 
-    let node_children = create_memo(move |_| each_child(&item));
-
-    create_isomorphic_effect(move |_| {
+    Effect::new_isomorphic(move |_| {
         node_children().into_iter().for_each(|c| {
-            let key_val = store_value(key(&c));
+            let key_val = StoredValue::new(key(&c));
             if selection_model
                 .get_untracked()
-                .get_node(&key_val())
+                .get_node(&key_val.get_value())
                 .is_none()
             {
-                let node = TreeNode::<T, S>::new(key, c, depth() + 1);
+                let node = TreeNode::<T, SelectionKey>::new(key, c, depth() + 1);
                 selection_model.update(|s| {
-                    s.items.insert(key_val(), node);
+                    s.items.insert(key_val.get_value(), node);
                 });
             }
         });
     });
 
-    let children = store_value(children);
+    let children = StoredValue::new(children);
 
     view! {
         <li style:display="block">
             <div
-                style=depth_style
-                style:background=background
+                style:padding-left=move || format!("{}em", 2.0 * depth() as f64)
+                style:background=move || background()
                 style:display="flex"
-                class=div_class
+                class:selectable=true
+                class:row=true
+                class:selected=is_selected
                 on:click=move |ev| {
                     if let Some(f) = on_click {
                         if let Some(k) = key_val.try_get_value() {
@@ -333,7 +322,7 @@ where
                         on:click=on_caret_click
                     ></div>
                 </Show>
-                {children()}
+                {children.get_value()()}
             </div>
             <ul style:display=move || if is_expanded() { "block" } else { "none" }>
                 <For
@@ -358,26 +347,27 @@ where
             </ul>
         </li>
     }
+    .into_any()
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TreeNode<T, S>
+pub struct TreeNode<T, SelectionKey>
 where
-    T: Clone + 'static + Debug + PartialEq,
-    S: Clone + PartialEq + Eq + Hash + 'static,
+    SelectionKey: Clone + Debug + Send + Sync + PartialEq + Eq + Hash + 'static,
+    T: Debug + Clone + PartialEq + Send + Sync + 'static,
 {
-    pub key: fn(&T) -> S,
+    pub key: fn(&T) -> SelectionKey,
     pub row: T,
     pub depth: usize,
     pub is_expanded: bool,
 }
 
-impl<T, S> TreeNode<T, S>
+impl<T, SelectionKey> TreeNode<T, SelectionKey>
 where
-    T: Clone + 'static + Debug + PartialEq,
-    S: Clone + PartialEq + Eq + Hash + 'static,
+    SelectionKey: Clone + Debug + Send + Sync + PartialEq + Eq + Hash + 'static,
+    T: Debug + Clone + PartialEq + Send + Sync + 'static,
 {
-    pub fn new(key: fn(&T) -> S, item: T, depth: usize) -> Self {
+    pub fn new(key: fn(&T) -> SelectionKey, item: T, depth: usize) -> Self {
         Self {
             key,
             row: item.clone(),

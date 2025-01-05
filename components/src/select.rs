@@ -1,6 +1,6 @@
-use super::CloseOverlays;
+use super::{CloseOverlays, Prop};
 use fuzzy_sort::*;
-use leptos::*;
+use leptos::{ev, logging, prelude::*};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SelectOption {
@@ -34,21 +34,19 @@ impl From<(&str, &str)> for SelectOption {
 
 #[component]
 pub fn Select(
-    #[prop(attrs)] attrs: Vec<(&'static str, Attribute)>,
-    #[prop(into)] options: Vec<SelectOption>,
-    #[prop(into)] selected: MaybeSignal<SelectOption>,
+    #[prop(into)] options: Prop<Vec<SelectOption>>,
+    #[prop(into)] selected: Signal<SelectOption>,
 ) -> impl IntoView {
-    let attrs = store_value(attrs);
-    let hidden_select_ref = create_node_ref::<html::Input>();
-    let show_custom = create_rw_signal(false);
-    let selection = create_rw_signal(SelectOption::default());
-    let options = store_value(options);
+    let hidden_select_ref = NodeRef::<leptos::html::Input>::new();
+    let show_custom = RwSignal::new(false);
+    let selection = RwSignal::new(SelectOption::default());
+    let options = StoredValue::new(options);
 
-    create_isomorphic_effect(move |_| {
+    Effect::new_isomorphic(move |_| {
         selection.set(selected.get());
     });
 
-    let options_view = options()
+    let options_view = options.get_value()()
         .into_iter()
         .map(move |option| {
             view! {
@@ -62,11 +60,11 @@ pub fn Select(
         })
         .collect_view();
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         show_custom.set(true);
         if let Some(node) = hidden_select_ref.get() {
             selection.set(
-                options()
+                options.get_value()()
                     .into_iter()
                     .find_map(|o| (o.value == node.value()).then_some(o))
                     .unwrap_or_default(),
@@ -74,7 +72,7 @@ pub fn Select(
         }
     });
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         if let Some(node) = hidden_select_ref.get() {
             node.set_value(&selection().value)
         }
@@ -84,23 +82,22 @@ pub fn Select(
         <Show
             when=show_custom
             fallback=move || {
-                view! { <select {..attrs()}>{options_view.clone()}</select> }
+                view! { <select>{options_view.clone()}</select> }
             }
         >
-
-            <SelectOver options=options() selection />
-            <input {..attrs()} type="hidden" node_ref=hidden_select_ref />
+            <input type="hidden" node_ref=hidden_select_ref />
+            <SelectOver options=options.get_value() selection />
         </Show>
     }
 }
 
 #[component]
 pub fn SelectOver(
-    #[prop(into)] options: Vec<SelectOption>,
+    #[prop(into)] options: Prop<Vec<SelectOption>>,
     selection: RwSignal<SelectOption>,
 ) -> impl IntoView {
-    let options = store_value(options);
-    let show_options = create_rw_signal(false);
+    let options = StoredValue::new(options);
+    let show_options = RwSignal::new(false);
 
     let toggle_show = move |ev: ev::MouseEvent| {
         ev.stop_propagation();
@@ -114,12 +111,12 @@ pub fn SelectOver(
 
     let toggle_style = move || if show_options() { "rotate(180deg)" } else { "" };
 
-    let options_list_ref = create_node_ref::<html::Div>();
+    let options_list_ref = NodeRef::<leptos::html::Div>::new();
 
-    let max_height = create_rw_signal(None::<String>);
+    let max_height = RwSignal::new(String::new());
 
-    create_effect(move |_| {
-        if let Some(node) = options_list_ref() {
+    Effect::new(move |_| {
+        if let Some(node) = options_list_ref.get() {
             request_animation_frame(move || {
                 let y = node.get_bounding_client_rect().top();
                 let screen_height = window()
@@ -127,20 +124,20 @@ pub fn SelectOver(
                     .ok()
                     .and_then(|js_val| js_val.as_f64())
                     .unwrap_or(1080.0);
-                max_height.set(Some(format!("{}px", screen_height - y)))
+                max_height.set(format!("{}px", screen_height - y))
             })
         }
     });
 
-    let key_input = create_rw_signal(None::<String>);
-    let options_memo = create_memo(move |_| {
+    let key_input = RwSignal::new(None::<String>);
+    let options_memo = Memo::new(move |_| {
         if let Some(i) = key_input() {
             let sorter = SimpleMatch::new(i);
-            let mut mut_options = options();
+            let mut mut_options = options.get_value()();
             mut_options.sort_by(sorter.sort());
             mut_options
         } else {
-            options()
+            options.get_value()()
         }
     });
 
@@ -187,7 +184,7 @@ pub fn SelectOver(
     });
 
     if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>() {
-        create_effect(move |_| {
+        Effect::new(move |_| {
             close_signal.track();
             show_options.set(false);
         });
@@ -244,14 +241,17 @@ pub fn SelectOver(
                             .into_iter()
                             .enumerate()
                             .map(move |(idx, option)| {
-                                let option = store_value(option);
+                                let option = StoredValue::new(option);
                                 view! {
                                     <select-option
-                                        on:click=move |_| on_option(option())
+                                        on:click=move |_| on_option(option.get_value())
                                         style:display="block"
-                                        style:background=move || selected_bg(idx, option())
+                                        style:background=move || selected_bg(
+                                            idx,
+                                            option.get_value(),
+                                        )
                                     >
-                                        {option().name}
+                                        {option.get_value().name}
                                     </select-option>
                                 }
                             })

@@ -3,8 +3,11 @@
 #![feature(fn_traits)]
 #![feature(unboxed_closures)]
 #![feature(result_flattening)]
+#![feature(lock_value_accessors)]
+#![feature(type_alias_impl_trait)]
+#![allow(dead_code)]
+#![recursion_limit = "512"]
 
-use leptos::leptos_dom;
 use wasm_bindgen::{prelude::Closure, JsCast};
 
 pub mod app;
@@ -12,7 +15,7 @@ mod session;
 pub(crate) use session::SessionFormInput;
 pub use session::UserSession;
 mod screen;
-pub(crate) use screen::{ProvideScreenSignal, Screen, ScreenStyle};
+pub(crate) use screen::{Screen, ScreenStyle};
 mod preferences;
 pub(crate) use preferences::{PrefResource, Preferences};
 mod tests;
@@ -51,20 +54,16 @@ cfg_if! {
         #[wasm_bindgen]
         pub fn hydrate() {
             use app::*;
-            use leptos::*;
-
             console_error_panic_hook::set_once();
-
-            leptos::mount_to_body(move || {
-                view! { <App/> }
-            });
+            leptos::prelude::hydrate_body(App);
         }
     }
 }
 
-pub type SelectionSignal = leptos::RwSignal<components::SelectionModel<uuid::Uuid, Countable>>;
+pub type SelectionSignal =
+    leptos::prelude::RwSignal<components::SelectionModel<uuid::Uuid, Countable>>;
 pub type StateResource =
-    leptos::Resource<UserSession, Result<CountableStore, leptos::ServerFnError>>;
+    leptos::prelude::Resource<Result<CountableStore, leptos::prelude::ServerFnError>>;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, thiserror::Error, Default, serde::Serialize, serde::Deserialize,
@@ -143,11 +142,11 @@ impl From<gloo_storage::errors::StorageError> for AppError {
     }
 }
 
-impl From<leptos::ServerFnError> for AppError {
-    fn from(value: leptos::ServerFnError) -> Self {
+impl From<leptos::prelude::ServerFnError> for AppError {
+    fn from(value: leptos::prelude::ServerFnError) -> Self {
         match value {
-            leptos::ServerFnError::Request(_) => AppError::ConnectionError,
-            leptos::ServerFnError::ServerError(str) => AppError::ServerError(str),
+            leptos::prelude::ServerFnError::Request(_) => AppError::ConnectionError,
+            leptos::prelude::ServerFnError::ServerError(str) => AppError::ServerError(str),
             _ => serde_json::from_str(&value.to_string())
                 .unwrap_or(AppError::ServerError(value.to_string())),
         }
@@ -222,6 +221,6 @@ impl From<serde_json::Error> for AppError {
 
 pub fn connect_on_window_resize(f: Box<dyn FnMut()>) {
     let closure = Closure::wrap(f as Box<dyn FnMut()>);
-    leptos_dom::window().set_onresize(Some(closure.as_ref().unchecked_ref()));
+    leptos::leptos_dom::helpers::window().set_onresize(Some(closure.as_ref().unchecked_ref()));
     closure.forget();
 }

@@ -10,4 +10,4 @@ pub(crate) use super::{api, AppError, Savable, SaveHandler};
 pub use nodes::{Countable, CountableId, CountableKind, Counter, Hunttype, Masuda};
 pub(crate) use store::CountableStore as CS;
 pub type CountableStore = CS<store::Level, store::UnChecked>;
-pub use signal::ProvideStore;
+pub use signal::provide_store;

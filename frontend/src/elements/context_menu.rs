@@ -1,9 +1,10 @@
 #![allow(unused_braces)]
 #![allow(non_snake_case)]
+#![allow(unused_parens)]
 
 use components::{MessageJar, Overlay};
-use leptos::*;
-use leptos_router::A;
+use leptos::{ev, prelude::*};
+use leptos_router::{components::A, hooks::use_navigate};
 
 use super::*;
 
@@ -14,14 +15,14 @@ stylance::import_style!(overlay, "overlay.module.scss");
 pub fn CountableContextMenu(
     show_overlay: RwSignal<bool>,
     location: ReadSignal<(i32, i32)>,
-    #[prop(into)] key: MaybeSignal<uuid::Uuid>,
+    #[prop(into)] key: Signal<uuid::Uuid>,
 ) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let msg = expect_context::<MessageJar>();
 
-    let delete_action = create_server_action::<api::ArchiveCountable>();
-    create_effect(move |_| match delete_action.value()() {
-        Some(Ok(_)) => leptos_router::use_navigate()("/", Default::default()),
+    let delete_action = ServerAction::<api::ArchiveCountable>::new();
+    Effect::new(move |_| match delete_action.value()() {
+        Some(Ok(_)) => use_navigate()("/", Default::default()),
         Some(Err(err)) => msg.set_server_err(&err),
         None => {}
     });
@@ -56,7 +57,7 @@ pub fn CountableContextMenu(
             show_overlay=show_overlay
             location=location
         >
-            <A href=move || format!("edit/{}", key()) class="remove-underline">
+            <A href=move || format!("edit/{}", key()) prop:class=("remove-underline")>
                 <div class=stylance::classes!(overlay::row, overlay::interactive)>
                     <span>Edit</span>
                 </div>

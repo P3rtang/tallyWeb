@@ -1,10 +1,13 @@
+#![allow(dead_code)]
+
 use super::AppError;
 use components::MessageJar;
-use leptos::{create_action, create_effect, expect_context};
+use leptos::prelude::*;
+use server_fn::error::ServerFnErrorErr;
 use std::error::Error;
 
 #[typetag::serde(tag = "type")]
-pub trait Savable {
+pub trait Savable: Send + Sync {
     fn indexed_db_name(&self) -> String;
     fn save_indexed<'a>(
         &'a self,
@@ -12,15 +15,15 @@ pub trait Savable {
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>>;
     fn save_endpoint(
         &self,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), leptos::ServerFnError>>>>;
-    fn message(&self) -> Option<leptos::View>;
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), ServerFnError>> + Send + Sync>>;
+    fn message(&self) -> Option<ViewFn>;
     fn clone_box(&self) -> Box<dyn Savable>;
     fn has_change(&self) -> bool;
 }
 
 pub type ErrorFn = Box<dyn Fn(&dyn Error) + 'static>;
 
-pub trait SaveHandler {
+pub trait SaveHandler: Send + Sync {
     fn save(&self, value: Box<dyn Savable>, on_error: ErrorFn) -> Result<(), AppError>;
     fn clone_box(&self) -> Box<dyn SaveHandler>;
 }
@@ -48,14 +51,14 @@ impl SaveHandler for ServerSaveHandler {
         let msg = expect_context::<MessageJar>();
 
         #[allow(clippy::borrowed_box)]
-        let action = create_action(move |val: &Box<dyn Savable>| val.save_endpoint());
+        let action = Action::new(move |val: &Box<dyn Savable>| val.save_endpoint());
 
         let msg_id = value
             .message()
             .map(|msg_view| msg.with_handle().set_msg_view(msg_view));
         action.dispatch(value.clone_box());
 
-        create_effect(move |_| {
+        Effect::new(move |_| {
             match action.value()() {
                 Some(Err(err)) => {
                     if let Some(id) = msg_id {
@@ -63,7 +66,7 @@ impl SaveHandler for ServerSaveHandler {
                     }
                     if !is_offline(&err) {
                         msg.without_timeout().set_server_err(&err);
-                        on_error(&leptos::ServerFnErrorErr::from(err))
+                        on_error(&ServerFnErrorErr::from(err))
                     }
                 }
                 Some(_) => {
@@ -83,8 +86,8 @@ impl SaveHandler for ServerSaveHandler {
     }
 }
 
-fn is_offline(err: &leptos::ServerFnError) -> bool {
-    matches!(err, leptos::ServerFnError::Request(_))
+fn is_offline(err: &ServerFnError) -> bool {
+    matches!(err, ServerFnError::Request(_))
 }
 
 pub struct SaveHandlers {

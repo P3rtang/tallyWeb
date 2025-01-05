@@ -1,8 +1,11 @@
 use super::*;
 use components::{self, MessageJar, ShowSidebar, Sidebar, SidebarLayout};
 use elements::{FromClosure, OnResize, Page, PageContent, PageSidebar};
-use leptos::*;
-use leptos_router::{Outlet, Route, A};
+use leptos::{ev, prelude::*};
+use leptos_router::{
+    components::{Outlet, ParentRoute, Route, A},
+    path, MatchNestedRoutes,
+};
 
 stylance::import_style!(style, "tests.module.scss");
 
@@ -13,34 +16,20 @@ async fn failing_server_fn() -> Result<(), ServerFnError> {
 }
 
 #[component(transparent)]
-pub fn TestRoutes() -> impl IntoView {
+pub fn TestRoutes() -> impl MatchNestedRoutes + Clone {
     view! {
-        <Route path="/test" view=ShowTests>
-            <Route path="" view=|| () />
-            <Route path="message" view=Message />
-            <Route path="slider" view=Slider />
-        </Route>
+        <ParentRoute path=path!("/test") view=ShowTests>
+            <Route path=path!("") view=|| () />
+            <Route path=path!("message") view=Message />
+            <Route path=path!("slider") view=Slider />
+        </ParentRoute>
     }
+    .into_inner()
 }
 
 #[component]
 pub fn ShowTests() -> impl IntoView {
-    let test_list = StoredValue::new(
-        vec![("Messages", "message"), ("Slider", "slider")]
-            .into_iter()
-            .map(|(key, href)| {
-                view! {
-                    <A href>
-                        <div class=style::entry>
-                            <span>{key}</span>
-                        </div>
-                    </A>
-                }
-            })
-            .collect_view(),
-    );
-
-    let (width, set_width) = create_signal(400);
+    let (width, set_width) = signal(400);
     let on_resize = OnResize::from_closure(set_width);
 
     view! {
@@ -50,7 +39,20 @@ pub fn ShowTests() -> impl IntoView {
             </PageContent>
             <PageSidebar is_shown=true auto_hide=true on_resize slot>
                 <Sidebar layout=SidebarLayout::Landscape width>
-                    <test-list>{test_list()}</test-list>
+                    <test-list>
+                        {vec![("Messages", "message"), ("Slider", "slider")]
+                            .into_iter()
+                            .map(|(key, href)| {
+                                view! {
+                                    <A href>
+                                        <div class=style::entry>
+                                            <span>{key}</span>
+                                        </div>
+                                    </A>
+                                }
+                            })
+                            .collect_view()}
+                    </test-list>
                 </Sidebar>
             </PageSidebar>
         </Page>
@@ -62,16 +64,16 @@ fn Message() -> impl IntoView {
     expect_context::<RwSignal<ShowSidebar>>();
     let msg = expect_context::<MessageJar>();
 
-    let failed_action = create_server_action::<FailingServerFn>();
+    let failed_action = ServerAction::<FailingServerFn>::new();
     failed_action.dispatch(FailingServerFn {});
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         if let Some(Err(err)) = failed_action.value().get() {
             msg.without_timeout().set_err(AppError::from(err))
         }
     });
 
-    create_effect(move |_| {
+    Effect::new(move |_| {
         msg.without_timeout().set_msg("message 1");
         msg.without_timeout()
             .set_msg("message 2 which is a longer message");
@@ -86,9 +88,9 @@ fn Message() -> impl IntoView {
 #[component]
 fn Slider() -> impl IntoView {
     expect_context::<RwSignal<ShowSidebar>>().set(ShowSidebar(false));
-    let checked_signal = create_rw_signal(false);
-    let disable_signal = create_rw_signal(false);
-    let background = create_rw_signal(false);
+    let checked_signal = RwSignal::new(false);
+    let disable_signal = RwSignal::new(false);
+    let background = RwSignal::new(false);
 
     view! {
         <div>

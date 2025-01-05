@@ -1,0 +1,77 @@
+$body-background: #1D1D1D;
+$panel-background: #242424;
+$nav-bg-color-dark: #303030;
+$select-color-dark: #8BE9FD;
+$select-color-hover-dark: #8BE9FDCC;
+$interactable-bg-color-dark: #666666;
+$interactable-hover-color-dark: #555555;
+$element-bg-color-dark: #404040;
+$element-hover-color-dark: #323232;
+$component-bg-color-dark: #2C2C2C;
+$border-color-dark: #FFFFFF80;
+
+* {
+  font-family: Roboto, Arial, Sans-Serif;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0px;
+  height: 100vh;
+  width: 100vw;
+}
+
+main {
+  height: 100%;
+  width: 100%;
+}
+
+button {
+  background: unset;
+  border: none;
+
+  &:hover {
+    background: lighten($body-background, 5%);
+    border-radius: 8px;
+  }
+}
+
+div {
+  padding: 0px;
+  margin: 0px;
+}
+
+overlay-element {
+  >* {
+    position: fixed;
+  }
+}
+
+a:global(.no-underline) {
+  text-decoration: none;
+  color: inherit;
+}
+
+:global(.transition-width) {
+  transition: width 0.32s, transform 0.32s;
+}
+
+nav {
+  height: 60px;
+}
+
+:global(.hover-darken) {
+  &:hover {
+    background: rgba(black, 0.1);
+  }
+}
+
+:global(.hover-lighten) {
+  &:hover {
+    background: rgba(white, 0.05);
+  }
+}
+
+img:global(.hidden) {
+  display: none;
+}

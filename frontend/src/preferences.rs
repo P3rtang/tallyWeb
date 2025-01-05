@@ -1,9 +1,9 @@
-use leptos::*;
+use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::*;
 
-pub type PrefResource = Resource<UserSession, Result<Preferences, ServerFnError>>;
+pub type PrefResource = Resource<Result<Preferences, ServerFnError>>;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AccountAccentColor(pub String);
@@ -74,24 +74,15 @@ impl Preferences {
     }
 }
 
-#[component(transparent)]
-pub fn ProvidePreferences(children: ChildrenFn) -> impl IntoView {
+pub fn provide_prefs() -> Resource<Preferences> {
     let user = expect_context::<RwSignal<UserSession>>();
 
-    let data = create_blocking_resource(user, api::get_user_preferences);
-    provide_context(data);
+    let prefs_resource = Resource::new(user, move |user| async move {
+        api::get_user_preferences(user).await.unwrap_or_default()
+    });
 
-    let pref_signal = create_rw_signal(Preferences::new(&user.get_untracked()));
-    provide_context(pref_signal);
+    let owner = Owner::current().unwrap();
+    owner.with(move || provide_context(prefs_resource));
 
-    let accent_color = create_read_slice(pref_signal, |p| p.accent_color.clone().0);
-
-    view! {
-        <Transition>
-
-            {if let Some(Ok(p)) = data.get() {
-                pref_signal.set(p.clone())
-            }} <div style=move || { format!("--accent: {}", accent_color()) }>{children()}</div>
-        </Transition>
-    }
+    prefs_resource
 }

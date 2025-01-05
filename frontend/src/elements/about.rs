@@ -1,5 +1,5 @@
 use super::TALLYWEB_VERSION;
-use leptos::{html::Dialog, *};
+use leptos::{html::Dialog, prelude::*};
 
 stylance::import_style!(
     #[allow(dead_code)]
@@ -17,9 +17,9 @@ pub fn AboutDialog(
     open: RwSignal<bool>,
     #[prop(optional)] accent_color: Option<Signal<String>>,
 ) -> impl IntoView {
-    let about_node = create_node_ref::<Dialog>();
-    create_effect(move |_| {
-        if let Some(a) = about_node() {
+    let about_node = NodeRef::<Dialog>::new();
+    Effect::new(move |_| {
+        if let Some(a) = about_node.get() {
             if open() {
                 let _ = a.show_modal();
             } else {
@@ -64,7 +64,7 @@ pub fn AboutDialog(
                 <button
                     style=button_style
                     on:click=move |_| {
-                        if let Some(a) = about_node() {
+                        if let Some(a) = about_node.get() {
                             a.close()
                         }
                     }

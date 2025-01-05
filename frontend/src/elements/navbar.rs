@@ -1,22 +1,22 @@
 use super::*;
 use components::{CloseOverlays, ToolTip};
-use leptos::*;
-use leptos_router::A;
+use leptos::{html, prelude::*};
+use leptos_router::components::A;
 
-pub type OnClose = std::rc::Rc<dyn Fn(bool)>;
+pub type OnClose = std::sync::Arc<dyn Fn(bool) + Send + Sync>;
 
 impl FromClosure<bool> for OnClose {
     type Output = ();
 
-    fn from_closure(closure: impl Fn(bool) -> Self::Output + 'static) -> Self {
-        std::rc::Rc::new(closure)
+    fn from_closure(closure: impl Fn(bool) -> Self::Output + Send + Sync + 'static) -> Self {
+        std::sync::Arc::new(closure)
     }
 }
 
 #[component]
 pub fn Navbar(
-    #[prop(default=true.into(), into)] has_sidebar: MaybeSignal<bool>,
-    #[prop(default = false.into(), into)] show_sidebar: MaybeSignal<bool>,
+    #[prop(default=true.into(), into)] has_sidebar: Signal<bool>,
+    #[prop(default = false.into(), into)] show_sidebar: Signal<bool>,
     #[prop(optional)] on_close_sidebar: Option<OnClose>,
 ) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
@@ -34,7 +34,7 @@ pub fn Navbar(
     };
     let close_overlays = move |_| close_overlay_signal.update(|_| ());
 
-    let home_img_ref = create_node_ref::<html::Img>();
+    let home_img_ref = NodeRef::<html::Img>::new();
 
     view! {
         <nav on:click=close_overlays>
@@ -47,7 +47,6 @@ pub fn Navbar(
                 <img
                     height="32px"
                     width="32px"
-                    style
                     src=move || {
                         if show_sidebar() {
                             "/icons/sidebar-left-closed-svgrepo-com-white.svg"
