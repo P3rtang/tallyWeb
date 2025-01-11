@@ -31,7 +31,7 @@
 
     &:not(:global(.selected)) {
       &>div:first-child {
-        &:hover:not(:has(>row-caret:hover)) {
+        &:hover:not(:has(button:hover)) {
           background: rgba(white, 0.05);
         }
       }

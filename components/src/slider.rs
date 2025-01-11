@@ -1,7 +1,7 @@
 use leptos::{attribute_interceptor::AttributeInterceptor, prelude::*};
 
 #[component]
-pub fn Slider(#[prop(into)] checked: Signal<bool>) -> impl IntoView {
+pub fn Slider() -> impl IntoView {
     view! {
         <AttributeInterceptor let:attrs>
             <label>
@@ -68,13 +68,7 @@ pub fn Slider(#[prop(into)] checked: Signal<bool>) -> impl IntoView {
                     "#
                 </style>
                 <switch-el>
-                    <input
-                        type="checkbox"
-                        {..attrs}
-                        style:display="none"
-                        prop:checked=checked
-                        checked=checked
-                    />
+                    <input type="checkbox" {..attrs} style:display="none" />
                     <slider-el class="slider"></slider-el>
                 </switch-el>
             </label>

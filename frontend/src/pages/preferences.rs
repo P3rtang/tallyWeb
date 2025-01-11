@@ -205,7 +205,7 @@ pub fn StylingPreferences() -> impl IntoView {
             </label>
             <div style:grid-column="2">
                 <Slider
-                    checked=preferences.get_untracked().use_default_accent_color
+                    prop:checked=preferences.get_untracked().use_default_accent_color
                     attr:name="preferences[use_default_accent_color]"
                     attr:id="use-default-color"
                     on:change=on_default_checked
@@ -278,7 +278,7 @@ pub fn MiscPreferences() -> impl IntoView {
         </label>
         <div style:grid-column="2">
             <Slider
-                checked=preferences.get_untracked().show_separator
+                prop:checked=preferences.get_untracked().show_separator
                 attr:name="preferences[show_separator]"
                 attr:id="show-separator"
                 on:change=on_separator_checked
@@ -290,7 +290,7 @@ pub fn MiscPreferences() -> impl IntoView {
         </label>
         <div style:grid-column="2">
             <Slider
-                checked=preferences.get_untracked().multi_select
+                prop:checked=preferences.get_untracked().multi_select
                 attr:name="preferences[multi_select]"
                 attr:id="multi-select"
                 on:change=on_multi_checked
@@ -312,7 +312,7 @@ fn SaveOnPause() -> impl IntoView {
         </label>
         <div style:grid-column="2">
             <Slider
-                checked
+                prop:checked=checked
                 attr:name="preferences[save_on_pause]"
                 attr:id="save-on-pause"
                 on:change=on_change
@@ -335,7 +335,7 @@ fn BoolOption(
                 </label>
             </Show>
             <div style:grid-column="2">
-                <Slider checked attr:id=move || id() {..attrs} />
+                <Slider prop:checked=checked attr:id=move || id() {..attrs} />
             </div>
         </AttributeInterceptor>
     }

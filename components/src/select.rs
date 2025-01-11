@@ -1,6 +1,6 @@
-use super::{CloseOverlays, Prop};
+use super::*;
 use fuzzy_sort::*;
-use leptos::{ev, logging, prelude::*};
+use leptos::{ev, prelude::*};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SelectOption {

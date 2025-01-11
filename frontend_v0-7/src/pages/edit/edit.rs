@@ -84,7 +84,8 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
                 )
             }
         }
-        Some(Err(err)) => {
+        // TODO: reintroduce `MessageJar`
+        Some(Err(_)) => {
             // match err {
             //     ServerFnError::WrappedServerError(err) => msg.set_err(err),
             //     ServerFnError::Registration(err) => msg.set_err(err),
@@ -387,7 +388,7 @@ fn EditCharm(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             <components::Slider
                 attr:id="has-charm"
                 attr:name="countable_charm"
-                checked
+                prop:checked=checked
             ></components::Slider>
         </td>
     }
