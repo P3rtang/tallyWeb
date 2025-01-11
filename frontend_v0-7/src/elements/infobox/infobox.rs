@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
-
 use super::*;
+
 use chrono::Duration;
 use components::Progressbar;
 use hooks::use_saving;
@@ -50,7 +50,6 @@ impl FnOnce<()> for HasChange {
 pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<CountableId>>) -> impl IntoView {
     // let screen = expect_context::<Screen>();
 
-    let show_multiple = Signal::derive(move || countable_list.get().len() > 1);
     // let multi_narrow = move || !(show_multiple() && ScreenStyle::Portrait == (screen.style)());
 
     view! {
@@ -59,7 +58,7 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<CountableId>>) -> impl I
                 each=countable_list
                 key=|key| *key
                 children=move |key| {
-                    view! { <InfoBoxPart key show_multiple /> }
+                    view! { <InfoBoxPart key /> }
                 }
             />
 
@@ -68,10 +67,7 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<CountableId>>) -> impl I
 }
 
 #[component]
-pub fn InfoBoxPart(
-    #[prop(into)] key: Signal<CountableId>,
-    #[prop(into)] show_multiple: Signal<bool>,
-) -> impl IntoView {
+pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     // // let preferences = expect_context::<RwSignal<Preferences>>();
     // // let screen = expect_context::<Screen>();
@@ -109,16 +105,14 @@ pub fn InfoBoxPart(
     view! {
         <Show when=move || key.try_get().is_some_and(|key| store.get().contains(&key))>
             <div class=style::row>
-                    <Show when=show_multiple>
-                        <Title key />
-                    </Show>
-                    <Count key show_title />
-                    <Time key show_title />
-                    // <Show when=multi_narrow>
-                        <Progress expand=true key show_title />
-                        <LastStep key show_title />
-                        <AverageStep key show_title />
-                    // </Show>
+                <InfoHeader key/>
+                <Count key show_title />
+                <Time key show_title />
+                // <Show when=multi_narrow>
+                    <Progress expand=true key show_title />
+                    <LastStep key show_title />
+                    <AverageStep key show_title />
+                // </Show>
             </div>
         </Show>
     }
@@ -160,7 +154,6 @@ fn Count(
     let store = expect_context::<RwSignal<CountableStore>>();
     let is_active = expect_context::<IsActive>();
     let has_change = expect_context::<HasChange>();
-    let name = create_read_slice(store, move |s| s.name(&key.get()));
 
     let get_count = create_read_slice(store, move |s| s.recursive_ref().count(&key.get()));
     let inc_count = create_write_slice(store, move |s, _| s.recursive_ref().increase(&key.get()));
@@ -221,7 +214,7 @@ fn Count(
                 class=style::title
                 style:display=move || if show_title() { "block" } else { "none" }
             >
-                {name}
+                Count
             </span>
             <span class=style::info data-testid="info">
                 {get_count}

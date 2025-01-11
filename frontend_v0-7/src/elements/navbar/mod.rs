@@ -1,6 +1,7 @@
 use super::*;
 use components::ToolTip;
 use leptos::{html, prelude::*};
+use leptos_meta::Link;
 use leptos_router::components::A;
 
 stylance::import_style!(style, "./navbar.module.scss");
@@ -34,25 +35,29 @@ pub fn Navbar(
     let home_img_ref = NodeRef::<html::Img>::new();
 
     view! {
+        <Link rel="preload" as_="image" type_="image/svg+xml" href="/icons/sidebar-left-svgrepo-com-white.svg" fetchpriority="high" />
+        <Link rel="preload" as_="image" type_="image/svg+xml" href="/icons/sidebar-left-closed-svgrepo-com-white.svg"  fetchpriority="high"/>
         <nav class=style::navbar>
             <button
-                class=stylance::classes!(style::sidebar_toggle, style::icon)
+                class=stylance::classes!("hover-lighten")
                 aria-label="toggle sidebar"
                 on:click=toggle_sidebar
                 disabled=move || !has_sidebar()
             >
-                <img
-                    height="32px"
-                    width="32px"
-                    class:hidden=move || !show_sidebar()
-                    src="/icons/sidebar-left-closed-svgrepo-com-white.svg"
-                />
-                <img
-                    height="32px"
-                    width="32px"
-                    class:hidden=show_sidebar
-                    src="/icons/sidebar-left-svgrepo-com-white.svg"
-                />
+                <div class=stylance::classes!(style::sidebar_toggle, style::icon)>
+                    <img
+                        height="32px"
+                        width="32px"
+                        class:hidden=move || !show_sidebar()
+                        src="/icons/sidebar-left-closed-svgrepo-com-white.svg"
+                    />
+                    <img
+                        height="32px"
+                        width="32px"
+                        class:hidden=show_sidebar
+                        src="/icons/sidebar-left-svgrepo-com-white.svg"
+                    />
+                </div>
             </button>
             <div class=style::icon>
                 <A href="/">

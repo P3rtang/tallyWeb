@@ -251,12 +251,12 @@ where
             view! {
                 <div style:padding-left=padding>
                     <Show when=has_children>
-                        <row-caret
+                        <button
                             {..(caret.get_value().attrs.0)(caret_state())}
                             on:click=handle_click.get_value()
                         >
-                            <button>{child.get_value()()}</button>
-                        </row-caret>
+                            {child.get_value()()}
+                        </button>
                     </Show>
                     {view(&row.get_value())}
                 </div>

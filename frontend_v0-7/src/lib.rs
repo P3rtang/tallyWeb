@@ -71,6 +71,8 @@ pub type SelectionSignal =
 pub type StateResource =
     leptos::prelude::Resource<Result<CountableStore, leptos::prelude::ServerFnError>>;
 
+pub(crate) type AppResult<T> = Result<T, AppError>;
+
 #[derive(
     Debug, Clone, PartialEq, Eq, thiserror::Error, Default, serde::Serialize, serde::Deserialize,
 )]

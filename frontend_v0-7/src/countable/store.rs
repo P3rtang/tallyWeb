@@ -117,12 +117,12 @@ where
             {
                 Countable::Counter(c) => {
                     let mut has = true;
-                    for child in c.lock()?.children.iter() {
+                    for child in c.lock()?.children().iter() {
                         has &= self.has_charm_checked(child)?;
                     }
                     has
                 }
-                Countable::Phase(p) => p.lock()?.has_charm,
+                Countable::Phase(p) => p.lock()?.has_charm(),
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -141,11 +141,11 @@ where
             {
                 Countable::Counter(c) => c
                     .lock()?
-                    .children
+                    .children()
                     .last()
                     .and_then(|child| self.is_success_checked(child).ok())
                     .unwrap_or_default(),
-                Countable::Phase(p) => p.lock()?.success,
+                Countable::Phase(p) => p.lock()?.success(),
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -163,8 +163,7 @@ where
         {
             Countable::Counter(_) => {}
             Countable::Phase(p) => {
-                let success = p.lock()?.success;
-                p.lock()?.success = !success;
+                p.lock()?.toggle_success();
             }
             Countable::Chain(_) => todo!(),
         };
@@ -357,8 +356,8 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
         }
 
         match this.get(countable).ok_or(AppError::CountableNotFound)? {
-            Countable::Counter(c) => c.lock()?.is_deleted = true,
-            Countable::Phase(p) => p.lock()?.is_deleted = true,
+            Countable::Counter(c) => c.lock()?.set_is_deleted(true),
+            Countable::Phase(p) => p.lock()?.set_is_deleted(true),
             Countable::Chain(_) => todo!(),
         }
 
@@ -484,14 +483,18 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
         [Countable]\
         [AppError]
     */
-    pub fn set_name(&self, countable: &CountableId, name: &str) -> Result<(), AppError> {
+    pub fn set_name(
+        &self,
+        countable: &CountableId,
+        name: impl ToString + 'static,
+    ) -> Result<(), AppError> {
         match self
             .store
             .get(countable)
             .ok_or(AppError::CountableNotFound)?
         {
-            Countable::Counter(c) => c.lock()?.name = name.into(),
-            Countable::Phase(p) => p.lock()?.name = name.into(),
+            Countable::Counter(c) => c.lock()?.set_name(name),
+            Countable::Phase(p) => p.lock()?.set_name(name),
             Countable::Chain(_) => todo!(),
         };
 
@@ -613,7 +616,7 @@ impl<M: StoreMethod> CountableStore<M, UnChecked> {
 
         [Countable]
     */
-    pub fn set_name(&self, countable: &CountableId, name: &str) {
+    pub fn set_name(&self, countable: &CountableId, name: impl ToString + 'static) {
         match self.checked_ref().set_name(countable, name) {
             Ok(_) | Err(AppError::CountableNotFound) => (),
             Err(err) => panic!("{err}"),
@@ -631,7 +634,7 @@ impl CountableStore<Level, Checked> {
                 .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
-                Countable::Counter(c) => c.lock()?.children.clone(),
+                Countable::Counter(c) => c.lock()?.children(),
                 _ => Vec::new(),
             },
         )
@@ -653,7 +656,7 @@ impl CountableStore<Level, Checked> {
     pub fn last_child(&self, countable: &CountableId) -> Result<Option<CountableId>, AppError> {
         Ok(
             match self.get(countable).ok_or(AppError::CountableNotFound)? {
-                Countable::Counter(c) => c.lock()?.children.last().copied(),
+                Countable::Counter(c) => c.lock()?.children().last().copied(),
                 Countable::Phase(_) => None,
                 Countable::Chain(_) => todo!(),
             },
@@ -662,8 +665,8 @@ impl CountableStore<Level, Checked> {
 
     pub fn parent(&self, countable: &CountableId) -> Result<Option<CountableId>, AppError> {
         Ok(match self.store.get(countable) {
-            Some(Countable::Counter(c)) => c.lock()?.parent,
-            Some(Countable::Phase(p)) => Some(p.lock()?.parent),
+            Some(Countable::Counter(c)) => c.lock()?.parent(),
+            Some(Countable::Phase(p)) => Some(p.lock()?.parent()),
             Some(Countable::Chain(_)) => todo!(),
             None => None,
         })
@@ -694,7 +697,7 @@ impl CountableStore<Level, Checked> {
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(_) => 0,
-                Countable::Phase(p) => p.lock()?.count,
+                Countable::Phase(p) => p.lock()?.count(),
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -724,7 +727,7 @@ impl CountableStore<Level, Checked> {
     pub fn set_count(&self, countable: &CountableId, count: i32) -> Result<(), AppError> {
         match self.get(countable).ok_or(AppError::CountableNotFound)? {
             Countable::Counter(_) => (),
-            Countable::Phase(p) => p.lock()?.count = count,
+            Countable::Phase(p) => p.lock()?.set_count(count),
             Countable::Chain(_) => todo!(),
         };
 
@@ -757,7 +760,7 @@ impl CountableStore<Level, Checked> {
     pub fn add_count(&self, countable: &CountableId, count: i32) -> Result<(), AppError> {
         match self.get(countable).ok_or(AppError::CountableNotFound)? {
             Countable::Counter(_) => (),
-            Countable::Phase(p) => p.lock()?.count += count,
+            Countable::Phase(p) => p.lock()?.add_count(count),
             Countable::Chain(_) => todo!(),
         };
 
@@ -796,12 +799,13 @@ impl CountableStore<Level, Checked> {
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(_) => 0,
-                Countable::Phase(p) => p.lock()?.step_size,
+                Countable::Phase(p) => p.lock()?.step_size(),
                 Countable::Chain(_) => todo!(),
             },
         )
     }
 
+    // TODO: rename to step_count
     /**
         # Increase Count Checked
 
@@ -826,11 +830,7 @@ impl CountableStore<Level, Checked> {
     pub fn increase(&self, countable: &CountableId) -> Result<(), AppError> {
         match self.get(countable).ok_or(AppError::CountableNotFound)? {
             Countable::Counter(_) => (),
-            Countable::Phase(p) => {
-                if let Ok(mut phase) = p.lock() {
-                    phase.count += phase.step_size
-                }
-            }
+            Countable::Phase(p) => p.lock()?.step_count(),
             Countable::Chain(_) => todo!(),
         }
 
@@ -865,7 +865,7 @@ impl CountableStore<Level, Checked> {
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(_) => TimeDelta::zero(),
-                Countable::Phase(p) => p.lock()?.time,
+                Countable::Phase(p) => p.lock()?.time(),
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -895,7 +895,7 @@ impl CountableStore<Level, Checked> {
     pub fn set_time(&self, countable: &CountableId, time: TimeDelta) -> Result<(), AppError> {
         match self.get(countable).ok_or(AppError::CountableNotFound)? {
             Countable::Counter(_) => (),
-            Countable::Phase(p) => p.lock()?.time = time,
+            Countable::Phase(p) => p.lock()?.set_time(time),
             Countable::Chain(_) => todo!(),
         };
 
@@ -928,11 +928,9 @@ impl CountableStore<Level, Checked> {
     pub fn add_time(&self, countable: &CountableId, time: TimeDelta) -> Result<(), AppError> {
         match self.get(countable).ok_or(AppError::CountableNotFound)? {
             Countable::Counter(_) => (),
-            Countable::Phase(p) => p.lock()?.time += time,
+            Countable::Phase(p) => p.lock()?.add_time(time),
             Countable::Chain(_) => todo!(),
         };
-
-        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -1000,7 +998,7 @@ impl CountableStore<Level, Checked> {
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(_) => 0.0,
-                Countable::Phase(p) => p.lock()?.hunt_type.odds(),
+                Countable::Phase(p) => p.lock()?.hunt_type().odds(),
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -1060,7 +1058,7 @@ impl CountableStore<Level, Checked> {
         Ok(
             match self.get(countable).ok_or(AppError::CountableNotFound)? {
                 Countable::Counter(_) => false,
-                Countable::Phase(p) => p.lock()?.success,
+                Countable::Phase(p) => p.lock()?.success(),
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -1089,7 +1087,7 @@ impl CountableStore<Recursive, Checked> {
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(c) => {
-                    let mut children = c.lock()?.children.clone();
+                    let mut children = c.lock()?.children();
                     for child in children.clone().iter() {
                         children.append(&mut self.children(child)?)
                     }
@@ -1143,7 +1141,7 @@ impl CountableStore<Recursive, Checked> {
         Ok(
             match self.get(countable).ok_or(AppError::CountableNotFound)? {
                 Countable::Counter(c) => {
-                    if let Some(last) = c.lock()?.children.last().copied() {
+                    if let Some(last) = c.lock()?.children().last().copied() {
                         self.last_child(&last)?
                     } else {
                         *countable
@@ -1176,13 +1174,13 @@ impl CountableStore<Recursive, Checked> {
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(c) => {
-                    if let Some(parent) = c.lock()?.parent {
+                    if let Some(parent) = c.lock()?.parent() {
                         self.root_parent(&parent)?
                     } else {
                         *countable
                     }
                 }
-                Countable::Phase(p) => self.root_parent(&p.lock()?.parent)?,
+                Countable::Phase(p) => self.root_parent(&p.lock()?.parent())?,
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -1246,12 +1244,12 @@ impl CountableStore<Recursive, Checked> {
             {
                 Countable::Counter(c) => {
                     let mut sum = 0;
-                    for child in c.lock()?.children.iter() {
-                        sum += self.count(child)?;
+                    for child in c.lock()?.clone() {
+                        sum += self.count(&child)?;
                     }
                     sum
                 }
-                Countable::Phase(p) => p.lock()?.count,
+                Countable::Phase(p) => p.lock()?.count(),
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -1298,11 +1296,9 @@ impl CountableStore<Recursive, Checked> {
                     }
                 }
             }
-            Countable::Phase(p) => p.lock()?.count += diff,
+            Countable::Phase(p) => p.lock()?.add_count(diff),
             Countable::Chain(_) => todo!(),
         };
-
-        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -1348,11 +1344,9 @@ impl CountableStore<Recursive, Checked> {
                     }
                 }
             }
-            Countable::Phase(p) => p.lock()?.count += diff,
+            Countable::Phase(p) => p.lock()?.add_count(diff),
             Countable::Chain(_) => todo!(),
         };
-
-        let _ = self.is_changed.replace(false);
 
         Ok(())
     }
@@ -1393,7 +1387,7 @@ impl CountableStore<Recursive, Checked> {
                     .rev()
                     .find_map(|child| self.step_size(child).ok())
                     .ok_or(AppError::RequiresChild)?,
-                Countable::Phase(p) => p.lock()?.step_size,
+                Countable::Phase(p) => p.lock()?.step_size(),
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -1428,11 +1422,7 @@ impl CountableStore<Recursive, Checked> {
                 .iter()
                 .rev()
                 .try_for_each(|child| -> Result<(), AppError> { self.increase(child) })?,
-            Countable::Phase(p) => {
-                if let Ok(mut phase) = p.lock() {
-                    phase.count += phase.step_size
-                }
-            }
+            Countable::Phase(p) => p.lock()?.step_count(),
             Countable::Chain(_) => todo!(),
         }
 
@@ -1468,12 +1458,12 @@ impl CountableStore<Recursive, Checked> {
             {
                 Countable::Counter(c) => {
                     let mut sum = TimeDelta::zero();
-                    for child in c.lock()?.children.iter() {
-                        sum += self.time(child)?;
+                    for child in c.lock()?.clone() {
+                        sum += self.time(&child)?;
                     }
                     sum
                 }
-                Countable::Phase(p) => p.lock()?.time,
+                Countable::Phase(p) => p.lock()?.time(),
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -1520,7 +1510,7 @@ impl CountableStore<Recursive, Checked> {
                     }
                 }
             }
-            Countable::Phase(p) => p.lock()?.time += diff,
+            Countable::Phase(p) => p.lock()?.add_time(diff),
             Countable::Chain(_) => todo!(),
         };
 
@@ -1570,7 +1560,7 @@ impl CountableStore<Recursive, Checked> {
                     }
                 }
             }
-            Countable::Phase(p) => p.lock()?.time += diff,
+            Countable::Phase(p) => p.lock()?.add_time(diff),
             Countable::Chain(_) => todo!(),
         };
 
@@ -1612,7 +1602,7 @@ impl CountableStore<Recursive, Checked> {
                     }
                     hunttype.ok_or(AppError::RequiresChild)?
                 }
-                Countable::Phase(p) => p.lock()?.hunt_type,
+                Countable::Phase(p) => p.lock()?.hunt_type(),
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -1645,9 +1635,9 @@ impl CountableStore<Recursive, Checked> {
             {
                 Countable::Counter(c) => c
                     .lock()?
-                    .children
-                    .iter()
-                    .map(|child| self.rolls(child))
+                    .clone()
+                    .into_iter()
+                    .map(|child| self.rolls(&child))
                     .collect::<Result<Vec<_>, AppError>>()?
                     .into_iter()
                     .sum(),
@@ -1688,18 +1678,16 @@ impl CountableStore<Recursive, Checked> {
                 Countable::Counter(c) => {
                     let sum = c
                         .lock()?
-                        .children
-                        .iter()
-                        .map(|child| {
-                            let odds = self.odds(child)?;
-                            Ok(odds * self.count(child)? as f64)
-                        })
-                        .collect::<Result<Vec<_>, AppError>>()?
+                        .clone()
                         .into_iter()
+                        .flat_map(|child| {
+                            let odds = self.odds(&child).ok()?;
+                            Some(odds * self.count(&child).ok()? as f64)
+                        })
                         .sum::<f64>();
                     sum / (self.count(countable)? as f64).max(1.0)
                 }
-                Countable::Phase(p) => p.lock()?.hunt_type.odds(),
+                Countable::Phase(p) => p.lock()?.hunt_type().odds(),
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -1784,13 +1772,11 @@ impl CountableStore<Recursive, Checked> {
             {
                 Countable::Counter(c) => c
                     .lock()?
-                    .children
-                    .iter()
-                    .map(|child| self.completed(child))
-                    .collect::<Result<Vec<_>, AppError>>()?
+                    .clone()
                     .into_iter()
+                    .flat_map(|child| self.completed(&child))
                     .sum::<u32>(),
-                Countable::Phase(p) => p.lock()?.success.into(),
+                Countable::Phase(p) => p.lock()?.success().into(),
                 Countable::Chain(_) => todo!(),
             },
         )

@@ -97,4 +97,32 @@
       }
     }
   }
+
+  .header {
+    width: 100%;
+    padding: 8px;
+    font-size: 32px;
+
+    >div {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+
+      border-radius: 12px;
+      background: $element-bg-color-dark;
+
+      button {
+        width: 40px;
+        height: 40px;
+
+        a {
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+    }
+  }
 }

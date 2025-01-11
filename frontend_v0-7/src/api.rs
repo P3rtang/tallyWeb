@@ -101,9 +101,7 @@ pub async fn change_password(
 #[allow(clippy::too_many_arguments)]
 #[server(EditCountableForm)]
 pub async fn edit_countable_form(
-    session_user_uuid: uuid::Uuid,
-    session_username: String,
-    session_token: uuid::Uuid,
+    session: UserSession,
 
     countable_key: uuid::Uuid,
     countable_kind: CountableKind,
@@ -117,11 +115,6 @@ pub async fn edit_countable_form(
     countable_hunttype: String,
     countable_charm: Option<String>,
 ) -> Result<(), ServerFnError> {
-    let session = UserSession {
-        user_uuid: session_user_uuid,
-        username: session_username,
-        token: session_token,
-    };
     check_user(session).await?;
 
     let countable_time =
@@ -166,13 +159,13 @@ pub async fn update_countable_many(list: Vec<countable::Countable>) -> Result<()
     for countable in list {
         match countable {
             countable::Countable::Counter(c) => {
-                if c.lock()?.owner_uuid != session.user_uuid {
+                if c.lock()?.owner_uuid() != session.user_uuid {
                     Err(AppError::Unauthorized)?
                 }
                 backend::counter::update(&mut tx, c.lock()?.clone().into()).await?
             }
             countable::Countable::Phase(p) => {
-                if p.lock()?.owner_uuid != session.user_uuid {
+                if p.lock()?.owner_uuid() != session.user_uuid {
                     Err(AppError::Unauthorized)?
                 }
                 backend::phase::update(&mut tx, p.lock()?.clone().into()).await?
