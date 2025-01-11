@@ -12,6 +12,6 @@ pub(crate) use components::Select;
 pub(crate) use elements::{Navbar, Page, PageContent, PageNavbar, PageSidebar};
 pub(crate) use leptos::{ev, html, prelude::*};
 pub(crate) use leptos_router::{
-    hooks::{use_location, use_navigate, use_params, use_query},
+    hooks::{use_navigate, use_params, use_query},
     params::Params,
 };

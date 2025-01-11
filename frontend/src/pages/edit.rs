@@ -493,7 +493,7 @@ fn EditCharm(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
             <components::Slider
                 attr:id="has-charm"
                 attr:name="countable_charm"
-                checked
+                prop:checked=checked
             ></components::Slider>
         </td>
     }

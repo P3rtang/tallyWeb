@@ -95,7 +95,10 @@ fn Slider() -> impl IntoView {
     view! {
         <div>
             <div class=style::test_case>
-                <components::Slider attr:id="test-background" checked=true></components::Slider>
+                <components::Slider
+                    attr:id="test-background"
+                    prop:checked=true
+                ></components::Slider>
             </div>
             <div class=style::test_case>
                 <button data-testid="toggle" on:click=move |_| checked_signal.update(|s| *s = !*s)>
@@ -103,7 +106,7 @@ fn Slider() -> impl IntoView {
                 </button>
                 <components::Slider
                     attr:id="test-managed"
-                    checked=checked_signal
+                    prop:checked=checked_signal
                 ></components::Slider>
             </div>
             <div class=style::test_case>
@@ -118,7 +121,7 @@ fn Slider() -> impl IntoView {
                 <components::Slider
                     attr:id="test-disable"
                     attr:data-testid="disable"
-                    checked=true
+                    prop:checked=true
                     attr:disabled=disable_signal
                 ></components::Slider>
             </div>
@@ -127,7 +130,7 @@ fn Slider() -> impl IntoView {
                 <components::Slider
                     attr:id="test-on_checked"
                     attr:data-testid="on_checked"
-                    checked=false
+                    prop:checked=false
                     on:change=move |_: ev::Event| background.update(|s| *s = !*s)
                 ></components::Slider>
                 <div

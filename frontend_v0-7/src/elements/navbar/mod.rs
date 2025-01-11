@@ -60,7 +60,7 @@ pub fn Navbar(
                 </div>
             </button>
             <div class=style::icon>
-                <A href="/">
+                <A href=move || format!("/{}", user.get().username)>
                     <img
                         node_ref=home_img_ref
                         src="/favicon.svg"
