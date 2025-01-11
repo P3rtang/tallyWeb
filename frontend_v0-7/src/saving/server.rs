@@ -14,6 +14,10 @@ impl ServerSaveHandler {
 
 impl<S: ServerSavable + 'static> SaveHandler<S> for ServerSaveHandler {
     fn save(&self, value: S, on_error: ErrorFn) {
+        if !value.has_change() {
+            return;
+        }
+
         #[allow(clippy::borrowed_box)]
         let action = Action::new(move |val: &Box<dyn ServerSavable>| val.save_endpoint());
 

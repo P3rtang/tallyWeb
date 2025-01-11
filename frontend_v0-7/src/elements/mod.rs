@@ -7,7 +7,7 @@ mod list;
 mod navbar;
 mod page;
 
-pub(crate) use super::{countable, hoc, hooks, AppError, UserSession};
+pub(crate) use super::{app::UserName, countable, hoc, hooks, AppError, UserSession};
 
 pub use account::icon::AccountIcon;
 pub use infobox::InfoBox;

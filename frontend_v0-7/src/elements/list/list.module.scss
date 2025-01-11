@@ -19,6 +19,7 @@
   .row {
     display: flex;
     flex-direction: column;
+    user-select: none;
 
     &:global(.selected)>div:first-child {
       background: var(--accent);
@@ -58,16 +59,16 @@
         padding: 6px;
       }
 
-      >row-caret {
-        border-radius: 100%;
+      >button {
+        margin: 2px;
 
-        >button {
+        >div {
           border-radius: 100%;
-
-          &:hover {
-            background: unset;
-          }
         }
+      }
+
+      img {
+        transition: transform 0.28s;
       }
     }
   }
@@ -84,7 +85,7 @@
 
     padding: 4px;
     height: 36px;
-    max-width: 36px;
+    width: 36px;
 
     cursor: pointer;
   }

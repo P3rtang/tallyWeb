@@ -26,7 +26,7 @@
       display: flex;
       flex-direction: column;
       flex: 1;
-      padding: 4px;
+      padding: 6px;
       background: $panel-background;
       overflow-x: auto;
 
@@ -58,6 +58,7 @@
 
 @container wide (min-width: 800px) {
   .content {
+    padding: 2px;
     padding-right: 12px;
     padding-bottom: 12px;
 

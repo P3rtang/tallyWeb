@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use crate::EditWindow;
+
 use super::{
     elements::*, page_context::PageContext, provide_prefs, provide_store, session::provide_session,
     CountableId, CountableStore, LoginPage, LEPTOS_OUTPUT_NAME,
@@ -54,9 +56,8 @@ pub fn App() -> impl IntoView {
         <Stylesheet href="/fa/css/all.css" />
 
         <Link rel="shortcut icon" as_="image" type_="image/ico" href="/favicon.svg" />
-        <Link rel="preload" as_="image" type_="image/svg" href="/icons/sidebar-left-svgrepo-com-white.svg" fetchpriority="high" />
-        <Link rel="preload" as_="image" type_="image/svg" href="/icons/sidebar-left-closed-svgrepo-com-white.svg"  fetchpriority="high"/>
         <Link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet" />
+        <Link rel="preload" as_="image" type_="image/svg+xml" href="/icons/white-edit-svgrepo-com.svg" />
 
         <Title text="TallyWeb" />
 
@@ -68,13 +69,19 @@ pub fn App() -> impl IntoView {
                     <Route path=path!("/login") view=LoginPage/>
                     <ParentRoute path=path!("/") view=Outlet ssr=leptos_router::SsrMode::Async>
                         <ParentRoute path=path!(":id") view=RouteUser>
-                            <Route path=path!("") view=Body/>
+                            <Route path=path!("") view=Body />
+                            <Route path=path!("edit") view=EditWindow />
                         </ParentRoute>
                     </ParentRoute>
                 </Routes>
             </main>
         </Router>
     }
+}
+
+#[derive(Params, Clone, Debug, PartialEq)]
+pub struct UserName {
+    pub id: String,
 }
 
 #[component]
@@ -176,7 +183,7 @@ fn Body() -> impl IntoView {
 
     view! {
         <Page>
-            <PageContent slot>
+            <PageContent hide_border=true slot>
                 <InfoBox countable_list />
             </PageContent>
             <PageSidebar width is_shown=show_sidebar on_resize slot>

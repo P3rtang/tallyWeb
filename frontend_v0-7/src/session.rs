@@ -38,17 +38,17 @@ pub fn SessionFormInput(#[prop(into)] session: Signal<UserSession>) -> impl Into
     view! {
         <input
             type="hidden"
-            name="session_user_uuid"
+            name="session[user_uuid]"
             value=move || session_val.get_value()().user_uuid.to_string()
         />
         <input
             type="hidden"
-            name="session_username"
+            name="session[username]"
             value=move || session_val.get_value()().username
         />
         <input
             type="hidden"
-            name="session_token"
+            name="session[token]"
             value=move || session_val.get_value()().token.to_string()
         />
     }

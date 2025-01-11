@@ -5,6 +5,7 @@ use leptos::prelude::*;
 #[derive(Clone, Default)]
 pub struct PageContext {
     pub overlay: Overlay,
+    pub referer: Referer,
 }
 
 impl PageContext {
@@ -48,3 +49,6 @@ impl Default for Overlay {
         }
     }
 }
+
+#[derive(Debug, Clone, Default)]
+pub struct Referer(pub(crate) RwSignal<Option<String>>);

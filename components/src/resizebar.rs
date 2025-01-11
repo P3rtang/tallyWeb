@@ -1,3 +1,4 @@
+// TODO: do not show the special cursor when no resize callback is given
 use super::*;
 use leptos::*;
 

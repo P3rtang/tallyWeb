@@ -29,10 +29,21 @@ main {
 button {
   background: unset;
   border: none;
+  padding: 0px;
+  cursor: pointer;
 
-  &:hover {
-    background: lighten($body-background, 5%);
+  >div {
     border-radius: 8px;
+    height: 100%;
+    width: 100%;
+  }
+
+  &:global(.hover-darken):hover>div {
+    background: rgba(black, 0.136)
+  }
+
+  &:global(.hover-lighten):hover>div {
+    background: rgba(white, 0.05)
   }
 }
 
@@ -57,21 +68,22 @@ a:global(.no-underline) {
 }
 
 nav {
-  height: 60px;
-}
-
-:global(.hover-darken) {
-  &:hover {
-    background: rgba(black, 0.1);
-  }
-}
-
-:global(.hover-lighten) {
-  &:hover {
-    background: rgba(white, 0.05);
-  }
+  padding-top: 2px;
+  height: 56px;
 }
 
 img:global(.hidden) {
   display: none;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+
+  appearance: textfield;
 }

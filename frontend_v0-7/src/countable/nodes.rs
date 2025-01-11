@@ -1,13 +1,25 @@
+use super::*;
+
+use leptos_router::params::{IntoParam, ParamsError};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
-use super::*;
 #[derive(
     Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord,
 )]
 pub struct CountableId(pub uuid::Uuid);
 
 unsafe impl Send for CountableId {}
+
+impl IntoParam for CountableId {
+    fn into_param(value: Option<&str>, name: &str) -> Result<Self, ParamsError> {
+        Ok(
+            uuid::Uuid::parse_str(value.ok_or(ParamsError::MissingParam(name.into()))?)
+                .map_err(|err| ParamsError::Params(std::sync::Arc::new(err)))?
+                .into(),
+        )
+    }
+}
 
 impl From<uuid::Uuid> for CountableId {
     fn from(value: uuid::Uuid) -> Self {
@@ -62,7 +74,7 @@ impl Countable {
         }
     }
 
-    pub fn add_child_checked(&self, child: CountableId) -> Result<(), AppError> {
+    pub fn add_child_checked(&self, child: CountableId) -> AppResult<()> {
         match self {
             Countable::Counter(c) => {
                 c.lock()?.children.push(child);
@@ -77,7 +89,7 @@ impl Countable {
         self.add_child_checked(child).unwrap()
     }
 
-    pub fn uuid_checked(&self) -> Result<uuid::Uuid, AppError> {
+    pub fn uuid_checked(&self) -> AppResult<uuid::Uuid> {
         Ok(match self {
             Countable::Counter(c) => c.lock()?.uuid,
             Countable::Phase(p) => p.lock()?.uuid,
@@ -89,7 +101,7 @@ impl Countable {
         self.uuid_checked().unwrap()
     }
 
-    pub fn name_checked(&self) -> Result<String, AppError> {
+    pub fn name_checked(&self) -> AppResult<String> {
         Ok(match self {
             Countable::Counter(c) => c.lock()?.name.clone(),
             Countable::Phase(p) => p.lock()?.name.clone(),
@@ -101,21 +113,7 @@ impl Countable {
         self.name_checked().unwrap()
     }
 
-    pub fn set_name_checked(&self, name: &str) -> Result<(), AppError> {
-        match self {
-            Countable::Counter(c) => c.lock()?.name = name.into(),
-            Countable::Phase(p) => p.lock()?.name = name.into(),
-            Countable::Chain(_) => todo!(),
-        }
-
-        Ok(())
-    }
-
-    pub fn set_name(&self, name: &str) {
-        self.set_name_checked(name).unwrap()
-    }
-
-    pub fn created_at_checked(&self) -> Result<chrono::NaiveDateTime, AppError> {
+    pub fn created_at_checked(&self) -> AppResult<chrono::NaiveDateTime> {
         Ok(match self {
             Countable::Counter(c) => c.lock()?.created_at,
             Countable::Phase(p) => p.lock()?.created_at,
@@ -127,7 +125,7 @@ impl Countable {
         self.created_at_checked().unwrap()
     }
 
-    pub fn last_edit_checked(&self) -> Result<chrono::NaiveDateTime, AppError> {
+    pub fn last_edit_checked(&self) -> AppResult<chrono::NaiveDateTime> {
         Ok(match self {
             Countable::Counter(c) => c.lock()?.last_edit,
             Countable::Phase(p) => p.lock()?.last_edit,
@@ -139,7 +137,7 @@ impl Countable {
         self.last_edit_checked().unwrap()
     }
 
-    pub fn is_archived_checked(&self) -> Result<bool, AppError> {
+    pub fn is_archived_checked(&self) -> AppResult<bool> {
         Ok(match self {
             Countable::Counter(c) => c.lock()?.is_deleted,
             Countable::Phase(p) => p.lock()?.is_deleted,
@@ -151,11 +149,11 @@ impl Countable {
         self.is_archived_checked().unwrap()
     }
 
-    pub fn as_js(&self) -> Result<wasm_bindgen::JsValue, AppError> {
+    pub fn as_js(&self) -> AppResult<wasm_bindgen::JsValue> {
         Ok(js_sys::JSON::parse(&serde_json::to_string(&self)?)?)
     }
 
-    pub fn from_js(val: wasm_bindgen::JsValue) -> Result<Self, AppError> {
+    pub fn from_js(val: wasm_bindgen::JsValue) -> AppResult<Self> {
         let this = serde_json::from_str(
             &js_sys::JSON::stringify(&val)?
                 .as_string()
@@ -164,10 +162,20 @@ impl Countable {
         Ok(this)
     }
 
-    fn set_edit(&self) -> Result<(), AppError> {
+    fn set_edit(&self) -> AppResult<()> {
         match self {
             Countable::Counter(c) => c.lock()?.last_edit = chrono::Utc::now().naive_utc(),
             Countable::Phase(p) => p.lock()?.last_edit = chrono::Utc::now().naive_utc(),
+            Countable::Chain(_) => todo!(),
+        }
+
+        Ok(())
+    }
+
+    fn set_changed(&self, set: bool) -> AppResult<()> {
+        match self {
+            Countable::Counter(c) => c.lock()?.has_change = set,
+            Countable::Phase(p) => p.lock()?.has_change = set,
             Countable::Chain(_) => todo!(),
         }
 
@@ -177,7 +185,7 @@ impl Countable {
 
 impl Savable for Vec<Countable> {
     fn has_change(&self) -> bool {
-        true
+        self.iter().any(|c| c.has_change())
     }
 }
 
@@ -191,6 +199,7 @@ impl ServerSavable for Vec<Countable> {
                 + Sync,
         >,
     > {
+        _ = self.iter().map(|c| c.set_changed(false));
         Box::pin(api::update_countable_many(self.clone()))
     }
 }
@@ -203,7 +212,7 @@ impl LocalSavable for Vec<Countable> {
     fn save_indexed<'a>(
         &'a self,
         obj: indexed_db::ObjectStore<AppError>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AppResult<()>> + 'a>> {
         use wasm_bindgen::JsValue;
 
         Box::pin(async move {
@@ -232,7 +241,11 @@ impl LocalSavable for Vec<Countable> {
 
 impl Savable for Countable {
     fn has_change(&self) -> bool {
-        true
+        match self {
+            Countable::Counter(c) => c.lock().map(|c| c.has_change).unwrap_or(false),
+            Countable::Phase(p) => p.lock().map(|p| p.has_change).unwrap_or(false),
+            Countable::Chain(_) => false,
+        }
     }
 }
 
@@ -259,7 +272,7 @@ impl LocalSavable for Countable {
     fn save_indexed<'a>(
         &'a self,
         obj: indexed_db::ObjectStore<AppError>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), AppError>> + 'a>> {
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = AppResult<()>> + 'a>> {
         use wasm_bindgen::JsValue;
         let key = JsValue::from_str(&self.uuid().to_string());
         let value = self.as_js();
@@ -326,6 +339,7 @@ impl From<backend::DbPhase> for Countable {
             created_at: value.created_at,
             is_deleted: value.is_deleted,
             step_size: value.step_size,
+            has_change: false,
         })))
     }
 }
@@ -350,16 +364,16 @@ impl std::fmt::Display for CountableKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Counter {
-    pub uuid: uuid::Uuid,
-    pub owner_uuid: uuid::Uuid,
-    pub parent: Option<CountableId>,
+    uuid: uuid::Uuid,
+    owner_uuid: uuid::Uuid,
+    parent: Option<CountableId>,
     #[serde(default)]
-    pub children: Vec<CountableId>,
-    pub name: String,
-    pub last_edit: chrono::NaiveDateTime,
-    pub created_at: chrono::NaiveDateTime,
-    pub is_deleted: bool,
-    pub has_change: bool,
+    children: Vec<CountableId>,
+    name: String,
+    last_edit: chrono::NaiveDateTime,
+    created_at: chrono::NaiveDateTime,
+    is_deleted: bool,
+    has_change: bool,
 }
 
 impl Counter {
@@ -375,6 +389,60 @@ impl Counter {
             is_deleted: false,
             has_change: false,
         }
+    }
+
+    pub fn owner_uuid(&self) -> uuid::Uuid {
+        self.owner_uuid
+    }
+
+    pub fn parent(&self) -> Option<CountableId> {
+        self.parent
+    }
+
+    pub fn set_parent(&mut self, parent: Option<CountableId>) {
+        self.has_change = true;
+        self.parent = parent;
+    }
+
+    pub fn children(&self) -> Vec<CountableId> {
+        self.children.clone()
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn set_name(&mut self, name: impl ToString) {
+        self.has_change = true;
+        self.name = name.to_string()
+    }
+
+    pub fn last_edit(&self) -> chrono::NaiveDateTime {
+        self.last_edit
+    }
+
+    pub fn set_last_edit(&mut self, last_edit: chrono::NaiveDateTime) {
+        self.has_change = true;
+        self.last_edit = last_edit;
+    }
+
+    pub fn is_deleted(&self) -> bool {
+        self.is_deleted
+    }
+
+    pub fn set_is_deleted(&mut self, is_deleted: bool) {
+        self.has_change = true;
+        self.is_deleted = is_deleted
+    }
+}
+
+impl IntoIterator for Counter {
+    type Item = CountableId;
+
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.children.into_iter()
     }
 }
 
@@ -392,23 +460,24 @@ impl Into<backend::DbCounter> for Counter {
     }
 }
 
-#[serde_with::serde_as]
+// #[serde_with::serde_as]
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Phase {
-    pub uuid: uuid::Uuid,
-    pub owner_uuid: uuid::Uuid,
-    pub parent: CountableId,
-    pub name: String,
-    pub count: i32,
-    #[serde_as(as = "serde_with::DurationMilliSeconds<i64>")]
-    pub time: chrono::Duration,
-    pub hunt_type: Hunttype,
-    pub has_charm: bool,
-    pub success: bool,
-    pub last_edit: chrono::NaiveDateTime,
-    pub created_at: chrono::NaiveDateTime,
-    pub is_deleted: bool,
-    pub step_size: i32,
+    uuid: uuid::Uuid,
+    owner_uuid: uuid::Uuid,
+    parent: CountableId,
+    name: String,
+    count: i32,
+    // #[serde_as(as = "serde_with::DurationMilliSeconds<i64>")]
+    time: chrono::Duration,
+    hunt_type: Hunttype,
+    has_charm: bool,
+    success: bool,
+    last_edit: chrono::NaiveDateTime,
+    created_at: chrono::NaiveDateTime,
+    is_deleted: bool,
+    step_size: i32,
+    has_change: bool,
 }
 
 impl Phase {
@@ -422,6 +491,111 @@ impl Phase {
             created_at: chrono::Utc::now().naive_utc(),
             ..Default::default()
         }
+    }
+
+    pub fn owner_uuid(&self) -> uuid::Uuid {
+        self.owner_uuid
+    }
+
+    pub fn parent(&self) -> CountableId {
+        self.parent
+    }
+
+    pub fn set_parent(&mut self, parent: CountableId) {
+        self.has_change = true;
+        self.parent = parent;
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn set_name(&mut self, name: impl ToString) {
+        self.has_change = true;
+        self.name = name.to_string()
+    }
+
+    pub fn count(&self) -> i32 {
+        self.count
+    }
+
+    pub fn set_count(&mut self, count: i32) {
+        self.has_change = true;
+        self.count = count;
+    }
+
+    pub fn add_count(&mut self, count: i32) {
+        self.has_change = true;
+        self.count += count;
+    }
+
+    pub fn step_count(&mut self) {
+        self.has_change = true;
+        self.count += self.step_size
+    }
+
+    pub fn time(&self) -> chrono::TimeDelta {
+        self.time
+    }
+
+    pub fn set_time(&mut self, time: chrono::Duration) {
+        self.has_change = true;
+        self.time = time;
+    }
+
+    pub fn add_time(&mut self, time: chrono::Duration) {
+        self.has_change = true;
+        self.time += time;
+    }
+
+    pub fn hunt_type(&self) -> Hunttype {
+        self.hunt_type
+    }
+
+    pub fn set_hunt_type(&mut self, hunt_type: Hunttype) {
+        self.has_change = true;
+        self.hunt_type = hunt_type;
+    }
+
+    pub fn is_deleted(&self) -> bool {
+        self.is_deleted
+    }
+
+    pub fn set_is_deleted(&mut self, is_deleted: bool) {
+        self.has_change = true;
+        self.is_deleted = is_deleted
+    }
+
+    pub fn has_charm(&self) -> bool {
+        self.has_charm
+    }
+
+    pub fn set_has_charm(&mut self, has_charm: bool) {
+        self.has_change = true;
+        self.has_charm = has_charm
+    }
+
+    pub fn success(&self) -> bool {
+        self.success
+    }
+
+    pub fn set_success(&mut self, success: bool) {
+        self.has_change = true;
+        self.success = success;
+    }
+
+    pub fn toggle_success(&mut self) {
+        self.has_change = true;
+        self.success = !self.success;
+    }
+
+    pub fn step_size(&self) -> i32 {
+        self.step_size
+    }
+
+    pub fn set_step_size(&mut self, step_size: i32) {
+        self.has_change = true;
+        self.step_size = step_size;
     }
 }
 

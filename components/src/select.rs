@@ -183,14 +183,7 @@ pub fn SelectOver(
         }
     });
 
-    if let Some(close_signal) = use_context::<RwSignal<CloseOverlays>>() {
-        Effect::new(move |_| {
-            close_signal.track();
-            show_options.set(false);
-        });
-    } else {
-        logging::warn!("No `close overlay` signal available");
-    }
+    // TODO: readd a close signal
 
     on_cleanup(|| key_listener.remove());
 

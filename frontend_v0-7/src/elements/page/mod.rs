@@ -135,10 +135,13 @@ pub fn Page(
             <div class=style::body>
                 <Show when=has_navbar>{(navbar.get_value().unwrap().children)()}</Show>
                 <div class=classes>
-                    <div>
-                        <div style:border=move || {
-                            if (page_content.hide_border)() { "none" } else { "" }
-                        }>{(page_content.children)()}</div>
+                    <div
+                        style:border=move || if (page_content.hide_border)() { "none" } else { "" }
+                        style:box-shadow=move || if (page_content.hide_border)() { "0px 0px 2px 0px black" } else { "" }
+                    >
+                        <div style:height="100%">
+                            {(page_content.children)()}
+                        </div>
                     </div>
                 </div>
             </div>
