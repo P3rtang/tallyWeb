@@ -313,10 +313,10 @@ fn Progress(
     let store = expect_context::<RwSignal<CountableStore>>();
 
     let progress = create_read_slice(store, move |s| {
-        s.recursive_ref().progress(&key.get_untracked().into())
+        s.recursive_ref().progress(&key.get_untracked())
     });
     let rolls = create_read_slice(store, move |s| {
-        s.recursive_ref().rolls(&key.get_untracked().into())
+        s.recursive_ref().rolls(&key.get_untracked())
     });
     let odds = create_read_slice(store, move |s| s.recursive_ref().odds(&key.get()));
 

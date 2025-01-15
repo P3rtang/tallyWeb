@@ -76,5 +76,5 @@ pub fn provide_session() -> Resource<UserSession> {
 
     owner.with(move || provide_context(user));
 
-    return user_resc;
+    user_resc
 }

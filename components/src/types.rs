@@ -21,7 +21,7 @@ where
     Event: EventDescriptor<EventType = T>,
 {
     fn default() -> Self {
-        Self(Arc::new(move |_| ()), std::marker::PhantomData::default())
+        Self(Arc::new(move |_| ()), std::marker::PhantomData)
     }
 }
 

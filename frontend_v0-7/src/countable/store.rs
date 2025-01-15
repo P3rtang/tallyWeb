@@ -88,7 +88,7 @@ where
         this.store
             .keys()
             .filter(|&k| this.root_parent(k).is_ok_and(|p| p == *k))
-            .map(|id| *id)
+            .copied()
             .collect()
     }
 

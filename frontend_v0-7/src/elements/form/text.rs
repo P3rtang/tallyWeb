@@ -25,7 +25,7 @@ pub fn TextField(
                     </label>
                 </Show>
                 <div class=style::input style:grid-column="2">
-                    <input id=move || id() r#type=move || r#type() {..align} {..attrs} />
+                    <input id=id r#type=move || r#type.get() {..align} {..attrs} />
                 </div>
             }
         }

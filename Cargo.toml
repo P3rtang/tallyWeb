@@ -1,5 +1,5 @@
 [workspace]
-members = [ "frontend", "backend", "components" , "fuzzy_sort", "frontend_v0-7"]
+members = [ "backend", "components" , "fuzzy_sort", "frontend_v0-7"]
 resolver = "2"
 
 # Defines a size-optimized profile for the WASM bundle in release mode
