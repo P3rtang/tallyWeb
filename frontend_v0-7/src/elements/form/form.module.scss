@@ -1,3 +1,144 @@
 .form {
+  display: grid;
+  justify-content: center;
+  align-content: start;
+  align-items: center;
+  grid-gap: 32px;
+  flex-grow: 1;
 
+  padding: 48px;
+}
+
+.input {
+  display: flex;
+  justify-content: space-evenly;
+  color: black;
+  background: $interactable-bg-color-dark;
+  padding: 8px 12px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+
+  &:has(input:focus) {
+    border: 2px solid var(--accent);
+  }
+
+  input {
+    all: unset;
+  }
+
+  input[type="color"] {
+    height: 3.2em;
+    width: 4.8em;
+  }
+}
+
+.select {
+  background: none;
+  font-size: 24px;
+  width: 100%;
+  background: $interactable-bg-color-dark;
+  border-radius: 12px;
+  color: black;
+
+  option {
+    background: $interactable-bg-color-dark;
+  }
+
+  custom-select {
+    width: 100%;
+
+    >div {
+      padding: 2px;
+      position: relative;
+    }
+
+    button {
+      margin: 2px;
+
+      >div {
+        padding: 8px;
+      }
+    }
+
+    select-view {
+      align-items: center;
+      height: 44px;
+      padding-left: 16px;
+      position: relative;
+      z-index: 2;
+      border-radius: 12px;
+    }
+
+    select-options {
+      padding: 8px;
+      left: 0px;
+      top: 0px;
+      position: absolute;
+      z-index: 1;
+      background: $interactable-bg-color-dark;
+      width: 100%;
+      border-radius: 12px;
+      padding-top: 48px;
+      border: 2px solid var(--accent);
+      overflow-y: auto;
+
+      select-option {
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+
+        &:hover {
+          background: $interactable-hover-color-dark;
+        }
+      }
+    }
+
+    img {
+      transition: transform 0.32s;
+    }
+  }
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 32px;
+
+  &.fixed {
+    padding: 12px;
+    bottom: 0px;
+    left: 0px;
+    width: 100%;
+  }
+
+  button {
+    margin: 4px;
+    font-size: 24px;
+    min-width: 5em;
+    background: $interactable-bg-color-dark;
+    border-radius: 12px;
+
+    >div {
+      padding: 12px;
+    }
+  }
+
+  .confirm {
+    background: var(--accent, $select-color-dark);
+  }
+}
+
+.header {
+  display: flex;
+  color: white;
+
+  font-size: 32px;
+  padding: 8px 16px;
+  margin: 8px;
+
+  border-radius: 12px;
+  background: $element-bg-color-dark;
+
+  justify-content: space-between;
+  align-items: center;
 }

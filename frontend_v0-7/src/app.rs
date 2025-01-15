@@ -55,9 +55,8 @@ pub fn App() -> impl IntoView {
         <Stylesheet href=format!("/pkg/{LEPTOS_OUTPUT_NAME}.css") />
         <Stylesheet href="/fa/css/all.css" />
 
-        <Link rel="shortcut icon" as_="image" type_="image/ico" href="/favicon.svg" />
+        <Link rel="icon" as_="image" type_="image/ico" href="/favicon.svg" />
         <Link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet" />
-        <Link rel="preload" as_="image" type_="image/svg+xml" href="/icons/white-edit-svgrepo-com.svg" />
 
         <Title text="TallyWeb" />
 
@@ -169,6 +168,7 @@ impl IntoIterator for Selection {
 
 #[component]
 fn Body() -> impl IntoView {
+    let store = expect_context::<RwSignal<CountableStore>>();
     let (show_sidebar, set_show_sidebar) = signal(true);
     let (width, set_width) = signal(400);
 
@@ -176,21 +176,22 @@ fn Body() -> impl IntoView {
     let selection = Memo::new(move |_| params.get().ok().unwrap_or(Selection::new()));
     provide_context(selection);
 
-    let countable_list = Signal::derive(move || selection.get().into_iter().collect::<Vec<_>>());
-
-    let on_resize = OnResize::from_closure(set_width);
-    let handle_close = OnClose::from_closure(set_show_sidebar);
+    let countable_list = Signal::derive(move || {
+        let mut sel = selection.get().into_iter().collect::<Vec<_>>();
+        sel.sort_by(|a, b| store.get().name(a).cmp(&store.get().name(b)));
+        sel
+    });
 
     view! {
         <Page>
             <PageContent hide_border=true slot>
                 <InfoBox countable_list />
             </PageContent>
-            <PageSidebar width is_shown=show_sidebar on_resize slot>
+            <PageSidebar width is_shown=show_sidebar on_resize=set_width slot>
                 <SidebarContent width/>
             </PageSidebar>
             <PageNavbar slot>
-                <Navbar show_sidebar on_close_sidebar=handle_close.clone()/>
+                <Navbar show_sidebar on_close_sidebar=set_show_sidebar/>
             </PageNavbar>
         </Page>
     }

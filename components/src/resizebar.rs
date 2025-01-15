@@ -10,7 +10,7 @@ pub enum Direction {
 }
 
 #[component]
-pub fn ResizeBar(direction: Direction, #[prop(into)] position: Prop<usize>) -> impl IntoView {
+pub fn ResizeBar(direction: Direction, #[prop(into)] position: Signal<usize>) -> impl IntoView {
     let position = StoredValue::new(position);
 
     let cursor = match direction {

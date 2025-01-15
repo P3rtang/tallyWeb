@@ -691,6 +691,13 @@ impl Hunttype {
     }
 }
 
+impl std::fmt::Display for Hunttype {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s: &'static str = (*self).into();
+        write!(f, "{}", s)
+    }
+}
+
 impl From<Hunttype> for &'static str {
     fn from(val: Hunttype) -> Self {
         match val {
@@ -720,12 +727,6 @@ impl TryFrom<String> for Hunttype {
                 "Hunttype should be one of the following: OldOdds, NewOdds, SOS, Masuda",
             )),
         }
-    }
-}
-
-impl From<Hunttype> for components::SelectOption {
-    fn from(val: Hunttype) -> Self {
-        (val.repr(), val.into()).into()
     }
 }
 

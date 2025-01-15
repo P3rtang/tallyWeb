@@ -1,6 +1,7 @@
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
 #![feature(let_chains)]
+#![allow(unused)]
 
 mod loading_screen;
 mod message;
@@ -22,7 +23,7 @@ pub use message::{Message, MessageKey, ProvideMessageSystem};
 pub use progressbar::*;
 pub use resizebar::{Direction, ResizeBar};
 pub use saving_screen::*;
-pub use select::{Select, SelectOption};
+pub use select::{Select, SelectButton, SelectInput};
 pub use sidebar::*;
 pub use slider::*;
 pub use spinner::*;
@@ -34,7 +35,16 @@ pub use types::*;
 
 pub type MessageJar = message::MessageJar<message::NoHandle>;
 
-use leptos::{logging::warn, prelude::*};
+use leptos::{
+    attr::{
+        any_attribute::{AnyAttribute, IntoAnyAttribute},
+        Attribute,
+    },
+    ev,
+    logging::warn,
+    prelude::*,
+};
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct CloseOverlays();
@@ -63,5 +73,30 @@ pub fn Overlay(
                 {children()}
             </div>
         </Show>
+    }
+}
+
+#[derive(Clone)]
+pub struct AttributeFn(std::sync::Arc<dyn Fn() -> AnyAttribute + Send + Sync + 'static>);
+
+impl AttributeFn {
+    pub fn call(&self) -> AnyAttribute {
+        (self.0)()
+    }
+}
+
+impl Default for AttributeFn {
+    fn default() -> Self {
+        Self(std::sync::Arc::new(move || ().into_any_attr()))
+    }
+}
+
+impl<F, A> From<F> for AttributeFn
+where
+    F: Fn() -> A + Send + Sync + 'static,
+    A: Attribute + 'static,
+{
+    fn from(value: F) -> Self {
+        Self(std::sync::Arc::new(move || value().into_any_attr()))
     }
 }

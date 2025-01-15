@@ -1,60 +1,67 @@
 use super::*;
 use fuzzy_sort::*;
-use leptos::{ev, prelude::*};
+use leptos::{
+    attr::{
+        any_attribute::{AnyAttribute, IntoAnyAttribute},
+        Attribute,
+    },
+    ev,
+    prelude::*,
+};
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct SelectOption {
-    name: String,
-    value: String,
+#[derive(Clone, Default)]
+#[slot]
+pub struct SelectInput {
+    #[prop(into, optional)]
+    attrs: AttributeFn,
 }
 
-impl Sortable for SelectOption {
-    fn as_str(&self) -> &str {
-        &self.name
-    }
-}
-
-impl From<(String, String)> for SelectOption {
-    fn from(value: (String, String)) -> Self {
-        Self {
-            name: value.0,
-            value: value.1,
-        }
-    }
-}
-
-impl From<(&str, &str)> for SelectOption {
-    fn from(value: (&str, &str)) -> Self {
-        Self {
-            name: value.0.to_string(),
-            value: value.1.to_string(),
-        }
-    }
+#[derive(Clone, Default)]
+#[slot]
+pub struct SelectButton {
+    #[prop(into, optional)]
+    attrs: AttributeFn,
 }
 
 #[component]
-pub fn Select(
-    #[prop(into)] options: Prop<Vec<SelectOption>>,
-    #[prop(into)] selected: Signal<SelectOption>,
-) -> impl IntoView {
+pub fn Select<IV, V, T>(
+    #[prop(into)] options: Signal<Vec<T>>,
+    #[prop(into, optional)] selected: Option<Signal<T>>,
+    view: V,
+
+    #[prop(optional)] select_input: SelectInput,
+    #[prop(optional)] select_button: SelectButton,
+) -> impl IntoView
+where
+    T: ToString + Clone + Send + Sync + 'static,
+    V: Fn(String) -> IV + Clone + Send + Sync + 'static,
+    IV: IntoView + Clone + Send + Sync + 'static,
+{
     let hidden_select_ref = NodeRef::<leptos::html::Input>::new();
     let show_custom = RwSignal::new(false);
-    let selection = RwSignal::new(SelectOption::default());
-    let options = StoredValue::new(options);
+    let selection = RwSignal::new(selected.map(|sel| sel.get_untracked().to_string()));
+    let options = StoredValue::new(
+        options
+            .get()
+            .into_iter()
+            .map(|t| t.to_string())
+            .collect::<Vec<_>>(),
+    );
+    let view = StoredValue::new(view);
+    let select_button = StoredValue::new(select_button);
 
-    Effect::new_isomorphic(move |_| {
-        selection.set(selected.get());
-    });
-
-    let options_view = options.get_value()()
+    let options_view = options
+        .get_value()
         .into_iter()
         .map(move |option| {
+            let option = StoredValue::new(option);
+
             view! {
                 <option
-                    value=option.value.clone()
-                    selected=move || selection().value == option.value
+                    value=option.get_value().to_string()
+                    selected=move || Some(option.get_value()) == selection.get()
                 >
-                    {option.name}
+                    {view.get_value()(option.get_value())}
                 </option>
             }
         })
@@ -63,18 +70,19 @@ pub fn Select(
     Effect::new(move |_| {
         show_custom.set(true);
         if let Some(node) = hidden_select_ref.get() {
-            selection.set(
-                options.get_value()()
+            selection.set(Some(
+                options
+                    .get_value()
                     .into_iter()
-                    .find_map(|o| (o.value == node.value()).then_some(o))
+                    .find_map(|o| (o == node.value()).then_some(o))
                     .unwrap_or_default(),
-            );
+            ));
         }
     });
 
     Effect::new(move |_| {
         if let Some(node) = hidden_select_ref.get() {
-            node.set_value(&selection().value)
+            node.set_value(&selection().unwrap_or_default())
         }
     });
 
@@ -85,18 +93,41 @@ pub fn Select(
                 view! { <select>{options_view.clone()}</select> }
             }
         >
-            <input type="hidden" node_ref=hidden_select_ref />
-            <SelectOver options=options.get_value() selection />
+            <input
+                {..select_input.attrs.call()}
+                prop:value=selection
+                type="hidden"
+                node_ref=hidden_select_ref
+            />
+            <SelectOver
+                options=options.get_value()
+                selection
+                view=view.get_value()
+                select_button=select_button.get_value()
+            />
         </Show>
     }
 }
 
 #[component]
-pub fn SelectOver(
-    #[prop(into)] options: Prop<Vec<SelectOption>>,
-    selection: RwSignal<SelectOption>,
-) -> impl IntoView {
-    let options = StoredValue::new(options);
+pub fn SelectOver<V, IV>(
+    #[prop(into)] options: Signal<Vec<String>>,
+    selection: RwSignal<Option<String>>,
+    view: V,
+
+    select_button: SelectButton,
+) -> impl IntoView
+where
+    V: Fn(String) -> IV + Send + Sync + 'static,
+    IV: IntoView + Send + Sync + 'static,
+{
+    let options = StoredValue::new(
+        options
+            .get()
+            .into_iter()
+            .map(|o| o.to_string())
+            .collect::<Vec<_>>(),
+    );
     let show_options = RwSignal::new(false);
 
     let toggle_show = move |ev: ev::MouseEvent| {
@@ -105,7 +136,7 @@ pub fn SelectOver(
     };
 
     let on_option = move |val| {
-        selection.set(val);
+        selection.set(Some(val));
         show_options.set(false);
     };
 
@@ -133,17 +164,17 @@ pub fn SelectOver(
     let options_memo = Memo::new(move |_| {
         if let Some(i) = key_input() {
             let sorter = SimpleMatch::new(i);
-            let mut mut_options = options.get_value()();
+            let mut mut_options = options.get_value();
             mut_options.sort_by(sorter.sort());
             mut_options
         } else {
-            options.get_value()()
+            options.get_value()
         }
     });
 
-    let selected_bg = move |idx: usize, option: SelectOption| {
+    let selected_bg = move |idx: usize, option: String| {
         if key_input().is_some() && idx == 0
-            || key_input().is_none() && option.value == selection().value
+            || key_input().is_none() && Some(option) == selection.get()
         {
             "var(--accent, #3584E4)"
         } else {
@@ -167,7 +198,7 @@ pub fn SelectOver(
             }),
             " " if key_input().is_none() => {}
             "Enter" if key_input().is_some() => {
-                selection.set(options_memo.get_untracked()[0].clone());
+                selection.set(Some(options_memo.get_untracked()[0].clone()));
                 key_input.set(None);
             }
             "Escape" => {
@@ -187,14 +218,21 @@ pub fn SelectOver(
 
     on_cleanup(|| key_listener.remove());
 
-    let get_label = move || key_input().unwrap_or(selection().name);
+    let get_label =
+        move || key_input().unwrap_or(selection().map(|s| s.to_string()).unwrap_or_default());
 
     view! {
         <style>
-            r#"select-options {
+            r#"
+            select-options {
                 scrollbar-width: thin;
                 scrollbar-color: rgba(0, 0, 0, 0.32) transparent;
-            }"#
+            
+                &>div {
+                    position: relative;
+                }
+            }
+            "#
         </style>
         <custom-select>
             <div node_ref=options_list_ref>
@@ -207,7 +245,9 @@ pub fn SelectOver(
                     >
                         <Show
                             when=move || key_input().is_some()
-                            fallback=move || view! { <span>{selection().name}</span> }
+                            fallback=move || {
+                                view! { <span>{selection().unwrap_or_default()}</span> }
+                            }
                         >
                             {get_label}
                         </Show>
@@ -215,16 +255,17 @@ pub fn SelectOver(
                     <button
                         type="button"
                         id="dropdown-button"
+                        {..select_button.attrs.call()}
                         on:click=toggle_show
-                        style:height="40px"
-                        style:width="40px"
                     >
-                        <img
-                            src="/icons/dropdown.svg"
-                            width="24px"
-                            height="24px"
-                            style:transform=toggle_style
-                        />
+                        <div>
+                            <img
+                                src="/icons/dropdown.svg"
+                                width="24px"
+                                height="24px"
+                                style:transform=toggle_style
+                            />
+                        </div>
                     </button>
                 </select-view>
                 <Show when=show_options>
@@ -234,7 +275,7 @@ pub fn SelectOver(
                             .into_iter()
                             .enumerate()
                             .map(move |(idx, option)| {
-                                let option = StoredValue::new(option);
+                                let option = StoredValue::new(option.to_string());
                                 view! {
                                     <select-option
                                         on:click=move |_| on_option(option.get_value())
@@ -244,7 +285,7 @@ pub fn SelectOver(
                                             option.get_value(),
                                         )
                                     >
-                                        {option.get_value().name}
+                                        {option.get_value()}
                                     </select-option>
                                 }
                             })

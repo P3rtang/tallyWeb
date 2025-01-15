@@ -17,7 +17,7 @@ web-sys = { version = "0.3.64", features = ["Storage", "Element", "Document", "D
 rand = "0.8.5"
 dyn-clone = "1.0.16"
 stylance = { version = "0.5.0", features = ["nightly"] }
-fuzzy-sort = { version = "0.1", package = "tallyweb-fuzzy-sort" }
+fuzzy-sort = { version = "0.1", package = "tallyweb-fuzzy-sort", path="../fuzzy_sort/" }
 
 [package.metadata.stylance]
 output_dir = "./style/"

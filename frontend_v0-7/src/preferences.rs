@@ -1,7 +1,8 @@
+#![allow(unused)]
+use super::*;
+
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
-
-use super::*;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AccountAccentColor(pub String);

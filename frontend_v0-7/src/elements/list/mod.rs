@@ -1,4 +1,5 @@
-use components::{Caret, CaretState, ChildWrapper, RowWrapper, Separator, Tree, WrappedRowState};
+pub use components::Separator;
+use components::{Caret, CaretState, ChildWrapper, RowWrapper, Tree, WrappedRowState};
 use leptos::{
     attr::{any_attribute::IntoAnyAttribute, Href},
     either::Either,

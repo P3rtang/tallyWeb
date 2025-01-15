@@ -32,7 +32,7 @@ pub fn InfoHeader(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
                 <span>
                     {name}
                 </span>
-                <button class="hover-darken">
+                <button class="hover-darken icon">
                     <div>
                         <a href=edit_link on:click=on_click>
                             <img width="32px" height="32px" src="/icons/white-edit-svgrepo-com.svg" />

@@ -7,6 +7,7 @@
 #![feature(type_alias_impl_trait)]
 #![recursion_limit = "512"]
 
+use leptos::logging::*;
 use wasm_bindgen::{prelude::Closure, JsCast};
 
 // pub(crate) use session::SessionFormInput;

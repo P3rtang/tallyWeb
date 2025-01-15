@@ -1,7 +1,5 @@
 #![allow(non_snake_case)]
-use components::{
-    MessageJar, Select, SelectionModel, ShowSidebar, Sidebar, SidebarLayout, TreeViewWidget,
-};
+use components::{MessageJar, SelectionModel, ShowSidebar, Sidebar, SidebarLayout, TreeViewWidget};
 use elements::{
     Color, FromClosure, Navbar, OnClose, OnResize, Page, PageContent, PageNavbar, PageSidebar,
     SortMethod, SortSearch,
@@ -446,38 +444,8 @@ fn EditTime(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
 
 #[component]
 fn EditHunttype(#[prop(into)] key: Signal<uuid::Uuid>) -> impl IntoView {
-    let store = expect_context::<RwSignal<CountableStore>>();
-    let hunt_type = move || store().recursive_ref().hunttype(&key().into());
-    let selected = Memo::new(move |_| hunt_type().into());
-
-    let hunt_option = |ht: Hunttype| -> (&'static str, &'static str) { (ht.repr(), ht.into()) };
-
-    let options = vec![
-        hunt_option(Hunttype::OldOdds).into(),
-        hunt_option(Hunttype::NewOdds).into(),
-        hunt_option(Hunttype::Masuda(Masuda::GenIV)).into(),
-        hunt_option(Hunttype::Masuda(Masuda::GenV)).into(),
-        hunt_option(Hunttype::Masuda(Masuda::GenVI)).into(),
-        hunt_option(Hunttype::SOS).into(),
-        // hunt_option(Hunttype::DexNav).into(),
-    ];
-
-    view! {
-        <td>
-            <label for="change-hunttype">Method</label>
-        </td>
-        <td style:text-align="start">
-            <div class=style::boxed>
-                <Select
-                    attr:id="change-hunttype"
-                    attr:name="countable_hunttype"
-                    attr:value=move || hunt_type().as_str()
-                    selected
-                    options
-                />
-            </div>
-        </td>
-    }
+    _ = key;
+    view! {}
 }
 
 #[component]
