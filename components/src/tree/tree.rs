@@ -201,8 +201,7 @@ where
     let handle_click = StoredValue::new(handle_click);
 
     let child_views = {
-        let caret = caret.clone();
-        let key = key_fn.clone();
+        let key = key_fn;
         let view = view.clone();
         std::sync::Arc::new(move |row| {
             view! {

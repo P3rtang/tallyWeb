@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![allow(clippy::module_inception)]
 use super::*;
 
 mod edit;

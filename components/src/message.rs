@@ -81,7 +81,7 @@ impl<T: Handle + 'static> MessageJar<T> {
     pub fn get_ordered(&self) -> Signal<Vec<MessageKey>> {
         create_read_slice(self.messages, |msgs| {
             let mut entries = msgs.iter().map(|(key, _)| *key).collect::<Vec<_>>();
-            entries.sort_by(|a, b| a.cmp(&b));
+            entries.sort();
             entries
         })
     }
@@ -190,7 +190,7 @@ impl MessageJar<NoHandle> {
         self.msg_timeout_effect(key)
     }
 
-    pub fn set_success_view(&self, msg: impl IntoView + Send + Sync + Clone + 'static) {
+    pub fn set_success_view(&self, msg: impl IntoView + Sync + Clone + 'static) {
         let msg = StoredValue::new(msg);
         let key = self.add_msg(NotificationKind::Success(
             self.as_modal,
@@ -214,7 +214,7 @@ impl MessageJar<NoHandle> {
         self.msg_timeout_effect(key);
     }
 
-    pub fn set_err_view(&self, err: impl IntoView + Send + Sync + Clone + 'static) {
+    pub fn set_err_view(&self, err: impl IntoView + Sync + Clone + 'static) {
         let err = StoredValue::new(err);
         let key = self.add_msg(NotificationKind::Error(
             self.as_modal,
@@ -277,10 +277,7 @@ impl MessageJar<WithHandle> {
         key
     }
 
-    pub fn set_success_view(
-        &self,
-        msg: impl IntoView + Send + Sync + Clone + 'static,
-    ) -> MessageKey {
+    pub fn set_success_view(&self, msg: impl IntoView + Sync + Clone + 'static) -> MessageKey {
         let msg = StoredValue::new(msg);
         let key = self.add_msg(NotificationKind::Success(
             self.as_modal,
@@ -305,7 +302,7 @@ impl MessageJar<WithHandle> {
         key
     }
 
-    pub fn set_err_view(&self, err: impl IntoView + Send + Sync + Clone + 'static) -> MessageKey {
+    pub fn set_err_view(&self, err: impl IntoView + Sync + Clone + 'static) -> MessageKey {
         let err = StoredValue::new(err);
         let key = self.add_msg(NotificationKind::Error(
             self.as_modal,
@@ -333,7 +330,7 @@ impl MessageJar<WithHandle> {
 #[component]
 pub fn Message(key: MessageKey, jar: MessageJar<NoHandle>) -> AnyView {
     if !jar.messages.get_untracked().contains_key(&key) {
-        return view! {}.into_view().into_any();
+        return ().into_view().into_any();
     }
 
     let kind = move || (jar.messages)().get(&key).unwrap().kind.clone();
@@ -393,7 +390,7 @@ pub fn Message(key: MessageKey, jar: MessageJar<NoHandle>) -> AnyView {
                 <button class="close" on:click=on_close_click>
                     <i class="fa-solid fa-xmark"></i>
                 </button>
-                {move || kind().get_view().unwrap_or(view! {}.into_any())}
+                {move || kind().get_view().unwrap_or(().into_any())}
             </div>
         </dialog>
     }

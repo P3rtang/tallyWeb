@@ -102,7 +102,7 @@ pub fn RouteUser() -> impl IntoView {
 
                 match (
                     store_rsc.get().flatten(),
-                    local_store_rsc.get().map(|s| s.take()).flatten(),
+                    local_store_rsc.get().and_then(|s| s.take()),
                 ) {
                     (Some(mut s), Some(l)) => {
                         s.merge(l);
@@ -178,7 +178,7 @@ fn Body() -> impl IntoView {
 
     let countable_list = Signal::derive(move || {
         let mut sel = selection.get().into_iter().collect::<Vec<_>>();
-        sel.sort_by(|a, b| store.get().name(a).cmp(&store.get().name(b)));
+        sel.sort_by_key(|a| store.get().name(a));
         sel
     });
 

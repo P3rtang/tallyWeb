@@ -15,7 +15,7 @@ impl AccountAccentColor {
     }
 
     pub fn set_user(&mut self, _user: &UserSession) {
-        self.0 = format!("#8BE9FD")
+        self.0 = "#8BE9FD".to_string();
     }
 }
 

@@ -24,14 +24,11 @@ impl<S: ServerSavable + 'static> SaveHandler<S> for ServerSaveHandler {
         action.dispatch(Box::new(value));
 
         Effect::new(move |_| {
-            match action.value()() {
-                Some(Err(err)) => {
-                    if !is_offline(&err) {
-                        // msg.without_timeout().set_server_err(&err);
-                        on_error(&ServerFnErrorErr::from(err))
-                    }
+            if let Some(Err(err)) = action.value()() {
+                if !is_offline(&err) {
+                    // msg.without_timeout().set_server_err(&err);
+                    on_error(&ServerFnErrorErr::from(err))
                 }
-                _ => {}
             };
         });
     }

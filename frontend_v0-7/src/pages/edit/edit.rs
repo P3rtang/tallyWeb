@@ -12,7 +12,7 @@ pub fn EditWindow() -> impl IntoView {
     let (width, set_width) = signal(400);
 
     let params = use_query::<Selection>();
-    let selection = Memo::new(move |_| params.get().unwrap_or(Selection::default()));
+    let selection = Memo::new(move |_| params.get().unwrap_or_default());
     provide_context(selection);
 
     view! {
@@ -105,7 +105,7 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let referer = use_referer(Default::default());
     let navigate = use_navigate();
 
-    let kind = create_read_slice(store, move |s| s.kind(&key().into()));
+    let kind = Signal::derive(move || store.get().kind(&key.get()));
 
     let params = use_params::<UserName>();
     let user_name = move || params.get().map(|p| p.id).ok();
@@ -164,7 +164,7 @@ fn EditName(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let (name, set_name) = create_slice(
         store,
-        move |s| s.name(&key().into()),
+        move |s| s.name(&key.get()),
         move |s, name: String| s.set_name(&key.get(), name),
     );
 
