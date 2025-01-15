@@ -32,18 +32,42 @@ button {
   padding: 0px;
   cursor: pointer;
 
-  >div {
-    border-radius: 8px;
-    height: 100%;
-    width: 100%;
+  &:global(.icon) {
+    height: 40px;
+    width: 40px;
+
+    >div, >a {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      height: 100%;
+      width: 100%;
+    }
   }
 
-  &:global(.hover-darken):hover>div {
-    background: rgba(black, 0.136)
+  &:global(.hover-darken) {
+    outline: none;
+
+    &:hover>div, &:hover>a {
+      background: rgba(black, 0.136)
+    }
+
+    &:focus-visible>div, &:focus-visible>a {
+      background: rgba(black, 0.136)
+    }
   }
 
-  &:global(.hover-lighten):hover>div {
-    background: rgba(white, 0.05)
+  &:global(.hover-lighten) {
+    outline: none;
+
+    &:hover>div, &:hover>a {
+      background: rgba(white, 0.05)
+    }
+
+    &:focus-visible>div, &:focus-visible>a {
+      background: rgba(white, 0.05)
+    }
   }
 }
 

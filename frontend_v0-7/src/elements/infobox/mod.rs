@@ -7,8 +7,8 @@ use header::InfoHeader;
 pub use infobox::InfoBox;
 
 pub(crate) use super::{
+    app::UserName,
     countable::{CountableId, CountableStore},
-    UserName,
 };
 
 use crate::hooks::{use_referer, RefererOptions};

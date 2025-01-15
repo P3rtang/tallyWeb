@@ -6,13 +6,29 @@ use leptos_router::components::A;
 
 stylance::import_style!(style, "./navbar.module.scss");
 
-pub type OnClose = std::sync::Arc<dyn Fn(bool) + Send + Sync>;
+#[derive(Clone)]
+pub struct OnClose(Arc<dyn Fn(bool) + Send + Sync + 'static>);
 
-impl FromClosure<bool> for OnClose {
+impl Default for OnClose {
+    fn default() -> Self {
+        Self(Arc::new(|_| ()))
+    }
+}
+
+impl<F> From<F> for OnClose
+where
+    F: Fn(bool) + Send + Sync + 'static,
+{
+    fn from(value: F) -> Self {
+        Self(Arc::new(value))
+    }
+}
+
+impl std::ops::FnOnce<(bool,)> for OnClose {
     type Output = ();
 
-    fn from_closure(closure: impl Fn(bool) -> Self::Output + Send + Sync + 'static) -> Self {
-        std::sync::Arc::new(closure)
+    extern "rust-call" fn call_once(self, args: (bool,)) -> Self::Output {
+        (self.0)(args.0)
     }
 }
 
@@ -20,26 +36,20 @@ impl FromClosure<bool> for OnClose {
 pub fn Navbar(
     #[prop(default=true.into(), into)] has_sidebar: Signal<bool>,
     #[prop(default = false.into(), into)] show_sidebar: Signal<bool>,
-    #[prop(optional)] on_close_sidebar: Option<OnClose>,
+    #[prop(into, optional)] on_close_sidebar: OnClose,
 ) -> impl IntoView {
     let user = expect_context::<RwSignal<UserSession>>();
 
     let on_close_sidebar = StoredValue::new(on_close_sidebar);
 
-    let toggle_sidebar = move |_| {
-        if let Some(f) = on_close_sidebar.get_value() {
-            f(!show_sidebar())
-        }
-    };
+    let toggle_sidebar = move |_| on_close_sidebar.get_value()(!show_sidebar());
 
     let home_img_ref = NodeRef::<html::Img>::new();
 
     view! {
-        <Link rel="preload" as_="image" type_="image/svg+xml" href="/icons/sidebar-left-svgrepo-com-white.svg" fetchpriority="high" />
-        <Link rel="preload" as_="image" type_="image/svg+xml" href="/icons/sidebar-left-closed-svgrepo-com-white.svg"  fetchpriority="high"/>
         <nav class=style::navbar>
             <button
-                class=stylance::classes!("hover-lighten")
+                class=stylance::classes!("hover-lighten", "icon")
                 aria-label="toggle sidebar"
                 on:click=toggle_sidebar
                 disabled=move || !has_sidebar()
@@ -60,7 +70,7 @@ pub fn Navbar(
                 </div>
             </button>
             <div class=style::icon>
-                <A href=move || format!("/{}", user.get().username)>
+                <A href=move || format!("/{}", user.get().username) style:display="flex" style:align-items="center">
                     <img
                         node_ref=home_img_ref
                         src="/favicon.svg"

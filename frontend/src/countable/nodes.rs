@@ -530,12 +530,6 @@ impl TryFrom<String> for Hunttype {
     }
 }
 
-impl From<Hunttype> for components::SelectOption {
-    fn from(val: Hunttype) -> Self {
-        (val.repr(), val.into()).into()
-    }
-}
-
 #[cfg(feature = "ssr")]
 impl From<backend::Hunttype> for Hunttype {
     fn from(value: backend::Hunttype) -> Self {

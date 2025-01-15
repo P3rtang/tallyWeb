@@ -9,3 +9,9 @@ pub trait FuzzySort<'a> {
 pub trait Sortable {
     fn as_str(&self) -> &str;
 }
+
+impl Sortable for String {
+    fn as_str(&self) -> &str {
+        self.as_str()
+    }
+}

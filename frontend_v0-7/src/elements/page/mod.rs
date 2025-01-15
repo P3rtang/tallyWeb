@@ -1,5 +1,6 @@
-use components::{Direction, FromEmptyClosure as FC, Prop, ResizeBar};
+use components::{Direction, ResizeBar};
 use leptos::{ev, prelude::*};
+use std::sync::Arc;
 
 stylance::import_style!(style, "./page.module.scss");
 
@@ -25,25 +26,35 @@ pub struct PageSidebar {
     #[prop(default = 400.into(), into)]
     width: Signal<usize>,
 
-    #[prop(optional)]
-    on_resize: Option<OnResize>,
+    #[prop(into, optional)]
+    on_resize: OnResize,
 
     children: ChildrenFn,
 }
 
-pub type OnResize = std::sync::Arc<dyn Fn(usize) + Send + Sync>;
+#[derive(Clone)]
+pub struct OnResize(Arc<dyn Fn(usize) + Send + Sync + 'static>);
 
-pub trait FromClosure<T> {
-    type Output;
-
-    fn from_closure(closure: impl Fn(T) -> Self::Output + Send + Sync + 'static) -> Self;
+impl Default for OnResize {
+    fn default() -> Self {
+        Self(Arc::new(|_| ()))
+    }
 }
 
-impl FromClosure<usize> for OnResize {
+impl<F> From<F> for OnResize
+where
+    F: Fn(usize) + Send + Sync + 'static,
+{
+    fn from(value: F) -> Self {
+        Self(Arc::new(value))
+    }
+}
+
+impl std::ops::FnOnce<(usize,)> for OnResize {
     type Output = ();
 
-    fn from_closure(closure: impl Fn(usize) + Send + Sync + 'static) -> Self {
-        std::sync::Arc::new(closure)
+    extern "rust-call" fn call_once(self, args: (usize,)) -> Self::Output {
+        (self.0)(args.0)
     }
 }
 
@@ -81,7 +92,7 @@ pub fn Page(
     let handle_resize = move |ev: ev::DragEvent| {
         if ev.client_x() as usize > SIDEBAR_MIN_WIDTH {
             set_has_transition(false);
-            if let Some(on_resize) = sidebar.get_value().and_then(|sb| sb.on_resize) {
+            if let Some(on_resize) = sidebar.get_value().map(|sb| sb.on_resize) {
                 on_resize(ev.client_x() as usize)
             }
         } else {
@@ -110,10 +121,6 @@ pub fn Page(
         )
     };
 
-    let position = StoredValue::new(Prop::<usize>::from_closure(move || {
-        sidebar_width().unwrap_or(0)
-    }));
-
     let width_style = move || {
         if sidebar_in_view() {
             format!("{}px", sidebar_width().unwrap_or(0))
@@ -128,7 +135,7 @@ pub fn Page(
                 <div style:width=width_style class=sidebar_classes>{(sidebar.get_value().unwrap().children)()}</div>
                 <ResizeBar
                     direction=Direction::Vertical
-                    position=position.get_value()
+                    position=Signal::derive(move || sidebar_width().unwrap_or_default())
                     on:drag=handle_resize
                 />
             </Show>

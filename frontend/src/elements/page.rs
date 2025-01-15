@@ -1,4 +1,4 @@
-use components::{Direction, FromEmptyClosure as FC, Prop, ResizeBar};
+use components::{Direction, ResizeBar};
 use leptos::{ev, prelude::*};
 
 stylance::import_style!(style, "./../pages/style/page.module.scss");
@@ -7,8 +7,8 @@ pub const SIDEBAR_MIN_WIDTH: usize = 280;
 
 #[slot]
 pub struct PageContent {
-    #[prop(default = false.into(), into)]
-    hide_border: Prop<bool>,
+    #[prop(into, optional)]
+    hide_border: Signal<bool>,
 
     children: ChildrenFn,
 }
@@ -16,11 +16,11 @@ pub struct PageContent {
 #[derive(Clone)]
 #[slot]
 pub struct PageSidebar {
-    #[prop(default = false.into(), into)]
-    is_shown: Prop<bool>,
+    #[prop(into, optional)]
+    is_shown: Signal<bool>,
 
-    #[prop(default = false.into(), into)]
-    auto_hide: Prop<bool>,
+    #[prop(into, optional)]
+    auto_hide: Signal<bool>,
 
     #[prop(default = 400.into(), into)]
     width: Signal<usize>,
@@ -66,8 +66,8 @@ pub fn Page(
     let has_navbar = move || navbar.get_value().is_some();
     let has_sidebar = move || sidebar.get_value().is_some();
 
-    let show_sidebar = move || sidebar.get_value().is_some_and(|sb| (sb.is_shown)());
-    let sidebar_width = move || sidebar.get_value().map(|sb| (sb.width)());
+    let show_sidebar = move || sidebar.get_value().is_some_and(|sb| sb.is_shown.get());
+    let sidebar_width = move || sidebar.get_value().map(|sb| sb.width.get());
 
     let (has_transition, set_has_transition) = signal(true);
     let sidebar_classes = move || {
@@ -112,17 +112,13 @@ pub fn Page(
         )
     };
 
-    let position = StoredValue::new(Prop::<usize>::from_closure(move || {
-        sidebar_width().unwrap_or(0)
-    }));
-
     view! {
         <div class=page_classes style=css_vars>
             <Show when=has_sidebar>
                 <div class=sidebar_classes>{(sidebar.get_value().unwrap().children)()}</div>
                 <ResizeBar
                     direction=Direction::Vertical
-                    position=position.get_value()
+                    position=Signal::derive(move || sidebar_width().unwrap_or_default())
                     on:drag=handle_resize
                 />
             </Show>

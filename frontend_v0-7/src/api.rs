@@ -98,48 +98,46 @@ pub async fn change_password(
     Ok(())
 }
 
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+struct FormCountable {
+    key: uuid::Uuid,
+    kind: CountableKind,
+    name: String,
+    count: i32,
+    step: i32,
+    time: i64,
+    hunttype: String,
+    charm: Option<String>,
+}
+
 #[allow(clippy::too_many_arguments)]
 #[server(EditCountableForm)]
 pub async fn edit_countable_form(
     session: UserSession,
-
-    countable_key: uuid::Uuid,
-    countable_kind: CountableKind,
-    countable_name: String,
-    countable_count: i32,
-    countable_step: i32,
-    countable_hours: i64,
-    countable_mins: i64,
-    countable_secs: i64,
-    countable_millis: i64,
-    countable_hunttype: String,
-    countable_charm: Option<String>,
+    countable: FormCountable,
 ) -> Result<(), ServerFnError> {
     check_user(session).await?;
 
-    let countable_time =
-        ((countable_hours * 60 + countable_mins) * 60 + countable_secs) * 1000 + countable_millis;
-
     let mut conn = extract_pool().await?.begin().await?;
-    match countable_kind {
+    match countable.kind {
         CountableKind::Counter => {
-            backend::counter::set_name(&mut conn, countable_key, &countable_name).await?;
-            backend::counter::set_count(&mut conn, countable_key, countable_count).await?;
-            backend::counter::set_step(&mut conn, countable_key, countable_step).await?;
-            backend::counter::set_time(&mut conn, countable_key, countable_time).await?;
-            backend::counter::set_hunttype(&mut conn, countable_key, countable_hunttype.into())
+            backend::counter::set_name(&mut conn, countable.key, &countable.name).await?;
+            backend::counter::set_count(&mut conn, countable.key, countable.count).await?;
+            backend::counter::set_step(&mut conn, countable.key, countable.step).await?;
+            backend::counter::set_time(&mut conn, countable.key, countable.time).await?;
+            backend::counter::set_hunttype(&mut conn, countable.key, countable.hunttype.into())
                 .await?;
-            backend::counter::set_charm(&mut conn, countable_key, countable_charm.is_some())
+            backend::counter::set_charm(&mut conn, countable.key, countable.charm.is_some())
                 .await?;
         }
         CountableKind::Phase => {
-            backend::phase::set_name(&mut conn, countable_key, &countable_name).await?;
-            backend::phase::set_count(&mut conn, countable_key, countable_count).await?;
-            backend::phase::set_step(&mut conn, countable_key, countable_step).await?;
-            backend::phase::set_time(&mut conn, countable_key, countable_time).await?;
-            backend::phase::set_hunttype(&mut conn, countable_key, countable_hunttype.into())
+            backend::phase::set_name(&mut conn, countable.key, &countable.name).await?;
+            backend::phase::set_count(&mut conn, countable.key, countable.count).await?;
+            backend::phase::set_step(&mut conn, countable.key, countable.step).await?;
+            backend::phase::set_time(&mut conn, countable.key, countable.time).await?;
+            backend::phase::set_hunttype(&mut conn, countable.key, countable.hunttype.into())
                 .await?;
-            backend::phase::set_charm(&mut conn, countable_key, countable_charm.is_some()).await?;
+            backend::phase::set_charm(&mut conn, countable.key, countable.charm.is_some()).await?;
         }
         _ => (),
     }
