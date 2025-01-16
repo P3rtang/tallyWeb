@@ -21,6 +21,7 @@ mod infobox;
 mod list;
 mod navbar;
 mod page;
+mod button;
 
 pub use account::icon::AccountIcon;
 pub use form::*;
@@ -28,3 +29,4 @@ pub use infobox::InfoBox;
 pub use list::{List, RowSlot, Separator};
 pub use navbar::{Navbar, OnClose};
 pub use page::{Color, OnResize, Page, PageContent, PageNavbar, PageSidebar};
+pub use button::*;

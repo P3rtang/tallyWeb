@@ -201,6 +201,7 @@ fn Body() -> impl IntoView {
 fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let selection = expect_context::<Memo<Selection>>();
+    let store_rsc = expect_context::<Resource<Option<CountableStore>>>();
 
     let each = move || {
         let mut root = store.get().root_node_ids();
@@ -211,6 +212,19 @@ fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoView {
     let width = move || format!("{}px", width.get());
 
     let is_selected = move |key: CountableId| selection.get().contains(&key);
+
+    let action = ServerAction::<api::CreateCountable>::new();
+    let on_submit = move |_| store_rsc.refetch();
+
+    // TODO: when creating a counter automatically create a first phase as well
+    Effect::new(move |_| {
+        match action.value().get() {
+            Some(Ok(countables)) => store.update(|s| countables.into_iter().for_each(|c| s.add_countable(c))),
+            // TODO: add in logging of server error with messagejar
+            Some(Err(_err)) => (),
+            None => (),
+        }
+    });
 
     view! {
         <div style:width=width>
@@ -225,6 +239,12 @@ fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoView {
                 </RowSlot>
                 <Separator slot><hr /></Separator>
             </List>
+            <ActionForm action style:padding="0px 12px" on:submit=on_submit>
+                <input type="hidden" name="kind" value=CountableKind::Counter.to_string() />
+                <Button class:hover-darken=true style:width="100%" attr:r#type="submit">
+                    <div>New Counter</div>
+                </Button>
+            </ActionForm>
         </div>
     }
 }

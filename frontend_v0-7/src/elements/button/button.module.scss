@@ -1,0 +1,12 @@
+.button {
+  background: $interactable-bg-color-dark;
+  border-radius: 8px;
+  font-size: 21px;
+
+  >div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+  }
+}
