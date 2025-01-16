@@ -4,9 +4,16 @@ use leptos::prelude::*;
 use super::*;
 
 #[cfg(feature = "ssr")]
-use actix_web::web::Data;
+mod ssr_import {
+    use super::*;
+
+    pub(crate) use actix_web::web::Data;
+    pub(crate) use session::actix_extract_user;
+    pub(crate) use leptos_actix::extract;
+}
+
 #[cfg(feature = "ssr")]
-use leptos_actix::extract;
+use ssr_import::*;
 
 #[cfg(feature = "ssr")]
 pub async fn extract_pool() -> Result<Data<backend::PgPool>, AppError> {
@@ -355,4 +362,25 @@ async fn change_username(
     leptos_actix::redirect("/preferences");
 
     return Ok(session_user);
+}
+
+#[server(CreateCountable, "/session/api")]
+pub async fn create_countable(kind: CountableKind) -> Result<Vec<Countable>, ServerFnError> {
+    let mut conn = extract_pool().await?.begin().await?;
+    let user = actix_extract_user().await?;
+
+    let length = backend::counter::all_by_user(&mut conn, user.user_uuid).await?.len();
+
+    let countable: Vec<Countable> = match kind {
+        CountableKind::Counter => {
+            let (counter, phase) = backend::counter::create(&mut conn, user.user_uuid, format!("Counter {}", length + 1)).await?;
+            vec![counter.into(), phase.into()]
+        },
+        CountableKind::Phase => todo!(),
+        CountableKind::Chain => todo!(),
+    };
+    
+    conn.commit().await?;
+
+    return Ok(countable)
 }

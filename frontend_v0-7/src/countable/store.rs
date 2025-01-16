@@ -190,6 +190,10 @@ where
     pub fn created_at(&self, countable: &CountableId) -> chrono::NaiveDateTime {
         self.created_at_checked(countable).unwrap()
     }
+
+    pub fn add_countable(&mut self, countable: Countable) {
+        self.store.insert(countable.uuid().into(), countable);
+    }
 }
 
 impl<Method, Check> Savable for CountableStore<Method, Check>

@@ -269,3 +269,25 @@ pub async fn archive(tx: &mut PgTx, key: uuid::Uuid) -> Result<(), BackendError>
 
     Ok(())
 }
+
+pub async fn create(tx: &mut PgTx, owner: uuid::Uuid, name: impl ToString) -> Result<(DbCounter, DbPhase), BackendError> {
+    let counter = sqlx::query_as!(
+        DbCounter,
+        r#"
+        INSERT INTO counters
+            (owner_uuid, name)
+        VALUES 
+            ($1, $2)
+        RETURNING
+            *
+        "#,
+        owner,
+        name.to_string(),
+    )
+    .fetch_one(&mut **tx)
+    .await?;
+
+    let phase = phase::create(tx, owner, counter.uuid, "Phase 1").await?;
+
+    Ok((counter, phase))
+}

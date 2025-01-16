@@ -215,3 +215,41 @@ pub async fn archive(tx: &mut PgTx, key: uuid::Uuid) -> Result<(), BackendError>
 
     Ok(())
 }
+
+pub async fn create(tx: &mut PgTx, owner: uuid::Uuid, parent: uuid::Uuid, name: impl ToString) -> Result<DbPhase, BackendError> {
+    let phase = sqlx::query_as!(
+        DbPhase,
+        r#"
+        INSERT INTO phases
+            (owner_uuid, parent_uuid, name, count, time, hunt_type)
+        VALUES 
+            ($1, $2, $3, $4, $5, $6)
+        RETURNING
+            uuid,
+            owner_uuid,
+            parent_uuid,
+            name,
+            count,
+            time,
+            has_charm,
+            hunt_type as "hunt_type: Hunttype",
+            dexnav_encounters,
+            success,
+            last_edit,
+            created_at,
+            is_deleted,
+            step_size
+        "#,
+        owner,
+        parent,
+        name.to_string(),
+        // TODO: should have default values
+        0,
+        0,
+        Hunttype::NewOdds as Hunttype,
+    )
+    .fetch_one(&mut **tx)
+    .await?;
+
+    Ok(phase)
+}
