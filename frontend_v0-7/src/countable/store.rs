@@ -88,6 +88,7 @@ where
         this.store
             .keys()
             .filter(|&k| this.root_parent(k).is_ok_and(|p| p == *k))
+            .filter(|v| !self.is_archived(v).unwrap_or_default())
             .copied()
             .collect()
     }
@@ -100,59 +101,13 @@ where
                 this.root_parent(&v.uuid().into())
                     .is_ok_and(|p| p == v.uuid().into())
             })
+            .filter(|v| !v.is_archived())
             .cloned()
             .collect()
     }
 
     pub fn nodes(&self) -> Vec<Countable> {
         self.store.values().cloned().collect()
-    }
-
-    pub fn has_charm_checked(&self, countable: &CountableId) -> Result<bool, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => {
-                    let mut has = true;
-                    for child in c.lock()?.children().iter() {
-                        has &= self.has_charm_checked(child)?;
-                    }
-                    has
-                }
-                Countable::Phase(p) => p.lock()?.has_charm(),
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn has_charm(&self, countable: &CountableId) -> bool {
-        self.has_charm_checked(countable).unwrap()
-    }
-
-    pub fn is_success_checked(&self, countable: &CountableId) -> Result<bool, AppError> {
-        Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => c
-                    .lock()?
-                    .children()
-                    .last()
-                    .and_then(|child| self.is_success_checked(child).ok())
-                    .unwrap_or_default(),
-                Countable::Phase(p) => p.lock()?.success(),
-                Countable::Chain(_) => todo!(),
-            },
-        )
-    }
-
-    pub fn is_success(&self, countable: &CountableId) -> bool {
-        self.is_success_checked(countable).unwrap()
     }
 
     pub fn toggle_success_checked(&self, countable: &CountableId) -> Result<(), AppError> {
@@ -171,6 +126,55 @@ where
         let _ = self.is_changed.replace(true);
 
         Ok(())
+    }
+    pub fn has_charm_checked(&self, countable: &CountableId) -> Result<bool, AppError> {
+        let this: &CountableStore<Recursive, Checked> = unsafe { std::mem::transmute(self) };
+
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(_) => {
+                    let mut has = true;
+                    for child in this.children(countable)? {
+                        has &= self.has_charm_checked(&child)?;
+                    }
+                    has
+                }
+                Countable::Phase(p) => p.lock()?.has_charm(),
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
+
+    pub fn has_charm(&self, countable: &CountableId) -> bool {
+        self.has_charm_checked(countable).unwrap()
+    }
+
+    pub fn is_success_checked(&self, countable: &CountableId) -> Result<bool, AppError> {
+        let this: &CountableStore<Recursive, Checked> = unsafe { std::mem::transmute(self) };
+
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(_) => this
+                    .children(countable)?
+                    .last()
+                    .and_then(|child| self.is_success_checked(child).ok())
+                    .unwrap_or_default(),
+                Countable::Phase(p) => p.lock()?.success(),
+                Countable::Chain(_) => todo!(),
+            },
+        )
+    }
+
+    pub fn is_success(&self, countable: &CountableId) -> bool {
+        self.is_success_checked(countable).unwrap()
     }
 
     pub fn toggle_success(&self, countable: &CountableId) {
@@ -191,8 +195,22 @@ where
         self.created_at_checked(countable).unwrap()
     }
 
-    pub fn add_countable(&mut self, countable: Countable) {
+    pub fn insert(&mut self, countable: Countable) {
         self.store.insert(countable.uuid().into(), countable);
+    }
+
+    pub fn is_archived(&self, countable: &CountableId) -> AppResult<bool> {
+        Ok(
+            match self
+                .store
+                .get(countable)
+                .ok_or(AppError::CountableNotFound)?
+            {
+                Countable::Counter(c) => c.lock()?.is_deleted(),
+                Countable::Phase(p) => p.lock()?.is_deleted(),
+                Countable::Chain(_) => todo!(),
+            },
+        )
     }
 }
 
@@ -330,26 +348,6 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
         let _ = self.is_changed.replace(true);
 
         Ok(())
-    }
-
-    pub fn new_countable(
-        &mut self,
-        name: &str,
-        kind: CountableKind,
-        parent: Option<CountableId>,
-    ) -> Result<CountableId, AppError> {
-        let countable = Countable::new(name, kind, self.owner, parent);
-        let key = countable.clone().into();
-        self.store.insert(key, countable);
-        if let Some(parent) = parent {
-            self.get(&parent)
-                .ok_or(AppError::CountableNotFound)?
-                .add_child_checked(key)?
-        }
-
-        let _ = self.is_changed.replace(false);
-
-        Ok(key)
     }
 
     pub fn archive(&self, countable: &CountableId) -> Result<Countable, AppError> {
@@ -513,17 +511,6 @@ impl<M: StoreMethod> CountableStore<M, UnChecked> {
         self.checked_mut().merge(other.checked()).unwrap()
     }
 
-    pub fn new_countable(
-        &mut self,
-        name: &str,
-        kind: CountableKind,
-        parent: Option<CountableId>,
-    ) -> CountableId {
-        self.checked_mut()
-            .new_countable(name, kind, parent)
-            .unwrap()
-    }
-
     /**
         `CountableStore Filter UnChecked`
 
@@ -632,14 +619,43 @@ impl<M: StoreMethod> CountableStore<M, UnChecked> {
 
 impl CountableStore<Level, Checked> {
     pub fn children(&self, countable: &CountableId) -> Result<Vec<CountableId>, AppError> {
+        let children = self
+            .store
+            .keys()
+            .filter(|c| {
+                self.parent(*c)
+                    .is_ok_and(|c| c.is_some_and(|id| id == *countable))
+            })
+            .copied()
+            .collect::<Vec<_>>();
+
+        Ok(children)
+    }
+
+    /**
+        `Last Child Checked`
+
+        Returns the `last child` of the given `CountableId`.
+        It will only return direct children of the countable or the countable itself if it does not have any children of its own
+
+        This function will return an `error` when `CountableId` is not available in the store
+        And will return an `error` when any lock on a `Mutex` fails
+
+        `last child`: for all children sorted pick the last one in the array
+        `leaf node`: a node without children
+
+        [CountableId]
+    */
+    pub fn last_child(&self, countable: &CountableId) -> Result<CountableId, AppError> {
         Ok(
-            match self
-                .store
-                .get(countable)
-                .ok_or(AppError::CountableNotFound)?
-            {
-                Countable::Counter(c) => c.lock()?.children(),
-                _ => Vec::new(),
+            match self.get(countable).ok_or(AppError::CountableNotFound)? {
+                Countable::Counter(_) => self
+                    .children(countable)?
+                    .last()
+                    .copied()
+                    .unwrap_or(*countable),
+                Countable::Phase(_) => *countable,
+                Countable::Chain(_) => todo!(),
             },
         )
     }
@@ -655,16 +671,6 @@ impl CountableStore<Level, Checked> {
             .map(CountableId::from)
             .collect::<Vec<_>>()
             .contains(child))
-    }
-
-    pub fn last_child(&self, countable: &CountableId) -> Result<Option<CountableId>, AppError> {
-        Ok(
-            match self.get(countable).ok_or(AppError::CountableNotFound)? {
-                Countable::Counter(c) => c.lock()?.children().last().copied(),
-                Countable::Phase(_) => None,
-                Countable::Chain(_) => todo!(),
-            },
-        )
     }
 
     pub fn parent(&self, countable: &CountableId) -> Result<Option<CountableId>, AppError> {
@@ -966,9 +972,9 @@ impl CountableStore<Level, Checked> {
                 .ok_or(AppError::CountableNotFound)?
             {
                 Countable::Counter(_) => 0,
-                Countable::Phase(_) => self.recursive_ref().hunttype(countable)?.rolls()(
+                Countable::Phase(p) => self.recursive_ref().hunttype(countable)?.rolls()(
                     self.count(countable)?,
-                    self.has_charm_checked(countable)?,
+                    p.lock()?.has_charm(),
                 ),
                 Countable::Chain(_) => todo!(),
             },
@@ -1090,8 +1096,8 @@ impl CountableStore<Recursive, Checked> {
                 .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
-                Countable::Counter(c) => {
-                    let mut children = c.lock()?.children();
+                Countable::Counter(_) => {
+                    let mut children = self.level_ref().children(countable)?;
                     for child in children.clone().iter() {
                         children.append(&mut self.children(child)?)
                     }
@@ -1144,8 +1150,8 @@ impl CountableStore<Recursive, Checked> {
     pub fn last_child(&self, countable: &CountableId) -> Result<CountableId, AppError> {
         Ok(
             match self.get(countable).ok_or(AppError::CountableNotFound)? {
-                Countable::Counter(c) => {
-                    if let Some(last) = c.lock()?.children().last().copied() {
+                Countable::Counter(_) => {
+                    if let Some(last) = self.children(countable)?.last() {
                         self.last_child(&last)?
                     } else {
                         *countable
@@ -1246,9 +1252,9 @@ impl CountableStore<Recursive, Checked> {
                 .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
-                Countable::Counter(c) => {
+                Countable::Counter(_) => {
                     let mut sum = 0;
-                    for child in c.lock()?.clone() {
+                    for child in self.children(countable)? {
                         sum += self.count(&child)?;
                     }
                     sum
@@ -1460,9 +1466,9 @@ impl CountableStore<Recursive, Checked> {
                 .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
-                Countable::Counter(c) => {
+                Countable::Counter(_) => {
                     let mut sum = TimeDelta::zero();
-                    for child in c.lock()?.clone() {
+                    for child in self.children(countable)? {
                         sum += self.time(&child)?;
                     }
                     sum
@@ -1637,18 +1643,16 @@ impl CountableStore<Recursive, Checked> {
                 .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
-                Countable::Counter(c) => c
-                    .lock()?
-                    .clone()
+                Countable::Counter(_) => self
+                    .children(countable)?
                     .into_iter()
                     .map(|child| self.rolls(&child))
                     .collect::<Result<Vec<_>, AppError>>()?
                     .into_iter()
                     .sum(),
-                Countable::Phase(_) => self.hunttype(countable)?.rolls()(
-                    self.count(countable)?,
-                    self.has_charm_checked(countable)?,
-                ),
+                Countable::Phase(p) => {
+                    self.hunttype(countable)?.rolls()(self.count(countable)?, p.lock()?.has_charm())
+                }
                 Countable::Chain(_) => todo!(),
             },
         )
@@ -1679,10 +1683,9 @@ impl CountableStore<Recursive, Checked> {
                 .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
-                Countable::Counter(c) => {
-                    let sum = c
-                        .lock()?
-                        .clone()
+                Countable::Counter(_) => {
+                    let sum = self
+                        .children(countable)?
                         .into_iter()
                         .flat_map(|child| {
                             let odds = self.odds(&child).ok()?;
@@ -1774,9 +1777,8 @@ impl CountableStore<Recursive, Checked> {
                 .get(countable)
                 .ok_or(AppError::CountableNotFound)?
             {
-                Countable::Counter(c) => c
-                    .lock()?
-                    .clone()
+                Countable::Counter(_) => self
+                    .children(countable)?
                     .into_iter()
                     .flat_map(|child| self.completed(&child))
                     .sum::<u32>(),
@@ -1806,7 +1808,7 @@ impl CountableStore<Level, UnChecked> {
         self.checked_ref().archive(countable).ok()
     }
 
-    pub fn last_child(&self, countable: &CountableId) -> Option<CountableId> {
+    pub fn last_child(&self, countable: &CountableId) -> CountableId {
         self.checked_ref().last_child(countable).unwrap()
     }
 

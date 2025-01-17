@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE\n            counters\n        SET\n            is_deleted = true\n        WHERE\n            uuid = $1\n        RETURNING\n            *\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 2,
+        "name": "owner_uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_edit",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_deleted",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bf608175d3e5899c7f5689ef530a1d8d7bf1bd5d1f9594a54d6e2453538786de"
+}

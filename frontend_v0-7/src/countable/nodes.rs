@@ -74,21 +74,6 @@ impl Countable {
         }
     }
 
-    pub fn add_child_checked(&self, child: CountableId) -> AppResult<()> {
-        match self {
-            Countable::Counter(c) => {
-                c.lock()?.children.push(child);
-                Ok(())
-            }
-            Countable::Phase(_) => Err(AppError::CannotContainChildren("Phase".into())),
-            Countable::Chain(_) => Err(AppError::CannotContainChildren("Chain".into())),
-        }
-    }
-
-    pub fn add_child(&self, child: CountableId) {
-        self.add_child_checked(child).unwrap()
-    }
-
     pub fn uuid_checked(&self) -> AppResult<uuid::Uuid> {
         Ok(match self {
             Countable::Counter(c) => c.lock()?.uuid,
@@ -312,7 +297,6 @@ impl From<backend::DbCounter> for Countable {
             uuid: value.uuid,
             owner_uuid: value.owner_uuid,
             parent: None,
-            children: Vec::new(),
             name: value.name,
             last_edit: value.last_edit,
             created_at: value.created_at,
@@ -367,8 +351,6 @@ pub struct Counter {
     uuid: uuid::Uuid,
     owner_uuid: uuid::Uuid,
     parent: Option<CountableId>,
-    #[serde(default)]
-    children: Vec<CountableId>,
     name: String,
     last_edit: chrono::NaiveDateTime,
     created_at: chrono::NaiveDateTime,
@@ -382,7 +364,6 @@ impl Counter {
             uuid: uuid::Uuid::new_v4(),
             owner_uuid,
             parent,
-            children: Vec::new(),
             name,
             last_edit: chrono::Utc::now().naive_utc(),
             created_at: chrono::Utc::now().naive_utc(),
@@ -402,10 +383,6 @@ impl Counter {
     pub fn set_parent(&mut self, parent: Option<CountableId>) {
         self.has_change = true;
         self.parent = parent;
-    }
-
-    pub fn children(&self) -> Vec<CountableId> {
-        self.children.clone()
     }
 
     pub fn name(&self) -> &str {
@@ -433,16 +410,6 @@ impl Counter {
     pub fn set_is_deleted(&mut self, is_deleted: bool) {
         self.has_change = true;
         self.is_deleted = is_deleted
-    }
-}
-
-impl IntoIterator for Counter {
-    type Item = CountableId;
-
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.children.into_iter()
     }
 }
 

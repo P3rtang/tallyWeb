@@ -67,7 +67,9 @@ fn TreeRow(countable: CountableId) -> AnyView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let href = move || format!("?slct={}", countable.0);
 
-    view! { <A href style:width="100%">{store.get().name(&countable)}</A> }.into_any()
+    let name = Signal::derive(move || store.get().name(&countable));
+
+    view! { <A href style:width="100%">{name}</A> }.into_any()
 }
 
 #[derive(Params, Clone, PartialEq, Default)]
@@ -144,8 +146,24 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 
     let title = Signal::derive(move || store.get().name(&key.get()));
 
+    let delete_action = ServerAction::<api::RemoveCountable>::new();
+
+    Effect::new(move |_| match delete_action.value().get() {
+        Some(Ok(countables)) => store.update(|s| {
+            countables.into_iter().for_each(|c| {
+                s.archive(&c.into());
+            })
+        }),
+        Some(Err(_err)) => (),
+        None => (),
+    });
+
     view! {
-        <Form action title close_href on_undo>
+        <Form action on_undo>
+            <HeaderSlot title close_href slot>
+                <DeleteButton key />
+            </HeaderSlot>
+
             <SessionFormInput session />
             <input type="hidden" name="countable[key]" value=move || key.get().0.to_string() />
             <input type="hidden" name="countable[kind]" value=move || kind().to_string() />
@@ -156,6 +174,37 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             <EditHunttype key />
             <EditCharm key />
         </Form>
+    }
+}
+
+#[component]
+fn DeleteButton(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
+    let session = expect_context::<RwSignal<UserSession>>();
+    let store = expect_context::<RwSignal<CountableStore>>();
+    let kind = Signal::derive(move || store.get().kind(&key.get()));
+
+    let delete_action = ServerAction::<api::RemoveCountable>::new();
+    Effect::new(move |_| match delete_action.value().get() {
+        Some(Ok(countables)) => store.update(|s| {
+            countables.into_iter().for_each(|c| {
+                s.archive(&c.into());
+            })
+        }),
+        Some(Err(_err)) => (),
+        None => (),
+    });
+
+    view! {
+        <ActionForm action=delete_action>
+            <session::SessionFormInput session />
+            <input type="hidden" name="id" value=move || key.get().0.to_string() />
+            <input type="hidden" name="kind" value=move || kind.get().to_string() />
+            <button class="hover-darken icon">
+                <div >
+                    <img width="24px" height="24px" src="/icons/trash-svgrepo-com-white.svg" />
+                </div>
+            </button>
+        </ActionForm>
     }
 }
 
@@ -225,6 +274,7 @@ fn EditTime(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             value=time
             name="countable[time]"
             id="change-time"
+            use_single_form_value=true
         />
     }
 }

@@ -124,5 +124,13 @@
         }
       }
     }
+    
+    .actions {
+      display: flex;
+
+      >button:not(:last-child) {
+        margin: 0px 8px;
+      }
+    }
   }
 }

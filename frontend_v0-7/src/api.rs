@@ -8,8 +8,8 @@ mod ssr_import {
     use super::*;
 
     pub(crate) use actix_web::web::Data;
-    pub(crate) use session::actix_extract_user;
     pub(crate) use leptos_actix::extract;
+    pub(crate) use session::actix_extract_user;
 }
 
 #[cfg(feature = "ssr")]
@@ -218,37 +218,23 @@ pub async fn archive_countable(countable: Countable) -> Result<(), ServerFnError
 #[server(RemoveCountable, "/api/session")]
 pub async fn remove_countable(
     session: UserSession,
-    countable: Countable,
-) -> Result<(), ServerFnError> {
-    match countable {
-        Countable::Counter(_) => remove_counter(session, countable.uuid()).await?,
-        Countable::Phase(_) => remove_phase(session, countable.uuid()).await?,
-        Countable::Chain(_) => todo!(),
-    }
+    id: uuid::Uuid,
+    kind: CountableKind,
+) -> Result<Vec<uuid::Uuid>, ServerFnError> {
+    // TODO: readd session checking
+    let mut tx = extract_pool().await?.begin().await?;
 
-    return Ok(());
-}
+    let deleted = match kind {
+        CountableKind::Counter => backend::counter::remove(&mut tx, id).await?,
+        CountableKind::Phase => vec![backend::phase::remove(&mut tx, id).await?],
+        CountableKind::Chain => todo!(),
+    };
 
-#[server(RemoveCounter, "/api")]
-pub async fn remove_counter(
-    session: UserSession,
-    counter_id: uuid::Uuid,
-) -> Result<(), ServerFnError> {
-    let pool = extract_pool().await?;
+    tx.commit().await?;
 
-    backend::remove_counter(&pool, &session.username, session.token, counter_id).await?;
+    leptos_actix::redirect(&format!("/{}", session.username));
 
-    Ok(())
-}
-
-#[server(RemovePhase, "/api")]
-pub async fn remove_phase(session: UserSession, phase_id: uuid::Uuid) -> Result<(), ServerFnError> {
-    let pool = extract_pool().await?;
-
-    let _ = backend::auth::get_user(&pool, &session.username, session.token).await?;
-    backend::remove_phase(&pool, phase_id).await?;
-
-    Ok(())
+    return Ok(deleted);
 }
 
 #[server(GetUserPreferences, "/api")]
@@ -369,18 +355,25 @@ pub async fn create_countable(kind: CountableKind) -> Result<Vec<Countable>, Ser
     let mut conn = extract_pool().await?.begin().await?;
     let user = actix_extract_user().await?;
 
-    let length = backend::counter::all_by_user(&mut conn, user.user_uuid).await?.len();
+    let length = backend::counter::all_by_user(&mut conn, user.user_uuid)
+        .await?
+        .len();
 
     let countable: Vec<Countable> = match kind {
         CountableKind::Counter => {
-            let (counter, phase) = backend::counter::create(&mut conn, user.user_uuid, format!("Counter {}", length + 1)).await?;
+            let (counter, phase) = backend::counter::create(
+                &mut conn,
+                user.user_uuid,
+                format!("Counter {}", length + 1),
+            )
+            .await?;
             vec![counter.into(), phase.into()]
-        },
+        }
         CountableKind::Phase => todo!(),
         CountableKind::Chain => todo!(),
     };
-    
+
     conn.commit().await?;
 
-    return Ok(countable)
+    return Ok(countable);
 }

@@ -270,7 +270,11 @@ pub async fn archive(tx: &mut PgTx, key: uuid::Uuid) -> Result<(), BackendError>
     Ok(())
 }
 
-pub async fn create(tx: &mut PgTx, owner: uuid::Uuid, name: impl ToString) -> Result<(DbCounter, DbPhase), BackendError> {
+pub async fn create(
+    tx: &mut PgTx,
+    owner: uuid::Uuid,
+    name: impl ToString,
+) -> Result<(DbCounter, DbPhase), BackendError> {
     let counter = sqlx::query_as!(
         DbCounter,
         r#"
@@ -290,4 +294,64 @@ pub async fn create(tx: &mut PgTx, owner: uuid::Uuid, name: impl ToString) -> Re
     let phase = phase::create(tx, owner, counter.uuid, "Phase 1").await?;
 
     Ok((counter, phase))
+}
+
+pub async fn remove(
+    tx: &mut PgTx,
+    counter_uuid: uuid::Uuid,
+) -> Result<Vec<uuid::Uuid>, BackendError> {
+    let counter = sqlx::query_as!(
+        DbCounter,
+        r#"
+        UPDATE
+            counters
+        SET
+            is_deleted = true
+        WHERE
+            uuid = $1
+        RETURNING
+            *
+        "#,
+        counter_uuid,
+    )
+    .fetch_one(&mut **tx)
+    .await?
+    .uuid;
+
+    let mut phases = sqlx::query_as!(
+        DbPhase,
+        r#"
+        UPDATE
+            phases
+        SET
+            is_deleted = true
+        WHERE 
+            parent_uuid = $1
+        RETURNING
+            uuid,
+            owner_uuid,
+            parent_uuid,
+            name,
+            count,
+            time,
+            has_charm,
+            hunt_type as "hunt_type: Hunttype",
+            dexnav_encounters,
+            success,
+            last_edit,
+            created_at,
+            is_deleted,
+            step_size
+        "#,
+        counter_uuid,
+    )
+    .fetch_all(&mut **tx)
+    .await?
+    .into_iter()
+    .map(|p| p.uuid)
+    .collect::<Vec<_>>();
+
+    phases.push(counter);
+
+    Ok(phases)
 }

@@ -20,11 +20,7 @@ pub async fn get_countable_store(user: uuid::Uuid) -> Result<CountableStore, Ser
     }
 
     for phase in phases {
-        if let Some(parent) = store.get(&phase.parent_uuid.into()) {
-            let uuid = phase.uuid;
-            parent.add_child_checked(uuid.into())?;
-            store.insert(uuid.into(), phase.into());
-        }
+        store.insert(phase.uuid.into(), phase.into());
     }
 
     conn.commit().await?;
