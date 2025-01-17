@@ -216,7 +216,12 @@ pub async fn archive(tx: &mut PgTx, key: uuid::Uuid) -> Result<(), BackendError>
     Ok(())
 }
 
-pub async fn create(tx: &mut PgTx, owner: uuid::Uuid, parent: uuid::Uuid, name: impl ToString) -> Result<DbPhase, BackendError> {
+pub async fn create(
+    tx: &mut PgTx,
+    owner: uuid::Uuid,
+    parent: uuid::Uuid,
+    name: impl ToString,
+) -> Result<DbPhase, BackendError> {
     let phase = sqlx::query_as!(
         DbPhase,
         r#"
@@ -252,4 +257,36 @@ pub async fn create(tx: &mut PgTx, owner: uuid::Uuid, parent: uuid::Uuid, name: 
     .await?;
 
     Ok(phase)
+}
+
+pub async fn remove(tx: &mut PgTx, id: uuid::Uuid) -> Result<uuid::Uuid, sqlx::error::Error> {
+    let phase = sqlx::query_as!(
+        DbPhase,
+        r#"
+        DELETE FROM
+            phases
+        WHERE
+            uuid = $1
+        RETURNING
+            uuid,
+            owner_uuid,
+            parent_uuid,
+            name,
+            count,
+            time,
+            has_charm,
+            hunt_type as "hunt_type: Hunttype",
+            dexnav_encounters,
+            success,
+            last_edit,
+            created_at,
+            is_deleted,
+            step_size
+        "#,
+        id,
+    )
+    .fetch_one(&mut **tx)
+    .await?;
+
+    Ok(phase.uuid)
 }

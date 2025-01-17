@@ -65,6 +65,8 @@ pub fn TimeDeltaField(
     #[prop(optional)] delta_minute: Option<DeltaMinute>,
     #[prop(optional)] delta_second: Option<DeltaSecond>,
     #[prop(optional)] delta_milli: Option<DeltaMilli>,
+
+    #[prop(default=false.into(), into)] use_single_form_value: Signal<bool>,
 ) -> impl IntoView {
     let (default_value, set_default_value) = signal(default_value.unwrap_or_default());
 
@@ -119,76 +121,82 @@ pub fn TimeDeltaField(
         }
     };
 
-    view! {
-        <AttributeInterceptor let:attrs>
-        {
-            view! {
-                <Show when=move || label.is_some()>
-                    <label for=id style:grid-column="1">
-                        {label.unwrap()()}
-                    </label>
-                </Show>
-                <div class=style::input style:grid-column="2">
-                    <input
-                        type="hidden"
-                        prop:value=move || value.get().num_milliseconds()
-                        {..attrs}
-                        name=name
-                    />
-                    <input
-                        node_ref=hour_ref
-                        type="number"
-                        prop:value=pad_hours
-                        style:width="4ch"
-                        style:text-align="end"
-                        on:change=handle_change_hour
-                        on:focusout=move |_| pad_input(hour_ref, 2)
-                        {..delta_hour.clone().map(|d| (d.attrs)()).unwrap_or(().into_any_attr())}
-                        name=move || format!("{}[hour]", name.get())
-                        id=id
-                    />
-                    :
-                    <input
-                        node_ref=min_ref
-                        type="number"
-                        max="59"
-                        prop:value=pad_mins
-                        style:width="2ch"
-                        style:text-align="end"
-                        on:input=move |ev| limit_num(ev, min_ref, 0, 59)
-                        on:focusout=move |_| pad_input(min_ref, 2)
-                        {..delta_minute.clone().map(|d| (d.attrs)()).unwrap_or(().into_any_attr())}
-                        name=move || format!("{}[mins]", name.get())
-                    />
-                    :
-                    <input
-                        node_ref=sec_ref
-                        type="number"
-                        max="59"
-                        prop:value=pad_secs
-                        style:width="2ch"
-                        style:text-align="end"
-                        on:input=move |ev| limit_num(ev, sec_ref, 0, 59)
-                        on:focusout=move |_| pad_input(sec_ref, 2)
-                        {..delta_second.clone().map(|d| (d.attrs)()).unwrap_or(().into_any_attr())}
-                        name=move || format!("{}[sec]", name.get())
-                    />
-                    .
-                    <input
-                        node_ref=millis_ref
-                        type="number"
-                        max="999"
-                        prop:value=pad_millis
-                        style:width="3ch"
-                        style:text-align="end"
-                        on:input=move |ev| limit_num(ev, millis_ref, 0, 999)
-                        on:focusout=move |_| pad_input(millis_ref, 3)
-                        {..delta_milli.clone().map(|d| (d.attrs)()).unwrap_or(().into_any_attr())}
-                        name=move || format!("{}[millis]", name.get())
-                    />
-                </div>
-            }
+    let create_name = move |part| {
+        if !use_single_form_value.get() {
+            format!("{}[{}]", name.get(), part)
+        } else {
+            String::default()
         }
-        </AttributeInterceptor>
+    };
+
+    view! {
+        <Show when=move || label.is_some()>
+            <label for=id style:grid-column="1">
+                {label.unwrap()()}
+            </label>
+        </Show>
+        <div class=style::input style:grid-column="2">
+            <Show when=use_single_form_value>
+                <input
+                    type="hidden"
+                    prop:value=move || value.get().num_milliseconds()
+                    name=name
+                />
+            </Show>
+            <input
+                node_ref=hour_ref
+                type="number"
+                prop:value=pad_hours
+                style:width="4ch"
+                style:text-align="end"
+                on:change=handle_change_hour
+                on:focusout=move |_| pad_input(hour_ref, 2)
+                {..delta_hour.clone().map(|d| (d.attrs)()).unwrap_or(().into_any_attr())}
+                name=move || create_name("hour")
+                id=id
+            />
+            :
+            <input
+                node_ref=min_ref
+                type="number"
+                max="59"
+                prop:value=pad_mins
+                style:width="2ch"
+                style:text-align="end"
+                on:input=move |ev| limit_num(ev, min_ref, 0, 59)
+                on:focusout=move |_| pad_input(min_ref, 2)
+                {..delta_minute.clone().map(|d| (d.attrs)()).unwrap_or(().into_any_attr())}
+                id="mins"
+                name=move || create_name("mins")
+            />
+            :
+            <input
+                node_ref=sec_ref
+                type="number"
+                max="59"
+                prop:value=pad_secs
+                style:width="2ch"
+                style:text-align="end"
+                on:input=move |ev| limit_num(ev, sec_ref, 0, 59)
+                on:focusout=move |_| pad_input(sec_ref, 2)
+                {..delta_second.clone().map(|d| (d.attrs)()).unwrap_or(().into_any_attr())}
+                id="secs"
+                name=move || create_name("secs")
+            />
+            .
+            <input
+                node_ref=millis_ref
+                type="number"
+                max="999"
+                prop:value=pad_millis
+                style:width="3ch"
+                style:text-align="end"
+                on:input=move |ev| limit_num(ev, millis_ref, 0, 999)
+                on:focusout=move |_| pad_input(millis_ref, 3)
+                {..delta_milli.clone().map(|d| (d.attrs)()).unwrap_or(().into_any_attr())}
+                id="millis"
+                name=move || create_name("millis")
+            />
+        </div>
     }
 }

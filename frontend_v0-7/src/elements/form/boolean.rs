@@ -1,4 +1,5 @@
 use super::*;
+use leptos::attr::NextAttribute;
 
 #[component]
 pub fn BoolField(

@@ -10,9 +10,9 @@ stylance::import_style!(style, "./form.module.scss");
 pub fn Form<ServFn>(
     action: ServerAction<ServFn>,
     children: ChildrenFn,
-    #[prop(into, optional)] title: Option<Signal<String>>,
-    #[prop(into, optional)] close_href: Option<Signal<String>>,
     #[prop(into, optional)] on_undo: EventCallback<ev::click, ev::MouseEvent>,
+
+    #[prop(optional)] header_slot: HeaderSlot,
 ) -> impl IntoView
 where
     ServFn: DeserializeOwned + ServerFn<InputEncoding = PostUrl> + Clone + Send + Sync + 'static,
@@ -22,17 +22,8 @@ where
     ServFn::Error: Send + Sync + 'static,
 {
     view! {
-        <div class=style::header>
-            <span>{ title }</span>
-            <Show when=move || close_href.is_some()>
-                <button class="hover-darken icon">
-                    <a href=close_href>
-                        <img height="28px" width="28px" src="/icons/tallyweb-cross-white.svg" />
-                    </a>
-                </button>
-            </Show>
-        </div>
         <ActionForm action>
+            { header_slot }
             <div class=style::form>
                 {children()}
             </div>

@@ -6,13 +6,13 @@ mod edit;
 
 pub use edit::EditWindow;
 use elements::{
-    BoolField, Form, List, Navbar, Page, PageContent, PageNavbar, PageSidebar, RowSlot,
+    BoolField, Form, HeaderSlot, List, Navbar, Page, PageContent, PageNavbar, PageSidebar, RowSlot,
     SelectField, Separator, TextField, TimeDeltaField,
 };
 
 use crate::{
-    app::UserName, hooks::use_referer, nodes::Masuda, session::SessionFormInput, CountableId,
-    CountableStore, Hunttype, UserSession,
+    app::UserName, hooks::use_referer, nodes::Masuda, session, session::SessionFormInput,
+    CountableId, CountableStore, Hunttype, UserSession,
 };
 use leptos::{logging::*, prelude::*};
 use leptos_router::{

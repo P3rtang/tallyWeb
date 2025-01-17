@@ -7,9 +7,10 @@ stylance::import_style!(style, "./infobox.module.scss");
 
 #[component]
 pub fn InfoHeader(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
+    let session = expect_context::<RwSignal<UserSession>>();
     let store = expect_context::<RwSignal<CountableStore>>();
-
-    let name = create_read_slice(store, move |s| s.name(&key.get()));
+    let selection = expect_context::<Memo<app::Selection>>();
+    let name = Signal::derive(move || store.get().name(&key.get()));
 
     let params = use_params::<UserName>();
     let user_name = move || params.get().map(|p| p.id).ok();
@@ -32,13 +33,13 @@ pub fn InfoHeader(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
                 <span>
                     {name}
                 </span>
-                <button class="hover-darken icon">
-                    <div>
+                <div class=style::actions>
+                    <button class="hover-darken icon">
                         <a href=edit_link on:click=on_click>
-                            <img width="32px" height="32px" src="/icons/white-edit-svgrepo-com.svg" />
+                            <img width="24px" height="24px" src="/icons/white-edit-svgrepo-com.svg" />
                         </a>
-                    </div>
-                </button>
+                    </button>
+                </div>
             </div>
         </div>
     }

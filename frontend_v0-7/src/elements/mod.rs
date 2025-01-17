@@ -7,7 +7,7 @@ use components::*;
 use leptos::{
     attr::{
         any_attribute::{AnyAttribute, IntoAnyAttribute},
-        Attribute, NextAttribute,
+        Attribute,
     },
     attribute_interceptor::AttributeInterceptor,
     ev, html,
@@ -16,17 +16,17 @@ use leptos::{
 use std::sync::Arc;
 
 mod account;
+mod button;
 mod form;
 mod infobox;
 mod list;
 mod navbar;
 mod page;
-mod button;
 
 pub use account::icon::AccountIcon;
+pub use button::*;
 pub use form::*;
 pub use infobox::InfoBox;
 pub use list::{List, RowSlot, Separator};
 pub use navbar::{Navbar, OnClose};
 pub use page::{Color, OnResize, Page, PageContent, PageNavbar, PageSidebar};
-pub use button::*;
