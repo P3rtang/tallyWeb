@@ -284,7 +284,9 @@ fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoView {
 #[component]
 fn TreeRow(countable: CountableId) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
+    let session = expect_context::<RwSignal<UserSession>>();
     let selection = expect_context::<Memo<Selection>>();
+    let has_children = move || matches!(store.get().kind(&countable), CountableKind::Counter);
 
     let include_selection = move || {
         let mut sel = selection.get();
@@ -303,5 +305,33 @@ fn TreeRow(countable: CountableId) -> impl IntoView {
 
     let name = Signal::derive(move || store.get().name(&countable));
 
-    view! { <A href style:width="100%">{name}</A> }
+    let action = ServerAction::<api::CreateCountable>::new();
+
+    Effect::new(move |_| match action.value().get() {
+        Some(Ok(phase)) => store.update(|s| phase.into_iter().for_each(|p| s.insert(p))),
+        Some(Err(_err)) => (),
+        None => (),
+    });
+
+    view! {
+        <A href style:width="100%">{name}</A>
+        <Show when=has_children>
+            <ActionForm action style:margin-right="2px">
+                <session::SessionFormInput session />
+                <input type="hidden" name="kind" value="Phase" />
+                <input type="hidden" name="parent" value=countable.0.to_string() />
+                <Button size=ButtonSize::Small rounding=ButtonRounding::Full attr:r#type="submit">
+                    <div
+                        style:min-width="28px"
+                        style:min-height="28px"
+                        style:display="flex"
+                        style:align-items="center"
+                        style:justify-content="center"
+                        style:font-size="21px"
+                        style:color="black"
+                    >+</div>
+                </Button>
+            </ActionForm>
+        </Show>
+    }
 }

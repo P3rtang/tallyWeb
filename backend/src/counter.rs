@@ -324,7 +324,8 @@ pub async fn remove(
         UPDATE
             phases
         SET
-            is_deleted = true
+            is_deleted = true,
+            last_edit = $2
         WHERE 
             parent_uuid = $1
         RETURNING
@@ -344,6 +345,7 @@ pub async fn remove(
             step_size
         "#,
         counter_uuid,
+        chrono::Utc::now().naive_utc(),
     )
     .fetch_all(&mut **tx)
     .await?

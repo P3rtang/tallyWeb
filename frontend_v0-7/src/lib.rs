@@ -145,6 +145,8 @@ pub enum AppError {
     InvalidColor,
     #[error("To use {0}, PageContext should be available")]
     PageContextUnavailable(String),
+    #[error("Calling `CreateCountable` with kind `phase` requires a parent")]
+    MissingParent,
 }
 
 impl From<gloo_storage::errors::StorageError> for AppError {

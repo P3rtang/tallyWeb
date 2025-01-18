@@ -626,6 +626,7 @@ impl CountableStore<Level, Checked> {
                 self.parent(*c)
                     .is_ok_and(|c| c.is_some_and(|id| id == *countable))
             })
+            .filter(|c| !self.is_archived(*c).unwrap_or(true))
             .copied()
             .collect::<Vec<_>>();
 
@@ -1098,7 +1099,11 @@ impl CountableStore<Recursive, Checked> {
             {
                 Countable::Counter(_) => {
                     let mut children = self.level_ref().children(countable)?;
-                    for child in children.clone().iter() {
+                    for child in children
+                        .clone()
+                        .iter()
+                        .filter(|c| !self.is_archived(*c).unwrap_or(true))
+                    {
                         children.append(&mut self.children(child)?)
                     }
                     children
