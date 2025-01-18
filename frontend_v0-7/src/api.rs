@@ -351,25 +351,40 @@ async fn change_username(
 }
 
 #[server(CreateCountable, "/session/api")]
-pub async fn create_countable(kind: CountableKind) -> Result<Vec<Countable>, ServerFnError> {
+pub async fn create_countable(
+    kind: CountableKind,
+    parent: Option<uuid::Uuid>,
+) -> Result<Vec<Countable>, ServerFnError> {
     let mut conn = extract_pool().await?.begin().await?;
     let user = actix_extract_user().await?;
 
-    let length = backend::counter::all_by_user(&mut conn, user.user_uuid)
-        .await?
-        .len();
-
     let countable: Vec<Countable> = match kind {
         CountableKind::Counter => {
+            let counter_len = backend::counter::all_by_user(&mut conn, user.user_uuid)
+                .await?
+                .len();
             let (counter, phase) = backend::counter::create(
                 &mut conn,
                 user.user_uuid,
-                format!("Counter {}", length + 1),
+                format!("Counter {}", counter_len + 1),
             )
             .await?;
             vec![counter.into(), phase.into()]
         }
-        CountableKind::Phase => todo!(),
+        CountableKind::Phase => {
+            let parent = parent.ok_or(AppError::MissingParent)?;
+            let phase_len = backend::counter::get_children(&mut conn, parent)
+                .await?
+                .len();
+            let id = backend::phase::create(
+                &mut conn,
+                user.user_uuid,
+                parent,
+                format!("Phase {}", phase_len + 1),
+            )
+            .await?;
+            vec![id.into()]
+        }
         CountableKind::Chain => todo!(),
     };
 

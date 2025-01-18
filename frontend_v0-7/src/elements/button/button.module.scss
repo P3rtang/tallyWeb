@@ -7,6 +7,31 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px;
+  }
+
+  &.default {
+    >div {
+      padding: 8px;
+    }
+  }
+
+  &.big {
+    >div {
+      padding: 16px;
+    }
+  }
+
+  &.small {
+    >div {
+      padding: 4px;
+    }
+  }
+
+  &.no-rounded {
+    border-radius: 0px;
+  }
+
+  &.full-rounded {
+    border-radius: 10000px;
   }
 }

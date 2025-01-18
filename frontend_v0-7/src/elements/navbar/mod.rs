@@ -46,6 +46,14 @@ pub fn Navbar(
 
     let home_img_ref = NodeRef::<html::Img>::new();
 
+    let icon = Signal::derive(move || {
+        if show_sidebar.get() {
+            IconKind::SidebarClosed
+        } else {
+            IconKind::SidebarOpen
+        }
+    });
+
     view! {
         <nav class=style::navbar>
             <button
@@ -55,18 +63,7 @@ pub fn Navbar(
                 disabled=move || !has_sidebar()
             >
                 <div class=stylance::classes!(style::sidebar_toggle, style::icon)>
-                    <img
-                        height="32px"
-                        width="32px"
-                        class:hidden=move || !show_sidebar()
-                        src="/icons/sidebar-left-closed-svgrepo-com-white.svg"
-                    />
-                    <img
-                        height="32px"
-                        width="32px"
-                        class:hidden=show_sidebar
-                        src="/icons/sidebar-left-svgrepo-com-white.svg"
-                    />
+                    <Icon kind=icon />
                 </div>
             </button>
             <div class=style::icon>

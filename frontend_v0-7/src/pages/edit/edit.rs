@@ -160,7 +160,7 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 
     view! {
         <Form action on_undo>
-            <HeaderSlot title close_href slot>
+            <HeaderSlot title on_close=on_undo close_href slot>
                 <DeleteButton key />
             </HeaderSlot>
 

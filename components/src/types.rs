@@ -2,6 +2,7 @@ use ev::EventDescriptor;
 
 use super::*;
 
+#[derive(Clone)]
 pub struct EventCallback<Event: EventDescriptor<EventType = T>, T>(
     Arc<dyn Fn(T) + Send + Sync + 'static>,
     std::marker::PhantomData<Event>,

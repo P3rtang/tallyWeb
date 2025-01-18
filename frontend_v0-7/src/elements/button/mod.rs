@@ -1,4 +1,4 @@
 use leptos::prelude::*;
 
 mod button;
-pub use button::Button;
+pub use button::{Button, ButtonRounding, ButtonSize};

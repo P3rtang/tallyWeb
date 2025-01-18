@@ -263,8 +263,11 @@ pub async fn remove(tx: &mut PgTx, id: uuid::Uuid) -> Result<uuid::Uuid, sqlx::e
     let phase = sqlx::query_as!(
         DbPhase,
         r#"
-        DELETE FROM
+        UPDATE
             phases
+        SET
+            is_deleted = true,
+            last_edit = $2
         WHERE
             uuid = $1
         RETURNING
@@ -284,6 +287,7 @@ pub async fn remove(tx: &mut PgTx, id: uuid::Uuid) -> Result<uuid::Uuid, sqlx::e
             step_size
         "#,
         id,
+        chrono::Utc::now().naive_utc(),
     )
     .fetch_one(&mut **tx)
     .await?;
