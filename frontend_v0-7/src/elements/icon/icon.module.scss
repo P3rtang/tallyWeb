@@ -1,0 +1,30 @@
+.icon {
+  mask-repeat: no-repeat;
+  mask-size: 100%;
+
+  background: white;
+}
+
+.cross {
+  height: 28px;
+  width: 28px;
+  mask-image: url("/icons/tallyweb-cross.svg");
+}
+
+.edit {
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/tallyweb-edit.svg");
+}
+
+.sidebar-left-open {
+  height: 32px;
+  width: 32px;
+  mask-image: url("/icons/svgrepo-sidebar-left-open.svg");
+}
+
+.sidebar-left-closed {
+  height: 32px;
+  width: 32px;
+  mask-image: url("/icons/svgrepo-sidebar-left-closed.svg");
+}
