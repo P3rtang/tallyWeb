@@ -1,4 +1,3 @@
-#![allow(clippy::module_inception)]
 use super::*;
 
 mod boolean;

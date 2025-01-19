@@ -39,6 +39,7 @@ pub enum IconColor {
     #[default]
     White,
     Black,
+    #[allow(clippy::upper_case_acronyms)]
     RGB(u8, u8, u8),
 }
 
