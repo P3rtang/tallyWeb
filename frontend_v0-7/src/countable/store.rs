@@ -639,10 +639,10 @@ impl CountableStore<Level, Checked> {
             .store
             .keys()
             .filter(|c| {
-                self.parent(*c)
+                self.parent(c)
                     .is_ok_and(|c| c.is_some_and(|id| id == *countable))
             })
-            .filter(|c| !self.is_archived(*c).unwrap_or(true))
+            .filter(|c| !self.is_archived(c).unwrap_or(true))
             .copied()
             .collect::<Vec<_>>();
 
@@ -682,12 +682,7 @@ impl CountableStore<Level, Checked> {
         countable: &CountableId,
         child: &CountableId,
     ) -> Result<bool, AppError> {
-        Ok(self
-            .children(countable)?
-            .into_iter()
-            .map(CountableId::from)
-            .collect::<Vec<_>>()
-            .contains(child))
+        Ok(self.children(countable)?.contains(child))
     }
 
     pub fn parent(&self, countable: &CountableId) -> Result<Option<CountableId>, AppError> {
@@ -1118,7 +1113,7 @@ impl CountableStore<Recursive, Checked> {
                     for child in children
                         .clone()
                         .iter()
-                        .filter(|c| !self.is_archived(*c).unwrap_or(true))
+                        .filter(|c| !self.is_archived(c).unwrap_or(true))
                     {
                         children.append(&mut self.children(child)?)
                     }
@@ -1145,12 +1140,7 @@ impl CountableStore<Recursive, Checked> {
         countable: &CountableId,
         child: &CountableId,
     ) -> Result<bool, AppError> {
-        Ok(self
-            .children(countable)?
-            .into_iter()
-            .map(CountableId::from)
-            .collect::<Vec<_>>()
-            .contains(child))
+        Ok(self.children(countable)?.contains(child))
     }
 
     /**
@@ -1173,7 +1163,7 @@ impl CountableStore<Recursive, Checked> {
             match self.get(countable).ok_or(AppError::CountableNotFound)? {
                 Countable::Counter(_) => {
                     if let Some(last) = self.children(countable)?.last() {
-                        self.last_child(&last)?
+                        self.last_child(last)?
                     } else {
                         *countable
                     }
