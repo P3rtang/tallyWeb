@@ -12,7 +12,7 @@ use leptos::{
 #[slot]
 pub struct Caret<K>
 where
-    K: Clone + Eq + Hash + Send + 'static,
+    K: Eq + Hash + Send + 'static,
 {
     #[prop(default=false.into(), into)]
     is_expanded: IsExpanded<K>,
@@ -29,7 +29,7 @@ where
 
 impl<K> Default for Caret<K>
 where
-    K: Clone + Eq + Hash + Send + 'static,
+    K: Eq + Hash + Send + 'static,
 {
     fn default() -> Self {
         let caret_transform = move |is_expanded: bool| {
@@ -55,12 +55,12 @@ where
 #[derive(Clone)]
 pub struct IsExpanded<K>(pub(crate) Arc<dyn Fn(K) -> bool + Send + Sync + 'static>)
 where
-    K: Clone + Eq + Hash + 'static;
+    K: Eq + Hash + 'static;
 
 impl<F, K> From<F> for IsExpanded<K>
 where
     F: Fn(K) -> bool + Send + Sync + 'static,
-    K: Clone + Eq + Hash + 'static,
+    K: Eq + Hash + 'static,
 {
     fn from(value: F) -> Self {
         Self(Arc::new(value))
@@ -69,7 +69,7 @@ where
 
 impl<K> From<bool> for IsExpanded<K>
 where
-    K: Clone + Eq + Hash + 'static,
+    K: Eq + Hash + 'static,
 {
     fn from(value: bool) -> Self {
         Self(Arc::new(move |_| value))
@@ -78,7 +78,7 @@ where
 
 impl<K> From<Signal<bool>> for IsExpanded<K>
 where
-    K: Clone + Eq + Hash + 'static,
+    K: Eq + Hash + 'static,
 {
     fn from(value: Signal<bool>) -> Self {
         Self(Arc::new(move |_| value.get()))
@@ -88,12 +88,12 @@ where
 #[derive(Clone)]
 pub struct OnExpand<K>(pub(crate) Arc<dyn Fn(K) + Send + Sync + 'static>)
 where
-    K: Clone + Eq + Hash + 'static;
+    K: Eq + Hash + 'static;
 
 impl<F, K> From<F> for OnExpand<K>
 where
     F: Fn(K) + Send + Sync + 'static,
-    K: Clone + Eq + Hash + 'static,
+    K: Eq + Hash + 'static,
 {
     fn from(value: F) -> Self {
         Self(Arc::new(value))
@@ -108,7 +108,7 @@ where
 impl<F, IV, K> From<F> for CaretChild<K>
 where
     F: Fn(CaretState<K>) -> IV + Send + Sync + 'static,
-    IV: IntoView + Clone + 'static,
+    IV: IntoView + 'static,
     K: Eq + Hash + Send + 'static,
 {
     fn from(value: F) -> Self {
@@ -116,6 +116,7 @@ where
     }
 }
 
+#[derive(Clone)]
 pub struct CaretState<K>
 where
     K: Eq + Hash + Send + 'static,

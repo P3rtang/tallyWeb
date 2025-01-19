@@ -10,7 +10,7 @@ stylance::import_style!(style, "./form.module.scss");
 pub fn Form<ServFn>(
     action: ServerAction<ServFn>,
     children: ChildrenFn,
-    #[prop(into, optional)] on_undo: EventCallback<ev::click, ev::MouseEvent>,
+    #[prop(into, optional)] on_undo: EventCallback<ev::MouseEvent>,
 
     #[prop(optional)] header_slot: HeaderSlot,
 ) -> impl IntoView

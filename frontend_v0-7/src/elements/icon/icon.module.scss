@@ -28,3 +28,34 @@
   width: 32px;
   mask-image: url("/icons/svgrepo-sidebar-left-closed.svg");
 }
+
+.trash-can {
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/svgrepo-trash.svg");
+}
+
+.caret-right {
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/svgrepo-caret-right.svg");
+}
+
+.arrow_head_down {
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/tallyweb-arrow-head.svg");
+}
+
+.favicon {
+  height: 40px;
+  width: 40px;
+  content: url("/icons/tallyweb-favicon.svg");
+  background: transparent !important;
+}
+
+.search {
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/tallyweb-search.svg");
+}

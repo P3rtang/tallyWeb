@@ -9,7 +9,7 @@ stylance::import_style!(style, "./infobox.module.scss");
 pub fn InfoHeader(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let session = expect_context::<RwSignal<UserSession>>();
     let store = expect_context::<RwSignal<CountableStore>>();
-    let selection = expect_context::<Memo<app::Selection>>();
+    let selection = expect_context::<Memo<Selection>>();
     let name = Signal::derive(move || store.get().name(&key.get()));
 
     let params = use_params::<UserName>();

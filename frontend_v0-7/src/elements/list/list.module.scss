@@ -9,7 +9,6 @@
   & {
     margin: 0px;
     padding: 12px;
-    padding-top: 24px;
   }
 
   ul {
@@ -79,10 +78,6 @@
           border-radius: 100%;
         }
       }
-
-      img {
-        transition: transform 0.28s;
-      }
     }
   }
 
@@ -101,5 +96,6 @@
     width: 36px;
 
     cursor: pointer;
+    transition: transform 0.28s;
   }
 }

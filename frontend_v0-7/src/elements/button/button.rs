@@ -38,14 +38,31 @@ impl ButtonRounding {
     }
 }
 
+#[derive(Default)]
+pub enum ButtonHover {
+    #[default]
+    Darken,
+    Lighten,
+}
+
+impl ButtonHover {
+    fn into_class(self) -> &'static str {
+        match self {
+            ButtonHover::Darken => style::darken,
+            ButtonHover::Lighten => style::lighten,
+        }
+    }
+}
+
 #[component]
 pub fn Button(
     children: ChildrenFn,
     #[prop(into, optional)] size: ButtonSize,
     #[prop(into, optional)] rounding: ButtonRounding,
+    #[prop(into, optional)] hover: ButtonHover,
 ) -> impl IntoView {
     view! {
-        <button class=stylance::classes!(style::button, size.into_class(), rounding.into_class())>
+        <button class=stylance::classes!(style::button, size.into_class(), rounding.into_class(), hover.into_class())>
             <div>
             { children() }
             </div>

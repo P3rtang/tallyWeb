@@ -46,6 +46,7 @@ indexed-db = "0.4.1"
 dotenvy = "0.15.7"
 dotenvy_macro = "0.15.7"
 sqlx = { version = "0.7.1", features = ["postgres", "chrono", "runtime-tokio-rustls", "macros", "uuid"], optional = true }
+fuzzy-sort = { version = "0.1", package = "tallyweb-fuzzy-sort", path="../fuzzy_sort/" }
 
 [features]
 csr = ["leptos/csr"]

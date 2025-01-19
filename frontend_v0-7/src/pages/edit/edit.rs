@@ -51,7 +51,7 @@ fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoView {
             <List
                 each
                 key=|c| *c
-                children=(move |c| store.get().children(&c)).into()
+                children=move |c| store.get().children(&c)
             >
                 <RowSlot is_selected let:child slot>
                     <TreeRow countable=child />
@@ -103,6 +103,7 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     // let msg = expect_context::<MessageJar>();
     let action = ServerAction::<api::EditCountableForm>::new();
     let store_resc = expect_context::<Resource<Option<CountableStore>>>();
+    let local_store_resc = expect_context::<LocalResource<Option<CountableStore>>>();
 
     let referer = use_referer(Default::default());
     let navigate = use_navigate();
@@ -142,7 +143,7 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
         None => {}
     });
 
-    let on_undo = move |_| store_resc.refetch();
+    let on_undo = move |_| local_store_resc.refetch();
 
     let title = Signal::derive(move || store.get().name(&key.get()));
 
@@ -201,7 +202,7 @@ fn DeleteButton(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             <input type="hidden" name="kind" value=move || kind.get().to_string() />
             <button class="hover-darken icon">
                 <div >
-                    <img width="24px" height="24px" src="/icons/trash-svgrepo-com-white.svg" />
+                    <Icon kind=IconKind::TrashCan />
                 </div>
             </button>
         </ActionForm>
@@ -283,7 +284,11 @@ fn EditTime(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 fn EditHunttype(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
 
-    let hunttype = Signal::derive(move || store.get().recursive_ref().hunttype(&key.get()));
+    let (hunttype, set_hunttype) = create_slice(
+        store,
+        move |s| s.recursive_ref().hunttype(&key.get()),
+        move |s, ht| s.recursive_ref().set_hunttype(&key.get(), ht),
+    );
 
     let options = vec![
         Hunttype::OldOdds,
@@ -301,6 +306,9 @@ fn EditHunttype(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             id="change-hunttype"
             attrs=move || view!{ <{..} attr:name="countable[hunttype]" /> }
             value=hunttype
+            on_change=move |ht| if let Some(ht) = ht {
+                set_hunttype.set(ht)
+            }
             options
         />
     }

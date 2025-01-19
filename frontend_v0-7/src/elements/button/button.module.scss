@@ -1,30 +1,26 @@
 .button {
   background: $interactable-bg-color-dark;
-  border-radius: 8px;
   font-size: 24px;
+  border-radius: 8px;
+  outline: none;
 
   >div {
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  &.default {
-    >div {
-      padding: 8px;
-    }
+  &.default>div {
+    padding: 8px;
   }
 
-  &.big {
-    >div {
-      padding: 16px;
-    }
+  &.big>div {
+    padding: 16px;
   }
 
-  &.small {
-    >div {
-      padding: 4px;
-    }
+  &.small>div {
+    padding: 4px;
   }
 
   &.no-rounded {
@@ -33,5 +29,17 @@
 
   &.full-rounded {
     border-radius: 10000px;
+
+    >div {
+      border-radius: 10000px;
+    }
+  }
+
+  &.darken:hover>div, &.darken:focus-visible>div {
+    background: rgba(black, 0.15);
+  }
+
+  &.lighten:hover>div, &.lighten:focus-visible>div {
+    background: rgba(white, 0.08);
   }
 }
