@@ -1,3 +1,4 @@
+use crate::elements::{Icon, IconColor, IconKind};
 pub use components::Separator;
 use components::{Caret, CaretState, ChildWrapper, RowWrapper, Tree, WrappedRowState};
 use leptos::{
@@ -19,7 +20,7 @@ stylance::import_style!(style, "./list.module.scss");
 pub fn List<T, I, EF, K, KF>(
     each: EF,
     key: KF,
-    #[prop(optional)] children: Option<ListChildren<T, I>>,
+    #[prop(into, optional)] children: Option<ListChildren<T, I>>,
 
     // slots
     row_slot: RowSlot<T, K>,
@@ -70,22 +71,17 @@ where
     let caret_children = move |state: CaretState<_>| {
         let key = StoredValue::new(state.key);
 
+        let color = Signal::derive(move || {
+            if (row_slot.get_value().is_selected.0)(key.get_value()) {
+                IconColor::Black
+            } else {
+                IconColor::White
+            }
+        });
+
         view! {
-            <div class=style::caret>
-                <img
-                    style=move || caret_transform(state.is_expanded)
-                    height="20px"
-                    width="20px"
-                    class:hidden=move || (row_slot.get_value().is_selected.0)(key.get_value())
-                    src="/icons/caret-right-fill-svgrepo-com-white.svg"
-                />
-                <img
-                    style=move || caret_transform(state.is_expanded)
-                    height="20px"
-                    width="20px"
-                    class:hidden=move || !(row_slot.get_value().is_selected.0)(key.get_value())
-                    src="/icons/caret-right-fill-svgrepo-com.svg"
-                />
+            <div class=style::caret style=move || caret_transform(state.is_expanded)>
+                <Icon kind=IconKind::CaretRight color />
             </div>
         }
     };

@@ -28,7 +28,12 @@ impl IntoRender for PageContext {
 
         view! {
             <Show when=is_open >
-                <overlay-element>{body.clone()}</overlay-element>
+                <overlay-element
+                    style:position="relative"
+                    style:z-index="100"
+                >
+                    {body.clone()}
+                </overlay-element>
             </Show>
         }
         .into_any()

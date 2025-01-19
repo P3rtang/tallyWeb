@@ -6,8 +6,8 @@ mod edit;
 
 pub use edit::EditWindow;
 use elements::{
-    BoolField, Form, HeaderSlot, List, Navbar, Page, PageContent, PageNavbar, PageSidebar, RowSlot,
-    SelectField, Separator, TextField, TimeDeltaField,
+    icon::*, list::*, page::*, BoolField, Form, HeaderSlot, Navbar, SelectField, TextField,
+    TimeDeltaField,
 };
 
 use crate::{

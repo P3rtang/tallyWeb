@@ -36,8 +36,6 @@ pub(crate) use session::UserSession;
 pub(crate) mod saving;
 use saving::*;
 
-pub use elements::Color;
-
 use cfg_if::cfg_if;
 
 #[cfg(feature = "ssr")]

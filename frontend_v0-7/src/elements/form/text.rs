@@ -7,6 +7,7 @@ pub fn TextField(
     #[prop(into)] id: Signal<String>,
     #[prop(into, optional)] label: Option<Signal<String>>,
     #[prop(into, default="text".into())] r#type: Signal<String>,
+    #[prop(into, optional)] input_ref: NodeRef<html::Input>,
 ) -> impl IntoView {
     let text_align = move || match r#type.get().as_str() {
         "number" => "end",
@@ -25,7 +26,7 @@ pub fn TextField(
                     </label>
                 </Show>
                 <div class=style::input style:grid-column="2">
-                    <input id=id r#type=move || r#type.get() {..align} {..attrs} />
+                    <input node_ref=input_ref id=id r#type=move || r#type.get() {..align} {..attrs} />
                 </div>
             }
         }

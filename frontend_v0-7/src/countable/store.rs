@@ -26,7 +26,7 @@ pub struct UnChecked;
 impl StoreCheck for UnChecked {}
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct CountableStore<M: StoreMethod, C: StoreCheck> {
+pub struct CountableStore<M: StoreMethod + Clone, C: StoreCheck + Clone> {
     pub(crate) owner: uuid::Uuid,
     pub(crate) store: HashMap<CountableId, Countable>,
     pub(crate) selection: Vec<CountableId>,
@@ -36,8 +36,8 @@ pub struct CountableStore<M: StoreMethod, C: StoreCheck> {
 
 impl<M, C> CountableStore<M, C>
 where
-    M: StoreMethod,
-    C: StoreCheck,
+    M: StoreMethod + Clone,
+    C: StoreCheck + Clone,
 {
     pub fn new(owner: uuid::Uuid, store: HashMap<CountableId, Countable>) -> Self {
         Self {
@@ -67,7 +67,7 @@ where
         self.store.is_empty()
     }
 
-    pub fn raw_filter(&self, filter: impl Fn(&Countable) -> bool) -> Self {
+    pub fn raw_filter(self, filter: impl Fn(&Countable) -> bool) -> Self {
         let store: HashMap<CountableId, Countable> = self
             .store
             .iter()
@@ -75,12 +75,7 @@ where
             .map(|(a, b)| (*a, b.clone()))
             .collect();
 
-        Self {
-            owner: self.owner,
-            store,
-            selection: self.selection.clone(),
-            ..Default::default()
-        }
+        Self { store, ..self }
     }
 
     pub fn root_node_ids(&self) -> Vec<CountableId> {
@@ -216,8 +211,8 @@ where
 
 impl<Method, Check> Savable for CountableStore<Method, Check>
 where
-    Method: StoreMethod + Send + Sync + 'static,
-    Check: StoreCheck + Send + Sync + 'static,
+    Method: StoreMethod + Clone + Send + Sync + 'static,
+    Check: StoreCheck + Clone + Send + Sync + 'static,
 {
     fn has_change(&self) -> bool {
         self.is_changed.lock().map(|ic| *ic).unwrap_or_default()
@@ -226,8 +221,8 @@ where
 
 impl<Method, Check> ServerSavable for CountableStore<Method, Check>
 where
-    Method: StoreMethod + Send + Sync + 'static,
-    Check: StoreCheck + Send + Sync + 'static,
+    Method: StoreMethod + Clone + Send + Sync + 'static,
+    Check: StoreCheck + Clone + Send + Sync + 'static,
 {
     fn save_endpoint(
         &self,
@@ -272,7 +267,7 @@ impl LocalSavable for CountableStore<Level, UnChecked> {
 }
 
 /// Methods to transform `CountableStore` into `Checked` mode
-impl<M: StoreMethod> CountableStore<M, UnChecked> {
+impl<M: StoreMethod + Clone> CountableStore<M, UnChecked> {
     pub fn checked(self) -> CountableStore<M, Checked> {
         unsafe { std::mem::transmute(self) }
     }
@@ -287,7 +282,7 @@ impl<M: StoreMethod> CountableStore<M, UnChecked> {
 }
 
 /// Methods to transform `CountableStore` into `UnChecked` mode
-impl<M: StoreMethod> CountableStore<M, Checked> {
+impl<M: StoreMethod + Clone> CountableStore<M, Checked> {
     pub fn unchecked(self) -> CountableStore<M, UnChecked> {
         unsafe { std::mem::transmute(self) }
     }
@@ -302,7 +297,7 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
 }
 
 /// Methods to transform `CountableStore` into `Recursive` mode
-impl<C: StoreCheck> CountableStore<Level, C> {
+impl<C: StoreCheck + Clone> CountableStore<Level, C> {
     pub fn recursive(self) -> CountableStore<Recursive, C> {
         unsafe { std::mem::transmute(self) }
     }
@@ -317,7 +312,7 @@ impl<C: StoreCheck> CountableStore<Level, C> {
 }
 
 /// Methods to transform `CountableStore` into `Level` mode
-impl<C: StoreCheck> CountableStore<Recursive, C> {
+impl<C: StoreCheck + Clone> CountableStore<Recursive, C> {
     pub fn level(self) -> CountableStore<Level, C> {
         unsafe { std::mem::transmute(self) }
     }
@@ -331,23 +326,33 @@ impl<C: StoreCheck> CountableStore<Recursive, C> {
     }
 }
 
-impl<M: StoreMethod> CountableStore<M, Checked> {
-    pub fn merge(&mut self, other: Self) -> Result<(), AppError> {
+impl<M: StoreMethod + Clone> CountableStore<M, Checked> {
+    pub fn merge(&mut self, other: Self) -> Result<bool, AppError> {
+        let mut has_change = false;
+
         for (id, other_c) in other.store {
-            if other_c.is_archived() {
+            if other_c.is_archived()
+                != if let Some(c) = self.get(&id) {
+                    c.is_archived()
+                } else {
+                    false
+                }
+            {
                 self.store.insert(id, other_c);
+                has_change = true;
             } else if let Some(c) = self.get(&id)
                 && (c.last_edit_checked()? > other_c.last_edit_checked()? || c.is_archived())
             {
                 continue;
             } else {
                 self.store.insert(id, other_c);
+                has_change = true;
             }
         }
 
         let _ = self.is_changed.replace(true);
 
-        Ok(())
+        Ok(has_change)
     }
 
     pub fn archive(&self, countable: &CountableId) -> Result<Countable, AppError> {
@@ -395,20 +400,31 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
         [AppError]
     */
     pub fn filter(self, filter: impl Fn(&Countable) -> bool) -> Result<Self, AppError> {
-        let mut store = self.raw_filter(filter);
-
-        let keys: Vec<CountableId> = store.store.keys().copied().collect();
+        let keys: Vec<CountableId> = self
+            .store
+            .iter()
+            .filter(|(_, b)| filter(b))
+            .map(|(a, _)| *a)
+            .collect();
 
         // add back any missing parents
         let this: CountableStore<Recursive, Checked> = unsafe { std::mem::transmute(self) };
-        for element in keys {
-            store.store.extend(
-                this.all_parents(&element)?
-                    .into_iter()
+        let parents = keys.into_iter().fold(HashMap::<_, _>::new(), |mut acc, k| {
+            if let Ok(p) = this.all_parents(&k).and_then(|p| {
+                p.into_iter()
                     .map(|p| Ok((p, this.get(&p).ok_or(AppError::CountableNotFound)?)))
-                    .collect::<Result<HashMap<_, _>, AppError>>()?,
-            );
-        }
+                    .collect::<Result<HashMap<_, _>, AppError>>()
+            }) {
+                acc.extend(p);
+            }
+
+            acc
+        });
+
+        let mut store = this.raw_filter(filter);
+        store.store.extend(parents);
+
+        let store: CountableStore<M, Checked> = unsafe { std::mem::transmute(store) };
 
         Ok(store)
     }
@@ -506,8 +522,8 @@ impl<M: StoreMethod> CountableStore<M, Checked> {
     }
 }
 
-impl<M: StoreMethod> CountableStore<M, UnChecked> {
-    pub fn merge(&mut self, other: Self) {
+impl<M: StoreMethod + Clone> CountableStore<M, UnChecked> {
+    pub fn merge(&mut self, other: Self) -> bool {
         self.checked_mut().merge(other.checked()).unwrap()
     }
 
@@ -1623,6 +1639,20 @@ impl CountableStore<Recursive, Checked> {
         )
     }
 
+    pub fn set_hunttype(&self, countable: &CountableId, hunttype: Hunttype) -> AppResult<()> {
+        match self.get(countable).ok_or(AppError::CountableNotFound)? {
+            Countable::Counter(_) => {
+                for child in self.children(countable)? {
+                    self.set_hunttype(&child, hunttype)?;
+                }
+            }
+            Countable::Phase(p) => p.lock()?.set_hunt_type(hunttype),
+            Countable::Chain(_) => todo!(),
+        }
+
+        Ok(())
+    }
+
     /**
         `Recursive Countable Rolls Checked`
 
@@ -2402,6 +2432,14 @@ impl CountableStore<Recursive, UnChecked> {
             Err(AppError::CountableNotFound) | Err(AppError::RequiresChild) => Hunttype::Mixed,
             Err(err) => panic!("{err}"),
         }
+    }
+
+    pub fn set_hunttype(&self, countable: &CountableId, hunttype: Hunttype) {
+        match self.checked_ref().set_hunttype(countable, hunttype) {
+            Ok(_) => (),
+            Err(AppError::CountableNotFound) | Err(AppError::RequiresChild) => (),
+            Err(err) => panic!("{err}"),
+        };
     }
 
     /**

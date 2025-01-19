@@ -3,35 +3,25 @@ use ev::EventDescriptor;
 use super::*;
 
 #[derive(Clone)]
-pub struct EventCallback<Event: EventDescriptor<EventType = T>, T>(
-    Arc<dyn Fn(T) + Send + Sync + 'static>,
-    std::marker::PhantomData<Event>,
-);
+pub struct EventCallback<T>(Arc<dyn Fn(T) + Send + Sync + 'static>);
 
-impl<Event, T> EventCallback<Event, T>
-where
-    Event: EventDescriptor<EventType = T>,
-{
+impl<T> EventCallback<T> {
     pub fn call(&self, ev: T) {
         (self.0)(ev)
     }
 }
 
-impl<Event, T> Default for EventCallback<Event, T>
-where
-    Event: EventDescriptor<EventType = T>,
-{
+impl<T> Default for EventCallback<T> {
     fn default() -> Self {
-        Self(Arc::new(move |_| ()), std::marker::PhantomData)
+        Self(Arc::new(move |_| ()))
     }
 }
 
-impl<F, Event, T> From<F> for EventCallback<Event, T>
+impl<F, T> From<F> for EventCallback<T>
 where
-    Event: EventDescriptor<EventType = T>,
     F: Fn(T) + Send + Sync + 'static,
 {
     fn from(value: F) -> Self {
-        Self(Arc::new(value), Default::default())
+        Self(Arc::new(value))
     }
 }

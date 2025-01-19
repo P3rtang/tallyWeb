@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 128 128"
+   version="1.1"
+   id="svg1"
+   inkscape:export-filename="tallyweb-search.svg"
+   inkscape:export-xdpi="30.963808"
+   inkscape:export-ydpi="30.963808"
+   sodipodi:docname="tallyweb-search.svg"
+   inkscape:version="1.4 (e7c3feb100, 2024-10-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="false"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="true"
+     inkscape:deskcolor="#2e2e2e"
+     inkscape:document-units="px"
+     showgrid="false"
+     labelstyle="default"
+     inkscape:zoom="2.1078173"
+     inkscape:cx="190.95583"
+     inkscape:cy="259.27295"
+     inkscape:window-width="2552"
+     inkscape:window-height="1369"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g5"
+       style="display:none">
+      <circle
+         style="fill:#000000;fill-rule:evenodd;stroke-width:1.32875"
+         id="path1"
+         cx="45"
+         cy="45"
+         r="45" />
+      <rect
+         style="fill:#ffffff;fill-rule:evenodd;stroke-width:1.09106"
+         id="rect1"
+         width="80"
+         height="16"
+         x="67.117874"
+         y="-8.000001"
+         ry="7.7360711"
+         transform="rotate(45)" />
+      <circle
+         style="fill:#000000;fill-rule:evenodd;stroke-width:1.32875"
+         id="path1-5"
+         cx="45"
+         cy="45"
+         r="45" />
+      <circle
+         style="fill:#ffffff;fill-rule:evenodd;stroke-width:2.70117"
+         id="path2"
+         cx="45"
+         cy="45"
+         r="33" />
+    </g>
+    <g
+       id="g4"
+       transform="translate(8.5534994,8.5535031)">
+      <path
+         id="path1-2"
+         style="fill:#000000;fill-rule:evenodd;stroke-width:1.32875"
+         d="M 45,0 A 45,45 0 0 0 0,45 45,45 0 0 0 45,90 45,45 0 0 0 90,45 45,45 0 0 0 45,0 Z m 0,16 A 29,29 0 0 1 74,45 29,29 0 0 1 45,74 29,29 0 0 1 16,45 29,29 0 0 1 45,16 Z" />
+      <path
+         id="rect1-9"
+         style="fill:#000000;fill-rule:evenodd;stroke-width:1.09106"
+         d="M 86.313965,75 A 45,45 0 0 1 75,86.313965 l 22.30615,22.306145 c 3.03051,3.03051 7.90993,3.03051 10.94044,1e-5 l 0.37353,-0.37354 c 3.03051,-3.03051 3.03051,-7.90992 -1e-5,-10.94043 z" />
+    </g>
+  </g>
+</svg>

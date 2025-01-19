@@ -652,8 +652,10 @@ impl Hunttype {
             Self::Mixed => "Mixed",
         }
     }
+}
 
-    pub fn as_str(&self) -> &'static str {
+impl fuzzy_sort::Sortable for Hunttype {
+    fn as_str(&self) -> &'static str {
         (*self).into()
     }
 }

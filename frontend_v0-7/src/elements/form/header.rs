@@ -11,7 +11,7 @@ pub struct HeaderSlot {
     close_href: Option<Signal<String>>,
 
     #[prop(into, optional)]
-    on_close: EventCallback<ev::click, ev::MouseEvent>,
+    on_close: EventCallback<ev::MouseEvent>,
 
     #[prop(optional)]
     children: Option<ChildrenFn>,

@@ -1,22 +1,14 @@
-use std::collections::HashSet;
+use super::*;
 
+use crate::hooks::use_saving;
 use crate::EditWindow;
-
-use super::{
-    elements::*, page_context::PageContext, provide_prefs, provide_store, session::provide_session,
-    CountableId, CountableStore, LoginPage, LEPTOS_OUTPUT_NAME,
-};
-use components::Separator;
-use hooks::use_saving;
 use leptos::prelude::*;
 use leptos_meta::{provide_meta_context, Link, Meta, MetaTags, Stylesheet, Title};
 use leptos_router::{
-    components::{Outlet, ParentRoute, Route, Router, Routes, A},
-    hooks::use_query,
-    params::{Params, ParamsError},
+    components::{Outlet, ParentRoute, Route, Router, Routes},
+    params::Params,
     path,
 };
-use serde::{Deserialize, Serialize};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -40,7 +32,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 pub fn App() -> impl IntoView {
     provide_meta_context();
 
-    let page_context = PageContext::new();
+    let page_context = page_context::PageContext::new();
     provide_context(page_context.clone());
 
     let close_overlay = {
@@ -69,7 +61,7 @@ pub fn App() -> impl IntoView {
                     <ParentRoute path=path!("/") view=Outlet ssr=leptos_router::SsrMode::Async>
                         <Route path=path!("") view=Redirect />
                         <ParentRoute path=path!(":id") view=RouteUser>
-                            <Route path=path!("") view=Body />
+                            <Route path=path!("") view=crate::home::HomePage />
                             <Route path=path!("edit") view=EditWindow />
                         </ParentRoute>
                     </ParentRoute>
@@ -81,7 +73,7 @@ pub fn App() -> impl IntoView {
 
 #[component]
 pub fn Redirect() -> impl IntoView {
-    let user_rsc = provide_session();
+    let user_rsc = session::provide_session();
 
     #[cfg(not(feature = "ssr"))]
     let navigate = leptos_router::hooks::use_navigate();
@@ -112,7 +104,7 @@ pub struct UserName {
 
 #[component]
 pub fn RouteUser() -> impl IntoView {
-    let user_rsc = provide_session();
+    let user_rsc = session::provide_session();
     let (store_rsc, local_store_rsc) = provide_store();
     let pref_rsc = provide_prefs();
 
@@ -132,8 +124,10 @@ pub fn RouteUser() -> impl IntoView {
                     local_store_rsc.get().and_then(|s| s.take()),
                 ) {
                     (Some(mut s), Some(l)) => {
-                        s.merge(l);
-                        saving.get_value()(s.clone());
+                        let has_change = s.merge(l);
+                        if has_change {
+                            saving.get_value()(s.clone());
+                        }
                         store.set(s);
                     }
                     (Some(s), None) => store.set(s),
@@ -145,193 +139,5 @@ pub fn RouteUser() -> impl IntoView {
             }}
             <Outlet/>
         </Transition>
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Selection {
-    slct: HashSet<CountableId>,
-}
-
-impl Selection {
-    fn new() -> Self {
-        Self {
-            slct: HashSet::new(),
-        }
-    }
-
-    pub fn contains(&self, key: &CountableId) -> bool {
-        self.slct.contains(key)
-    }
-
-    pub fn toggle(&mut self, key: &CountableId) {
-        if !self.slct.remove(key) {
-            self.slct.insert(*key);
-        }
-    }
-}
-
-impl Params for Selection {
-    fn from_map(map: &leptos_router::params::ParamsMap) -> std::result::Result<Self, ParamsError> {
-        let selection = map
-            .clone()
-            .into_iter()
-            .filter_map(|p| {
-                p.0.starts_with("slct")
-                    .then_some(p.0.to_string() + "=" + &p.1)
-            })
-            .collect::<Vec<_>>()
-            .join("&");
-
-        // strip off brackets
-        serde_qs::from_str::<Self>(&selection)
-            .map_err(|err| ParamsError::Params(std::sync::Arc::new(err)))
-    }
-}
-
-impl IntoIterator for Selection {
-    type Item = CountableId;
-
-    type IntoIter = std::collections::hash_set::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.slct.into_iter()
-    }
-}
-
-#[component]
-fn Body() -> impl IntoView {
-    let store = expect_context::<RwSignal<CountableStore>>();
-    let (show_sidebar, set_show_sidebar) = signal(true);
-    let (width, set_width) = signal(400);
-
-    let params = use_query::<Selection>();
-    let selection = Memo::new(move |_| params.get().ok().unwrap_or(Selection::new()));
-    provide_context(selection);
-
-    let countable_list = Signal::derive(move || {
-        let mut sel = selection.get().into_iter().collect::<Vec<_>>();
-        sel.sort_by_key(|a| store.get().name(a));
-        sel
-    });
-
-    view! {
-        <Page>
-            <PageContent hide_border=true slot>
-                <InfoBox countable_list />
-            </PageContent>
-            <PageSidebar width is_shown=show_sidebar on_resize=set_width slot>
-                <SidebarContent width/>
-            </PageSidebar>
-            <PageNavbar slot>
-                <Navbar show_sidebar on_close_sidebar=set_show_sidebar/>
-            </PageNavbar>
-        </Page>
-    }
-}
-
-#[component]
-fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoView {
-    let store = expect_context::<RwSignal<CountableStore>>();
-    let selection = expect_context::<Memo<Selection>>();
-
-    let each = move || {
-        let mut root = store.get().root_node_ids();
-        root.sort_by_key(|a| store.get().name(a));
-        root
-    };
-
-    let width = move || format!("{}px", width.get());
-
-    let is_selected = move |key: CountableId| selection.get().contains(&key);
-
-    let action = ServerAction::<api::CreateCountable>::new();
-
-    Effect::new(move |_| {
-        match action.value().get() {
-            Some(Ok(countables)) => {
-                store.update(|s| countables.into_iter().for_each(|c| s.insert(c)))
-            }
-            // TODO: add in logging of server error with messagejar
-            Some(Err(_err)) => (),
-            None => (),
-        }
-    });
-
-    let row_children = move |countable| view! { <TreeRow countable /> }.into_any();
-
-    view! {
-        <div style:width=width>
-            <nav/>
-            <List
-                each
-                key=|c| *c
-                children=(move |c| store.get().children(&c)).into()
-            >
-                <RowSlot is_selected children=row_children slot/>
-                <Separator slot><hr /></Separator>
-            </List>
-            <ActionForm action style:padding="0px 16px">
-                <input type="hidden" name="kind" value=CountableKind::Counter.to_string() />
-                <Button class:hover-darken=true style:width="100%" attr:r#type="submit">
-                    <div>New Counter</div>
-                </Button>
-            </ActionForm>
-        </div>
-    }
-}
-
-#[component]
-fn TreeRow(countable: CountableId) -> impl IntoView {
-    let store = expect_context::<RwSignal<CountableStore>>();
-    let session = expect_context::<RwSignal<UserSession>>();
-    let selection = expect_context::<Memo<Selection>>();
-    let has_children = move || matches!(store.get().kind(&countable), CountableKind::Counter);
-
-    let include_selection = move || {
-        let mut sel = selection.get();
-        if !sel.slct.remove(&countable) {
-            sel.slct.insert(countable);
-        }
-        sel
-    };
-
-    let href = move || {
-        format!(
-            "?{}",
-            serde_qs::to_string(&include_selection()).unwrap_or_default()
-        )
-    };
-
-    let name = Signal::derive(move || store.get().name(&countable));
-
-    let action = ServerAction::<api::CreateCountable>::new();
-
-    Effect::new(move |_| match action.value().get() {
-        Some(Ok(phase)) => store.update(|s| phase.into_iter().for_each(|p| s.insert(p))),
-        Some(Err(_err)) => (),
-        None => (),
-    });
-
-    view! {
-        <A href style:width="100%">{name}</A>
-        <Show when=has_children>
-            <ActionForm action style:margin-right="2px">
-                <session::SessionFormInput session />
-                <input type="hidden" name="kind" value="Phase" />
-                <input type="hidden" name="parent" value=countable.0.to_string() />
-                <Button size=ButtonSize::Small rounding=ButtonRounding::Full attr:r#type="submit">
-                    <div
-                        style:min-width="28px"
-                        style:min-height="28px"
-                        style:display="flex"
-                        style:align-items="center"
-                        style:justify-content="center"
-                        style:font-size="21px"
-                        style:color="black"
-                    >+</div>
-                </Button>
-            </ActionForm>
-        </Show>
     }
 }

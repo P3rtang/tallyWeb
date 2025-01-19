@@ -23,7 +23,7 @@ pub use message::{Message, MessageKey, ProvideMessageSystem};
 pub use progressbar::*;
 pub use resizebar::{Direction, ResizeBar};
 pub use saving_screen::*;
-pub use select::{Select, SelectButton, SelectInput};
+pub use select::{Select, SelectButton, SelectInput, SelectState};
 pub use sidebar::*;
 pub use slider::*;
 pub use spinner::*;

@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-pub(crate) use super::*;
+use super::*;
 
 use chrono::TimeDelta;
 use components::*;
@@ -12,23 +12,23 @@ use leptos::{
     attribute_interceptor::AttributeInterceptor,
     ev, html,
     prelude::*,
+    tachys::html::style::IntoStyle,
 };
 use std::sync::Arc;
 
 mod account;
-mod button;
+pub mod button;
 mod form;
-mod icon;
+pub mod icon;
 mod infobox;
-mod list;
+pub mod list;
 mod navbar;
-mod page;
+pub mod page;
 
 pub use account::icon::AccountIcon;
 pub use button::*;
 pub use form::*;
-pub use icon::*;
+pub use fuzzy_sort::Sortable;
+use icon::*;
 pub use infobox::InfoBox;
-pub use list::{List, RowSlot, Separator};
 pub use navbar::{Navbar, OnClose};
-pub use page::{Color, OnResize, Page, PageContent, PageNavbar, PageSidebar};
