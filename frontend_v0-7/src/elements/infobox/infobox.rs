@@ -224,7 +224,7 @@ fn Count(
 }
 
 struct Handle(IntervalHandle);
-// WARN: this is bad but there is not good solution for now
+// WARN: this is bad but there is no good solution for now
 unsafe impl Send for Handle {}
 unsafe impl Sync for Handle {}
 

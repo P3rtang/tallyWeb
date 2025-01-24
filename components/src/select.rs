@@ -311,6 +311,7 @@ where
             }
             "#
         </style>
+        // TODO: add a page body click event listener to the page context API
         <custom-select>
             <div node_ref=options_list_ref>
                 <select-view style:display="flex">

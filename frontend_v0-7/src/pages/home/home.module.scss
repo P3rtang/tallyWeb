@@ -1,8 +1,13 @@
 .sidebar {
   .sidebar-navbar {
-    padding: 0px 8px;
     display: flex;
-    margin-bottom: 8px;
+    justify-content: space-between;
+    position: relative;
+    z-index: 100;
+
+    padding: 8px;
+    padding-bottom: 16px;
+    background: $body-background;
   }
 
   .search-box {
@@ -11,8 +16,11 @@
     align-items: flex-end;
     overflow: hidden;
     padding: 0px 16px;
+    background: $body-background;
+    position: relative;
+    z-index: 50;
 
-    transition: max-height 0.25s; 
+    transition: max-height 0.32s ease-out, padding 0.28s ease-out; 
 
     >div {
       width: 100%;
@@ -21,6 +29,47 @@
       input {
         font-size: 21px;
         width: 100%;
+      }
+    }
+  }
+
+  .sort-box {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    padding: 0px 16px;
+    background: $body-background;
+
+    transition: max-height 0.32s ease-out, padding 0.28s ease-out; 
+
+    &.shown {
+      padding: 16px;
+    }
+
+    select-view {
+      z-index: 11;
+    }
+
+    select-options {
+      z-index: 10;
+    }
+
+    >div {
+      display: flex;
+      align-items: center;
+      width: 100%;
+
+      >*:first-child {
+        margin-right: 12px;
+      }
+    }
+
+    >div>button>div {
+      width: 44px;
+      height: 44px;
+
+      >div {
+        transition: transform 0.32s;
       }
     }
   }

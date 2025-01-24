@@ -54,6 +54,7 @@ impl ButtonHover {
     }
 }
 
+// TODO: allow a toggle property
 #[component]
 pub fn Button(
     children: ChildrenFn,
