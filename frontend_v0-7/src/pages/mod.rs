@@ -9,6 +9,7 @@ pub use login::LoginPage;
 
 use components::EventCallback;
 use elements::{button::*, icon::*, list::*, page::*};
+use fuzzy_sort::Sortable;
 use leptos::{ev, html, prelude::*};
 use leptos_router::{
     components::A,

@@ -13,6 +13,9 @@ pub enum IconKind {
     ArrowHeadDown,
     Favicon,
     Search,
+    Sort,
+    Arrow,
+    Settings,
 }
 
 impl IconKind {
@@ -28,6 +31,9 @@ impl IconKind {
                 IconKind::ArrowHeadDown => style::arrow_head_down,
                 IconKind::Favicon => style::favicon,
                 IconKind::Search => style::search,
+                IconKind::Sort => style::sort,
+                IconKind::Arrow => style::arrow,
+                IconKind::Settings => style::settings,
             },
             style::icon
         )

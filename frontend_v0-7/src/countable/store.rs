@@ -635,7 +635,7 @@ impl<M: StoreMethod + Clone> CountableStore<M, UnChecked> {
 
 impl CountableStore<Level, Checked> {
     pub fn children(&self, countable: &CountableId) -> Result<Vec<CountableId>, AppError> {
-        let children = self
+        let mut children = self
             .store
             .keys()
             .filter(|c| {
@@ -645,6 +645,8 @@ impl CountableStore<Level, Checked> {
             .filter(|c| !self.is_archived(c).unwrap_or(true))
             .copied()
             .collect::<Vec<_>>();
+        children.sort_by_key(|c| self.created_at_checked(c).unwrap_or_default());
+        children.reverse();
 
         Ok(children)
     }
@@ -1117,6 +1119,9 @@ impl CountableStore<Recursive, Checked> {
                     {
                         children.append(&mut self.children(child)?)
                     }
+                    children.sort_by_key(|c| self.created_at_checked(c).unwrap_or_default());
+                    children.reverse();
+
                     children
                 }
                 _ => Vec::new(),
@@ -1442,7 +1447,9 @@ impl CountableStore<Recursive, Checked> {
                 .children(countable)?
                 .iter()
                 .rev()
-                .try_for_each(|child| -> Result<(), AppError> { self.increase(child) })?,
+                .last()
+                .ok_or(AppError::RequiresChild)
+                .and_then(|child| self.increase(child))?,
             Countable::Phase(p) => p.lock()?.step_count(),
             Countable::Chain(_) => todo!(),
         }

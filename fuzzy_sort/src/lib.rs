@@ -15,3 +15,9 @@ impl Sortable for String {
         self.as_str()
     }
 }
+
+impl Sortable for &str {
+    fn as_str(&self) -> &str {
+        *self
+    }
+}

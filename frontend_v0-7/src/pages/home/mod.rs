@@ -1,6 +1,6 @@
 use super::*;
 
-use elements::{InfoBox, Navbar, TextField};
+use elements::{InfoBox, Navbar, SelectField, TextField};
 use std::collections::HashSet;
 
 mod page;

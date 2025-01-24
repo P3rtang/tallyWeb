@@ -1,5 +1,121 @@
 use super::*;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Sort {
+    Name { reverse: bool },
+    Count { reverse: bool },
+    Time { reverse: bool },
+    CreatedOn { reverse: bool },
+}
+
+impl Sort {
+    fn sort_fn(
+        self,
+        store: RwSignal<CountableStore>,
+    ) -> Box<dyn FnMut(&CountableId, &CountableId) -> std::cmp::Ordering> {
+        let (mut func, rev): (
+            Box<dyn FnMut(&CountableId, &CountableId) -> std::cmp::Ordering>,
+            bool,
+        ) = match self {
+            Sort::Name { reverse } => (
+                Box::new(move |a, b| store.get().name(b).cmp(&store.get().name(a))),
+                reverse,
+            ),
+            Sort::Count { reverse } => (
+                Box::new(move |a, b| {
+                    store
+                        .get()
+                        .recursive_ref()
+                        .count(a)
+                        .cmp(&store.get().recursive_ref().count(b))
+                }),
+                reverse,
+            ),
+            Sort::Time { reverse } => (
+                Box::new(move |a, b| {
+                    store
+                        .get()
+                        .recursive_ref()
+                        .time(a)
+                        .cmp(&store.get().recursive_ref().time(b))
+                }),
+                reverse,
+            ),
+            Sort::CreatedOn { reverse } => (
+                Box::new(move |a, b| store.get().created_at(a).cmp(&store.get().created_at(b))),
+                reverse,
+            ),
+        };
+
+        if rev {
+            Box::new(move |a, b| func(a, b).reverse())
+        } else {
+            func
+        }
+    }
+
+    fn is_reversed(&self) -> bool {
+        match self {
+            Sort::Name { reverse } => *reverse,
+            Sort::Count { reverse } => *reverse,
+            Sort::Time { reverse } => *reverse,
+            Sort::CreatedOn { reverse } => *reverse,
+        }
+    }
+
+    fn reverse(&mut self) {
+        match self {
+            Sort::Name { reverse } => *reverse = !*reverse,
+            Sort::Count { reverse } => *reverse = !*reverse,
+            Sort::Time { reverse } => *reverse = !*reverse,
+            Sort::CreatedOn { reverse } => *reverse = !*reverse,
+        }
+    }
+
+    fn set_reverse(&mut self, rev: bool) {
+        match self {
+            Sort::Name { reverse } => *reverse = rev,
+            Sort::Count { reverse } => *reverse = rev,
+            Sort::Time { reverse } => *reverse = rev,
+            Sort::CreatedOn { reverse } => *reverse = rev,
+        }
+    }
+}
+
+impl Default for Sort {
+    fn default() -> Self {
+        Self::Name { reverse: true }
+    }
+}
+
+impl std::fmt::Display for Sort {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl Sortable for Sort {
+    fn as_str(&self) -> &str {
+        match self {
+            Sort::Name { reverse: _ } => "Name",
+            Sort::Count { reverse: _ } => "Count",
+            Sort::Time { reverse: _ } => "Time",
+            Sort::CreatedOn { reverse: _ } => "CreatedOn",
+        }
+    }
+}
+
+impl Into<&'static str> for Sort {
+    fn into(self) -> &'static str {
+        match self {
+            Sort::Name { reverse: _ } => "Name",
+            Sort::Count { reverse: _ } => "Count",
+            Sort::Time { reverse: _ } => "Time",
+            Sort::CreatedOn { reverse: _ } => "CreatedOn",
+        }
+    }
+}
+
 #[component]
 pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
@@ -27,8 +143,11 @@ pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoVie
     let input_ref = NodeRef::<html::Input>::new();
     let (show_search, set_show_search) = signal(false);
     let (search, set_search) = signal(None);
+    let (show_sort, set_show_sort) = signal(false);
+    let (sort, set_sort) = signal(Sort::default());
 
-    let height = move || if show_search.get() { "100px" } else { "0px" };
+    let search_height = move || if show_search.get() { "100px" } else { "0px" };
+    let sort_height = move || if show_sort.get() { "100px" } else { "0px" };
 
     let handle_change = move |ev| {
         let value = event_target_value(&ev);
@@ -41,6 +160,7 @@ pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoVie
     };
 
     let handle_search = move |_| set_show_search.set(!show_search.get_untracked());
+    let handle_sort = move |_| set_show_sort.set(!show_sort.get_untracked());
 
     let on_focus_out = move |_| {
         if search.get().is_none() {
@@ -67,26 +187,66 @@ pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoVie
             .root_node_ids()
             .into_iter()
             .collect::<Vec<_>>();
-        root.sort_by_key(|a| store.get().name(a));
+        root.sort_by_key(|c| store.get().created_at(c));
+        root.reverse();
+        root.sort_by(sort.get().sort_fn(store));
         root
     };
 
     let children = move |c| {
         let mut children = store.get().children(&c);
-        children.sort_by_key(|c| store.get_untracked().name(c));
+        children.sort_by(sort.get().sort_fn(store));
         children
+    };
+
+    let options = vec![
+        Sort::Name { reverse: true },
+        Sort::Count { reverse: true },
+        Sort::Time { reverse: true },
+        Sort::CreatedOn { reverse: true },
+    ];
+
+    let handle_sort_change = move |s: Option<Sort>| {
+        let mut s = s.unwrap_or_default();
+        s.set_reverse(sort.get_untracked().is_reversed());
+        set_sort(s);
     };
 
     view! {
         <div class=style::sidebar>
-            <Navbar on_search=handle_search />
-            <div class=style::search_box style:max-height=height >
+            <Navbar on_search=handle_search on_sort=handle_sort />
+            <div
+                class=move || stylance::classes!(style::search_box, show_search.get().then_some(style::shown))
+                style:max-height=search_height
+            >
                 <div>
                     <TextField
                         input_ref
                         id="search-filter"
                         on:blur=on_focus_out
                         on:input=handle_change
+                    />
+                </div>
+            </div>
+            <div
+                class=move || stylance::classes!(style::sort_box, show_sort.get().then_some(style::shown))
+                style:max-height=sort_height
+            >
+                <div>
+                    <Button
+                        rounding=ButtonRounding::Full
+                        on:click=move |_| set_sort.update(|s| s.reverse())
+                    >
+                        <Icon
+                            kind=IconKind::Arrow
+                            style:transform=move || if sort.get().is_reversed() { "rotate(90deg)" } else { "rotate(-90deg)" }
+                            color=IconColor::Black
+                        />
+                    </Button>
+                    <SelectField
+                        options
+                        value=sort
+                        on_change=handle_sort_change
                     />
                 </div>
             </div>
@@ -163,7 +323,10 @@ fn TreeRow(countable: CountableId) -> impl IntoView {
 }
 
 #[component]
-fn Navbar(#[prop(into)] on_search: EventCallback<ev::MouseEvent>) -> impl IntoView {
+fn Navbar(
+    #[prop(into)] on_search: EventCallback<ev::MouseEvent>,
+    #[prop(into)] on_sort: EventCallback<ev::MouseEvent>,
+) -> impl IntoView {
     view! {
         <nav class=style::sidebar_navbar>
             <Button
@@ -172,6 +335,13 @@ fn Navbar(#[prop(into)] on_search: EventCallback<ev::MouseEvent>) -> impl IntoVi
                 on:mousedown=move |ev| on_search.call(ev)
             >
                 <Icon kind=IconKind::Search />
+            </Button>
+            <Button
+                hover=ButtonHover::Lighten
+                style:background="transparent"
+                on:mousedown=move |ev| on_sort.call(ev)
+            >
+                <Icon kind=IconKind::Sort />
             </Button>
         </nav>
     }
