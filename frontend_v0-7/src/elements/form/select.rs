@@ -1,7 +1,5 @@
 use super::*;
 
-stylance::import_style!(style, "./form.module.scss");
-
 #[component]
 pub fn SelectField<T>(
     #[prop(into, optional)] label: Option<Signal<String>>,
@@ -48,11 +46,13 @@ where
     };
 
     view! {
+        // TODO: look into trying to make this a label
         <Show when=move || label.is_some()>
-            <div id style:grid-column="1">{label.unwrap().get()}</div>
+            <div style:grid-column="1">{label.unwrap().get()}</div>
         </Show>
         <div class=stylance::classes!(style::select) style:grid-column="2">
             <Select
+                attr:id=id
                 value
                 options
                 on_change=handle_change

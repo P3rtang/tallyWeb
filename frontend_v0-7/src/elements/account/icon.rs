@@ -1,4 +1,4 @@
-use super::{overlay::AccountOverlay, *};
+use super::*;
 use leptos::prelude::*;
 
 stylance::import_style!(style, "./icon.module.scss");
@@ -19,37 +19,32 @@ pub fn letter_to_three_digit_hash(letter: char) -> String {
 #[component]
 pub fn AccountIcon<F>(username: F) -> impl IntoView
 where
-    F: Fn() -> String + Sync + Send + 'static,
+    F: Fn() -> String + Clone + Sync + Send + 'static,
 {
-    let initial = move || {
+    let initial = StoredValue::new(move || {
         username()
             .chars()
             .next()
             .map(|c| c.to_uppercase().to_string())
             .unwrap_or_default()
+    });
+
+    let attrs = move || view! { <{..} class=style::icon data-testid="test-account-icon" aria_label="account overlay" /> };
+
+    let handle_pref_click = move |_| {
+        use_referer(hooks::RefererOptions { is_refering: true });
     };
 
-    let (overlay, _) = hooks::use_overlay().unwrap();
-
-    let open_overlay = move |ev: web_sys::MouseEvent| {
-        ev.stop_propagation();
-        overlay(
-            (move || {
-                view! {
-                    <AccountOverlay />
-                }
-            })
-            .into(),
-        )
-    };
-
-    view! {
-        <div
-            data-testid="test-account-icon"
-            class=style::icon
-            on:click=open_overlay
-        >
-            <b>{move || { initial() }}</b>
-        </div>
-    }
+    hoc::with_accent(move || {
+        view! {
+            <Menu>
+                <MenuButton attrs slot>
+                    <b>{move || { initial.get_value()() }}</b>
+                </MenuButton>
+                <MenuEntry on:click=handle_pref_click href="/preferences?topic=styling" attr:aria_label="settings">
+                    <MenuEntrySlot icon=IconKind::Settings label="Preferences" slot />
+                </MenuEntry>
+            </Menu>
+        }
+    })
 }

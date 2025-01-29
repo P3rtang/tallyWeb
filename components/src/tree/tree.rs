@@ -25,6 +25,7 @@ where
     CF: Fn(&T) -> I + Send + Sync + Clone + 'static,
 {
     let separator = StoredValue::new(separator);
+    let row_wrapper = StoredValue::new(row_wrapper);
 
     view! {
         <For
@@ -39,11 +40,16 @@ where
                         view=view.clone()
                         children=children.clone()
                         child_wrapper=child_wrapper.clone()
-                        row_wrapper=row_wrapper.clone()
+                        row_wrapper=row_wrapper.get_value()
                     />
                     <Show when=move || {
                         separator.get_value().is_some()
-                    }>{(separator.get_value().unwrap().children)()}</Show>
+                    }>
+                        {(row_wrapper
+                            .get_value()
+                            .children
+                            .0)((((separator.get_value().unwrap().children)()), 0).into())}
+                    </Show>
                 }
             }
         />
@@ -114,7 +120,7 @@ where
 {
     pub view: AnyView,
     pub depth: usize,
-    pub key: K,
+    pub key: Option<K>,
 }
 
 impl<K> From<(AnyView, usize, K)> for WrappedRowState<K>
@@ -125,7 +131,20 @@ where
         Self {
             view: value.0,
             depth: value.1,
-            key: value.2,
+            key: Some(value.2),
+        }
+    }
+}
+
+impl<K> From<(AnyView, usize)> for WrappedRowState<K>
+where
+    K: Eq + Hash + 'static,
+{
+    fn from(value: (AnyView, usize)) -> Self {
+        Self {
+            view: value.0,
+            depth: value.1,
+            key: None,
         }
     }
 }

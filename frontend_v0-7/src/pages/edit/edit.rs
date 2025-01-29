@@ -1,11 +1,5 @@
 use super::*;
 
-stylance::import_style!(
-    #[allow(dead_code)]
-    style,
-    "./edit.module.scss"
-);
-
 #[component]
 pub fn EditWindow() -> impl IntoView {
     let (show_sidebar, set_show_sidebar) = signal(true);
@@ -83,11 +77,9 @@ pub fn EditCountableWindow() -> impl IntoView {
     let key = Memo::new(move |_| params.get().map(|s| s.slct));
 
     view! {
-        <div class=style::form>
-            <Show when=move || key.get().is_ok()>
-                <EditCounterBox key=Signal::derive(move || key.get().unwrap_or_default()) />
-            </Show>
-        </div>
+        <Show when=move || key.get().is_ok()>
+            <EditCounterBox key=Signal::derive(move || key.get().unwrap_or_default()) />
+        </Show>
     }
 }
 
@@ -103,7 +95,7 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     // let msg = expect_context::<MessageJar>();
     let action = ServerAction::<api::EditCountableForm>::new();
     let store_resc = expect_context::<Resource<Option<CountableStore>>>();
-    let local_store_resc = expect_context::<LocalResource<Option<CountableStore>>>();
+    let local_store_resc = expect_context::<Resource<Option<CountableStore>>>();
 
     let referer = use_referer(Default::default());
     let navigate = use_navigate();
@@ -124,7 +116,7 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
         Some(Ok(_)) => {
             // TODO: maybe instead of refetching I could have the return set the store state
             store_resc.refetch();
-            navigate(close_href.get().as_str(), Default::default());
+            navigate(close_href.get_untracked().as_str(), Default::default());
         }
         // TODO: reintroduce `MessageJar`
         Some(Err(_)) => {
@@ -182,9 +174,11 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 fn DeleteButton(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let session = expect_context::<RwSignal<UserSession>>();
     let store = expect_context::<RwSignal<CountableStore>>();
+
     let kind = Signal::derive(move || store.get().kind(&key.get()));
 
     let delete_action = ServerAction::<api::RemoveCountable>::new();
+
     Effect::new(move |_| match delete_action.value().get() {
         Some(Ok(countables)) => store.update(|s| {
             countables.into_iter().for_each(|c| {
@@ -200,8 +194,8 @@ fn DeleteButton(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             <session::SessionFormInput session />
             <input type="hidden" name="id" value=move || key.get().0.to_string() />
             <input type="hidden" name="kind" value=move || kind.get().to_string() />
-            <button class="hover-darken icon">
-                <div >
+            <button class="hover-darken icon" aria_label="delete countable">
+                <div>
                     <Icon kind=IconKind::TrashCan />
                 </div>
             </button>
@@ -225,6 +219,7 @@ fn EditName(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             id="change-name"
             label="Name"
             prop:value=name
+            attr:value=name
             attr:name="countable[name]"
             attr:placeholder="Name"
             on:input=on_input
@@ -243,6 +238,7 @@ fn EditCount(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             label="Count"
             r#type="number"
             prop:value=count
+            attr:value=count
             attr:name="countable[count]"
         />
     }
@@ -259,6 +255,7 @@ fn EditStepSize(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             label="Step size"
             r#type="number"
             prop:value=step
+            attr:value=step
             attr:name="countable[step]"
         />
     }
@@ -323,8 +320,9 @@ fn EditCharm(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
         <BoolField
             id="has-charm"
             label="Has Charm"
-            attr:name="countable[charm]"
             prop:checked=checked
+            attr:checked=checked
+            attr:name="countable[charm]"
         />
     }
 }

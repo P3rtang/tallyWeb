@@ -41,13 +41,13 @@ where
 pub struct ListChildren<T, I>(pub(crate) Arc<dyn Fn(T) -> I + Send + Sync + 'static>)
 where
     T: Clone + Send + Sync,
-    I: IntoIterator<Item = T> + Send + 'static;
+    I: IntoIterator<Item = T> + Send + Clone + 'static;
 
 impl<F, T, I> From<F> for ListChildren<T, I>
 where
     F: Fn(T) -> I + Send + Sync + 'static,
     T: Clone + Send + Sync,
-    I: IntoIterator<Item = T> + Send + Sync,
+    I: IntoIterator<Item = T> + Send + Clone + 'static,
 {
     fn from(value: F) -> Self {
         Self(Arc::new(value))

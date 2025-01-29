@@ -4,6 +4,8 @@ use super::*;
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 
+const HEX_DIGITS: &'static str = "0123456789abcdef";
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AccountAccentColor(pub String);
 
@@ -25,14 +27,31 @@ impl std::fmt::Display for AccountAccentColor {
     }
 }
 
+impl TryFrom<&str> for AccountAccentColor {
+    type Error = AppError;
+
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        if (value.len() == 7 || value.len() == 4)
+            && value.starts_with("#")
+            && value[1..]
+                .chars()
+                .all(|c| HEX_DIGITS.contains(c.to_ascii_lowercase()))
+        {
+            Ok(AccountAccentColor(value.to_string()))
+        } else {
+            Err(AppError::InvalidColor(value.to_string()))
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Preferences {
     pub use_default_accent_color: bool,
     pub accent_color: AccountAccentColor,
-    pub show_separator: bool,
-    pub multi_select: bool,
-    pub save_on_pause: bool,
     pub show_body_border: bool,
+
+    pub show_separator: bool,
+    pub save_on_pause: bool,
 }
 
 impl Preferences {
@@ -42,7 +61,6 @@ impl Preferences {
             use_default_accent_color: true,
             accent_color,
             show_separator: false,
-            multi_select: false,
             save_on_pause: true,
             show_body_border: true,
         }
@@ -59,7 +77,6 @@ impl Preferences {
                 .map(|c| AccountAccentColor(c))
                 .unwrap_or(AccountAccentColor::new(user)),
             show_separator: value.show_separator,
-            multi_select: value.multi_select,
             save_on_pause: value.save_on_pause,
             show_body_border: value.show_body_border,
         }
@@ -69,21 +86,12 @@ impl Preferences {
 pub fn provide_prefs() -> Resource<Preferences> {
     let user = expect_context::<RwSignal<UserSession>>();
 
-    let prefs_resource = Resource::new(user, move |user| async move {
+    let prefs_resource = Resource::new_blocking(user, move |user| async move {
         api::get_user_preferences(user).await.unwrap_or_default()
     });
 
     let owner = Owner::current().unwrap();
     owner.with(move || provide_context(prefs_resource));
-
-    let prefs = RwSignal::new(Preferences::default());
-    owner.with(move || provide_context(prefs));
-
-    Effect::new_isomorphic(move || {
-        if let Some(p) = prefs_resource.get() {
-            prefs.set(p);
-        }
-    });
 
     prefs_resource
 }

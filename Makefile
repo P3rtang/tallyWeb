@@ -77,7 +77,7 @@ watch:
 	bash -c " \
 		trap 'docker compose down' SIGINT; \
 		docker compose up -d postgres; \
-		cargo leptos watch --hot-reload \
+		cargo leptos watch \
 	"
 
 start:

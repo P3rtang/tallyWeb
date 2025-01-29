@@ -3,7 +3,7 @@
     display: flex;
     justify-content: space-between;
     position: relative;
-    z-index: 100;
+    z-index: 20;
 
     padding: 8px;
     padding-bottom: 16px;
@@ -18,7 +18,7 @@
     padding: 0px 16px;
     background: $body-background;
     position: relative;
-    z-index: 50;
+    z-index: 19;
 
     transition: max-height 0.32s ease-out, padding 0.28s ease-out; 
 

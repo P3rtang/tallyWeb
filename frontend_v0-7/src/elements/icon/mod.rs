@@ -16,6 +16,7 @@ pub enum IconKind {
     Sort,
     Arrow,
     Settings,
+    Ellipsis,
 }
 
 impl IconKind {
@@ -34,6 +35,7 @@ impl IconKind {
                 IconKind::Sort => style::sort,
                 IconKind::Arrow => style::arrow,
                 IconKind::Settings => style::settings,
+                IconKind::Ellipsis => style::ellipsis,
             },
             style::icon
         )

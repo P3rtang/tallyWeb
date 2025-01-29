@@ -1,4 +1,4 @@
-use crate::elements::{Icon, IconColor, IconKind};
+use crate::elements::{hoc, Icon, IconColor, IconKind};
 pub use components::Separator;
 use components::{Caret, CaretState, ChildWrapper, RowWrapper, Tree, WrappedRowState};
 use leptos::{
@@ -29,13 +29,14 @@ pub fn List<T, I, EF, K, KF>(
 where
     T: Clone + Send + Sync + 'static,
     EF: Fn() -> I + Send + Sync + Clone + 'static,
-    I: IntoIterator<Item = T> + Send + 'static,
+    I: IntoIterator<Item = T> + Send + Clone + 'static,
     K: Clone + Eq + std::hash::Hash + Send + Sync + 'static,
     KF: Fn(&T) -> K + Send + Sync + Clone + 'static,
 {
     let each = StoredValue::new(each);
     let key = StoredValue::new(key);
     let row_slot = StoredValue::new(row_slot);
+    let separator = StoredValue::new(separator);
 
     let list_children = move |row: T| (row_slot.get_value().children.0)(row);
 
@@ -60,8 +61,11 @@ where
     };
 
     let row_wrapper = move |wrapped: WrappedRowState<_>| {
-        let key: K = wrapped.key;
-        let is_selected = move || (row_slot.get_value().is_selected.0)(key.clone());
+        let key: Option<K> = wrapped.key;
+        let is_selected = move || {
+            key.clone()
+                .is_some_and(|k| (row_slot.get_value().is_selected.0)(k))
+        };
 
         view! {
             <li class:selected=is_selected class=style::row>{wrapped.view}</li>
@@ -93,10 +97,10 @@ where
             "hover-lighten"
         };
 
-        view! {<{..} attr:class=class />}.into_any_attr()
+        view! {<{..} attr:class=class attr:aria_label="expand tree" />}.into_any_attr()
     };
 
-    if let Some(children) = children {
+    if let Some(children) = children.clone() {
         Either::Left(view! {
             <ul class=style::list>
                 <Tree
@@ -104,7 +108,7 @@ where
                     key=key.get_value()
                     children=move |row| (children.0)(row.clone())
                     view=move |row| list_children(row.clone())
-                    separator
+                    separator=separator.get_value()
                 >
                     <ChildWrapper let:wrapped slot>
                         <ul>{wrapped}</ul>
@@ -122,7 +126,19 @@ where
                 <For
                     each=each.get_value()
                     key=key.get_value()
-                    children=move |row| list_children(row.clone())
+                    children=move |row| {
+                        let row = StoredValue::new(row);
+                        let is_selected = move || (row_slot.get_value().is_selected.0)(key.get_value()(&row.get_value()));
+
+                        view!{
+                            <li
+                                class:selected=is_selected
+                                class=style::row
+                            >
+                                <div style:padding-left="12px">{list_children(row.get_value())}</div>
+                            </li>
+                        }
+                    }
                 />
             </ul>
         })

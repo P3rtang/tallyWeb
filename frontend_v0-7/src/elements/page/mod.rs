@@ -1,3 +1,4 @@
+use crate::hoc;
 use components::{Direction, ResizeBar};
 use leptos::{ev, prelude::*};
 use std::sync::Arc;
@@ -129,31 +130,33 @@ pub fn Page(
         }
     };
 
-    view! {
-        <div class=page_classes style=css_vars>
-            <Show when=has_sidebar>
-                <div style:width=width_style class=sidebar_classes>{(sidebar.get_value().unwrap().children)()}</div>
-                <ResizeBar
-                    direction=Direction::Vertical
-                    position=Signal::derive(move || sidebar_width().unwrap_or_default())
-                    on:drag=handle_resize
-                />
-            </Show>
-            <div class=style::body>
-                <Show when=has_navbar>{(navbar.get_value().unwrap().children)()}</Show>
-                <div class=classes>
-                    <div
-                        style:border=move || if (page_content.hide_border)() { "none" } else { "" }
-                        style:box-shadow=move || if (page_content.hide_border)() { "0px 0px 2px 0px black" } else { "" }
-                    >
-                        <div style:height="100%">
-                            {(page_content.children)()}
+    hoc::with_accent(move || {
+        view! {
+            <div class=page_classes style=css_vars>
+                <Show when=has_sidebar>
+                    <div style:width=width_style class=sidebar_classes>{(sidebar.get_value().unwrap().children)()}</div>
+                    <ResizeBar
+                        direction=Direction::Vertical
+                        position=Signal::derive(move || sidebar_width().unwrap_or_default())
+                        on:drag=handle_resize
+                    />
+                </Show>
+                <div class=style::body>
+                    <Show when=has_navbar>{(navbar.get_value().unwrap().children)()}</Show>
+                    <div class=classes>
+                        <div
+                            style:border=move || if (page_content.hide_border)() { "none" } else { "" }
+                            style:box-shadow=move || if (page_content.hide_border)() { "0px 0px 2px 0px black" } else { "" }
+                        >
+                            <div style:height="100%">
+                                {(page_content.children)()}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    }
+        }
+    })
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -183,7 +186,7 @@ impl TryFrom<&str> for Color {
         (value.starts_with('#') && value.len() == 7)
             .then(parse_string)
             .flatten()
-            .ok_or(super::AppError::InvalidColor)
+            .ok_or(super::AppError::InvalidColor(value.to_string()))
     }
 }
 

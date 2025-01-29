@@ -143,17 +143,7 @@ where
         })
         .collect_view();
 
-    Effect::new(move |_| {
-        show_custom.set(true);
-        if let Some(node) = hidden_select_ref.get() {
-            handle_change.get_value()(
-                options
-                    .get()
-                    .into_iter()
-                    .find_map(|o| (o.to_string() == node.value()).then_some(o)),
-            );
-        }
-    });
+    Effect::new(move |_| show_custom.set(true));
 
     Effect::new(move |_| {
         if let Some(node) = hidden_select_ref.get() {
@@ -162,26 +152,25 @@ where
     });
 
     view! {
-        <Show
-            when=show_custom
-            fallback=move || {
-                view! { <select>{options_view.clone()}</select> }
-            }
+        <select
+            style:display=move || if show_custom() { "none" } else { "block" }
+            disabled=show_custom
         >
-            <input
-                {..select_input.attrs.call()}
-                prop:value=move || selection.get().map(|s| s.to_string()).unwrap_or_default()
-                type="hidden"
-                node_ref=hidden_select_ref
-            />
-            <SelectOver
-                options
-                selection
-                on_change=handle_change.get_value()
-                view=view.get_value()
-                select_button=select_button.get_value()
-            />
-        </Show>
+            {options_view.clone()}
+        </select>
+        <input
+            {..select_input.attrs.call()}
+            prop:value=move || selection.get().map(|s| s.to_string()).unwrap_or_default()
+            type="hidden"
+        />
+        <SelectOver
+            style:display=move || if show_custom() { "block" } else { "none" }
+            options
+            selection
+            on_change=handle_change.get_value()
+            view=view.get_value()
+            select_button=select_button.get_value()
+        />
     }
 }
 
@@ -299,18 +288,6 @@ where
     });
 
     view! {
-        <style>
-            r#"
-            select-options {
-                scrollbar-width: thin;
-                scrollbar-color: rgba(0, 0, 0, 0.32) transparent;
-            
-                &>div {
-                    position: relative;
-                }
-            }
-            "#
-        </style>
         // TODO: add a page body click event listener to the page context API
         <custom-select>
             <div node_ref=options_list_ref>
@@ -339,6 +316,7 @@ where
                         id="dropdown-button"
                         class="hover-darken icon"
                         on:click=toggle_show
+                        aria_label="show options"
                     >
                         <div>{move || (select_button.children.0)(select_state.get())}</div>
                     </button>

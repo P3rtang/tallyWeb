@@ -1,12 +1,29 @@
-.form {
-  display: grid;
-  justify-content: center;
-  align-content: start;
-  align-items: center;
-  grid-gap: 32px;
-  flex-grow: 1;
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 8px;
+}
 
-  padding: 48px;
+.form {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  padding: 8px;
+
+  .body {
+    display: grid;
+    justify-content: center;
+    align-content: start;
+    align-items: center;
+    grid-gap: 32px;
+    flex-grow: 1;
+
+    padding: 48px;
+
+    font-size: 24px;
+    color: lightgray;
+  }
 }
 
 .input {
@@ -25,10 +42,14 @@
   input {
     all: unset;
   }
+}
 
-  input[type="color"] {
-    height: 3.2em;
-    width: 4.8em;
+.color-input {
+  padding: 4px;
+
+  input {
+    height: 2.8rem;
+    width: 4.5rem;
   }
 }
 
@@ -39,6 +60,16 @@
   background: $interactable-bg-color-dark;
   border-radius: 12px;
   color: black;
+
+  select {
+    border-radius: 12px;
+    height: 48px;
+    width: 100%;
+    font-size: 24px;
+    background: $interactable-bg-color-dark;
+    border: none;
+    padding: 8px;
+  }
 
   option {
     background: $interactable-bg-color-dark;

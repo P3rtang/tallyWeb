@@ -67,7 +67,7 @@ pub fn Navbar(
                 </div>
             </button>
             <div class=style::icon>
-                <A href=move || format!("/{}", user.get().username) style:display="flex" style:align-items="center">
+                <A href=move || format!("/{}", user.get().username) style:display="flex" style:align-items="center" attr:aria_label="home">
                     <Icon style:height="45px" style:width="45px" kind=IconKind::Favicon class:tooltip-parent=true />
                     <ToolTip parent_node=home_img_ref>Home</ToolTip>
                 </A>
