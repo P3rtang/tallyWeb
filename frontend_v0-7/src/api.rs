@@ -257,10 +257,16 @@ pub async fn get_user_preferences(session: UserSession) -> Result<Preferences, S
         Err(backend::BackendError::DataNotFound(_)) => {
             let new_prefs = Preferences::new(&session_user);
             save_preferences(
-                session.user_uuid,
-                session.username,
-                session.token,
-                new_prefs.clone(),
+                session,
+                FormPrefs {
+                    use_default_accent_color: new_prefs
+                        .use_default_accent_color
+                        .then_some("on".into()),
+                    accent_color: None,
+                    show_body_border: new_prefs.show_body_border.then_some("on".into()),
+                    show_separator: new_prefs.show_separator.then_some("on".into()),
+                    save_on_pause: new_prefs.save_on_pause.then_some("on".into()),
+                },
             )
             .await?;
             new_prefs
@@ -271,36 +277,37 @@ pub async fn get_user_preferences(session: UserSession) -> Result<Preferences, S
     Ok(Preferences::from(prefs))
 }
 
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+struct FormPrefs {
+    pub use_default_accent_color: Option<String>,
+    pub accent_color: Option<String>,
+    pub show_body_border: Option<String>,
+
+    pub show_separator: Option<String>,
+    pub save_on_pause: Option<String>,
+}
+
 #[server(SavePreferences, "/api/session")]
 pub async fn save_preferences(
-    session_user_uuid: uuid::Uuid,
-    session_username: String,
-    session_token: uuid::Uuid,
-    preferences: Preferences,
+    session: UserSession,
+    preferences: FormPrefs,
 ) -> Result<(), ServerFnError> {
-    let session = UserSession {
-        user_uuid: session_user_uuid,
-        username: session_username,
-        token: session_token,
-    };
     let pool = extract_pool().await?;
 
     let user = backend::auth::get_user(&pool, &session.username, session.token).await?;
 
-    let accent_color = if preferences.use_default_accent_color {
-        None
-    } else {
-        Some(preferences.accent_color.0)
-    };
-
     let db_prefs = backend::DbPreferences {
         user_uuid: user.uuid,
-        use_default_accent_color: preferences.use_default_accent_color,
-        accent_color,
-        show_separator: preferences.show_separator,
-        multi_select: preferences.multi_select,
-        save_on_pause: preferences.save_on_pause,
-        show_body_border: preferences.show_body_border,
+        use_default_accent_color: preferences.use_default_accent_color.is_some(),
+        accent_color: preferences
+            .use_default_accent_color
+            .is_none()
+            .then_some(preferences.accent_color)
+            .flatten(),
+        show_separator: preferences.show_separator.is_some(),
+        multi_select: true,
+        save_on_pause: preferences.save_on_pause.is_some(),
+        show_body_border: preferences.show_body_border.is_some(),
     };
     db_prefs
         .db_set(&pool, &session.username, session.token)

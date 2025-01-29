@@ -41,11 +41,9 @@
       }
     }
 
-    &:not(:global(.selected)) {
-      &>div:first-child {
-        &:hover:not(:has(button:hover)) {
-          background: rgba(white, 0.05);
-        }
+    &:not(:global(.selected))>div:first-child {
+      &:hover:not(:has(button:hover)) {
+        background: rgba(white, 0.05);
       }
     }
 

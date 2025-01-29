@@ -61,9 +61,11 @@ pub fn Button(
     #[prop(into, optional)] size: ButtonSize,
     #[prop(into, optional)] rounding: ButtonRounding,
     #[prop(into, optional)] hover: ButtonHover,
+    #[prop(into, optional)] node_ref: NodeRef<html::Button>,
+    #[prop(into, optional)] class: String,
 ) -> impl IntoView {
     view! {
-        <button class=stylance::classes!(style::button, size.into_class(), rounding.into_class(), hover.into_class())>
+        <button node_ref=node_ref class=stylance::classes!(style::button, size.into_class(), rounding.into_class(), hover.into_class(), class.as_str())>
             <div>
             { children() }
             </div>

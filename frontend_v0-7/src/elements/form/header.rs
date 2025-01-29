@@ -1,7 +1,5 @@
 use super::*;
 
-stylance::import_style!(style, "./form.module.scss");
-
 #[slot]
 pub struct HeaderSlot {
     #[prop(into)]

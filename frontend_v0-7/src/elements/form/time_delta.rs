@@ -1,7 +1,5 @@
 use super::*;
 
-stylance::import_style!(style, "./form.module.scss");
-
 // TODO: log the error with the msg system
 /**
  * [OnChange] callback for [TimeDeltaField]
@@ -140,12 +138,14 @@ pub fn TimeDeltaField(
                 <input
                     type="hidden"
                     prop:value=move || value.get().num_milliseconds()
+                    value=move || value.get().num_milliseconds()
                     name=name
                 />
             </Show>
             <input
                 node_ref=hour_ref
                 type="number"
+                value=pad_hours
                 prop:value=pad_hours
                 style:width="4ch"
                 style:text-align="end"
@@ -160,6 +160,7 @@ pub fn TimeDeltaField(
                 node_ref=min_ref
                 type="number"
                 max="59"
+                value=pad_mins
                 prop:value=pad_mins
                 style:width="2ch"
                 style:text-align="end"
@@ -174,6 +175,7 @@ pub fn TimeDeltaField(
                 node_ref=sec_ref
                 type="number"
                 max="59"
+                value=pad_secs
                 prop:value=pad_secs
                 style:width="2ch"
                 style:text-align="end"
@@ -188,6 +190,7 @@ pub fn TimeDeltaField(
                 node_ref=millis_ref
                 type="number"
                 max="999"
+                value=pad_millis
                 prop:value=pad_millis
                 style:width="3ch"
                 style:text-align="end"

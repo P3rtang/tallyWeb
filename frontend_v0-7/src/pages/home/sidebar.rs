@@ -220,6 +220,7 @@ pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoVie
                 style:max-height=search_height
             >
                 <div>
+                    <label for="search-filter" />
                     <TextField
                         input_ref
                         id="search-filter"
@@ -236,6 +237,7 @@ pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoVie
                     <Button
                         rounding=ButtonRounding::Full
                         on:click=move |_| set_sort.update(|s| s.reverse())
+                        attr:aria_label=move || if sort.get().is_reversed() { "sort ascending" } else { "sort descending" }
                     >
                         <Icon
                             kind=IconKind::Arrow
@@ -244,6 +246,7 @@ pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoVie
                         />
                     </Button>
                     <SelectField
+                        id="filter-countable"
                         options
                         value=sort
                         on_change=handle_sort_change
@@ -261,7 +264,7 @@ pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoVie
                 </List>
                 <ActionForm action style:padding="0px 16px">
                     <input type="hidden" name="kind" value=CountableKind::Counter.to_string() />
-                    <Button class:hover-darken=true style:width="100%" attr:r#type="submit">
+                    <Button class:hover-darken=true style:width="100%" attr:r#type="submit" attr:aria_label="new counter">
                         <div>New Counter</div>
                     </Button>
                 </ActionForm>
@@ -314,6 +317,7 @@ fn TreeRow(countable: CountableId) -> impl IntoView {
                     rounding=ButtonRounding::Full
                     hover=ButtonHover::Darken
                     attr:r#type="submit"
+                    attr:aria-label="add phase"
                 >
                     <div class=style::add_phase>+</div>
                 </Button>
@@ -333,6 +337,7 @@ fn Navbar(
                 hover=ButtonHover::Lighten
                 style:background="transparent"
                 on:mousedown=move |ev| on_search.call(ev)
+                attr:aria_label="search filter"
             >
                 <Icon kind=IconKind::Search />
             </Button>
@@ -340,6 +345,7 @@ fn Navbar(
                 hover=ButtonHover::Lighten
                 style:background="transparent"
                 on:mousedown=move |ev| on_sort.call(ev)
+                attr:aria_label="sort filter"
             >
                 <Icon kind=IconKind::Sort />
             </Button>

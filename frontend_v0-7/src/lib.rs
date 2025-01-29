@@ -139,12 +139,14 @@ pub enum AppError {
     Environment(String),
     #[error("Countable Requires at least 1 leaf node")]
     RequiresChild,
-    #[error("Encountered an invalid `string` while parsing `Color`")]
-    InvalidColor,
+    #[error("Encountered an invalid `string`: {0}, while parsing `Color`")]
+    InvalidColor(String),
     #[error("To use {0}, PageContext should be available")]
     PageContextUnavailable(String),
     #[error("Calling `CreateCountable` with kind `phase` requires a parent")]
     MissingParent,
+    #[error("To use {0}, preferences need to be available {1}")]
+    MissingPreferences(String, String),
 }
 
 impl From<gloo_storage::errors::StorageError> for AppError {
