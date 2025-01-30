@@ -1,4 +1,4 @@
-use crate::hoc;
+use super::*;
 use components::{Direction, ResizeBar};
 use leptos::{ev, prelude::*};
 use std::sync::Arc;
@@ -72,6 +72,7 @@ pub fn Page(
     #[prop(optional)] page_navbar: Option<PageNavbar>,
     #[prop(optional, into, default=Color::default().into())] accent: Signal<Color>,
 ) -> impl IntoView {
+    let screen = hooks::use_screen();
     let sidebar = StoredValue::new(page_sidebar);
     let navbar = StoredValue::new(page_navbar);
 
@@ -108,7 +109,7 @@ pub fn Page(
             style::page,
             sidebar
                 .get_value()
-                .is_some_and(|sb| (sb.auto_hide)())
+                .is_some_and(|sb| sb.auto_hide.get())
                 .then_some(style::auto_hide)
         )
     };
@@ -123,11 +124,17 @@ pub fn Page(
     };
 
     let width_style = move || {
-        if sidebar_in_view() {
-            format!("{}px", sidebar_width().unwrap_or(0))
-        } else {
-            "0px".to_string()
-        }
+        if screen.get().viewport() <= ViewPort::Small {
+            return "100vw".to_string();
+        };
+
+        format!(
+            "{}px",
+            sidebar_in_view()
+                .then_some(sidebar_width())
+                .flatten()
+                .unwrap_or_default()
+        )
     };
 
     hoc::with_accent(move || {

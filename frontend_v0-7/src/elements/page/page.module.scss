@@ -38,6 +38,15 @@
 
   .sidebar {
     overflow: hidden;
+    background: $body-background;
+
+    @media (max-width: 800px) {
+      background: $panel-background;
+      min-width: 100%;
+      height: 100%;
+      position: absolute;
+      z-index: 2;
+    }
   }
 
   &.auto-hide {

@@ -18,6 +18,6 @@ impl Sortable for String {
 
 impl Sortable for &str {
     fn as_str(&self) -> &str {
-        *self
+        self
     }
 }
