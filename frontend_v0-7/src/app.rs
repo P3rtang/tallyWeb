@@ -3,7 +3,6 @@ use super::*;
 #[cfg(not(feature = "ssr"))]
 use crate::hooks::use_saving;
 use crate::EditWindow;
-use leptos::prelude::*;
 use leptos_meta::{provide_meta_context, Link, Meta, MetaTags, Stylesheet, Title};
 use leptos_router::{
     components::{Outlet, ParentRoute, Route, Router, Routes},
@@ -119,11 +118,15 @@ pub fn RouteUser() -> impl IntoView {
     #[cfg(not(feature = "ssr"))]
     let saving = StoredValue::new(use_saving());
 
+    let screen_rsc = Resource::new_blocking(|| (), async move |_| screen::server::get_screen().await.unwrap_or_default());
+    provide_context(screen_rsc);
+
     view! {
         <Transition fallback=|| ()>
             { move || {
                 user_rsc.track();
                 pref_rsc.track();
+                screen_rsc.track();
 
                 if let Some(p) = pref_rsc.get() {
                     prefs.set(p)

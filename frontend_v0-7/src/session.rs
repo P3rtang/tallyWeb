@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 
 use super::*;
-use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[server]

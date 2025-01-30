@@ -120,6 +120,7 @@ impl Into<&'static str> for Sort {
 pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let selection = expect_context::<Memo<Selection>>();
+    let screen = hooks::use_screen();
 
     let is_selected = move |key: CountableId| selection.get().contains(&key);
 
@@ -210,8 +211,16 @@ pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoVie
         set_sort(s);
     };
 
+    let width = move || {
+        if screen.get().viewport() <= ViewPort::Small {
+            return "100%".to_string()
+        }
+
+        format!("{}px", width.get())
+    };
+
     view! {
-        <div class=style::sidebar>
+        <div class=style::sidebar style:width=width>
             <Navbar on_search=handle_search on_sort=handle_sort />
             <div
                 class=move || stylance::classes!(style::search_box, show_search.get().then_some(style::shown))
