@@ -16,4 +16,4 @@ mod use_screen;
 pub use use_overlay::use_overlay;
 pub use use_referer::{use_referer, Options as RefererOptions};
 pub use use_saving::use_saving;
-pub use use_screen::use_screen;
+pub use use_screen::{use_screen, Screen, ViewPort};

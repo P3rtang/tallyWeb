@@ -121,8 +121,6 @@ pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoVie
     let store = expect_context::<RwSignal<CountableStore>>();
     let selection = expect_context::<Memo<Selection>>();
 
-    let width = move || format!("{}px", width.get());
-
     let is_selected = move |key: CountableId| selection.get().contains(&key);
 
     let action = ServerAction::<api::CreateCountable>::new();
@@ -253,7 +251,7 @@ pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoVie
                     />
                 </div>
             </div>
-            <div style:width=width>
+            <div>
                 <List
                     each
                     key=|c| *c
