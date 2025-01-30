@@ -174,6 +174,7 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 fn DeleteButton(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let session = expect_context::<RwSignal<UserSession>>();
     let store = expect_context::<RwSignal<CountableStore>>();
+    let saving = hooks::use_local_saving::<CountableStore>();
 
     let kind = Signal::derive(move || store.get().kind(&key.get()));
 
@@ -183,7 +184,11 @@ fn DeleteButton(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
         Some(Ok(countables)) => store.update(|s| {
             countables.into_iter().for_each(|c| {
                 s.archive(&c.into());
-            })
+            });
+
+            if let Some(func) = saving.clone() {
+                func(s.clone())
+            }
         }),
         Some(Err(_err)) => (),
         None => (),
