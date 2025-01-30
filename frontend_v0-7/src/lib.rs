@@ -8,6 +8,7 @@
 #![recursion_limit = "512"]
 
 use leptos::logging::*;
+use leptos::prelude::*;
 use wasm_bindgen::{prelude::Closure, JsCast};
 
 // pub(crate) use session::SessionFormInput;
@@ -24,6 +25,9 @@ pub(crate) mod elements;
 pub(crate) mod hoc;
 pub(crate) mod hooks;
 pub(crate) mod page_context;
+mod screen;
+#[allow(unused)]
+use screen::{Screen, ViewPort};
 
 pub(crate) mod api;
 
@@ -147,6 +151,8 @@ pub enum AppError {
     MissingParent,
     #[error("To use {0}, preferences need to be available {1}")]
     MissingPreferences(String, String),
+    #[error("To use {0}, a screen signal need to be available {1}")]
+    MissingScreenSignal(String, String),
 }
 
 impl From<gloo_storage::errors::StorageError> for AppError {

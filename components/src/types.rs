@@ -25,3 +25,11 @@ where
         Self(Arc::new(value))
     }
 }
+
+impl<T> FnOnce<(T,)> for EventCallback<T> {
+    type Output = ();
+
+    extern "rust-call" fn call_once(self, args: (T,)) -> Self::Output {
+        self.call(args.0);
+    }
+}

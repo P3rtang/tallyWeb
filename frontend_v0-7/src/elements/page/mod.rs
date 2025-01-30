@@ -28,35 +28,9 @@ pub struct PageSidebar {
     width: Signal<usize>,
 
     #[prop(into, optional)]
-    on_resize: OnResize,
+    on_resize: EventCallback<usize>,
 
     children: ChildrenFn,
-}
-
-#[derive(Clone)]
-pub struct OnResize(Arc<dyn Fn(usize) + Send + Sync + 'static>);
-
-impl Default for OnResize {
-    fn default() -> Self {
-        Self(Arc::new(|_| ()))
-    }
-}
-
-impl<F> From<F> for OnResize
-where
-    F: Fn(usize) + Send + Sync + 'static,
-{
-    fn from(value: F) -> Self {
-        Self(Arc::new(value))
-    }
-}
-
-impl std::ops::FnOnce<(usize,)> for OnResize {
-    type Output = ();
-
-    extern "rust-call" fn call_once(self, args: (usize,)) -> Self::Output {
-        (self.0)(args.0)
-    }
 }
 
 #[derive(Clone)]

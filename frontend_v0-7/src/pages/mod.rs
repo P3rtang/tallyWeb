@@ -11,7 +11,7 @@ pub use preferences::PrefsWindow;
 
 use components::EventCallback;
 use fuzzy_sort::Sortable;
-use leptos::{ev, html, prelude::*};
+use leptos::{ev, html};
 use leptos_router::{
     components::A,
     hooks::use_query,
