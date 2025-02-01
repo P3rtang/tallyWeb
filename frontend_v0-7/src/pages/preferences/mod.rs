@@ -19,34 +19,37 @@ pub fn PrefsWindow() -> impl IntoView {
     let topic = Memo::new(move |_| params.get().unwrap_or_default());
     provide_context(topic);
 
-    let (show_sidebar, set_show_sidebar) = signal(true);
-    let (width, set_width) = signal(400);
+    let sidebar = expect_context::<page_context::PageContext>().sidebar;
+    let set_width = move |w| sidebar.set_width().set(w);
 
     view! {
         <Page>
             <PageContent hide_border=true slot>
                 <PrefsContent />
             </PageContent>
-            <PageSidebar width on_resize=set_width is_shown=show_sidebar slot>
-                <SidebarContent width/>
+            <PageSidebar width=sidebar.width() on_resize=set_width is_shown=sidebar.is_shown() slot>
+                <SidebarContent />
             </PageSidebar>
             <PageNavbar slot>
-                <Navbar show_sidebar on_close_sidebar=set_show_sidebar />
+                <Navbar />
             </PageNavbar>
         </Page>
     }
 }
 
 #[component]
-pub fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoView {
-    let width = move || format!("{}px", width.get());
+pub fn SidebarContent() -> impl IntoView {
+    let sidebar = expect_context::<page_context::PageContext>().sidebar;
+    let sidebar = expect_context::<page_context::PageContext>().sidebar;
     let topic = expect_context::<Memo<Topic>>();
 
     let is_selected = move |t: &'static str| topic.get().topic.is_some_and(|topic| topic == *t);
 
     view! {
-        <div style:width=width>
-            <nav />
+        <div style:width=sidebar.width_attr() style:max-width="100vw">
+            <nav class=main::navbar>
+                {sidebar.toggle_button()}
+            </nav>
             <List
                 each=move || vec!["styling", "account", "misc"]
                 key=move |topic| *topic

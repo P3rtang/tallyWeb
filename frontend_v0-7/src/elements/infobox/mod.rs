@@ -10,3 +10,5 @@ use crate::hooks::{use_referer, RefererOptions};
 use app::UserName;
 use elements::icon::*;
 use home::Selection;
+
+stylance::import_style!(style, "infobox.module.scss");

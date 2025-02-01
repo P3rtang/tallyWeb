@@ -8,6 +8,20 @@
     padding: 8px;
     padding-bottom: 16px;
     background: $body-background;
+
+    >div {
+      display: flex;
+      gap: 8px;
+    }
+  }
+
+  .icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    width: 40px;
+    padding: 4px;
   }
 
   .search-box {

@@ -7,8 +7,6 @@ use hooks::use_saving;
 use leptos::{ev, prelude::*};
 use web_sys::MouseEvent;
 
-stylance::import_style!(style, "infobox.module.scss");
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct IsActive(RwSignal<bool>);
 impl IsActive {
@@ -207,9 +205,6 @@ fn Count(
 
     view! {
         <div class=class on:click=on_count_click data-testid="box">
-            <button class=style::count_minus on:click=on_minus_click>
-                -
-            </button>
             <span
                 class=style::title
                 style:display=move || if show_title() { "block" } else { "none" }
@@ -219,6 +214,9 @@ fn Count(
             <span class=style::info data-testid="info">
                 {get_count}
             </span>
+            <button class=style::count_minus on:click=on_minus_click>
+                -
+            </button>
         </div>
     }
 }

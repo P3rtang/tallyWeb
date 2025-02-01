@@ -38,34 +38,14 @@ pub fn Navbar(
     #[prop(default = false.into(), into)] show_sidebar: Signal<bool>,
     #[prop(into, optional)] on_close_sidebar: OnClose,
 ) -> impl IntoView {
+    let page_context = expect_context::<page_context::PageContext>();
     let user = expect_context::<RwSignal<UserSession>>();
-
-    let on_close_sidebar = StoredValue::new(on_close_sidebar);
-
-    let toggle_sidebar = move |_| on_close_sidebar.get_value()(!show_sidebar());
 
     let home_img_ref = NodeRef::<html::Img>::new();
 
-    let icon = Signal::derive(move || {
-        if show_sidebar.get() {
-            IconKind::SidebarClosed
-        } else {
-            IconKind::SidebarOpen
-        }
-    });
-
     view! {
         <nav class=style::navbar>
-            <button
-                class=stylance::classes!("hover-lighten", "icon")
-                aria-label="toggle sidebar"
-                on:click=toggle_sidebar
-                disabled=move || !has_sidebar()
-            >
-                <div class=stylance::classes!(style::sidebar_toggle, style::icon)>
-                    <Icon kind=icon />
-                </div>
-            </button>
+            {page_context.sidebar.toggle_button()}
             <div class=style::icon>
                 <A href=move || format!("/{}", user.get().username) style:display="flex" style:align-items="center" attr:aria_label="home">
                     <Icon style:height="45px" style:width="45px" kind=IconKind::Favicon class:tooltip-parent=true />

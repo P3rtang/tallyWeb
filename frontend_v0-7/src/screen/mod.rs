@@ -1,7 +1,7 @@
 use super::*;
 
-pub mod server;
 mod client;
+pub mod server;
 
 // TODO: factor the types out to a new file
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]

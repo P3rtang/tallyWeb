@@ -42,6 +42,8 @@ use saving::*;
 
 use cfg_if::cfg_if;
 
+stylance::import_style!(main, "../style/_main.module.scss");
+
 #[cfg(feature = "ssr")]
 pub mod middleware;
 
