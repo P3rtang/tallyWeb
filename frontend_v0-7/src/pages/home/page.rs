@@ -3,8 +3,9 @@ use super::*;
 #[component]
 pub fn HomePage() -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
-    let (show_sidebar, set_show_sidebar) = signal(true);
-    let (width, set_width) = signal(400);
+    let page_context = expect_context::<page_context::PageContext>();
+    let sidebar_width = page_context.sidebar.width();
+    let set_width = move |w| page_context.sidebar.set_width().set(w);
 
     let params = use_query::<Selection>();
     let selection = Memo::new(move |_| params.get().ok().unwrap_or(Selection::new()));
@@ -21,11 +22,11 @@ pub fn HomePage() -> impl IntoView {
             <PageContent hide_border=true slot>
                 <InfoBox countable_list />
             </PageContent>
-            <PageSidebar width is_shown=show_sidebar on_resize=set_width slot>
-                <SidebarContent width/>
+            <PageSidebar is_shown=page_context.sidebar.is_shown() width=sidebar_width on_resize=set_width slot>
+                <SidebarContent/>
             </PageSidebar>
             <PageNavbar slot>
-                <Navbar show_sidebar on_close_sidebar=set_show_sidebar/>
+                <Navbar />
             </PageNavbar>
         </Page>
     }

@@ -3,8 +3,6 @@ use super::*;
 use leptos::prelude::*;
 use leptos_router::hooks::use_params;
 
-stylance::import_style!(style, "./infobox.module.scss");
-
 #[component]
 pub fn InfoHeader(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let session = expect_context::<RwSignal<UserSession>>();

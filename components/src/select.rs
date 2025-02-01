@@ -205,6 +205,8 @@ where
 
     let max_height = RwSignal::new(String::new());
 
+    // TODO: recalculate this on opening the options
+    // TODO: create another view for mobile
     Effect::new(move |_| {
         if let Some(node) = options_list_ref.get() {
             request_animation_frame(move || {

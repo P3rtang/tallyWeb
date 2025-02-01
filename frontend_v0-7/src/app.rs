@@ -31,6 +31,9 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 
 #[component]
 pub fn App() -> impl IntoView {
+    #[cfg(feature = "ssr")]
+    leptos::reactive::diagnostics::SpecialNonReactiveZone::enter();
+
     provide_meta_context();
 
     let page_context = page_context::PageContext::new();
@@ -118,15 +121,23 @@ pub fn RouteUser() -> impl IntoView {
     #[cfg(not(feature = "ssr"))]
     let saving = StoredValue::new(use_saving());
 
-    let screen_rsc = Resource::new_blocking(|| (), async move |_| screen::server::get_screen().await.unwrap_or_default());
-    provide_context(screen_rsc);
+    let screen_rsc = Resource::new_blocking(
+        || (),
+        async move |_| screen::server::get_screen().await.unwrap_or_default(),
+    );
+    // TODO: put this in the page_context
+    let screen_signal = RwSignal::new(Screen::default());
+    provide_context(screen_signal);
 
     view! {
         <Transition fallback=|| ()>
             { move || {
                 user_rsc.track();
                 pref_rsc.track();
-                screen_rsc.track();
+
+                if let Some(s) = screen_rsc.get() {
+                    screen_signal.set(s)
+                }
 
                 if let Some(p) = pref_rsc.get() {
                     prefs.set(p)

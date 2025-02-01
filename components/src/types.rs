@@ -33,3 +33,9 @@ impl<T> FnOnce<(T,)> for EventCallback<T> {
         self.call(args.0);
     }
 }
+
+impl<T> FnMut<(T,)> for EventCallback<T> {
+    extern "rust-call" fn call_mut(&mut self, args: (T,)) -> Self::Output {
+        self.call(args.0)
+    }
+}

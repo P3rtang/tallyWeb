@@ -66,6 +66,7 @@ pub fn TimeDeltaField(
 
     #[prop(default=false.into(), into)] use_single_form_value: Signal<bool>,
 ) -> impl IntoView {
+    let screen = hooks::use_screen();
     let (default_value, set_default_value) = signal(default_value.unwrap_or_default());
 
     let value = Memo::new(move |_| {
@@ -129,11 +130,14 @@ pub fn TimeDeltaField(
 
     view! {
         <Show when=move || label.is_some()>
-            <label for=id style:grid-column="1">
+            <label class=style::form_label for=id style:grid-column="1">
                 {label.unwrap()()}
             </label>
         </Show>
-        <div class=style::input style:grid-column="2">
+        <div
+            class=style::input
+            style:grid-column=move || { if screen.get().viewport() > ViewPort::Small { "2" } else { "1" } }
+        >
             <Show when=use_single_form_value>
                 <input
                     type="hidden"

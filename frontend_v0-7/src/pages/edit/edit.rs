@@ -2,8 +2,10 @@ use super::*;
 
 #[component]
 pub fn EditWindow() -> impl IntoView {
-    let (show_sidebar, set_show_sidebar) = signal(true);
-    let (width, set_width) = signal(400);
+    let sidebar = expect_context::<page_context::PageContext>().sidebar;
+
+    let sidebar_width = sidebar.width();
+    let set_width = move |w| sidebar.set_width().set(w);
 
     let params = use_query::<Selection>();
     let selection = Memo::new(move |_| params.get().unwrap_or_default());
@@ -14,18 +16,19 @@ pub fn EditWindow() -> impl IntoView {
             <PageContent hide_border=true slot>
                 <EditCountableWindow />
             </PageContent>
-            <PageSidebar width on_resize=set_width is_shown=show_sidebar slot>
-                <SidebarContent width/>
+            <PageSidebar width=sidebar.width() on_resize=set_width is_shown=sidebar.is_shown() slot>
+                <SidebarContent />
             </PageSidebar>
             <PageNavbar slot>
-                <Navbar show_sidebar on_close_sidebar=set_show_sidebar />
+                <Navbar />
             </PageNavbar>
         </Page>
     }
 }
 
 #[component]
-fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoView {
+fn SidebarContent() -> impl IntoView {
+    let sidebar = expect_context::<page_context::PageContext>().sidebar;
     let store = expect_context::<RwSignal<CountableStore>>();
     let selection = expect_context::<Memo<Selection>>();
 
@@ -35,13 +38,13 @@ fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoView {
         root
     };
 
-    let width = move || format!("{}px", width.get());
-
     let is_selected = move |key: CountableId| selection.get().slct == key;
 
     view! {
-        <div style:width=width>
-            <nav/>
+        <div style:width=sidebar.width_attr() style:max-width="100vw">
+            <nav class=main::navbar>
+                {sidebar.toggle_button()}
+            </nav>
             <List
                 each
                 key=|c| *c

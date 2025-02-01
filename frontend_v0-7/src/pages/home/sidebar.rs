@@ -117,7 +117,8 @@ impl Into<&'static str> for Sort {
 }
 
 #[component]
-pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoView {
+pub(crate) fn SidebarContent() -> impl IntoView {
+    let sidebar = expect_context::<page_context::PageContext>().sidebar;
     let store = expect_context::<RwSignal<CountableStore>>();
     let selection = expect_context::<Memo<Selection>>();
     let screen = hooks::use_screen();
@@ -212,11 +213,11 @@ pub(crate) fn SidebarContent(#[prop(into)] width: Signal<usize>) -> impl IntoVie
     };
 
     let width = move || {
-        if screen.get().viewport() <= ViewPort::Small {
-            return "100%".to_string()
+        if screen.get().viewport() <= ViewPort::Small && sidebar.is_shown().get() {
+            return "100vw".to_string();
         }
 
-        format!("{}px", width.get())
+        format!("{}px", sidebar.width().get())
     };
 
     view! {
@@ -338,21 +339,33 @@ fn Navbar(
     #[prop(into)] on_search: EventCallback<ev::MouseEvent>,
     #[prop(into)] on_sort: EventCallback<ev::MouseEvent>,
 ) -> impl IntoView {
+    let sidebar = expect_context::<page_context::PageContext>().sidebar;
+    let screen = hooks::use_screen();
+
+    let show_toggle_sidebar = move || screen.get().viewport() <= ViewPort::Small;
+
     view! {
         <nav class=style::sidebar_navbar>
+            <div>
+                <Show when=show_toggle_sidebar>
+                    {sidebar.toggle_button()}
+                </Show>
+                <Button
+                    hover=ButtonHover::Lighten
+                    style:background="transparent"
+                    on:mousedown=on_search.clone()
+                    attr:aria_label="search filter"
+                    class=style::icon
+                >
+                    <Icon kind=IconKind::Search />
+                </Button>
+            </div>
             <Button
                 hover=ButtonHover::Lighten
                 style:background="transparent"
-                on:mousedown=move |ev| on_search.call(ev)
-                attr:aria_label="search filter"
-            >
-                <Icon kind=IconKind::Search />
-            </Button>
-            <Button
-                hover=ButtonHover::Lighten
-                style:background="transparent"
-                on:mousedown=move |ev| on_sort.call(ev)
+                on:mousedown=on_sort.clone()
                 attr:aria_label="sort filter"
+                class=style::icon
             >
                 <Icon kind=IconKind::Sort />
             </Button>

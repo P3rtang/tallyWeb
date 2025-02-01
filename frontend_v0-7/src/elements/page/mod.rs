@@ -61,14 +61,15 @@ pub fn Page(
     let sidebar_classes = move || {
         stylance::classes!(
             style::sidebar,
-            has_transition.get().then_some("transition-width")
+            (has_transition.get() && screen.get().viewport() > ViewPort::Small)
+                .then_some("transition-width")
         )
     };
 
     let handle_resize = move |ev: ev::DragEvent| {
         if ev.client_x() as usize > SIDEBAR_MIN_WIDTH {
             set_has_transition(false);
-            if let Some(on_resize) = sidebar.get_value().map(|sb| sb.on_resize) {
+            if let Some(mut on_resize) = sidebar.get_value().map(|sb| sb.on_resize) {
                 on_resize(ev.client_x() as usize)
             }
         } else {
@@ -98,7 +99,7 @@ pub fn Page(
     };
 
     let width_style = move || {
-        if screen.get().viewport() <= ViewPort::Small {
+        if screen.get().viewport() <= ViewPort::Small && sidebar_in_view() {
             return "100vw".to_string();
         };
 

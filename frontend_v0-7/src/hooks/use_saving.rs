@@ -25,13 +25,15 @@ pub fn use_saving<T: ServerSavable + LocalSavable + Clone + 'static>(
  *   - [impl Fn(LocalSavable)]: The callback returned taking a Savable as parameter to save
  *   into indexedDB
  */
-pub fn use_local_saving<T: LocalSavable + Clone + 'static>() -> Option<std::sync::Arc<dyn Fn(T) + Send + Sync + 'static>> {
+pub fn use_local_saving<T: LocalSavable + Clone + 'static>(
+) -> Option<std::sync::Arc<dyn Fn(T) + Send + Sync + 'static>> {
     #[cfg(feature = "ssr")]
     return None;
 
-    let local_handler = AsyncDerived::new_unsync(async move || IndexedSaveHandler::new().await.ok());
+    let local_handler =
+        AsyncDerived::new_unsync(async move || IndexedSaveHandler::new().await.ok());
 
-    Some(std::sync::Arc::new( move |item: T| {
+    Some(std::sync::Arc::new(move |item: T| {
         if let Some(local) = local_handler.get().flatten() {
             local.save(item, Box::new(|_| {}));
         }

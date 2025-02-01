@@ -13,6 +13,7 @@ pub fn SelectField<T>(
 where
     T: Sortable + ToString + PartialEq + Default + Clone + Send + Sync + 'static,
 {
+    let screen = hooks::use_screen();
     let default_value = RwSignal::new(default_value);
     let value = Memo::new(move |_| {
         if value.is_some() {
@@ -48,9 +49,12 @@ where
     view! {
         // TODO: look into trying to make this a label
         <Show when=move || label.is_some()>
-            <div style:grid-column="1">{label.unwrap().get()}</div>
+            <div class=style::form_label style:grid-column="1">{label.unwrap().get()}</div>
         </Show>
-        <div class=stylance::classes!(style::select) style:grid-column="2">
+        <div
+            class=stylance::classes!(style::select)
+            style:grid-column=move || { if screen.get().viewport() > ViewPort::Small { "2" } else { "1" } }
+        >
             <Select
                 attr:id=id
                 value
