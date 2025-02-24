@@ -44,6 +44,10 @@ where
                 <MenuEntry on:click=handle_pref_click href="/preferences?topic=styling" attr:aria_label="settings">
                     <MenuEntrySlot icon=IconKind::Settings label="Preferences" slot />
                 </MenuEntry>
+                <MenuBreak />
+                <MenuEntry attr:rel="external" href="/login">
+                    <MenuEntrySlot icon=IconKind::LogOut label="Log out" slot/>
+                </MenuEntry>
             </Menu>
         }
     })

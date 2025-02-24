@@ -15,7 +15,7 @@ pub struct MenuEntrySlot {
 
 #[component]
 pub fn MenuEntry(
-    #[prop(into, optional)] href: Signal<Option<String>>,
+    #[prop(into, optional)] href: Option<Signal<String>>,
     #[prop(into, optional)] attrs: AttributeFn,
 
     #[prop(into, optional)] children: Option<ChildrenFn>,
@@ -23,23 +23,19 @@ pub fn MenuEntry(
 ) -> impl IntoView {
     let menu_entry = StoredValue::new(menu_entry_slot);
 
-    let children = StoredValue::new(if let Some(c) = children {
-        c
-    } else {
-        Arc::new(move || {
-            {
-                view! {
-                    <div class=style::label>
-                        <Show when=move || menu_entry.get_value().icon.is_some()>
-                            <Icon kind=menu_entry.get_value().icon.unwrap() />
-                            <span>{menu_entry.get_value().label}</span>
-                        </Show>
-                    </div>
-                }
+    let children = StoredValue::new(children.unwrap_or(Arc::new(move || {
+        {
+            view! {
+                <div class=style::label>
+                    <Show when=move || menu_entry.get_value().icon.is_some()>
+                        <Icon kind=menu_entry.get_value().icon.unwrap() />
+                        <span>{menu_entry.get_value().label}</span>
+                    </Show>
+                </div>
             }
-            .into_any()
-        })
-    });
+        }
+        .into_any()
+    })));
 
     let button_element = move || {
         if let Some(href) = href.get() {
@@ -60,4 +56,9 @@ pub fn MenuEntry(
     };
 
     button_element()
+}
+
+#[component]
+pub fn MenuBreak() -> impl IntoView {
+    view! { <hr/> }
 }

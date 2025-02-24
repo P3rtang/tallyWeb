@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg1"
+   inkscape:export-filename="default.svg"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   inkscape:version="1.4 (e7c3feb100, 2024-10-09)"
+   sodipodi:docname="tallyweb-add-account.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#303030"
+     inkscape:document-units="px"
+     inkscape:zoom="2.1558643"
+     inkscape:cx="247.69648"
+     inkscape:cy="263.46742"
+     inkscape:window-width="2552"
+     inkscape:window-height="1396"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1">
+    <inkscape:page
+       x="0"
+       y="0"
+       width="512"
+       height="512"
+       id="page2"
+       margin="0"
+       bleed="0" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-11.5)">
+    <g
+       id="g3"
+       inkscape:label="account"
+       transform="translate(-5.2469635,-0.46385109)">
+      <circle
+         style="fill:#000000;fill-rule:evenodd;stroke-width:4.88017"
+         id="path1"
+         cx="197.24696"
+         cy="153.55405"
+         r="112" />
+      <path
+         id="path2"
+         style="fill:#000000;fill-rule:evenodd;stroke-width:4.72785"
+         d="m 197.24696,300.1446 a 192.00078,192.00079 0 0 0 -191.9999965,192 H 389.24696 a 192.00078,192.00079 0 0 0 -192,-192 z" />
+    </g>
+    <g
+       id="g2"
+       inkscape:label="plus"
+       transform="translate(0,-155.85396)">
+      <rect
+         style="fill:#000000;fill-rule:evenodd;stroke-width:3.27317"
+         id="rect2"
+         width="48"
+         height="192"
+         x="392"
+         y="167.35396"
+         ry="32" />
+      <rect
+         style="fill:#000000;fill-rule:evenodd;stroke-width:3.27317"
+         id="rect2-5"
+         width="48"
+         height="192"
+         x="239.35397"
+         y="-512"
+         ry="32"
+         transform="rotate(90)" />
+    </g>
+  </g>
+</svg>

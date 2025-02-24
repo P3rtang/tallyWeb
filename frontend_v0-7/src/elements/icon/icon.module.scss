@@ -7,8 +7,8 @@
 }
 
 .cross {
-  height: 28px;
-  width: 28px;
+  height: 24px;
+  width: 24px;
   mask-image: url("/icons/tallyweb-cross.svg");
 }
 
@@ -83,4 +83,28 @@
   height: 24px;
   width: 24px;
   mask-image: url("/icons/tallyweb-ellipsis.svg");
+}
+
+.log-out {
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/tallyweb-log-out.svg");
+}
+
+.log-in {
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/tallyweb-log-in.svg");
+}
+
+.account {
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/tallyweb-account.svg");
+}
+
+.add-account {
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/tallyweb-add-account.svg");
 }

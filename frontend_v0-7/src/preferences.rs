@@ -83,10 +83,8 @@ impl Preferences {
     }
 }
 
-pub fn provide_prefs() -> Resource<Preferences> {
-    let user = expect_context::<RwSignal<UserSession>>();
-
-    let prefs_resource = Resource::new_blocking(user, move |user| async move {
+pub fn provide_prefs(session: Signal<UserSession>) -> Resource<Preferences> {
+    let prefs_resource = Resource::new_blocking(session, move |user| async move {
         api::get_user_preferences(user).await.unwrap_or_default()
     });
 

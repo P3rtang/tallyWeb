@@ -118,6 +118,7 @@ impl Into<&'static str> for Sort {
 
 #[component]
 pub(crate) fn SidebarContent() -> impl IntoView {
+    let session = expect_context::<RwSignal<UserSession>>();
     let sidebar = expect_context::<page_context::PageContext>().sidebar;
     let store = expect_context::<RwSignal<CountableStore>>();
     let selection = expect_context::<Memo<Selection>>();
@@ -149,7 +150,7 @@ pub(crate) fn SidebarContent() -> impl IntoView {
     let search_height = move || if show_search.get() { "100px" } else { "0px" };
     let sort_height = move || if show_sort.get() { "100px" } else { "0px" };
 
-    let handle_change = move |ev| {
+    let handle_change = move |ev: ev::Event| {
         let value = event_target_value(&ev);
 
         if value.is_empty() {
@@ -162,7 +163,7 @@ pub(crate) fn SidebarContent() -> impl IntoView {
     let handle_search = move |_| set_show_search.set(!show_search.get_untracked());
     let handle_sort = move |_| set_show_sort.set(!show_sort.get_untracked());
 
-    let on_focus_out = move |_| {
+    let on_focus_out = move |_: ev::FocusEvent| {
         if search.get().is_none() {
             set_show_search.set(false)
         }
@@ -179,11 +180,12 @@ pub(crate) fn SidebarContent() -> impl IntoView {
     let each = move || {
         let mut root = store
             .get()
-            .filter(|c| {
+            .filter(move |c| {
                 c.name()
                     .to_lowercase()
                     .contains(&search.get().unwrap_or_default().to_lowercase())
             })
+            .filter(move |c| c.owner_uuid() == Ok(session.get().user_uuid))
             .root_node_ids()
             .into_iter()
             .collect::<Vec<_>>();
@@ -229,8 +231,9 @@ pub(crate) fn SidebarContent() -> impl IntoView {
             >
                 <div>
                     <label for="search-filter" />
-                    <TextField
-                        input_ref
+                    // TODO: check back later if this is resolved (change to TextField stack overflow)
+                    <input
+                        node_ref=input_ref
                         id="search-filter"
                         on:blur=on_focus_out
                         on:input=handle_change
@@ -262,11 +265,7 @@ pub(crate) fn SidebarContent() -> impl IntoView {
                 </div>
             </div>
             <div>
-                <List
-                    each
-                    key=|c| *c
-                    children
-                >
+                <List each key=|c| *c children>
                     <RowSlot is_selected children=row_children slot/>
                     <Separator slot><hr /></Separator>
                 </List>

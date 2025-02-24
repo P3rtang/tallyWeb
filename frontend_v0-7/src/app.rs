@@ -1,7 +1,5 @@
 use super::*;
 
-#[cfg(not(feature = "ssr"))]
-use crate::hooks::use_saving;
 use crate::EditWindow;
 use leptos_meta::{provide_meta_context, Link, Meta, MetaTags, Stylesheet, Title};
 use leptos_router::{
@@ -61,6 +59,7 @@ pub fn App() -> impl IntoView {
                 <Routes fallback=move || view!{<h1>Not Found</h1>}>
                     <Route path=path!("/public") view=move || View::new(()) />
                     <Route path=path!("/login") view=LoginPage/>
+                    <Route path=path!("/create-account") view=account::CreateAccount/>
                     <ParentRoute path=path!("/") view=RouteUser ssr=leptos_router::SsrMode::Async>
                         <Route path=path!("preferences") view=PrefsWindow />
                         <Route path=path!("") view=Redirect />
@@ -77,7 +76,8 @@ pub fn App() -> impl IntoView {
 
 #[component]
 pub fn Redirect() -> impl IntoView {
-    let user_rsc = session::provide_session();
+    let session_rsc = session::provide_session();
+    provide_context(session_rsc);
 
     #[cfg(not(feature = "ssr"))]
     let navigate = leptos_router::hooks::use_navigate();
@@ -85,10 +85,10 @@ pub fn Redirect() -> impl IntoView {
     view! {
         <Transition fallback=|| ()>
         {
-            user_rsc.track();
+            session_rsc.track();
             #[cfg(not(feature = "ssr"))]
             Effect::new(move |_| {
-                let user = user_rsc.get();
+                let user = session_rsc.get();
                 if let Some(user) = user {
                     navigate(&format!("/{}", user.username), Default::default());
                 } else {
@@ -108,18 +108,15 @@ pub struct UserName {
 
 #[component]
 pub fn RouteUser() -> impl IntoView {
-    let user_rsc = session::provide_session();
-    let (store_rsc, _local_store_rsc) = provide_store();
-    let pref_rsc = provide_prefs();
+    let session_rsc = session::provide_session();
+    provide_context(session_rsc);
 
+    let session = RwSignal::<UserSession>::default();
+    provide_context(session);
+
+    let pref_rsc = provide_prefs(session.into());
     let prefs = RwSignal::new(Preferences::default());
     provide_context(prefs);
-
-    let store = RwSignal::new(CountableStore::default());
-    provide_context(store);
-
-    #[cfg(not(feature = "ssr"))]
-    let saving = StoredValue::new(use_saving());
 
     let screen_rsc = Resource::new_blocking(
         || (),
@@ -129,11 +126,14 @@ pub fn RouteUser() -> impl IntoView {
     let screen_signal = RwSignal::new(Screen::default());
     provide_context(screen_signal);
 
+    let owner = Owner::current().unwrap();
+
     view! {
         <Transition fallback=|| ()>
             { move || {
-                user_rsc.track();
-                pref_rsc.track();
+                if let Some(s) = session_rsc.get() {
+                    session.set(s)
+                }
 
                 if let Some(s) = screen_rsc.get() {
                     screen_signal.set(s)
@@ -142,38 +142,10 @@ pub fn RouteUser() -> impl IntoView {
                 if let Some(p) = pref_rsc.get() {
                     prefs.set(p)
                 }
-
-                #[cfg(feature="ssr")]
-                {
-                    if let Some(s) = store_rsc.get().flatten() {
-                        store.set(s)
-                    }
-                }
-
-                // INFO: This is done to enable full server side rendering because a local resource
-                // would show the transition fallback, and then the client requires JS enabled
-                #[cfg(not(feature="ssr"))]
-                {
-                    match (
-                        store_rsc.get().flatten(),
-                        _local_store_rsc.get().and_then(|s| s.take()),
-                    ) {
-                        (Some(mut s), Some(l)) => {
-                            let has_change = s.merge(l);
-                            if has_change {
-                                saving.get_value()(s.clone());
-                            }
-                            store.set(s);
-                        }
-                        (Some(s), None) => store.set(s),
-                        (None, Some(l)) => {
-                            store.set(l);
-                        },
-                        (None, None) => {}
-                    }
-                }
             }}
-            <Outlet/>
+            <WithStore owner>
+                <Outlet/>
+            </WithStore>
         </Transition>
     }
 }

@@ -67,6 +67,10 @@ where
         self.store.is_empty()
     }
 
+    pub fn owner_uuid(&self, countable: &CountableId) -> uuid::Uuid {
+        self.get(countable).unwrap().owner_uuid().unwrap()
+    }
+
     pub fn raw_filter(self, filter: impl Fn(&Countable) -> bool) -> Self {
         let store: HashMap<CountableId, Countable> = self
             .store

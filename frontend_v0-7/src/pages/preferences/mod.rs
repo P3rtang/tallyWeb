@@ -39,7 +39,7 @@ pub fn PrefsWindow() -> impl IntoView {
 
 #[component]
 pub fn SidebarContent() -> impl IntoView {
-    let sidebar = expect_context::<page_context::PageContext>().sidebar;
+    let screen = hooks::use_screen();
     let sidebar = expect_context::<page_context::PageContext>().sidebar;
     let topic = expect_context::<Memo<Topic>>();
 
@@ -48,7 +48,9 @@ pub fn SidebarContent() -> impl IntoView {
     view! {
         <div style:width=sidebar.width_attr() style:max-width="100vw">
             <nav class=main::navbar>
+                <Show when=move || screen.get().viewport() <= ViewPort::Small>
                 {sidebar.toggle_button()}
+                </Show>
             </nav>
             <List
                 each=move || vec!["styling", "account", "misc"]

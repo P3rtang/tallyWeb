@@ -50,7 +50,7 @@ pub async fn login_user(
         chrono::Duration::days(1)
     };
 
-    let user = backend::auth::login_user(&pool, username, password, dur).await?;
+    let user = backend::auth::login_user(&pool, username.clone(), password, dur).await?;
 
     let session = UserSession {
         user_uuid: user.uuid,
@@ -59,7 +59,7 @@ pub async fn login_user(
     };
 
     set_session_cookie(session.clone()).await?;
-    leptos_actix::redirect("/");
+    leptos_actix::redirect(&format!("/{}", &username));
 
     Ok(session)
 }

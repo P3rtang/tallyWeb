@@ -1,5 +1,7 @@
 #![allow(unused_imports)]
+// TODO: prevent login, edit... as a username
 
+use dev::{Service, ServiceRequest};
 use dotenvy::var;
 use std::io::Write;
 use std::process::Command;
@@ -45,6 +47,28 @@ cfg_if::cfg_if! {
                                     .route("/{tail:.*}", leptos_actix::handle_server_fns())
                             )
                             .route("/{tail:.*}", leptos_actix::handle_server_fns())
+                    )
+                    .service(
+                        web::scope("/login")
+                            .wrap_fn(move |req, srv| {
+                                let session_cookie = req.cookie("session");
+                                let fut = srv.call(req);
+                                async move {
+                                    let mut r = fut.await.unwrap();
+                                    if let Some(c) = session_cookie {
+                                        r.response_mut().add_removal_cookie(&c).unwrap();
+                                    };
+                                    Ok(r)
+                                }
+                            })
+                            .route("", {
+                                let leptos_options = leptos_options.clone();
+                                leptos_actix::render_app_async_with_context(
+                                    || (),
+                                    move || app::shell(leptos_options.clone()),
+                                    Default::default(),
+                                )
+                            })
                     )
                     .service(privacy_policy)
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))

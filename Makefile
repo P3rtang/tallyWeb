@@ -17,9 +17,8 @@ dev:
 reset: recreate-docker recreate-user recreate-db
 
 recreate-docker:
-	docker stop postgres
-	docker rm postgres
-	docker run -d --name $(POSTGRES_CONTAINER) -p $(POSTGRES_PORT):5432 --env-file .env postgres
+	docker compose down
+	docker compose up -d postgres
 	timeout 10s bash -c "until docker exec $(POSTGRES_CONTAINER) pg_isready ; do sleep .5 ; done"
 
 recreate-user:

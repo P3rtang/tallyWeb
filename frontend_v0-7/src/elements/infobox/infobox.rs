@@ -15,7 +15,9 @@ impl IsActive {
     }
 
     fn set(&self, set: bool) {
-        self.0.update(|b| *b = set);
+        if self.0.get_untracked() != set {
+            self.0.update(|b| *b = set);
+        }
     }
 }
 
