@@ -17,6 +17,9 @@ pub enum IconKind {
     Arrow,
     Settings,
     Ellipsis,
+    LogOut,
+    LogIn,
+    AddAccount,
 }
 
 impl IconKind {
@@ -36,6 +39,9 @@ impl IconKind {
                 IconKind::Arrow => style::arrow,
                 IconKind::Settings => style::settings,
                 IconKind::Ellipsis => style::ellipsis,
+                IconKind::LogOut => style::log_out,
+                IconKind::LogIn => style::log_in,
+                IconKind::AddAccount => style::add_account,
             },
             style::icon
         )

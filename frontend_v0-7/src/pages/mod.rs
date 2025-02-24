@@ -1,5 +1,6 @@
 use super::*;
 
+pub mod account;
 mod edit;
 pub mod home;
 mod login;

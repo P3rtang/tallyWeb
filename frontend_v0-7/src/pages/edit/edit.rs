@@ -28,6 +28,7 @@ pub fn EditWindow() -> impl IntoView {
 
 #[component]
 fn SidebarContent() -> impl IntoView {
+    let screen = hooks::use_screen();
     let sidebar = expect_context::<page_context::PageContext>().sidebar;
     let store = expect_context::<RwSignal<CountableStore>>();
     let selection = expect_context::<Memo<Selection>>();
@@ -43,7 +44,9 @@ fn SidebarContent() -> impl IntoView {
     view! {
         <div style:width=sidebar.width_attr() style:max-width="100vw">
             <nav class=main::navbar>
+                <Show when=move || screen.get().viewport() <= ViewPort::Small>
                 {sidebar.toggle_button()}
+                </Show>
             </nav>
             <List
                 each
@@ -244,7 +247,7 @@ fn EditCount(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
         <TextField
             id="change-count"
             label="Count"
-            r#type="number"
+            type_="number"
             prop:value=count
             attr:value=count
             attr:name="countable[count]"
@@ -261,7 +264,7 @@ fn EditStepSize(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
         <TextField
             id="change-step"
             label="Step size"
-            r#type="number"
+            type_="number"
             prop:value=step
             attr:value=step
             attr:name="countable[step]"

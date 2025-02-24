@@ -166,6 +166,14 @@ impl Countable {
 
         Ok(())
     }
+
+    pub fn owner_uuid(&self) -> AppResult<uuid::Uuid> {
+        Ok(match self {
+            Countable::Counter(c) => c.lock()?.owner_uuid,
+            Countable::Phase(p) => p.lock()?.owner_uuid,
+            Countable::Chain(_) => todo!(),
+        })
+    }
 }
 
 impl Savable for Vec<Countable> {

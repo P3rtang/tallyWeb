@@ -2,7 +2,7 @@ use super::*;
 
 stylance::import_style!(style, "button.module.scss");
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub enum ButtonSize {
     #[default]
     Default,
@@ -20,7 +20,7 @@ impl ButtonSize {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub enum ButtonRounding {
     None,
     #[default]
@@ -38,7 +38,7 @@ impl ButtonRounding {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub enum ButtonHover {
     #[default]
     Darken,
@@ -58,17 +58,49 @@ impl ButtonHover {
 #[component]
 pub fn Button(
     children: ChildrenFn,
+    #[prop(into, optional)] href: Option<Signal<String>>,
     #[prop(into, optional)] size: ButtonSize,
     #[prop(into, optional)] rounding: ButtonRounding,
     #[prop(into, optional)] hover: ButtonHover,
     #[prop(into, optional)] node_ref: NodeRef<html::Button>,
-    #[prop(into, optional)] class: String,
+    #[prop(into, optional)] class: Signal<String>,
 ) -> impl IntoView {
-    view! {
-        <button node_ref=node_ref class=stylance::classes!(style::button, size.into_class(), rounding.into_class(), hover.into_class(), class.as_str())>
-            <div>
-            { children() }
-            </div>
-        </button>
+    let children = StoredValue::new(children);
+
+    if let Some(href) = href {
+        Either::Left(view! {
+            <AttributeInterceptor let:attrs>
+                <A href=href>
+                    <Button
+                        node_ref=node_ref
+                        class=stylance::classes!(
+                            style::button,
+                            size.into_class(),
+                            rounding.into_class(),
+                            hover.into_class(),
+                            class.get().as_str()
+                        )
+                        {..attrs}
+                    >
+                        <div>{children.get_value()()}</div>
+                    </Button>
+                </A>
+            </AttributeInterceptor>
+        })
+    } else {
+        Either::Right(view! {
+            <button
+                node_ref=node_ref
+                class=stylance::classes!(
+                    style::button,
+                    size.into_class(),
+                    rounding.into_class(),
+                    hover.into_class(),
+                    class.get().as_str()
+                )
+            >
+                <div>{ children.get_value()() }</div>
+            </button>
+        })
     }
 }

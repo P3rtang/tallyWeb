@@ -1,3 +1,4 @@
+#![allow(unused)]
 pub(crate) mod indexed;
 pub(crate) mod nodes;
 pub(crate) mod server;
@@ -12,4 +13,4 @@ pub(crate) use super::{
 pub use nodes::{Countable, CountableId, CountableKind, Counter, Hunttype};
 pub(crate) use store::CountableStore as CS;
 pub type CountableStore = CS<store::Level, store::UnChecked>;
-pub use signal::provide_store;
+pub use signal::{provide_store, WithStore};

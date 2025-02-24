@@ -4,11 +4,11 @@ use super::*;
 pub fn TextField(
     #[prop(into)] id: Signal<String>,
     #[prop(into, optional)] label: Option<Signal<String>>,
-    #[prop(into, default="text".into())] r#type: Signal<String>,
+    #[prop(into, default="text".into())] type_: Signal<String>,
     #[prop(into, optional)] input_ref: NodeRef<html::Input>,
 ) -> impl IntoView {
     let screen = hooks::use_screen();
-    let text_align = move || match r#type.get().as_str() {
+    let text_align = move || match type_.get().as_str() {
         "number" => "end",
         _ => "unset",
     };
@@ -28,7 +28,7 @@ pub fn TextField(
                     class=style::input
                     style:grid-column=move || { if screen.get().viewport() > ViewPort::Small { "2" } else { "1" } }
                 >
-                    <input node_ref=input_ref id=id r#type=move || r#type.get() {..align} {..attrs} />
+                    <input node_ref=input_ref id=id r#type=move || type_.get() {..align} {..attrs} />
                 </div>
             }
         }

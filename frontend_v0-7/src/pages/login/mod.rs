@@ -1,6 +1,5 @@
 use super::*;
 use leptos::form::ActionForm;
-use leptos_router::components::A;
 
 stylance::import_style!(
     #[allow(dead_code)]
@@ -21,6 +20,8 @@ pub fn LoginPage() -> impl IntoView {
 
     Effect::new(move |_| server_resp.track());
 
+    // TODO: reset indexed_db
+    //
     // #[cfg(not(feature = "ssr"))]
     // leptos::task::spawn_local(async move {
     //     if let Err(err) = indexed::IndexedSaveHandler::reset().await {
@@ -52,16 +53,26 @@ pub fn LoginPage() -> impl IntoView {
                 />
 
                 <action-buttons>
-                    <div class=style::action_button_el>
+                    <Button class=style::remember rounding=ButtonRounding::Full attr:r#type="button">
                         <input type="checkbox" name="remember" id="remember" />
                         <label for="remember">Remember Me</label>
-                    </div>
-                    <A href="/create-account">
-                        <i class="fa-solid fa-user-plus"></i>
-                    </A>
-                    <button type="submit" aria-label="button-sign-in">
-                        <i class="fa-solid fa-right-to-bracket"></i>
-                    </button>
+                    </Button>
+                    <Button
+                        href="/create-account"
+                        rounding=ButtonRounding::Full
+                        size=ButtonSize::Big
+                        attr:r#type="button"
+                    >
+                        <Icon color=IconColor::Black kind=IconKind::AddAccount />
+                    </Button>
+                    <Button
+                        rounding=ButtonRounding::Full
+                        size=ButtonSize::Big
+                        attr:r#type="submit"
+                        attr:aria-label="sign in button"
+                    >
+                        <Icon color=IconColor::Black kind=IconKind::LogIn />
+                    </Button>
                 </action-buttons>
             </div>
         </ActionForm>

@@ -33,47 +33,38 @@ pub struct UserSession {
 
 #[component(transparent)]
 pub fn SessionFormInput(#[prop(into)] session: Signal<UserSession>) -> impl IntoView {
-    let session_val = StoredValue::new(session);
     view! {
         <input
             type="hidden"
             name="session[user_uuid]"
-            value=move || session_val.get_value()().user_uuid.to_string()
+            value=move || session.get().user_uuid.to_string()
+            prop:value=move || session.get().user_uuid.to_string()
         />
         <input
             type="hidden"
             name="session[username]"
-            value=move || session_val.get_value()().username
+            value=move || session.get().username
+            prop:value=move || session.get().username
         />
         <input
             type="hidden"
             name="session[token]"
-            value=move || session_val.get_value()().token.to_string()
+            value=move || session.get().token.to_string()
+            prop:value=move || session.get().token.to_string()
         />
     }
 }
 
 pub fn provide_session() -> Resource<UserSession> {
-    let owner = Owner::current().unwrap();
-
-    let user = RwSignal::new(UserSession::default());
     let user_resc = Resource::new_blocking(
-        move || (),
-        move |_| async {
+        || (),
+        move |_| async move {
             let user = get_user_signal().await;
             // TODO: regenerate token when expired error
             let _ = api::check_user(user.clone()).await;
             user
         },
     );
-
-    Effect::new_isomorphic(move || {
-        if let Some(u) = user_resc.get() {
-            user.set(u)
-        }
-    });
-
-    owner.with(move || provide_context(user));
 
     user_resc
 }

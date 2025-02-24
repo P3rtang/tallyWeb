@@ -10,6 +10,7 @@
   .row {
     display: flex;
     flex-wrap: wrap;
+    container-type: inline-size;
 
     @media (min-width: 1200px) {
       max-width: calc(100vw - 410px);
@@ -67,8 +68,10 @@
       font-size: 0.75em;
       padding: 0.5em;
       padding-left: 1em;
+    }
 
-      @container (max-width: 500px) {
+    @container (max-width: 900px) {
+      .title {
         font-size: 18px;
         position: absolute;
 
