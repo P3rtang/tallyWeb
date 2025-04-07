@@ -14,14 +14,14 @@ use std::sync::Arc;
 #[cfg(feature = "ssr")]
 use tokio::task::spawn_blocking;
 
-mod use_dialog;
+mod dialog;
 mod use_history;
 mod use_message;
 mod use_overlay;
 mod use_saving;
 mod use_screen;
 
-pub use use_dialog::use_confirm;
+pub use dialog::use_confirm;
 pub use use_history::{use_history, History};
 pub use use_message::{use_message, Severity};
 pub use use_overlay::use_overlay;
