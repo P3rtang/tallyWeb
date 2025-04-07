@@ -10,24 +10,17 @@ stylance::import_style!(
 #[component]
 pub fn LoginPage() -> impl IntoView {
     let login_action = ServerAction::<api::LoginUser>::new();
-    // let message_jar = expect_context::<components::MessageJar>();
 
-    let server_resp = Memo::new(move |_| {
-        if let Some(Err(_err)) = login_action.value().get() {
-            // message_jar.set_err(AppError::from(err))
+    let message = use_message();
+
+    Effect::new(move |_| {
+        if let Some(Err(err)) = login_action.value().get() {
+            message(
+                move || view! {<b>{err.to_string()}</b>},
+                (Severity::Error, None).into(),
+            );
         }
     });
-
-    Effect::new(move |_| server_resp.track());
-
-    // TODO: reset indexed_db
-    //
-    // #[cfg(not(feature = "ssr"))]
-    // leptos::task::spawn_local(async move {
-    //     if let Err(err) = indexed::IndexedSaveHandler::reset().await {
-    //         message_jar.set_err(err)
-    //     }
-    // });
 
     view! {
         <ActionForm action=login_action>
@@ -70,6 +63,7 @@ pub fn LoginPage() -> impl IntoView {
                         size=ButtonSize::Big
                         attr:r#type="submit"
                         attr:aria-label="sign in button"
+                        attr:label="sign-in"
                     >
                         <Icon color=IconColor::Black kind=IconKind::LogIn />
                     </Button>

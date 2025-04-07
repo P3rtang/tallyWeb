@@ -195,16 +195,14 @@ pub async fn update_counter(session: UserSession, counter: Counter) -> Result<()
 }
 
 #[server(ArchiveCountable, "/api/session")]
-pub async fn archive_countable(countable: Countable) -> Result<(), ServerFnError> {
+pub async fn archive_countable(id: uuid::Uuid, kind: CountableKind) -> Result<(), ServerFnError> {
     let pool = extract_pool().await?;
     let mut tx = pool.begin().await?;
 
-    let uuid = countable.uuid();
-
-    if let Err(err) = match countable {
-        Countable::Counter(_) => backend::counter::archive(&mut tx, uuid).await,
-        Countable::Phase(_) => backend::phase::archive(&mut tx, uuid).await,
-        Countable::Chain(_) => todo!(),
+    if let Err(err) = match kind {
+        CountableKind::Counter => backend::counter::archive(&mut tx, id).await,
+        CountableKind::Phase => backend::phase::archive(&mut tx, id).await,
+        CountableKind::Chain => todo!(),
     } {
         tx.rollback().await?;
         return Err(err.into());

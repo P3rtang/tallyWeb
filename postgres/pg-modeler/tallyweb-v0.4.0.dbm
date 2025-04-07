@@ -1,0 +1,545 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+CAUTION: Do not modify this file unless you know what you are doing.
+ Unexpected results may occur if the code is changed deliberately.
+-->
+<dbmodel pgmodeler-ver="1.2.0-alpha1" use-changelog="false" max-obj-count="12"
+	 last-position="0,0" last-zoom="0.85" scene-rect="0,0,2220.34,1572.92"
+	 default-schema="public" default-owner="postgres"
+	 layers="Default layer"
+	 active-layers="0"
+	 layer-name-colors="#000000"
+	 layer-rect-colors="#b4b4b4"
+	 show-layer-names="false" show-layer-rects="false">
+<role name="p3rtang"
+ createdb="true"
+ inherit="true"
+ login="true"
+ password="********">
+</role>
+
+<database name="tally_web" encoding="UTF8" lc-collate="en_US.utf8" lc-ctype="en_US.utf8" is-template="false" allow-conns="true">
+	<role name="p3rtang"/>
+	<tablespace name="pg_default"/>
+</database>
+
+<schema name="public" layers="0" rect-visible="true" fill-color="#e1e1e1" name-color="#000000" sql-disabled="true">
+</schema>
+
+<schema name="v0_4" layers="0" alias="v0.4" rect-visible="true" fill-color="#aaaaff" name-color="#31363b">
+	<role name="p3rtang"/>
+</schema>
+
+<tag name="v0.4">
+	<style id="table-body" colors="#474f56,#474f56,#595e61"/>
+	<style id="table-ext-body" colors="#474f56,#474f56,#595e61"/>
+	<style id="table-name" colors="#865b9d"/>
+	<style id="table-schema-name" colors="#ffaaff"/>
+	<style id="table-title" colors="#aaaa00,#aaaa00,#e1e18d"/>
+	<style id="table-toggler-body" colors="#474f56,#474f56,#595e61"/>
+	<style id="table-toggler-btns" colors="#3275b0,#6ec0ff,#77cbff"/>
+</tag>
+<table name="_sqlx_migrations" layers="0" collapse-mode="2" faded-out="true" max-obj-count="7" z-value="0">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<position x="220" y="80"/>
+	<column name="version" not-null="true">
+		<type name="bigint" length="0"/>
+	</column>
+	<column name="description" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="installed_on" not-null="true" default-value="now()">
+		<type name="timestamp with time zone" length="0" with-timezone="true"/>
+	</column>
+	<column name="success" not-null="true">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="checksum" not-null="true">
+		<type name="bytea" length="0"/>
+	</column>
+	<column name="execution_time" not-null="true">
+		<type name="bigint" length="0"/>
+	</column>
+	<constraint name="_sqlx_migrations_pkey" type="pk-constr" table="public._sqlx_migrations">
+		<columns names="version" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<usertype name="hunttype" configuration="enumeration">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<enumeration label="OldOdds"/>
+	<enumeration label="NewOdds"/>
+	<enumeration label="SOS"/>
+	<enumeration label="DexNav"/>
+	<enumeration label="MasudaGenIV"/>
+	<enumeration label="MasudaGenV"/>
+	<enumeration label="MasudaGenVI"/>
+</usertype>
+
+<table name="counters" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<position x="760" y="60"/>
+	<column name="name" not-null="true">
+		<type name="character varying" length="0"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="owner_uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="last_edit" not-null="true" default-value="now()">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="is_deleted" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<constraint name="counters_pkey" type="pk-constr" table="public.counters">
+		<columns names="uuid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="users" layers="0" collapse-mode="2" max-obj-count="4" z-value="0">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<position x="1240" y="320"/>
+	<column name="username" not-null="true">
+		<type name="character varying" length="0"/>
+	</column>
+	<column name="password" not-null="true">
+		<type name="character varying" length="0"/>
+	</column>
+	<column name="email">
+		<type name="character varying" length="0"/>
+	</column>
+	<column name="uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<constraint name="users_username_key" type="uq-constr" table="public.users">
+		<columns names="username" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="users_pkey" type="pk-constr" table="public.users">
+		<columns names="uuid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="auth_tokens" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<position x="1720" y="60"/>
+	<column name="expire_on" not-null="true" default-value="(now() + '1 day'::interval day)">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="user_uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<constraint name="auth_tokens_pkey" type="pk-constr" table="public.auth_tokens">
+		<columns names="uuid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="preferences" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<position x="1800" y="540"/>
+	<column name="use_default_accent_color" not-null="true" default-value="true">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="accent_color">
+		<type name="character varying" length="0"/>
+	</column>
+	<column name="show_separator" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="multi_select" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="user_uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="save_on_pause" not-null="true" default-value="true">
+		<type name="boolean" length="0"/>
+	</column>
+	<constraint name="preferences_pkey" type="pk-constr" table="public.preferences">
+		<columns names="user_uuid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<extension name="uuid-ossp" cur-version="1.1">
+	<schema name="public"/>
+	<comment> <![CDATA[generate universally unique identifiers (UUIDs)]]> </comment>
+</extension>
+
+<table name="phases" layers="0" collapse-mode="2" max-obj-count="16" z-value="0">
+	<schema name="public"/>
+	<role name="p3rtang"/>
+	<position x="640" y="400"/>
+	<column name="name" not-null="true">
+		<type name="character varying" length="0"/>
+	</column>
+	<column name="count" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="time" not-null="true">
+		<type name="bigint" length="0"/>
+	</column>
+	<column name="hunt_type" not-null="true">
+		<type name="public.hunttype" length="0"/>
+	</column>
+	<column name="has_charm" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="dexnav_encounters">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="created_at" not-null="true" default-value="now()">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="owner_uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="parent_uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="success" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="last_edit" not-null="true" default-value="now()">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="is_deleted" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="step_size" not-null="true" default-value="1">
+		<type name="integer" length="0"/>
+		<comment> <![CDATA[Step size indicates the amount needed to add to count, when an add_count command is given in the `CountableStore`.]]> </comment>
+	</column>
+	<constraint name="phases_primary_key" type="pk-constr" table="public.phases">
+		<columns names="uuid" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<usertype name="countable_type" configuration="enumeration">
+	<schema name="v0_4"/>
+	<role name="p3rtang"/>
+	<enumeration label="T_Phase"/>
+	<enumeration label="T_Counter"/>
+</usertype>
+
+<table name="countable_object" layers="0" collapse-mode="2" max-obj-count="7" z-value="0">
+	<schema name="v0_4"/>
+	<role name="p3rtang"/>
+	<comment> <![CDATA[A table storing all countable objects like counters or phases, but could also include group etc...]]> </comment>
+	<tag name="v0.4"/>
+	<position x="1080" y="940"/>
+	<column name="uuid" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="type" not-null="true">
+		<type name="v0_4.countable_type" length="0"/>
+	</column>
+	<column name="owner" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="created_on" not-null="true" default-value="now()">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="changed_on" not-null="true" default-value="now()">
+		<type name="timestamp" length="0"/>
+	</column>
+	<column name="deleted_on">
+		<type name="timestamp" length="0"/>
+	</column>
+	<constraint name="countable_pkey" type="pk-constr" table="v0_4.countable_object">
+		<columns names="uuid,type" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="phase" layers="0" collapse-mode="2" max-obj-count="8" z-value="0">
+	<schema name="v0_4"/>
+	<role name="p3rtang"/>
+	<tag name="v0.4"/>
+	<position x="400" y="1260"/>
+	<column name="name" not-null="true">
+		<type name="varchar" length="0"/>
+	</column>
+	<column name="count" not-null="true" default-value="0">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="time" not-null="true" default-value="0">
+		<type name="bigint" length="0"/>
+	</column>
+	<column name="step_size" not-null="true" default-value="1">
+		<type name="integer" length="0"/>
+	</column>
+
+	<customidxs object-type="column">
+		<object name="type" index="1"/>
+		<object name="uuid" index="0"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="countable_object_fk" index="0"/>
+		<object name="phase_pk" index="2"/>
+		<object name="phase_uq" index="1"/>
+	</customidxs></table>
+
+<table name="counter" layers="0" collapse-mode="2" max-obj-count="3" z-value="0">
+	<schema name="v0_4"/>
+	<role name="postgres"/>
+	<tag name="v0.4"/>
+	<position x="1460" y="1320"/>
+	<column name="name" not-null="true">
+		<type name="varchar" length="0"/>
+	</column>
+
+	<customidxs object-type="column">
+		<object name="type" index="1"/>
+		<object name="uuid" index="0"/>
+	</customidxs>
+	<customidxs object-type="constraint">
+		<object name="countable_object_fk" index="0"/>
+		<object name="counter_pk" index="2"/>
+		<object name="counter_uq" index="1"/>
+	</customidxs></table>
+
+<table name="countable_pokemon_setting" layers="0" collapse-mode="2" max-obj-count="6" z-value="0">
+	<schema name="v0_4"/>
+	<role name="p3rtang"/>
+	<tag name="v0.4"/>
+	<position x="1740" y="900"/>
+	<column name="hunt_type" not-null="true" default-value="'NewOdds'">
+		<type name="public.hunttype" length="0"/>
+	</column>
+	<column name="has_charm" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+	<column name="is_success" not-null="true" default-value="false">
+		<type name="boolean" length="0"/>
+	</column>
+</table>
+
+<view name="phases" layers="0" collapse-mode="2" pagination="true" attribs-page="0" ext-attribs-page="0" max-obj-count="0" z-value="0">
+	<schema name="v0_4"/>
+	<role name="p3rtang"/>
+	<comment> <![CDATA[A view akin to the old phases table
+backwards compat between dev and prod]]> </comment>
+	<tag name="v0.4"/>
+	<position x="460" y="900"/>
+	<simplecol name="uuid" type="uuid"/>
+	<simplecol name="name" type="varchar"/>
+	<simplecol name="count" type="integer"/>
+	<simplecol name="time" type="bigint"/>
+	<simplecol name="hunt_type" type="public.hunttype"/>
+	<simplecol name="has_charm" type="boolean"/>
+	<simplecol name="created_at" type="timestamp"/>
+	<simplecol name="owner_uuid" type="uuid"/>
+	<simplecol name="parent_uuid" type="uuid"/>
+	<simplecol name="success" type="boolean"/>
+	<simplecol name="last_edit" type="timestamp"/>
+	<simplecol name="is_deleted" type="boolean"/>
+	<simplecol name="step_size" type="integer"/>
+	<definition> <![CDATA[SELECT 
+	co.uuid,
+	phase.name,
+	phase.count,
+	phase.time,
+	phase.step_size,
+	phase.parent as parent_uuid,
+	co.owner as owner_uuid,
+	co.created_on as created_at,
+	co.changed_on as last_edit,
+	CASE WHEN deleted_on IS NULL THEN false ELSE true END as is_deleted,
+	ps.hunt_type,
+	ps.has_charm,
+	ps.is_success as success
+FROM phase
+
+JOIN countable_object AS co
+ON 
+	co.uuid = phase.uuid AND
+	co.type = phase.type
+
+JOIN countable_pokemon_setting as ps
+ON 
+	co.uuid = ps.uuid AND
+	co.type = ps.type]]> </definition>
+</view>
+
+<relationship name="counter_has_one_countable_object" type="rel11" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 custom-color="#ccb720"
+	 src-table="v0_4.countable_object"
+	 dst-table="v0_4.counter"
+	 src-required="true" dst-required="false"
+	 deferrable="true" defer-type="INITIALLY DEFERRED"
+	upd-action="CASCADE"
+	del-action="CASCADE">
+	<special-pk-cols indexes="0"/>
+</relationship>
+
+<relationship name="phase_has_one_countable_object" type="rel11" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 custom-color="#37bd34"
+	 src-table="v0_4.countable_object"
+	 dst-table="v0_4.phase"
+	 src-required="true" dst-required="false"
+	 deferrable="true" defer-type="INITIALLY DEFERRED"
+	upd-action="CASCADE"
+	del-action="CASCADE">
+	<special-pk-cols indexes="0"/>
+</relationship>
+
+<relationship name="countable_pokemon_setting_has_one_countable_object" type="rel11" layers="0"
+	 src-col-pattern="{sc}"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 custom-color="#f19ad0"
+	 src-table="v0_4.countable_object"
+	 dst-table="v0_4.countable_pokemon_setting"
+	 src-required="true" dst-required="false"
+	 deferrable="true" defer-type="INITIALLY DEFERRED"
+	upd-action="CASCADE"
+	del-action="CASCADE">
+	<special-pk-cols indexes="0,1"/>
+</relationship>
+
+<function name="refresh"
+		window-func="false"
+		returns-setof="false"
+		behavior-type="CALLED ON NULL INPUT"
+		function-type="VOLATILE"
+		security-type="SECURITY INVOKER"
+		parallel-type="PARALLEL UNSAFE"
+		execution-cost="1"
+		row-amount="0">
+	<schema name="v0_4"/>
+	<role name="p3rtang"/>
+	<language name="plpgsql"/>
+	<return-type>
+	<type name="trigger" length="0"/>
+	</return-type>
+	<definition> <![CDATA[begin
+    refresh materialized view v0_4.phases;
+    return null;
+end ]]> </definition>
+</function>
+
+<relationship name="counter_has_many_phase" type="rel1n" layers="0"
+	 src-col-pattern="parent"
+	 pk-pattern="{dt}_pk" uq-pattern="{dt}_uq"
+	 src-fk-pattern="{st}_fk"
+	 custom-color="#ab494f"
+	 src-table="v0_4.counter"
+	 dst-table="v0_4.phase"
+	 src-required="true" dst-required="false"
+	 deferrable="true" defer-type="INITIALLY DEFERRED"
+	upd-action="CASCADE"
+	del-action="CASCADE"/>
+
+<view name="counters" layers="0" collapse-mode="2" max-obj-count="0" z-value="0">
+	<schema name="v0_4"/>
+	<role name="p3rtang"/>
+	<tag name="v0.4"/>
+	<position x="760" y="900"/>
+	<simplecol name="uuid" type="uuid"/>
+	<simplecol name="name" type="varchar"/>
+	<simplecol name="owner_uuid" type="uuid"/>
+	<simplecol name="created_at" type="timestamp"/>
+	<simplecol name="last_edit" type="timestamp"/>
+	<simplecol name="is_deleted" type="boolean"/>
+	<definition> <![CDATA[SELECT 
+	co.uuid,
+	counter.name,
+	co.owner AS owner_uuid,
+	co.created_on AS created_at,
+	co.changed_on AS last_edit,
+	co.deleted_on IS NOT NULL as is_deleted
+FROM v0_4.countable_object AS co
+
+JOIN v0_4.counter
+ON co.uuid = counter.uuid AND co.type = counter.type]]> </definition>
+</view>
+
+<constraint name="owner_foreign_key" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.counters">
+	<columns names="owner_uuid" ref-type="src-columns"/>
+	<columns names="uuid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="user_foreign_key" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.auth_tokens">
+	<columns names="user_uuid" ref-type="src-columns"/>
+	<columns names="uuid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="user_foreign_key" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.preferences">
+	<columns names="user_uuid" ref-type="src-columns"/>
+	<columns names="uuid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="owner_foreign_key" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="public.phases">
+	<columns names="owner_uuid" ref-type="src-columns"/>
+	<columns names="uuid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="parent_foreign_key" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.counters" table="public.phases">
+	<columns names="parent_uuid" ref-type="src-columns"/>
+	<columns names="uuid" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="owner_fkey" type="fk-constr" comparison-type="MATCH FULL"
+	 upd-action="CASCADE" del-action="CASCADE" ref-table="public.users" table="v0_4.countable_object">
+	<columns names="owner" ref-type="src-columns"/>
+	<columns names="uuid" ref-type="dst-columns"/>
+</constraint>
+
+<relationship name="rel_phases_users" type="relfk" layers="0"
+	 src-table="public.phases"
+	 dst-table="public.users" reference-fk="owner_foreign_key"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_phases_counters" type="relfk" layers="0"
+	 src-table="public.phases"
+	 dst-table="public.counters" reference-fk="parent_foreign_key"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_preferences_users" type="relfk" layers="0"
+	 src-table="public.preferences"
+	 dst-table="public.users" reference-fk="user_foreign_key"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_auth_tokens_users" type="relfk" layers="0"
+	 src-table="public.auth_tokens"
+	 dst-table="public.users" reference-fk="user_foreign_key"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_counters_users" type="relfk" layers="0"
+	 src-table="public.counters"
+	 dst-table="public.users" reference-fk="owner_foreign_key"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_countable_object_users" type="relfk" layers="0"
+	 src-table="v0_4.countable_object"
+	 dst-table="public.users" reference-fk="owner_fkey"
+	 src-required="false" dst-required="true"/>
+
+</dbmodel>

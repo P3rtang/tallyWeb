@@ -36,3 +36,6 @@ pub use fuzzy_sort::Sortable;
 use icon::*;
 pub use infobox::InfoBox;
 pub use navbar::{Navbar, OnClose};
+
+mod message;
+pub use message::Message;

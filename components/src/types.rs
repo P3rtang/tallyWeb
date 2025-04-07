@@ -39,3 +39,29 @@ impl<T> FnMut<(T,)> for EventCallback<T> {
         self.call(args.0)
     }
 }
+
+#[derive(Clone)]
+pub struct ChildrenPropFn<T>(Arc<dyn Fn(T) -> AnyView + Send + Sync + 'static>)
+where
+    T: Clone + 'static;
+
+impl<T, F> From<F> for ChildrenPropFn<T>
+where
+    F: Fn(T) -> AnyView + Send + Sync + 'static,
+    T: Clone + 'static,
+{
+    fn from(value: F) -> Self {
+        Self(Arc::new(value))
+    }
+}
+
+impl<T> FnOnce<(T,)> for ChildrenPropFn<T>
+where
+    T: Clone + 'static,
+{
+    type Output = AnyView;
+
+    extern "rust-call" fn call_once(self, args: (T,)) -> Self::Output {
+        (self.0)(args.0)
+    }
+}

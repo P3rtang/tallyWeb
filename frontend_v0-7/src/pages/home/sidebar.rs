@@ -123,20 +123,18 @@ pub(crate) fn SidebarContent() -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
     let selection = expect_context::<Memo<Selection>>();
     let screen = hooks::use_screen();
+    let message = use_message();
 
     let is_selected = move |key: CountableId| selection.get().contains(&key);
 
     let action = ServerAction::<api::CreateCountable>::new();
 
-    Effect::new(move |_| {
-        match action.value().get() {
-            Some(Ok(countables)) => {
-                store.update(|s| countables.into_iter().for_each(|c| s.insert(c)))
-            }
-            // TODO: add in logging of server error with messagejar
-            Some(Err(_err)) => (),
-            None => (),
+    Effect::new(move |_| match action.value().get() {
+        Some(Ok(countables)) => store.update(|s| countables.into_iter().for_each(|c| s.insert(c))),
+        Some(Err(err)) => {
+            message.server_err(err);
         }
+        None => (),
     });
 
     let row_children = move |countable| view! { <TreeRow countable /> }.into_any();
@@ -145,10 +143,16 @@ pub(crate) fn SidebarContent() -> impl IntoView {
     let (show_search, set_show_search) = signal(false);
     let (search, set_search) = signal(None);
     let (show_sort, set_show_sort) = signal(false);
-    let (sort, set_sort) = signal(Sort::default());
+    let sort = RwSignal::new(Sort::default());
 
     let search_height = move || if show_search.get() { "100px" } else { "0px" };
-    let sort_height = move || if show_sort.get() { "100px" } else { "0px" };
+    let sort_height = Signal::derive(move || {
+        if show_sort.get() {
+            "100px".to_string()
+        } else {
+            "0px".to_string()
+        }
+    });
 
     let handle_change = move |ev: ev::Event| {
         let value = event_target_value(&ev);
@@ -208,12 +212,6 @@ pub(crate) fn SidebarContent() -> impl IntoView {
         Sort::CreatedOn { reverse: true },
     ];
 
-    let handle_sort_change = move |s: Option<Sort>| {
-        let mut s = s.unwrap_or_default();
-        s.set_reverse(sort.get_untracked().is_reversed());
-        set_sort(s);
-    };
-
     let width = move || {
         if screen.get().viewport() <= ViewPort::Small && sidebar.is_shown().get() {
             return "100vw".to_string();
@@ -232,38 +230,15 @@ pub(crate) fn SidebarContent() -> impl IntoView {
                 <div>
                     <label for="search-filter" />
                     // TODO: check back later if this is resolved (change to TextField stack overflow)
-                    <input
-                        node_ref=input_ref
+                    <TextField
+                        input_ref
                         id="search-filter"
                         on:blur=on_focus_out
                         on:input=handle_change
                     />
                 </div>
             </div>
-            <div
-                class=move || stylance::classes!(style::sort_box, show_sort.get().then_some(style::shown))
-                style:max-height=sort_height
-            >
-                <div>
-                    <Button
-                        rounding=ButtonRounding::Full
-                        on:click=move |_| set_sort.update(|s| s.reverse())
-                        attr:aria_label=move || if sort.get().is_reversed() { "sort ascending" } else { "sort descending" }
-                    >
-                        <Icon
-                            kind=IconKind::Arrow
-                            style:transform=move || if sort.get().is_reversed() { "rotate(90deg)" } else { "rotate(-90deg)" }
-                            color=IconColor::Black
-                        />
-                    </Button>
-                    <SelectField
-                        id="filter-countable"
-                        options
-                        value=sort
-                        on_change=handle_sort_change
-                    />
-                </div>
-            </div>
+            <SortInputs show_sort options sort sort_height />
             <div>
                 <List each key=|c| *c children>
                     <RowSlot is_selected children=row_children slot/>
@@ -277,6 +252,48 @@ pub(crate) fn SidebarContent() -> impl IntoView {
                 </ActionForm>
             </div>
         </div>
+    }
+}
+
+#[component]
+fn SortInputs(
+    #[prop(into)] show_sort: Signal<bool>,
+    #[prop(into)] sort_height: Signal<String>,
+    #[prop(into)] options: Signal<Vec<Sort>>,
+    sort: RwSignal<Sort>,
+) -> impl IntoView {
+    let handle_sort_change = move |s: Option<Sort>| {
+        let mut s = s.unwrap_or_default();
+        s.set_reverse(sort.get_untracked().is_reversed());
+        sort.set(s);
+    };
+
+    view! {
+        // <div
+        //     class=move || stylance::classes!(style::sort_box, show_sort.get().then_some(style::shown))
+        //     style:max-height=sort_height
+        // >
+        //     <div>
+        //         <Button
+        //             size=ButtonSize::Icon
+        //             rounding=ButtonRounding::Full
+        //             on:click=move |_| sort.update(|s| s.reverse())
+        //             attr:aria_label=move || if sort.get().is_reversed() { "sort ascending" } else { "sort descending" }
+        //         >
+        //             <Icon
+        //                 kind=IconKind::Arrow
+        //                 style:transform=move || if sort.get().is_reversed() { "rotate(90deg)" } else { "rotate(-90deg)" }
+        //                 color=IconColor::Black
+        //             />
+        //         </Button>
+        //         <SelectField
+        //             id="filter-countable"
+        //             options=options
+        //             value=sort
+        //             on_change=handle_sort_change
+        //         />
+        //     </div>
+        // </div>
     }
 }
 
@@ -351,20 +368,24 @@ fn Navbar(
                 </Show>
                 <Button
                     hover=ButtonHover::Lighten
-                    style:background="transparent"
-                    on:mousedown=on_search.clone()
-                    attr:aria_label="search filter"
+                    size=ButtonSize::Icon
                     class=style::icon
+
+                    style:background="transparent"
+                    attr:aria_label="search filter"
+                    on:mousedown=on_search.clone()
                 >
                     <Icon kind=IconKind::Search />
                 </Button>
             </div>
             <Button
                 hover=ButtonHover::Lighten
-                style:background="transparent"
-                on:mousedown=on_sort.clone()
-                attr:aria_label="sort filter"
+                size=ButtonSize::Icon
                 class=style::icon
+
+                style:background="transparent"
+                attr:aria_label="sort filter"
+                on:mousedown=on_sort.clone()
             >
                 <Icon kind=IconKind::Sort />
             </Button>

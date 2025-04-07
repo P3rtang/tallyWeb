@@ -3,6 +3,8 @@
 #![feature(let_chains)]
 #![allow(unused)]
 
+mod attribute_fn;
+pub mod block;
 mod loading_screen;
 mod message;
 mod progressbar;
@@ -18,8 +20,10 @@ mod tree;
 mod treeview;
 mod types;
 
+pub use attribute_fn::{AttributeFn, IntoAttributeFn};
+pub use block::Block;
 pub use loading_screen::*;
-pub use message::{Message, MessageKey, ProvideMessageSystem};
+pub use message::*;
 pub use progressbar::*;
 pub use resizebar::{Direction, ResizeBar};
 pub use saving_screen::*;
@@ -33,13 +37,14 @@ pub use tree::{Caret, CaretState, ChildWrapper, RowWrapper, Separator, Tree, Wra
 pub use treeview::*;
 pub use types::*;
 
-pub type MessageJar = message::MessageJar<message::NoHandle>;
+pub type MessageJar = message::jar::MessageJar<message::jar::NoHandle>;
 
 use leptos::{
     attr::{
         any_attribute::{AnyAttribute, IntoAnyAttribute},
         Attribute,
     },
+    either::*,
     ev,
     logging::warn,
     prelude::*,
@@ -73,30 +78,5 @@ pub fn Overlay(
                 {children()}
             </div>
         </Show>
-    }
-}
-
-#[derive(Clone)]
-pub struct AttributeFn(std::sync::Arc<dyn Fn() -> AnyAttribute + Send + Sync + 'static>);
-
-impl AttributeFn {
-    pub fn call(&self) -> AnyAttribute {
-        (self.0)()
-    }
-}
-
-impl Default for AttributeFn {
-    fn default() -> Self {
-        Self(std::sync::Arc::new(move || ().into_any_attr()))
-    }
-}
-
-impl<F, A> From<F> for AttributeFn
-where
-    F: Fn() -> A + Send + Sync + 'static,
-    A: Attribute + 'static,
-{
-    fn from(value: F) -> Self {
-        Self(std::sync::Arc::new(move || value().into_any_attr()))
     }
 }

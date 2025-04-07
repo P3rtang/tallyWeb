@@ -1,0 +1,62 @@
+notification-box {
+  display: grid;
+  position: fixed;
+  z-index: 100;
+  top: 70px;
+  right: 24px;
+  gap: 12px;
+  justify-items: end;
+
+  * {
+    color: var(--text-color);
+  }
+}
+
+.message {
+  margin: 0px;
+  position: relative;
+  font-size: 21px;
+  padding: 24px 48px;
+  border-radius: 12px;
+  background: var(--element-bg);
+
+  &.info {
+    border: 2px solid #ffe135;
+  }
+
+  &.error {
+    color: tomato;
+    border: 2px solid tomato;
+  }
+
+  &.success {
+    color: #28a745;
+    border: 2px solid #28a745;
+  }
+
+  &.fade {
+    animation: fade 500ms;
+  }
+
+  &:hover button {
+    visibility: visible;
+  }
+}
+
+.content {
+  button {
+    visibility: hidden;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

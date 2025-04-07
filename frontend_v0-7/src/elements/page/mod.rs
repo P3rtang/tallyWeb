@@ -12,6 +12,9 @@ pub struct PageContent {
     #[prop(default = false.into(), into)]
     hide_border: Signal<bool>,
 
+    #[prop(optional, into)]
+    attrs: AttributeFn,
+
     children: ChildrenFn,
 }
 
@@ -130,7 +133,7 @@ pub fn Page(
                             style:border=move || if (page_content.hide_border)() { "none" } else { "" }
                             style:box-shadow=move || if (page_content.hide_border)() { "0px 0px 2px 0px black" } else { "" }
                         >
-                            <div style:height="100%">
+                            <div style:height="100%" {..page_content.attrs.call()}>
                                 {(page_content.children)()}
                             </div>
                         </div>

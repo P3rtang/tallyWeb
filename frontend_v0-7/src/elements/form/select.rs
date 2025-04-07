@@ -40,7 +40,7 @@ where
         view! {
             <Icon
                 kind=IconKind::ArrowHeadDown
-                color=IconColor::Black
+                color=IconColor::White
                 style:transform=transform
             />
         }

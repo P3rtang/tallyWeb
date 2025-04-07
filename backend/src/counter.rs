@@ -243,10 +243,13 @@ pub async fn archive(tx: &mut PgTx, key: uuid::Uuid) -> Result<(), BackendError>
     sqlx::query!(
         r#"
         UPDATE counters
-        SET is_deleted = true
+        SET
+            is_deleted = true,
+            last_edit = $2
         WHERE uuid = $1
         "#,
         key,
+        chrono::Utc::now().naive_utc(),
     )
     .execute(&mut **tx)
     .await?;
@@ -306,13 +309,15 @@ pub async fn remove(
         UPDATE
             counters
         SET
-            is_deleted = true
+            is_deleted = true,
+            last_edit = $2
         WHERE
             uuid = $1
         RETURNING
             *
         "#,
         counter_uuid,
+        chrono::Utc::now().naive_utc(),
     )
     .fetch_one(&mut **tx)
     .await?

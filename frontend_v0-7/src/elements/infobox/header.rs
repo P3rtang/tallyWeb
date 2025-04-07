@@ -5,6 +5,7 @@ use leptos_router::hooks::use_params;
 
 #[component]
 pub fn InfoHeader(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
+    let history = use_history();
     let session = expect_context::<RwSignal<UserSession>>();
     let store = expect_context::<RwSignal<CountableStore>>();
     let selection = expect_context::<Memo<Selection>>();
@@ -22,7 +23,7 @@ pub fn InfoHeader(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     };
 
     let on_click = move |_| {
-        use_referer(RefererOptions { is_refering: true });
+        history.save_location();
     };
 
     view! {

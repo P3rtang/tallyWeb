@@ -22,9 +22,13 @@ pub fn PrefsWindow() -> impl IntoView {
     let sidebar = expect_context::<page_context::PageContext>().sidebar;
     let set_width = move |w| sidebar.set_width().set(w);
 
+    let content_attr =
+        view! {<{..} style:max-width="1200px" style:width="100%" style:margin="auto" />}
+            .into_attr_fn();
+
     view! {
         <Page>
-            <PageContent hide_border=true slot>
+            <PageContent attrs=content_attr hide_border=true slot>
                 <PrefsContent />
             </PageContent>
             <PageSidebar width=sidebar.width() on_resize=set_width is_shown=sidebar.is_shown() slot>
@@ -65,22 +69,24 @@ pub fn SidebarContent() -> impl IntoView {
 }
 
 #[component]
-fn TreeRow(#[prop(into)] topic: Signal<String>) -> AnyView {
+fn TreeRow(#[prop(into)] topic: Signal<String>) -> impl IntoView {
     let href = move || format!("?topic={}", topic.get());
 
-    view! { <A href style:width="100%">{topic}</A> }.into_any()
+    view! { <A href style:width="100%">{topic}</A> }
 }
 
 #[component]
 fn PrefsContent() -> impl IntoView {
     let action = ServerAction::<api::SavePreferences>::new();
     let session = expect_context::<RwSignal<UserSession>>();
+    let history = use_history();
 
-    let referer = hooks::use_referer(Default::default());
     let close_href = Signal::derive(move || {
-        referer
+        history
+            .back()
             .get()
-            .unwrap_or(format!("/{}", session.get().username))
+            .map(|url| url.to_string())
+            .unwrap_or_default()
     });
 
     view! {
@@ -99,16 +105,11 @@ fn PrefsContent() -> impl IntoView {
 
 #[component]
 fn AccentColor() -> impl IntoView {
-    let prefs = expect_context::<Resource<Preferences>>();
+    let prefs = expect_context::<RwSignal<Preferences>>();
 
     let topic = expect_context::<Memo<Topic>>();
 
-    let accent_color = move || {
-        prefs
-            .get()
-            .map(|p| p.accent_color.to_string())
-            .unwrap_or_default()
-    };
+    let accent_color = move || prefs.get().accent_color.to_string();
 
     let on_change = move |ev: ev::Event| {
         let color = event_target_value(&ev);
@@ -117,11 +118,7 @@ fn AccentColor() -> impl IntoView {
         }
 
         match color.as_str().try_into() {
-            Ok(c) => prefs.update(|p| {
-                if let Some(p) = p {
-                    p.accent_color = c
-                }
-            }),
+            Ok(c) => prefs.update(|p| p.accent_color = c),
             Err(err) => warn!("{}", err),
         }
     };
@@ -141,7 +138,7 @@ fn AccentColor() -> impl IntoView {
                 prop:value=accent_color
                 attr:value=accent_color
                 attr:name="preferences[accent_color]"
-                attr:disabled=move || prefs.get().is_some_and(|p| p.use_default_accent_color)
+                attr:disabled=move || prefs.get().use_default_accent_color
             />
         </Show>
     }

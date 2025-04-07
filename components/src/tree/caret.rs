@@ -20,7 +20,7 @@ where
     #[prop(into, optional)]
     on_expand: Option<OnExpand<K>>,
 
-    #[prop(into, default=(move |_| view!{<{..} class=("caret", true) />}).into())]
+    #[prop(into, default=(move |_| view!{<{..} />}).into())]
     attrs: CaretAttrs<K>,
 
     #[prop(into)]

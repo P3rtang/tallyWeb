@@ -1,6 +1,7 @@
 use super::*;
 
 use crate::EditWindow;
+use components::{MessageSlot, ProvideMessageJar};
 use leptos_meta::{provide_meta_context, Link, Meta, MetaTags, Stylesheet, Title};
 use leptos_router::{
     components::{Outlet, ParentRoute, Route, Router, Routes},
@@ -29,18 +30,17 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 
 #[component]
 pub fn App() -> impl IntoView {
-    #[cfg(feature = "ssr")]
-    leptos::reactive::diagnostics::SpecialNonReactiveZone::enter();
-
     provide_meta_context();
 
     let page_context = page_context::PageContext::new();
     provide_context(page_context.clone());
 
-    let close_overlay = {
-        let overlay = page_context.overlay.clone();
-        move |_| overlay.is_open.set(false)
-    };
+    let owner = Owner::current().unwrap();
+    //
+    // let close_overlay = {
+    //     let overlay = page_context.overlay.clone();
+    //     move |_| overlay.is_open.set(false)
+    // };
 
     view! {
         <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -54,13 +54,19 @@ pub fn App() -> impl IntoView {
         <Title text="TallyWeb" />
 
         <Router>
-            <main on:click=close_overlay>
+            <ProvideMessageJar owner>
+                <MessageSlot slot let:state>
+                    <elements::Message state />
+                </MessageSlot>
+            </ProvideMessageJar>
+            <main >
             {page_context}
                 <Routes fallback=move || view!{<h1>Not Found</h1>}>
                     <Route path=path!("/public") view=move || View::new(()) />
                     <Route path=path!("/login") view=LoginPage/>
                     <Route path=path!("/create-account") view=account::CreateAccount/>
                     <ParentRoute path=path!("/") view=RouteUser ssr=leptos_router::SsrMode::Async>
+                        <Route path=path!("test") view=tests::TestPage />
                         <Route path=path!("preferences") view=PrefsWindow />
                         <Route path=path!("") view=Redirect />
                         <ParentRoute path=path!(":id") view=Outlet>
