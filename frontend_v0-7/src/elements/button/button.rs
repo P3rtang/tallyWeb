@@ -6,6 +6,7 @@ stylance::import_style!(style, "button.module.scss");
 pub enum ButtonSize {
     #[default]
     Default,
+    Icon,
     Big,
     Small,
 }
@@ -16,6 +17,7 @@ impl ButtonSize {
             ButtonSize::Default => style::default,
             ButtonSize::Big => style::big,
             ButtonSize::Small => style::small,
+            ButtonSize::Icon => style::icon,
         }
     }
 }

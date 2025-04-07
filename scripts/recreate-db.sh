@@ -1,4 +1,4 @@
-docker compose up -d postgres
+podman-compose up -d postgres
 
 sleep 1
 psql -U postgres -d postgres -h localhost -p $POSTGRES_PORT -w -c " \
@@ -13,4 +13,4 @@ sqlx migrate run
 
 psql -U p3rtang -d $PGDATABASE -h localhost -p $POSTGRES_PORT -w -f ".github/postgres_setup/setup-test.sql"
 
-docker compose down
+podman-compose down

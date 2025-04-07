@@ -21,6 +21,7 @@ pub fn AccountIcon<F>(username: F) -> impl IntoView
 where
     F: Fn() -> String + Clone + Sync + Send + 'static,
 {
+    let history = use_history();
     let initial = StoredValue::new(move || {
         username()
             .chars()
@@ -32,7 +33,7 @@ where
     let attrs = move || view! { <{..} class=style::icon data-testid="test-account-icon" aria_label="account overlay" /> };
 
     let handle_pref_click = move |_| {
-        use_referer(hooks::RefererOptions { is_refering: true });
+        history.save_location();
     };
 
     hoc::with_accent(move || {

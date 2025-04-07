@@ -48,8 +48,8 @@
 .input {
   display: flex;
   justify-content: space-evenly;
-  color: black;
-  background: $interactable-bg-color-dark;
+  color: var(--text-color);
+  background: $element-bg-color-dark;
   padding: 8px 12px;
   border: 2px solid transparent;
   border-radius: 12px;
@@ -59,7 +59,7 @@
   }
 
   >input {
-    all: unset;
+    font-size: 24px;
     width: 100%;
   }
 
@@ -81,22 +81,22 @@
   background: none;
   font-size: 24px;
   width: 100%;
-  background: $interactable-bg-color-dark;
+  background: $element-bg-color-dark;
   border-radius: 12px;
-  color: black;
+  color: var(--text-color);
 
   select {
     border-radius: 12px;
     height: 48px;
     width: 100%;
     font-size: 24px;
-    background: $interactable-bg-color-dark;
+    background: $element-bg-color-dark;
     border: none;
     padding: 8px;
   }
 
   option {
-    background: $interactable-bg-color-dark;
+    background: $element-bg-color-dark;
   }
 
   custom-select {
@@ -122,7 +122,7 @@
       position: relative;
       z-index: 2;
       border-radius: 12px;
-      background: $interactable-bg-color-dark;
+      background: $element-bg-color-dark;
     }
 
     select-options {
@@ -131,7 +131,7 @@
       top: 0px;
       position: absolute;
       z-index: 1;
-      background: $interactable-bg-color-dark;
+      background: $element-bg-color-dark;
       width: 100%;
       border-radius: 12px;
       padding-top: 48px;
@@ -143,8 +143,17 @@
         padding: 8px;
         border-radius: 8px;
 
+        &[selected] {
+          background: var(--accent);
+          color: black;
+
+          &:hover {
+            background: var(--accent);
+          }
+        }
+
         &:hover {
-          background: $interactable-hover-color-dark;
+          background: $element-hover-color-dark;
         }
       }
     }

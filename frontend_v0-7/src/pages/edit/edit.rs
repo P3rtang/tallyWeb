@@ -1,3 +1,7 @@
+use futures::FutureExt;
+use leptos::{tachys::html::node_ref::node_ref, task::spawn_local};
+use web_sys::SubmitEvent;
+
 use super::*;
 
 #[component]
@@ -11,9 +15,13 @@ pub fn EditWindow() -> impl IntoView {
     let selection = Memo::new(move |_| params.get().unwrap_or_default());
     provide_context(selection);
 
+    let content_attr =
+        view! {<{..} style:max-width="1200px" style:width="100%" style:margin="auto" />}
+            .into_attr_fn();
+
     view! {
         <Page>
-            <PageContent hide_border=true slot>
+            <PageContent attrs=content_attr hide_border=true slot>
                 <EditCountableWindow />
             </PageContent>
             <PageSidebar width=sidebar.width() on_resize=set_width is_shown=sidebar.is_shown() slot>
@@ -98,46 +106,36 @@ struct Key {
 fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let session = expect_context::<RwSignal<UserSession>>();
     let store = expect_context::<RwSignal<CountableStore>>();
-    // let msg = expect_context::<MessageJar>();
     let action = ServerAction::<api::EditCountableForm>::new();
     let store_resc = expect_context::<Resource<Option<CountableStore>>>();
     let local_store_resc = expect_context::<Resource<Option<CountableStore>>>();
 
-    let referer = use_referer(Default::default());
+    let history = use_history();
     let navigate = use_navigate();
+    let message = use_message();
+
+    let handle_error = move |err| {
+        message.server_err(err);
+    };
 
     let kind = Signal::derive(move || store.get().kind(&key.get()));
 
     let params = use_params::<UserName>();
     let user_name = move || params.get().map(|p| p.id).ok();
 
-    let close_href = Signal::derive(move || {
-        referer
-            .get()
-            .unwrap_or(format!("/{}", user_name().unwrap_or_default()))
-    });
+    let close_href = StoredValue::new(history.back().get_untracked().map(|url| url.to_string()));
 
     // TODO: use a server side redirection instead, passed as a form argument
     Effect::new(move |_| match action.value()() {
         Some(Ok(_)) => {
             // TODO: maybe instead of refetching I could have the return set the store state
             store_resc.refetch();
-            navigate(close_href.get_untracked().as_str(), Default::default());
+            navigate(
+                &close_href.get_value().unwrap_or("/".to_string()),
+                Default::default(),
+            );
         }
-        // TODO: reintroduce `MessageJar`
-        Some(Err(_)) => {
-            // match err {
-            //     ServerFnError::WrappedServerError(err) => msg.set_err(err),
-            //     ServerFnError::Registration(err) => msg.set_err(err),
-            //     ServerFnError::Request(_) => msg.set_err("Could not reach server"),
-            //     ServerFnError::Response(err) => msg.set_err(err),
-            //     ServerFnError::ServerError(err) => msg.set_err(err),
-            //     ServerFnError::Deserialization(err) => msg.set_err(err),
-            //     ServerFnError::Serialization(err) => msg.set_err(err),
-            //     ServerFnError::Args(err) => msg.set_err(err),
-            //     ServerFnError::MissingArg(err) => msg.set_err(err),
-            // };
-        }
+        Some(Err(err)) => handle_error(err),
         None => {}
     });
 
@@ -145,21 +143,14 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 
     let title = Signal::derive(move || store.get().name(&key.get()));
 
-    let delete_action = ServerAction::<api::RemoveCountable>::new();
-
-    Effect::new(move |_| match delete_action.value().get() {
-        Some(Ok(countables)) => store.update(|s| {
-            countables.into_iter().for_each(|c| {
-                s.archive(&c.into());
-            })
-        }),
-        Some(Err(_err)) => (),
-        None => (),
-    });
-
     view! {
-        <Form action on_undo>
-            <HeaderSlot title on_close=on_undo close_href slot>
+        <Form action on_undo attr:id="edit-form">
+            <HeaderSlot
+                title
+                on_close=on_undo
+                close_href=close_href.get_value().map(|h| Signal::from(h))
+                slot
+            >
                 <DeleteButton key />
             </HeaderSlot>
 
@@ -181,16 +172,16 @@ fn DeleteButton(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let session = expect_context::<RwSignal<UserSession>>();
     let store = expect_context::<RwSignal<CountableStore>>();
     let saving = hooks::use_local_saving::<CountableStore>();
+    let confirm = use_confirm();
+    let form_ref = NodeRef::<leptos::html::Form>::new();
 
     let kind = Signal::derive(move || store.get().kind(&key.get()));
 
-    let delete_action = ServerAction::<api::RemoveCountable>::new();
+    let delete_action = ServerAction::<api::ArchiveCountable>::new();
 
     Effect::new(move |_| match delete_action.value().get() {
-        Some(Ok(countables)) => store.update(|s| {
-            countables.into_iter().for_each(|c| {
-                s.archive(&c.into());
-            });
+        Some(Ok(())) => store.update(|s| {
+            s.archive(&key.get());
 
             if let Some(func) = saving.clone() {
                 func(s.clone())
@@ -200,12 +191,24 @@ fn DeleteButton(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
         None => (),
     });
 
+    let handle_submit = move |ev: ev::MouseEvent| {
+        ev.prevent_default();
+        ev.stop_propagation();
+
+        spawn_local(
+            confirm("Delete this counter".to_string()).then(async move |ok| {
+                if ok {
+                    form_ref.get_untracked().unwrap().submit();
+                }
+            }),
+        );
+    };
+
     view! {
-        <ActionForm action=delete_action>
-            <session::SessionFormInput session />
+        <ActionForm action=delete_action node_ref=form_ref attr:id="delete-form" on:submit=|ev| ev.prevent_default()>
             <input type="hidden" name="id" value=move || key.get().0.to_string() />
             <input type="hidden" name="kind" value=move || kind.get().to_string() />
-            <button class="hover-darken icon" aria_label="delete countable">
+            <button class="hover-darken icon" aria_label="delete countable" form="delete-form" on:click=handle_submit>
                 <div>
                     <Icon kind=IconKind::TrashCan />
                 </div>

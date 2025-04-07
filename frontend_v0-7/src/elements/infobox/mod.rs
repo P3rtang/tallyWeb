@@ -6,7 +6,7 @@ mod infobox;
 use header::InfoHeader;
 pub use infobox::InfoBox;
 
-use crate::hooks::{use_referer, RefererOptions};
+use crate::hooks::use_history;
 use app::UserName;
 use elements::icon::*;
 use home::Selection;

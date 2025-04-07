@@ -1,6 +1,6 @@
 .button {
   background: $interactable-bg-color-dark;
-  font-size: 24px;
+  font-size: 21px;
   border-radius: 8px;
   outline: none;
 
@@ -12,6 +12,10 @@
   }
 
   &.default>div {
+    padding: 10px 20px;
+  }
+
+  &.icon>div {
     padding: 8px;
   }
 

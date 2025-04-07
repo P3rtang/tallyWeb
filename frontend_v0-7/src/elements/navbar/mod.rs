@@ -41,19 +41,18 @@ pub fn Navbar(
     let page_context = expect_context::<page_context::PageContext>();
     let session = expect_context::<RwSignal<UserSession>>();
 
-    let home_img_ref = NodeRef::<html::Img>::new();
-
     let username = move || session.get().username;
 
     view! {
         <nav class=style::navbar>
             {page_context.sidebar.toggle_button()}
-            <div class=style::icon>
-                <A href=move || format!("/{}", username()) style:display="flex" style:align-items="center" attr:aria_label="home">
-                    <Icon style:height="45px" style:width="45px" kind=IconKind::Favicon class:tooltip-parent=true />
-                    <ToolTip parent_node=home_img_ref>Home</ToolTip>
-                </A>
-            </div>
+            <ToolTip tooltip="Home">
+                <div class=style::icon>
+                    <A href=move || format!("/{}", username()) style:display="flex" style:align-items="center" attr:aria_label="home">
+                        <Icon style:height="45px" style:width="45px" kind=IconKind::Favicon class:tooltip-parent=true />
+                    </A>
+                </div>
+            </ToolTip>
 
             <div style:margin-left="auto" class=stylance::classes!(style::icon, style::round)>
                 <AccountIcon username />

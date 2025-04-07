@@ -243,6 +243,11 @@ where
         }
     };
 
+    let is_selected = move |idx, option| {
+        key_input().is_some() && idx == 0
+            || key_input().is_none() && Some(option) == selection.get()
+    };
+
     let key_listener = window_event_listener(ev::keydown, move |ev| {
         if !show_options() {
             return;
@@ -334,10 +339,7 @@ where
                                     <select-option
                                         on:click=move |_| on_option.get_value()(option.get_value())
                                         style:display="block"
-                                        style:background=move || selected_bg(
-                                            idx,
-                                            option.get_value(),
-                                        )
+                                        selected=is_selected(idx, option.get_value())
                                     >
                                         {option.get_value().to_string()}
                                     </select-option>

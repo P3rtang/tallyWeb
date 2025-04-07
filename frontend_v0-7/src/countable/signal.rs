@@ -7,10 +7,6 @@ pub fn provide_store() -> (
     Resource<Option<CountableStore>>,
     LocalResource<Option<CountableStore>>,
 ) {
-    // TODO: readd msg
-    //
-    // let msg = expect_context::<MessageJar>();
-
     let session = expect_context::<Resource<UserSession>>();
 
     let store_resource = Resource::new_blocking(

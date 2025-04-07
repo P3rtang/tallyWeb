@@ -4,9 +4,9 @@ export $(shell sed 's/=.*//' .env)
 default: build
 
 build:
-	docker compose up -d postgres
+	podman-compose up -d postgres
 	cargo leptos build
-	docker compose down
+	podman-compose down
 
 dev:
 	# install dependencies
@@ -17,9 +17,10 @@ dev:
 reset: recreate-docker recreate-user recreate-db
 
 recreate-docker:
-	docker compose down
-	docker compose up -d postgres
-	timeout 10s bash -c "until docker exec $(POSTGRES_CONTAINER) pg_isready ; do sleep .5 ; done"
+	podman-compose down
+	podman-compose up -d postgres
+	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "DROP DATABASE IF EXISTS tally_web"
+	timeout 10s bash -c "until podman exec $(POSTGRES_CONTAINER) pg_isready ; do sleep .5 ; done"
 
 recreate-user:
 	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "DROP USER IF EXISTS $(POSTGRES_USERNAME)"
@@ -30,22 +31,22 @@ recreate-db:
 
 dump-db:
 	mkdir -p db-backup
-	docker exec -t $(POSTGRES_CONTAINER) pg_dump --data-only -U p3rtang -d tally_web > "db-backup/dbdump.sql"
+	podman exec -t $(POSTGRES_CONTAINER) pg_dump --data-only -U p3rtang -d tally_web > "db-backup/dbdump.sql"
 
 watch-style:
 	stylance -w ./frontend_v0-7/ --output-file ./style/bundle.scss
 
 test: recreate-db check-fmt
-	docker compose up -d postgres
+	podman-compose up -d postgres
 	sleep 1
 	cargo leptos test
 	cargo leptos end-to-end -r
-	docker compose down
+	podman-compose down
 
 setup-pgadmin:
-	docker stop pgadmin
-	docker container rm pgadmin
-	docker run --name pgadmin --env-file .env --restart always --network host -d dpage/pgadmin4
+	podman stop pgadmin
+	podman container rm pgadmin
+	podman run --name pgadmin --env-file .env --restart always --network host -d dpage/pgadmin4
 
 fmt:
 	cargo fmt -q --all
@@ -58,30 +59,30 @@ check:
 	cargo clippy
 
 check-fmt:
-	docker compose up -d postgres
+	podman-compose up -d postgres
 	sleep 1
 	cargo fmt -q --check --all
 	leptosfmt -q --check *src/*
 	cargo clippy -- -D warnings
-	docker compose down
+	podman-compose down
 
 serve:
 	bash -c " \
-		trap 'docker compose down' SIGINT; \
-		docker compose up -d postgres; \
+		trap 'podman-compose down' SIGINT; \
+		podman-compose up -d postgres; \
 		cargo leptos serve \
 	"
 
 watch:
 	bash -c " \
-		trap 'docker compose down' SIGINT; \
-		docker compose up -d postgres; \
-		cargo leptos watch \
+		trap 'podman-compose down' SIGINT; \
+		podman-compose up -d postgres; \
+		cargo leptos watch --hot-reload \
 	"
 
 start:
 	bash -c " \
-		trap 'docker compose down' SIGINT; \
-		docker compose up -d postgres; \
+		trap 'podman-compose down' SIGINT; \
+		podman-compose up -d postgres; \
 		cargo leptos serve \
 	"

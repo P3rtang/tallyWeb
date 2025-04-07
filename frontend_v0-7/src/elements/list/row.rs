@@ -27,13 +27,14 @@ pub struct ListItemChildren<T>(pub(crate) Arc<dyn Fn(T) -> AnyView + Send + Sync
 where
     T: Clone + Send + Sync;
 
-impl<F, T> From<F> for ListItemChildren<T>
+impl<F, T, IV> From<F> for ListItemChildren<T>
 where
-    F: Fn(T) -> AnyView + Send + Sync + 'static,
+    F: Fn(T) -> IV + Send + Sync + 'static,
+    IV: IntoView + 'static,
     T: Clone + Send + Sync,
 {
     fn from(value: F) -> Self {
-        Self(Arc::new(value))
+        Self(Arc::new(move |val| value(val).into_any()))
     }
 }
 

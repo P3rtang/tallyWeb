@@ -134,6 +134,14 @@ impl Countable {
         self.is_archived_checked().unwrap()
     }
 
+    pub fn archive(&self) {
+        match self {
+            Countable::Counter(mutex) => mutex.lock().unwrap().is_deleted = true,
+            Countable::Phase(mutex) => mutex.lock().unwrap().is_deleted = true,
+            Countable::Chain(mutex) => todo!(),
+        }
+    }
+
     pub fn as_js(&self) -> AppResult<wasm_bindgen::JsValue> {
         Ok(js_sys::JSON::parse(&serde_json::to_string(&self)?)?)
     }

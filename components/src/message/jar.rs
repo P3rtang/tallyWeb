@@ -1,53 +1,6 @@
-use std::collections::HashMap;
-
-use chrono::Duration;
-use leptos::ev;
-use leptos::html;
-use leptos::prelude::*;
-use leptos::server_fn::ServerFnError;
+use super::*;
 
 pub type MessageKey = usize;
-
-#[derive(Clone)]
-struct Notification {
-    kind: NotificationKind,
-    do_fade: bool,
-}
-
-impl std::fmt::Debug for Notification {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "kind: {}, do_fade: {}",
-            match self.kind {
-                NotificationKind::Message(_, _) => "Message",
-                NotificationKind::Error(_, _) => "Error",
-                NotificationKind::Success(_, _) => "Success",
-            },
-            self.do_fade
-        )
-    }
-}
-
-#[derive(Clone)]
-enum NotificationKind {
-    Message(bool, ViewFn),
-    Error(bool, ViewFn),
-    Success(bool, ViewFn),
-}
-
-unsafe impl Sync for NotificationKind {}
-unsafe impl Send for NotificationKind {}
-
-impl NotificationKind {
-    fn get_view(&self) -> Option<AnyView> {
-        match self {
-            NotificationKind::Message(_, msg) => Some(msg.run()),
-            NotificationKind::Error(_, msg) => Some(msg.run()),
-            NotificationKind::Success(_, msg) => Some(msg.run()),
-        }
-    }
-}
 
 pub trait Handle: Clone + Copy + 'static {}
 #[derive(Debug, Clone, Copy)]
@@ -60,10 +13,10 @@ impl Handle for NoHandle {}
 #[derive(Debug, Clone, Copy)]
 pub struct MessageJar<T: Handle> {
     messages: RwSignal<HashMap<MessageKey, Notification>>,
-    reset_time: Option<Duration>,
     next_key: RwSignal<MessageKey>,
     as_modal: bool,
     phantomdata: std::marker::PhantomData<T>,
+    config: Option<StoredValue<NotificationConfig>>,
 }
 
 #[allow(dead_code)]
@@ -71,11 +24,15 @@ impl<T: Handle + 'static> MessageJar<T> {
     pub fn new(reset_time: Duration) -> Self {
         Self {
             messages: RwSignal::new(HashMap::new()),
-            reset_time: Some(reset_time),
             as_modal: false,
             next_key: RwSignal::new(0),
             phantomdata: std::marker::PhantomData {},
+            config: Default::default(),
         }
+    }
+
+    pub fn messages(&self) -> RwSignal<HashMap<MessageKey, Notification>> {
+        self.messages
     }
 
     pub fn get_ordered(&self) -> Signal<Vec<MessageKey>> {
@@ -96,14 +53,20 @@ impl<T: Handle + 'static> MessageJar<T> {
 
     pub fn without_timeout(self) -> Self {
         Self {
-            reset_time: None,
+            config: Some(StoredValue::new(NotificationConfig {
+                fade: None,
+                ..self.config.map(|c| c.get_value()).unwrap_or_default()
+            })),
             ..self
         }
     }
 
-    pub fn with_timeout(self, reset_time: Duration) -> Self {
+    pub fn with_timeout(self, reset_time: chrono::TimeDelta) -> Self {
         Self {
-            reset_time: Some(reset_time),
+            config: Some(StoredValue::new(NotificationConfig {
+                fade: Some(reset_time),
+                ..self.config.map(|c| c.get_value()).unwrap_or_default()
+            })),
             ..self
         }
     }
@@ -115,23 +78,21 @@ impl<T: Handle + 'static> MessageJar<T> {
         }
     }
 
-    fn add_msg(&self, msg: NotificationKind) -> MessageKey {
+    fn add_msg(mut self, msg: NotificationKind) -> MessageKey {
+        let config = self.config.take().unwrap_or_default().get_value();
+
         self.next_key.update(|k| *k += 1);
         let key = self.next_key.get_untracked();
+
         self.messages.update(|m| {
-            m.insert(
-                key,
-                Notification {
-                    kind: msg,
-                    do_fade: false,
-                },
-            );
+            m.insert(key, Notification { kind: msg, config });
         });
+
         key
     }
 
     fn msg_timeout_effect(self, key: MessageKey) {
-        if let Some(timeout) = self.reset_time {
+        if let Some(timeout) = self.config.and_then(|c| c.get_value().fade) {
             set_timeout(move || self.fade_out(key), timeout.to_std().unwrap())
         }
     }
@@ -139,7 +100,7 @@ impl<T: Handle + 'static> MessageJar<T> {
     pub fn fade_out(self, key: MessageKey) {
         self.messages.update(|m| {
             if let Some(v) = m.get_mut(&key) {
-                v.do_fade = true
+                v.config.do_fade = true
             }
         })
     }
@@ -154,8 +115,15 @@ impl MessageJar<NoHandle> {
         unsafe { std::mem::transmute(self) }
     }
 
-    pub fn set_msg(self, msg: impl ToString) {
+    pub fn with_config(mut self, config: NotificationConfig) -> Self {
+        self.config = Some(StoredValue::new(config));
+        self
+    }
+
+    pub fn set_msg(mut self, msg: impl ToString) {
         let msg = StoredValue::new(msg.to_string());
+        let config = self.config.take();
+
         let key = self.add_msg(NotificationKind::Message(
             self.as_modal,
             ViewFn::from(move || {
@@ -166,6 +134,7 @@ impl MessageJar<NoHandle> {
                     .into_any()
             }),
         ));
+
         self.msg_timeout_effect(key);
     }
 
@@ -302,12 +271,8 @@ impl MessageJar<WithHandle> {
         key
     }
 
-    pub fn set_err_view(&self, err: impl IntoView + Sync + Clone + 'static) -> MessageKey {
-        let err = StoredValue::new(err);
-        let key = self.add_msg(NotificationKind::Error(
-            self.as_modal,
-            ViewFn::from(move || err.get_value()),
-        ));
+    pub fn set_err_view(&self, err: ViewFn) -> MessageKey {
+        let key = self.add_msg(NotificationKind::Error(self.as_modal, err));
         self.msg_timeout_effect(key);
         key
     }
@@ -324,103 +289,5 @@ impl MessageJar<WithHandle> {
             ServerFnError::Args(e) => self.set_err(e),
             ServerFnError::MissingArg(e) => self.set_err(e),
         }
-    }
-}
-
-#[component]
-pub fn Message(key: MessageKey, jar: MessageJar<NoHandle>) -> AnyView {
-    if !jar.messages.get_untracked().contains_key(&key) {
-        return ().into_view().into_any();
-    }
-
-    let kind = move || (jar.messages)().get(&key).unwrap().kind.clone();
-
-    let border_style = move || match kind() {
-        NotificationKind::Message(_, _) => "border: 2px solid #ffe135",
-        NotificationKind::Error(_, _) => "color: tomato; border: 2px solid tomato;",
-        NotificationKind::Success(_, _) => "color: #28a745; border: 2px solid #28a745;",
-    };
-
-    let is_modal = move || match kind() {
-        NotificationKind::Message(is_modal, _) => is_modal,
-        NotificationKind::Error(is_modal, _) => is_modal,
-        NotificationKind::Success(is_modal, _) => is_modal,
-    };
-
-    let dialog_ref = NodeRef::<html::Dialog>::new();
-    Effect::new(move |_| {
-        if let Some(d) = dialog_ref.get() {
-            d.close();
-            if is_modal() {
-                let _ = d.show_modal();
-            } else {
-                d.show();
-            }
-        }
-    });
-
-    let dialog_class = create_read_slice(jar.messages, move |map| {
-        if map.get(&key).unwrap().do_fade {
-            String::from("fade-out")
-        } else {
-            String::from("")
-        }
-    });
-
-    let on_close_click = move |ev: ev::MouseEvent| {
-        ev.stop_propagation();
-        jar.fade_out(key)
-    };
-
-    let on_animend = move |_| {
-        jar.messages.update(|m| {
-            m.remove(&key);
-        })
-    };
-
-    view! {
-        <dialog
-            on:click=|ev| ev.stop_propagation()
-            node_ref=dialog_ref
-            class=dialog_class
-            style=border_style
-            on:animationend=on_animend
-        >
-            <div class="content">
-                <button class="close" on:click=on_close_click>
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-                {move || kind().get_view().unwrap_or(().into_any())}
-            </div>
-        </dialog>
-    }
-    .into_any()
-}
-
-#[component]
-pub fn ProvideMessageSystem() -> impl IntoView {
-    let msg_jar = MessageJar::new(Duration::seconds(5));
-    provide_context(msg_jar);
-
-    // on navigation clear any messages or errors from the message box
-    // let loc_memo = create_memo(move |_| {
-    //     let location = leptos_router::use_location();
-    //     location.state.with(|_| msg_box.clear())
-    // });
-    //
-
-    view! {
-        <Show when=move || !msg_jar.is_emtpy()>
-            <notification-box>
-                <For
-                    each=move || msg_jar.get_ordered().get().into_iter().rev()
-                    key=|key| *key
-                    children=move |key| {
-                        view! { <Message key jar=msg_jar /> }
-                    }
-                />
-
-            </notification-box>
-        </Show>
     }
 }

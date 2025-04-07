@@ -342,6 +342,7 @@ impl<M: StoreMethod + Clone> CountableStore<M, Checked> {
                     false
                 }
             {
+                other_c.archive();
                 self.store.insert(id, other_c);
                 has_change = true;
             } else if let Some(c) = self.get(&id)

@@ -7,7 +7,7 @@ mod edit;
 pub use edit::EditWindow;
 
 use crate::{
-    app::UserName, hooks::use_referer, nodes::Masuda, session, session::SessionFormInput,
+    app::UserName, hooks::use_history, nodes::Masuda, session, session::SessionFormInput,
     CountableId, CountableStore, Hunttype, UserSession,
 };
 use leptos::{logging::*, prelude::*};

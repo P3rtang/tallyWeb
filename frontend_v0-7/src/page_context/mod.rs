@@ -6,8 +6,8 @@ use elements::{button::*, icon::*};
 #[derive(Clone, Default)]
 pub struct PageContext {
     pub overlay: Overlay,
-    pub referer: Referer,
     pub sidebar: Sidebar,
+    pub history: hooks::History,
 }
 
 impl PageContext {
@@ -20,13 +20,7 @@ impl IntoRender for PageContext {
     type Output = AnyView;
 
     fn into_render(self) -> Self::Output {
-        let body = {
-            let this = self.clone();
-            move || this.clone().overlay.body.get().run()
-        };
-
-        let overlay = self.overlay.clone();
-        let is_open = move || overlay.is_open.get();
+        let Overlay { is_open, body } = self.overlay;
 
         view! {
             <Show when=is_open >
@@ -34,7 +28,7 @@ impl IntoRender for PageContext {
                     style:position="relative"
                     style:z-index="100"
                 >
-                    {body.clone()}
+                    {body.clone().get().run()}
                 </overlay-element>
             </Show>
         }
@@ -44,8 +38,14 @@ impl IntoRender for PageContext {
 
 #[derive(Clone)]
 pub struct Overlay {
-    pub is_open: leptos::prelude::RwSignal<bool>,
+    pub is_open: RwSignal<bool>,
     pub body: ArcRwSignal<ViewFn>,
+}
+
+impl Overlay {
+    pub fn set_body(&self, view: impl Into<ViewFn>) {
+        self.body.set(view.into())
+    }
 }
 
 impl Default for Overlay {

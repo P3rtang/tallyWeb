@@ -10,6 +10,7 @@ pub fn Form<ServFn>(
     children: ChildrenFn,
     #[prop(into, optional)] on_undo: EventCallback<ev::MouseEvent>,
     #[prop(into, optional)] on_submit: EventCallback<ev::SubmitEvent>,
+    #[prop(into, optional)] id: Option<String>,
 
     #[prop(optional)] header_slot: HeaderSlot,
 ) -> impl IntoView
@@ -23,7 +24,7 @@ where
     view! {
         <div class=style::container>
             { header_slot }
-            <ActionForm action attr:class=style::form>
+            <ActionForm action attr:class=style::form attr:id=id>
                 <div class=style::body>
                     {children()}
                 </div>

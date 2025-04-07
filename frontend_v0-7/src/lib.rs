@@ -39,8 +39,10 @@ pub(crate) use countable::*;
 pub(crate) use session::UserSession;
 pub(crate) mod saving;
 use saving::*;
+mod tests;
 
 use cfg_if::cfg_if;
+use components::IntoAttributeFn;
 
 stylance::import_style!(main, "../style/_main.module.scss");
 
@@ -155,6 +157,12 @@ pub enum AppError {
     MissingPreferences(String, String),
     #[error("To use {0}, a screen signal need to be available {1}")]
     MissingScreenSignal(String, String),
+}
+
+impl Into<ViewFn> for AppError {
+    fn into(self) -> ViewFn {
+        (move || view! {<b>{self.to_string()}</b>}).into()
+    }
 }
 
 impl From<gloo_storage::errors::StorageError> for AppError {

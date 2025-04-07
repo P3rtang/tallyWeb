@@ -5,13 +5,23 @@ $select-color-dark: #8BE9FD;
 $select-color-hover-dark: #8BE9FDCC;
 $interactable-bg-color-dark: #666666;
 $interactable-hover-color-dark: #555555;
-$element-bg-color-dark: #404040;
+$element-bg-color-dark: #444;
 $element-hover-color-dark: #323232;
 $component-bg-color-dark: #2C2C2C;
 $border-color-dark: #FFFFFF80;
 
+:root {
+  --element-bg: #AAAAAA;
+  --text-color: black;
+
+  @media (prefers-color-scheme: dark) {
+    --element-bg: #444444;
+    --text-color: white;
+  }
+}
+
 * {
-  font-family: Roboto, Arial, Sans-Serif;
+  font-family: Sans-Serif;
   box-sizing: border-box;
 }
 
@@ -100,6 +110,15 @@ img:global(.hidden) {
   display: none;
 }
 
+input:not([type=color]) {
+  background: unset;
+  border: unset;
+  font-size: unset;
+  padding: unset;
+  all: unset;
+  font-size: 21px;
+}
+
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -126,4 +145,11 @@ a, button {
   >:first-child {
     margin-left: 8px;
   }
+}
+
+tool-tip {
+  color: white;
+  background:var(--element-bg);
+  border:2px solid var(--accent);
+  border-radius:4px;
 }

@@ -93,9 +93,11 @@ pub fn Menu(children: ChildrenFn, #[prop(optional)] menu_button: MenuButton) -> 
 
     view! {
         <Button
-            {..menu_button.attrs.call()}
             node_ref=node_ref
-            on:click=handle_click
+            size=ButtonSize::Icon
+
+            on:click={handle_click}
+            {..menu_button.attrs.call()}
         >{(menu_button.children)()}</Button>
     }
 }

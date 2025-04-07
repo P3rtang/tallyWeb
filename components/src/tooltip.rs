@@ -1,51 +1,76 @@
-use leptos::{ev, html, prelude::*};
+use leptos::{
+    either::Either,
+    ev, html,
+    prelude::*,
+    tachys::renderer::{dom::Element, RemoveEventHandler},
+};
 use wasm_bindgen::JsCast;
 
 #[component]
-pub fn ToolTip<T>(
-    parent_node: NodeRef<T>,
-    #[prop(optional, default=std::time::Duration::from_secs(1))] delay: std::time::Duration,
+pub fn ToolTip(
+    #[prop(into)] tooltip: Signal<String>,
+    #[prop(optional, default=std::time::Duration::from_secs(2))] delay: std::time::Duration,
     children: ChildrenFn,
-) -> impl IntoView
-where
-    T: html::ElementType + Clone + 'static,
-    T::Output: JsCast + Clone + ElementExt + 'static,
-{
+) -> impl IntoView {
     let is_shown = RwSignal::new(false);
     let is_hovering = RwSignal::new(false);
     let mouse_pos = RwSignal::new((0, 0));
 
-    if let Some(element) = parent_node.get() {
-        let _ = element.clone().on(ev::mouseover, move |_: ev::MouseEvent| {
-            is_hovering.set(true);
-            set_timeout(
-                move || {
-                    if is_hovering.try_get().unwrap_or_default() {
-                        is_shown.try_set(true);
-                    }
-                },
-                delay,
-            )
-        });
-        let _ = element.clone().on(ev::mouseout, move |_: ev::MouseEvent| {
-            is_hovering.set(false);
-            is_shown.set(false);
-        });
-        let _ = element.on(ev::mousemove, move |ev: ev::MouseEvent| {
-            if !is_shown() {
-                mouse_pos.set((ev.x(), ev.y()))
-            }
-        });
-    }
+    let handle_mouse_over = move |_: ev::MouseEvent| {
+        is_hovering.try_set(true);
+        set_timeout(
+            move || {
+                if is_hovering.try_get().unwrap_or_default() {
+                    is_shown.try_set(true);
+                }
+            },
+            delay,
+        )
+    };
 
+    let handle_mouse_out = move |_: ev::MouseEvent| {
+        is_hovering.try_set(false);
+        is_shown.try_set(false);
+    };
+
+    let handle_mouse_move = move |ev: ev::MouseEvent| {
+        if !is_shown() {
+            mouse_pos.try_set((ev.x(), ev.y()));
+        }
+    };
+
+    // TODO: do the attributes need to be captured ???
     view! {
         <Show when=is_shown>
             <tool-tip
-                style:left=move || format!("{}px", mouse_pos().0 + 8)
-                style:top=move || format!("{}px", mouse_pos().1 + 16)
+                style:z-index="100"
+                style:position="absolute"
+                style:padding="8px"
+                style:left=move || format!("{}px", mouse_pos().0 + 12)
+                style:top=move || format!("{}px", mouse_pos().1 + 20)
             >
-                {children()}
+                {tooltip}
             </tool-tip>
         </Show>
+        <div
+            on:mouseover=handle_mouse_over
+            on:mouseout=handle_mouse_out
+            on:mousemove=handle_mouse_move
+        >
+            {children()}
+        </div>
+    }
+}
+
+pub fn with_tooltip<VF, IV>(wrapped: VF, tooltip: Signal<Option<String>>) -> impl IntoView
+where
+    VF: Fn() -> IV + Clone + Send + Sync + 'static,
+    IV: IntoView + 'static,
+{
+    view! {
+        {match tooltip.get() {
+            Some(tip) => Either::Left(view! { <ToolTip tooltip=tip>{wrapped()}</ToolTip> }),
+            None => Either::Right(wrapped),
+        }}
     }
 }

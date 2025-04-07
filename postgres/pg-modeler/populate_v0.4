@@ -1,0 +1,11 @@
+begin;
+
+delete from v0_4.countable_object;
+
+insert into v0_4.countable_object (uuid, type, owner, created_on, changed_on, deleted_on)
+select uuid, 'T_Counter', owner_uuid as owner, created_at as created_on, last_edit as changed_on, case when is_deleted then last_edit else null end as deleted_on from public.counters;
+
+insert into v0_4.countable_object (uuid, type, owner, created_on, changed_on, deleted_on)
+select uuid, 'T_Phase', owner_uuid as owner, created_at as created_on, last_edit as changed_on, case when is_deleted then last_edit else null end as deleted_on from public.phases;
+
+commit;
