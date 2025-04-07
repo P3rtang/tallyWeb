@@ -195,7 +195,11 @@ pub async fn update_counter(session: UserSession, counter: Counter) -> Result<()
 }
 
 #[server(ArchiveCountable, "/api/session")]
-pub async fn archive_countable(id: uuid::Uuid, kind: CountableKind) -> Result<(), ServerFnError> {
+pub async fn archive_countable(
+    id: uuid::Uuid,
+    kind: CountableKind,
+    redirect: Option<String>,
+) -> Result<(), ServerFnError> {
     let pool = extract_pool().await?;
     let mut tx = pool.begin().await?;
 
@@ -209,6 +213,10 @@ pub async fn archive_countable(id: uuid::Uuid, kind: CountableKind) -> Result<()
     }
 
     tx.commit().await?;
+
+    if let Some(redirect) = redirect {
+        leptos_actix::redirect(&redirect)
+    }
 
     Ok(())
 }

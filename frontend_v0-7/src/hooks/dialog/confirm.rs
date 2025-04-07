@@ -1,18 +1,3 @@
-use std::{
-    sync::Mutex,
-    task::{Poll, Waker},
-    thread,
-    time::Duration,
-};
-
-use futures::{
-    channel::mpsc::{channel, Receiver, Sender},
-    future::{ok, poll_fn},
-    stream::StreamFuture,
-    FutureExt, SinkExt, Stream, StreamExt,
-};
-use leptos::task::spawn_local;
-
 use super::*;
 
 #[derive(Default, Clone)]
@@ -86,9 +71,11 @@ where
     let handle_confirm = move |_| on_confirm();
 
     view! {
-        <div>
+        <div class=style::container>
             <div>{title.clone()}</div>
-            <Button on:click={handle_confirm}>Ok</Button>
+            <div class=style::actions>
+                <Button class=style::main on:click={handle_confirm}>Ok</Button>
+            </div>
         </div>
     }
 }

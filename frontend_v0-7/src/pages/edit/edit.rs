@@ -174,6 +174,7 @@ fn DeleteButton(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let saving = hooks::use_local_saving::<CountableStore>();
     let confirm = use_confirm();
     let form_ref = NodeRef::<leptos::html::Form>::new();
+    let redirect = move || format!("/{}", session.get().username);
 
     let kind = Signal::derive(move || store.get().kind(&key.get()));
 
@@ -208,6 +209,7 @@ fn DeleteButton(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
         <ActionForm action=delete_action node_ref=form_ref attr:id="delete-form" on:submit=|ev| ev.prevent_default()>
             <input type="hidden" name="id" value=move || key.get().0.to_string() />
             <input type="hidden" name="kind" value=move || kind.get().to_string() />
+            <input type="hidden" name="redirect" value=redirect />
             <button class="hover-darken icon" aria_label="delete countable" form="delete-form" on:click=handle_submit>
                 <div>
                     <Icon kind=IconKind::TrashCan />
