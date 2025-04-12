@@ -51,7 +51,7 @@ impl IntoRender for PageContext {
                     style:height="100vh"
                     style:background="#00000020"
                     style:z-index="101"
-                    on:click=handle_background_click.clone()
+                    on:click=handle_background_click
                 >
                     {dialog_body.get_value().run()}
                 </div>

@@ -161,9 +161,9 @@ pub enum AppError {
     MissingScreenSignal(String, String),
 }
 
-impl Into<ViewFn> for AppError {
-    fn into(self) -> ViewFn {
-        (move || view! {<b>{self.to_string()}</b>}).into()
+impl From<AppError> for ViewFn {
+    fn from(val: AppError) -> Self {
+        (move || view! {<b>{val.to_string()}</b>}).into()
     }
 }
 

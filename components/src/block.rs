@@ -24,9 +24,9 @@ impl std::fmt::Display for Direction {
     }
 }
 
-impl Into<std::borrow::Cow<'static, str>> for Direction {
-    fn into(self) -> std::borrow::Cow<'static, str> {
-        self.to_string().into()
+impl From<Direction> for std::borrow::Cow<'static, str> {
+    fn from(val: Direction) -> Self {
+        val.to_string().into()
     }
 }
 

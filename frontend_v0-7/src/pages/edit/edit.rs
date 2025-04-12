@@ -148,7 +148,7 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             <HeaderSlot
                 title
                 on_close=on_undo
-                close_href=close_href.get_value().map(|h| Signal::from(h))
+                close_href=close_href.get_value().map(Signal::from)
                 slot
             >
                 <DeleteButton key />

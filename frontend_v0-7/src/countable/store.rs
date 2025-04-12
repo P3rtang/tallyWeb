@@ -1450,9 +1450,7 @@ impl CountableStore<Recursive, Checked> {
         match self.get(countable).ok_or(AppError::CountableNotFound)? {
             Countable::Counter(_) => self
                 .children(countable)?
-                .iter()
-                .rev()
-                .last()
+                .first()
                 .ok_or(AppError::RequiresChild)
                 .and_then(|child| self.increase(child))?,
             Countable::Phase(p) => p.lock()?.step_count(),

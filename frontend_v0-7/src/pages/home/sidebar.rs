@@ -1,5 +1,7 @@
 use super::*;
 
+type SortFn = Box<dyn FnMut(&CountableId, &CountableId) -> std::cmp::Ordering>;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Sort {
     Name { reverse: bool },
@@ -9,14 +11,8 @@ enum Sort {
 }
 
 impl Sort {
-    fn sort_fn(
-        self,
-        store: RwSignal<CountableStore>,
-    ) -> Box<dyn FnMut(&CountableId, &CountableId) -> std::cmp::Ordering> {
-        let (mut func, rev): (
-            Box<dyn FnMut(&CountableId, &CountableId) -> std::cmp::Ordering>,
-            bool,
-        ) = match self {
+    fn sort_fn(self, store: RwSignal<CountableStore>) -> SortFn {
+        let (mut func, rev): (SortFn, bool) = match self {
             Sort::Name { reverse } => (
                 Box::new(move |a, b| store.get().name(b).cmp(&store.get().name(a))),
                 reverse,
@@ -105,9 +101,9 @@ impl Sortable for Sort {
     }
 }
 
-impl Into<&'static str> for Sort {
-    fn into(self) -> &'static str {
-        match self {
+impl From<Sort> for &'static str {
+    fn from(val: Sort) -> Self {
+        match val {
             Sort::Name { reverse: _ } => "Name",
             Sort::Count { reverse: _ } => "Count",
             Sort::Time { reverse: _ } => "Time",

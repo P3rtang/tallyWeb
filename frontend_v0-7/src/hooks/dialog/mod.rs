@@ -1,6 +1,7 @@
 use super::*;
 
 mod confirm;
+#[allow(clippy::module_inception)]
 mod dialog;
 
 use std::{

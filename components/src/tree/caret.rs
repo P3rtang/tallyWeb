@@ -1,3 +1,4 @@
+#![allow(clippy::unused_unit)]
 use std::{hash::Hash, sync::Arc};
 
 use leptos::{

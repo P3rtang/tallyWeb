@@ -77,9 +77,9 @@ impl From<Option<String>> for Topic {
 
 impl PartialEq<&str> for Topic {
     fn eq(&self, other: &&str) -> bool {
-        match (self, other.to_lowercase().as_str()) {
-            (Self::Notifications, "notifications") => true,
-            _ => false,
-        }
+        matches!(
+            (self, other.to_lowercase().as_str()),
+            (Self::Notifications, "notifications") | (Self::None, "")
+        )
     }
 }
