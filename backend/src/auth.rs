@@ -7,7 +7,7 @@ use sqlx::*;
 use super::*;
 
 pub async fn insert_user(
-    pool: &PgPool,
+    tx: &mut PgTx,
     username: &str,
     password: &str,
 ) -> Result<DbUser, BackendError> {
@@ -33,7 +33,7 @@ pub async fn insert_user(
         username,
         hashed_password,
     )
-    .execute(pool)
+    .execute(&mut **tx)
     .await
     {
         Ok(_) => {}
@@ -43,14 +43,14 @@ pub async fn insert_user(
         Err(err) => return Err(err)?,
     };
 
-    let token = new_token(pool, username, password, chrono::Duration::days(1)).await?;
-    let user = get_user(pool, username, token.uuid).await?;
+    let token = new_token(tx, username, password, chrono::Duration::days(1)).await?;
+    let user = get_user(tx, username, token.uuid).await?;
 
     Ok(user)
 }
 
 async fn new_token(
-    pool: &PgPool,
+    tx: &mut PgTx,
     username: &str,
     password: &str,
     token_dur: chrono::Duration,
@@ -61,7 +61,7 @@ async fn new_token(
 
     let token_uuid = uuid::Uuid::new_v4();
 
-    check_pass(pool, username, password).await?;
+    check_pass(tx, username, password).await?;
 
     let id = query_as!(
         UserId,
@@ -71,7 +71,7 @@ async fn new_token(
         "#,
         username,
     )
-    .fetch_one(pool)
+    .fetch_one(&mut **tx)
     .await
     .map_err(|_| BackendError::InvalidSecrets)?;
 
@@ -87,14 +87,14 @@ async fn new_token(
         id.uuid,
         chrono::Utc::now().naive_utc().checked_add_signed(token_dur),
     )
-    .fetch_one(pool)
+    .fetch_one(&mut **tx)
     .await?;
 
     Ok(token)
 }
 
 pub async fn login_user(
-    pool: &PgPool,
+    tx: &mut PgTx,
     username: String,
     password: String,
     token_dur: chrono::Duration,
@@ -111,7 +111,7 @@ pub async fn login_user(
         "#,
         username,
     )
-    .fetch_one(pool)
+    .fetch_one(&mut **tx)
     .await
     {
         Ok(user) => user,
@@ -125,14 +125,14 @@ pub async fn login_user(
         return Err(BackendError::InvalidPassword);
     };
 
-    let token = new_token(pool, &username, &password, token_dur).await?;
-    let user = get_user(pool, &username, token.uuid).await?;
+    let token = new_token(tx, &username, &password, token_dur).await?;
+    let user = get_user(tx, &username, token.uuid).await?;
 
     Ok(user)
 }
 
 pub async fn change_password(
-    pool: &PgPool,
+    tx: &mut PgTx,
     username: String,
     old_pass: String,
     new_pass: String,
@@ -149,7 +149,7 @@ pub async fn change_password(
         "#,
         username,
     )
-    .fetch_one(pool)
+    .fetch_one(&mut **tx)
     .await
     {
         Ok(user) => user,
@@ -186,7 +186,7 @@ pub async fn change_password(
         username,
         hashed_password,
     )
-    .fetch_one(pool)
+    .fetch_one(&mut **tx)
     .await
     {
         Ok(_) => {}
@@ -198,12 +198,12 @@ pub async fn change_password(
 }
 
 pub async fn change_username(
-    pool: &PgPool,
+    tx: &mut PgTx,
     old_username: &str,
     new_username: &str,
     password: &str,
 ) -> Result<DbUser, BackendError> {
-    check_pass(pool, old_username, password).await?;
+    check_pass(tx, old_username, password).await?;
 
     match query!(
         r#"
@@ -214,7 +214,7 @@ pub async fn change_username(
         old_username,
         new_username,
     )
-    .execute(pool)
+    .execute(&mut **tx)
     .await
     {
         Ok(_) => {}
@@ -227,19 +227,30 @@ pub async fn change_username(
     let user = query_as!(
         DbUser,
         r#"
-        select users.uuid, users.username, tokens.uuid as token, tokens.expire_on as token_expire, users.email
-        from users join auth_tokens as tokens on tokens.user_uuid = users.uuid
-        where users.username = $1
+        select 
+            users.uuid,
+            users.username,
+            tokens.uuid as token,
+            tokens.expire_on as token_expire,
+            users.email
+        from 
+            users
+        join
+            auth_tokens as tokens
+        on
+            tokens.user_uuid = users.uuid
+        where
+            users.username = $1
         "#,
         new_username,
     )
-    .fetch_one(pool)
+    .fetch_one(&mut **tx)
     .await?;
 
     Ok(user)
 }
 
-pub async fn check_pass(pool: &PgPool, username: &str, password: &str) -> Result<(), BackendError> {
+pub async fn check_pass(tx: &mut PgTx, username: &str, password: &str) -> Result<(), BackendError> {
     struct Pass {
         password: String,
     }
@@ -251,7 +262,7 @@ pub async fn check_pass(pool: &PgPool, username: &str, password: &str) -> Result
         "#,
         username,
     )
-    .fetch_one(pool)
+    .fetch_one(&mut **tx)
     .await
     .map_err(|_| BackendError::InvalidUsername)?;
 
@@ -266,7 +277,7 @@ pub async fn check_pass(pool: &PgPool, username: &str, password: &str) -> Result
 }
 
 pub async fn get_user(
-    pool: &PgPool,
+    tx: &mut PgTx,
     username: &str,
     token: uuid::Uuid,
 ) -> Result<DbUser, BackendError> {
@@ -279,13 +290,20 @@ pub async fn get_user(
             tokens.uuid as token,
             tokens.expire_on as token_expire,
             users.email
-        from users join auth_tokens as tokens on users.uuid = tokens.user_uuid
-        where username = $1 and tokens.uuid = $2
+        from
+            users
+        join
+            auth_tokens as tokens
+        on
+            users.uuid = tokens.user_uuid
+        where
+            username = $1 and
+            tokens.uuid = $2
         "#,
         username,
         token,
     )
-    .fetch_one(pool)
+    .fetch_one(&mut **tx)
     .await
     {
         Ok(user) => user,
@@ -302,11 +320,11 @@ pub enum SessionState {
 }
 
 pub async fn check_user(
-    pool: &PgPool,
+    tx: &mut PgTx,
     username: &str,
     token: uuid::Uuid,
 ) -> Result<SessionState, BackendError> {
-    let user = get_user(pool, username, token).await?;
+    let user = get_user(tx, username, token).await?;
 
     if user.token_expire < chrono::Utc::now().naive_utc() {
         Ok(SessionState::Expired)

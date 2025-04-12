@@ -1,18 +1,13 @@
-use crate::elements::{hoc, Icon, IconColor, IconKind};
+use crate::elements::{Icon, IconColor, IconKind};
 pub use components::Separator;
 use components::{Caret, CaretState, ChildWrapper, RowWrapper, Tree, WrappedRowState};
-use leptos::{
-    attr::{any_attribute::IntoAnyAttribute, Href},
-    either::Either,
-    ev,
-    prelude::{Await, *},
-};
-use std::{collections::HashSet, sync::Arc};
+use leptos::{attr::any_attribute::IntoAnyAttribute, either::Either, prelude::*};
+use std::collections::HashSet;
 
 mod row;
 
+pub(crate) use row::ListChildren;
 pub use row::RowSlot;
-pub(crate) use row::{ListChildren, ListItemChildren};
 
 stylance::import_style!(style, "./list.module.scss");
 

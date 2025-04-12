@@ -1,7 +1,5 @@
 use super::*;
 use components::{Direction, ResizeBar};
-use leptos::{ev, prelude::*};
-use std::sync::Arc;
 
 stylance::import_style!(style, "./page.module.scss");
 

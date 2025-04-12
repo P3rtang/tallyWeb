@@ -1,12 +1,6 @@
 #![allow(non_snake_case)]
 use super::*;
 
-use chrono::Duration;
-use components::Progressbar;
-use hooks::use_saving;
-use leptos::{ev, prelude::*};
-use web_sys::MouseEvent;
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct IsActive(RwSignal<bool>);
 impl IsActive {
@@ -69,12 +63,8 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<CountableId>>) -> impl I
 #[component]
 pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
-    // // let preferences = expect_context::<RwSignal<Preferences>>();
-    // // let screen = expect_context::<Screen>();
-
-    // // let show_title = move || !((screen.style)() == ScreenStyle::Portrait || show_multiple());
     let show_title = true;
-    // // let multi_narrow = move || !(show_multiple() && ScreenStyle::Portrait == (screen.style)());
+    let on_mobile = use_breakpoint(ViewPort::Medium, true);
 
     let is_active = IsActive::default();
     provide_context(is_active);
@@ -108,40 +98,13 @@ pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
                 <InfoHeader key/>
                 <Count key show_title />
                 <Time key show_title />
-                // <Show when=multi_narrow>
+                <Show when=move || !on_mobile.get()>
                     <Progress expand=true key show_title />
                     <LastStep key show_title />
                     <AverageStep key show_title />
-                // </Show>
+                </Show>
             </div>
         </Show>
-    }
-}
-
-// TODO: make this show the fill path not just the title
-#[component]
-fn Title(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
-    let store = expect_context::<RwSignal<CountableStore>>();
-
-    let get_name = create_read_slice(store, move |store| {
-        if let Some(key) = key.try_get() {
-            store.get(&key).map(|c| c.name()).unwrap_or_default()
-        } else {
-            String::new()
-        }
-    });
-
-    view! {
-        <div class="rowbox rowexpand" style:width="100%">
-            <span
-                class=style::info
-                style:min-height="0em"
-                style:padding="0.5em"
-                style:font-size="28px"
-            >
-                {get_name}
-            </span>
-        </div>
     }
 }
 
@@ -223,9 +186,12 @@ fn Count(
     }
 }
 
+#[cfg(not(feature = "ssr"))] // run timer only on client
 struct Handle(IntervalHandle);
 // WARN: this is bad but there is no good solution for now
+#[cfg(not(feature = "ssr"))] // run timer only on client
 unsafe impl Send for Handle {}
+#[cfg(not(feature = "ssr"))] // run timer only on client
 unsafe impl Sync for Handle {}
 
 #[component]

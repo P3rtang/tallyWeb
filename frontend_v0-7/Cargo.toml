@@ -30,7 +30,7 @@ gloo-storage = "0.3.0"
 rand = "0.8.5"
 chrono = { version = "0.4.31", features = ["serde"] }
 serde_with = { version = "3.3.0", features = ["chrono"] }
-leptos-use = { version = "0.13" }
+leptos-use = "0.13"
 thiserror = "1.0.50"
 dyn-clone = "1.0.16"
 tokio = { version = "1.36.0", features = ["macros", "rt", "rt-multi-thread"], optional = true }
@@ -47,6 +47,8 @@ dotenvy = "0.15.7"
 dotenvy_macro = "0.15.7"
 sqlx = { version = "0.7.1", features = ["postgres", "chrono", "runtime-tokio-rustls", "macros", "uuid"], optional = true }
 fuzzy-sort = { version = "0.1", package = "tallyweb-fuzzy-sort", path="../fuzzy_sort/" }
+codee = { version = "0.2.0", features = ["json_serde", "json_serde_wasm"] }
+leptos_reactive = { version = "0.6.15", features = ["csr", "serde", "ssr"] }
 
 [features]
 csr = ["leptos/csr"]

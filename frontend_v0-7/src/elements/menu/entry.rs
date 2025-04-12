@@ -41,14 +41,14 @@ pub fn MenuEntry(
         if let Some(href) = href.get() {
             Either::Left(view! {
                 <A href=href.clone() >
-                    <Button {..attrs.call()} class=style::entry size=ButtonSize::Icon>
+                    <Button {..attrs.call()} class=style::entry xstyle=xstyle!("padding": XPadding::Medium)>
                         {children.get_value()()}
                     </Button>
                 </A>
             })
         } else {
             Either::Right(view! {
-                <Button {..attrs.call()} class=style::entry size=ButtonSize::Icon>
+                <Button {..attrs.call()} class=style::entry xstyle=xstyle!("padding": XPadding::Medium)>
                     {children.get_value()()}
                 </Button>
             })

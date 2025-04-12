@@ -1,5 +1,4 @@
 use super::*;
-use leptos::prelude::*;
 
 stylance::import_style!(style, "./icon.module.scss");
 

@@ -108,3 +108,30 @@
   width: 24px;
   mask-image: url("/icons/tallyweb-add-account.svg");
 }
+
+.arrow-right {
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/tallyweb-arrow.svg");
+}
+
+.arrow-left {
+  transform: rotate(180deg);
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/tallyweb-arrow.svg");
+}
+
+.arrow-up {
+  transform: rotate(-90deg);
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/tallyweb-arrow.svg");
+}
+
+.arrow-down {
+  transform: rotate(90deg);
+  height: 24px;
+  width: 24px;
+  mask-image: url("/icons/tallyweb-arrow.svg");
+}

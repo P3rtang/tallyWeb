@@ -1,14 +1,25 @@
-use countable::{self, Counter};
-use leptos::prelude::*;
-
 use super::*;
+
+// modules
+pub mod account;
+
+// imports
+use countable::{self, Counter};
+
+// internal
+// re-exports
+
+#[allow(dead_code)]
+const RESERVED_USERNAMES: [&str; 4] = ["test", "preferences", "create-account", "terms"];
 
 #[cfg(feature = "ssr")]
 mod ssr_import {
     use super::*;
 
     pub(crate) use actix_web::web::Data;
+    pub(crate) use backend::BackendError;
     pub(crate) use leptos_actix::extract;
+    pub(crate) use leptos_actix::redirect;
     pub(crate) use session::actix_extract_user;
 }
 
@@ -26,14 +37,20 @@ pub async fn extract_pool() -> Result<Data<backend::PgPool>, AppError> {
 pub async fn check_user(session: UserSession) -> Result<(), ServerFnError> {
     use backend::auth::SessionState;
     let pool = extract_pool().await?;
-    match backend::auth::check_user(&pool, &session.username, session.token).await {
+    let mut tx = pool.begin().await?;
+
+    let ret = match backend::auth::check_user(&mut tx, &session.username, session.token).await {
         Ok(SessionState::Valid) => Ok(()),
         Ok(SessionState::Expired) => Err(AppError::ExpiredToken)?,
         Err(err) => {
             leptos_actix::redirect("/login");
             Err(err.into())
         }
-    }
+    };
+
+    tx.commit().await?;
+
+    ret
 }
 
 #[server(LoginUser, "/api", "Url", "login_user")]
@@ -43,6 +60,7 @@ pub async fn login_user(
     remember: Option<String>,
 ) -> Result<UserSession, ServerFnError> {
     let pool = extract_pool().await?;
+    let mut tx = pool.begin().await?;
 
     let dur = if remember.is_some() {
         chrono::Duration::days(30)
@@ -50,7 +68,7 @@ pub async fn login_user(
         chrono::Duration::days(1)
     };
 
-    let user = backend::auth::login_user(&pool, username.clone(), password, dur).await?;
+    let user = backend::auth::login_user(&mut tx, username.clone(), password, dur).await?;
 
     let session = UserSession {
         user_uuid: user.uuid,
@@ -61,6 +79,8 @@ pub async fn login_user(
     set_session_cookie(session.clone()).await?;
     leptos_actix::redirect(&format!("/{}", &username));
 
+    tx.commit().await?;
+
     Ok(session)
 }
 
@@ -70,18 +90,32 @@ pub async fn create_account(
     password: String,
     password_repeat: String,
 ) -> Result<UserSession, ServerFnError> {
-    if password != password_repeat {
-        Err(backend::LoginError::InvalidPassword)?;
+    if password.len() < 8 {
+        return Err(backend::LoginError::PasswordTooShort)?;
     }
 
+    if password != password_repeat {
+        return Err(backend::LoginError::InvalidPassword)?;
+    }
+
+    if RESERVED_USERNAMES.contains(&username.to_lowercase().as_str()) {
+        return Err(backend::LoginError::ReservedUsername(username))?;
+    }
+
+    // TODO: disable usernames colliding with paths
+
     let pool = extract_pool().await?;
-    let user = backend::auth::insert_user(&pool, &username, &password).await?;
+    let mut tx = pool.begin().await?;
+
+    let user = backend::auth::insert_user(&mut tx, &username, &password).await?;
 
     let session_user = UserSession {
         user_uuid: user.uuid,
         username: user.username,
         token: user.token.unwrap(),
     };
+
+    tx.commit().await?;
 
     login_user(username, password, None).await?;
 
@@ -100,7 +134,11 @@ pub async fn change_password(
     };
 
     let pool = extract_pool().await?;
-    let _ = backend::auth::change_password(&pool, username, old_pass, new_pass).await?;
+    let mut tx = pool.begin().await?;
+
+    let _ = backend::auth::change_password(&mut tx, username, old_pass, new_pass).await?;
+
+    tx.commit().await?;
 
     Ok(())
 }
@@ -126,6 +164,7 @@ pub async fn edit_countable_form(
     check_user(session).await?;
 
     let mut conn = extract_pool().await?.begin().await?;
+
     match countable.kind {
         CountableKind::Counter => {
             backend::counter::set_name(&mut conn, countable.key, &countable.name).await?;
@@ -187,9 +226,12 @@ pub async fn update_countable_many(list: Vec<countable::Countable>) -> Result<()
 #[server(UpdateCounter, "/api")]
 pub async fn update_counter(session: UserSession, counter: Counter) -> Result<(), ServerFnError> {
     let pool = extract_pool().await?;
+    let mut tx = pool.begin().await?;
 
     let _ =
-        backend::update_counter(&pool, &session.username, session.token, counter.into()).await?;
+        backend::update_counter(&mut tx, &session.username, session.token, counter.into()).await?;
+
+    tx.commit().await?;
 
     Ok(())
 }
@@ -243,11 +285,12 @@ pub async fn remove_countable(
     return Ok(deleted);
 }
 
-#[server(GetUserPreferences, "/api")]
+#[server(GetUserPreferences, "/api/session_v2")]
 pub async fn get_user_preferences(session: UserSession) -> Result<Preferences, ServerFnError> {
     let pool = extract_pool().await?;
+    let mut tx = pool.begin().await?;
 
-    let user = match backend::auth::get_user(&pool, &session.username, session.token).await {
+    let user = match backend::auth::get_user(&mut tx, &session.username, session.token).await {
         Ok(user) => user,
         Err(_) => {
             return Ok(Preferences::default());
@@ -258,7 +301,7 @@ pub async fn get_user_preferences(session: UserSession) -> Result<Preferences, S
         username: user.username,
         token: user.token.unwrap_or_default(),
     };
-    let prefs = match backend::DbPreferences::db_get(&pool, user.uuid).await {
+    let prefs = match backend::DbPreferences::db_get(&mut tx, user.uuid).await {
         Ok(data) => Preferences::from_db(&session_user, data),
         Err(backend::BackendError::DataNotFound(_)) => {
             let new_prefs = Preferences::new(&session_user);
@@ -280,6 +323,8 @@ pub async fn get_user_preferences(session: UserSession) -> Result<Preferences, S
         Err(err) => return Err(err)?,
     };
 
+    tx.commit().await?;
+
     Ok(Preferences::from(prefs))
 }
 
@@ -299,8 +344,9 @@ pub async fn save_preferences(
     preferences: FormPrefs,
 ) -> Result<(), ServerFnError> {
     let pool = extract_pool().await?;
+    let mut tx = pool.begin().await?;
 
-    let user = backend::auth::get_user(&pool, &session.username, session.token).await?;
+    let user = backend::auth::get_user(&mut tx, &session.username, session.token).await?;
 
     let db_prefs = backend::DbPreferences {
         user_uuid: user.uuid,
@@ -316,7 +362,7 @@ pub async fn save_preferences(
         show_body_border: preferences.show_body_border.is_some(),
     };
     db_prefs
-        .db_set(&pool, &session.username, session.token)
+        .db_set(&mut tx, &session.username, session.token)
         .await?;
 
     Ok(())
@@ -348,8 +394,10 @@ async fn change_username(
     new_username: String,
 ) -> Result<UserSession, ServerFnError> {
     let pool = api::extract_pool().await?;
+    let mut tx = pool.begin().await?;
+
     let user =
-        backend::auth::change_username(&pool, &old_username, &new_username, &password).await?;
+        backend::auth::change_username(&mut tx, &old_username, &new_username, &password).await?;
 
     let session_user = UserSession {
         user_uuid: user.uuid,
@@ -359,6 +407,8 @@ async fn change_username(
 
     api::login_user(user.username, password, Some(String::new())).await?;
     leptos_actix::redirect("/preferences");
+
+    tx.commit().await?;
 
     return Ok(session_user);
 }

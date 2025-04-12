@@ -1,5 +1,11 @@
 use super::*;
 
+pub enum Reason {
+    ClickBackground,
+    ClickCancelButton,
+    ClickOkButton,
+}
+
 #[derive(Default, Clone)]
 pub struct ConfirmHandlerState {
     waker: Option<Waker>,
@@ -19,7 +25,15 @@ impl ConfirmHandler {
         state.completed = true;
 
         if let Some(waker) = state.waker.take() {
-            log!("in waker");
+            waker.wake();
+        }
+    }
+
+    fn cancel(&self) {
+        let mut state = self.state.lock().unwrap();
+        state.completed = true;
+
+        if let Some(waker) = state.waker.take() {
             waker.wake();
         }
     }
@@ -45,37 +59,74 @@ impl Future for ConfirmHandler {
 
 pub struct Canceled {}
 
-pub fn use_confirm() -> impl Fn(String) -> ConfirmHandler {
+pub fn use_confirm() -> impl Fn(String) -> std::pin::Pin<Box<dyn Future<Output = bool>>> {
     // TODO: unable use without page context provide fallback
     let page_context = use_context::<PageContext>().unwrap();
+    let preferences = expect_context::<RwSignal<Preferences>>();
     let mut resolve = false;
 
     move |title: String| {
-        let handler = ConfirmHandler::default();
-        let clone = handler.clone();
+        let handler = StoredValue::new(ConfirmHandler::default());
 
-        let handle_confirm = move || clone.confirm();
+        let on_event = move |_, reason: Reason| match reason {
+            Reason::ClickBackground => handler.get_value().cancel(),
+            Reason::ClickCancelButton => handler.get_value().cancel(),
+            Reason::ClickOkButton => handler.get_value().confirm(),
+        };
 
-        page_context.overlay.body.set((move || view! {<ConfirmContent on_confirm=handle_confirm.clone() title=title.clone() />}).into());
-        page_context.overlay.is_open.set(true);
+        page_context.dialog.show(
+            move || {
+                view! {
+                    <ConfirmContent
+                        on_event
+                        title=title.clone()
+                        prefs=preferences
+                    />
+                }
+            },
+            move |ev: MouseEvent| on_event(ev, Reason::ClickBackground),
+        );
 
         handler
+            .get_value()
+            .then(async move |ok| {
+                if (!ok) {
+                    page_context.dialog.open.set(false)
+                }
+
+                ok
+            })
+            .boxed()
     }
 }
 
 #[component]
-fn ConfirmContent<C>(on_confirm: C, title: String) -> impl IntoView
+fn ConfirmContent<CO>(on_event: CO, title: String, prefs: RwSignal<Preferences>) -> impl IntoView
 where
-    C: Fn() + Send + Sync + 'static,
+    CO: Fn(MouseEvent, Reason) + Send + Sync + Clone + 'static,
 {
-    let handle_confirm = move |_| on_confirm();
+    let on_event = StoredValue::new(move |ev: MouseEvent, reason| {
+        ev.stop_propagation();
+        on_event(ev, reason)
+    });
 
-    view! {
-        <div class=style::container>
-            <div>{title.clone()}</div>
-            <div class=style::actions>
-                <Button class=style::main on:click={handle_confirm}>Ok</Button>
-            </div>
-        </div>
-    }
+    let handle_background = move |ev: leptos::ev::MouseEvent| ev.stop_propagation();
+    let handle_cancel = move |ev| on_event.get_value()(ev, Reason::ClickCancelButton);
+    let handle_confirm = move |ev| on_event.get_value()(ev, Reason::ClickOkButton);
+
+    hoc::with_accent_prefs(
+        move || {
+            view! {
+                <div class=style::container on:click=handle_background>
+                    <h2>{title.clone()}</h2>
+                    <div class=style::content></div>
+                    <div class=style::actions>
+                        <Button on:click={handle_cancel}>Cancel</Button>
+                        <Button class=style::main on:click={handle_confirm}>Ok</Button>
+                    </div>
+                </div>
+            }
+        },
+        prefs,
+    )
 }

@@ -36,11 +36,11 @@ pub fn App() -> impl IntoView {
     provide_context(page_context.clone());
 
     let owner = Owner::current().unwrap();
-    //
-    // let close_overlay = {
-    //     let overlay = page_context.overlay.clone();
-    //     move |_| overlay.is_open.set(false)
-    // };
+
+    let close_overlay = {
+        let overlay = page_context.overlay.clone();
+        move |_| overlay.is_open.set(false)
+    };
 
     view! {
         <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -59,12 +59,13 @@ pub fn App() -> impl IntoView {
                     <elements::Message state />
                 </MessageSlot>
             </ProvideMessageJar>
-            <main >
+            <main on:click=close_overlay>
             {page_context}
                 <Routes fallback=move || view!{<h1>Not Found</h1>}>
                     <Route path=path!("/public") view=move || View::new(()) />
                     <Route path=path!("/login") view=LoginPage/>
                     <Route path=path!("/create-account") view=account::CreateAccount/>
+                    <Route path=path!("/terms") view=move || ()/>
                     <ParentRoute path=path!("/") view=RouteUser ssr=leptos_router::SsrMode::Async>
                         <Route path=path!("test") view=tests::TestPage />
                         <Route path=path!("preferences") view=PrefsWindow />
@@ -82,7 +83,7 @@ pub fn App() -> impl IntoView {
 
 #[component]
 pub fn Redirect() -> impl IntoView {
-    let session_rsc = session::provide_session();
+    let session_rsc = session::provide_session(None);
     provide_context(session_rsc);
 
     #[cfg(not(feature = "ssr"))]
@@ -114,11 +115,11 @@ pub struct UserName {
 
 #[component]
 pub fn RouteUser() -> impl IntoView {
-    let session_rsc = session::provide_session();
-    provide_context(session_rsc);
-
     let session = RwSignal::<UserSession>::default();
     provide_context(session);
+
+    let session_rsc = session::provide_session(Some(session));
+    provide_context(session_rsc);
 
     let pref_rsc = provide_prefs(session.into());
     let prefs = RwSignal::new(Preferences::default());

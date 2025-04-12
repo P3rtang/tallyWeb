@@ -1,8 +1,5 @@
 use super::*;
 
-use leptos::prelude::*;
-use leptos_router::hooks::use_params;
-
 #[component]
 pub fn InfoHeader(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let history = use_history();

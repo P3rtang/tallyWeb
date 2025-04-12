@@ -19,6 +19,7 @@ mod tooltip;
 mod tree;
 mod treeview;
 mod types;
+pub mod xstyle;
 
 pub use attribute_fn::{AttributeFn, IntoAttributeFn};
 pub use block::Block;
@@ -49,6 +50,7 @@ use leptos::{
     logging::warn,
     prelude::*,
 };
+use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]

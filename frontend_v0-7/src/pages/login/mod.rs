@@ -15,10 +15,7 @@ pub fn LoginPage() -> impl IntoView {
 
     Effect::new(move |_| {
         if let Some(Err(err)) = login_action.value().get() {
-            message(
-                move || view! {<b>{err.to_string()}</b>},
-                (Severity::Error, None).into(),
-            );
+            message.server_err(err);
         }
     });
 
@@ -46,21 +43,24 @@ pub fn LoginPage() -> impl IntoView {
                 />
 
                 <action-buttons>
-                    <Button class=style::remember rounding=ButtonRounding::Full attr:r#type="button">
+                    <Button
+                        class=style::remember
+                        attr:r#type="button"
+                        attr:tabindex=-1
+                        xstyle=xstyle!("border-radius": XBorderRadius::Full)
+                    >
                         <input type="checkbox" name="remember" id="remember" />
                         <label for="remember">Remember Me</label>
                     </Button>
                     <Button
                         href="/create-account"
-                        rounding=ButtonRounding::Full
-                        size=ButtonSize::Big
+                        xstyle=xstyle!("padding": XPadding::Big, "border-radius": XBorderRadius::Full)
                         attr:r#type="button"
                     >
                         <Icon color=IconColor::Black kind=IconKind::AddAccount />
                     </Button>
                     <Button
-                        rounding=ButtonRounding::Full
-                        size=ButtonSize::Big
+                        xstyle=xstyle!("padding": XPadding::Big, "border-radius": XBorderRadius::Full)
                         attr:r#type="submit"
                         attr:aria-label="sign in button"
                         attr:label="sign-in"

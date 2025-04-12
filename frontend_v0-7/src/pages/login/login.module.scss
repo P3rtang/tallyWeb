@@ -8,8 +8,8 @@
   max-width: 90vw;
 
   a {
+    cursor: pointer;
     color: unset;
-    text-decoration: none;
   }
 
   h1 {
@@ -83,6 +83,10 @@ action-buttons {
     input[type="checkbox"] {
       height: 21px;
       width: 21px;
+
+      &:focus {
+        outline: none;
+      }
     }
   }
 }

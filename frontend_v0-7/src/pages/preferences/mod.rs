@@ -1,9 +1,25 @@
 use super::*;
 
+// modules
+mod account;
+
+use chrono::TimeDelta;
+// imports
+use codee::string::JsonSerdeCodec;
+use components::NotificationConfig;
+use leptos_use::use_cookie;
+
+// internal
+use account::AccountPreferences;
+
+// re-exports
+
+// stylance css import
 stylance::import_style!(style, "./prefs.module.scss");
 
 #[derive(Debug, Clone, Default, Params, PartialEq)]
 pub struct Topic {
+    // TODO: move this to an enum
     topic: Option<String>,
 }
 
@@ -78,8 +94,10 @@ fn TreeRow(#[prop(into)] topic: Signal<String>) -> impl IntoView {
 #[component]
 fn PrefsContent() -> impl IntoView {
     let action = ServerAction::<api::SavePreferences>::new();
+    let topic = expect_context::<Memo<Topic>>();
     let session = expect_context::<RwSignal<UserSession>>();
     let history = use_history();
+    let message = use_message();
 
     let close_href = Signal::derive(move || {
         history
@@ -89,17 +107,40 @@ fn PrefsContent() -> impl IntoView {
             .unwrap_or_default()
     });
 
-    view! {
-        <Form action>
-            <HeaderSlot title="Preferences" close_href slot />
-            <session::SessionFormInput session />
+    Effect::new(move |_| match action.value().get() {
+        Some(Ok(_)) => message(
+            move || "success",
+            (
+                Severity::Success,
+                NotificationConfig::new(Some(TimeDelta::seconds(2)), ()),
+            )
+                .into(),
+        ),
+        Some(Err(err)) => {
+            message.server_err(err);
+        }
+        None => (),
+    });
 
-            <AccentColor />
-            <UseDefaultAccentColor />
-            <ShowBodyBorder />
-            <ShowSeparator />
-            <SaveOnPause />
-        </Form>
+    view! {
+        <Show when=move || topic.get() != "account">
+            <Form action>
+                <HeaderSlot title="Preferences" close_href slot />
+                <session::SessionFormInput session />
+
+                <AccentColor />
+                <UseDefaultAccentColor />
+                <ShowBodyBorder />
+                <ShowSeparator />
+
+                <SaveOnPause />
+            </Form>
+        </Show>
+
+        <Show when=move || topic.get() == "account">
+            <AccountPreferences />
+        </Show>
+
     }
 }
 

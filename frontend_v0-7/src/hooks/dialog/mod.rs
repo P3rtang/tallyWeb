@@ -17,6 +17,7 @@ use futures::{
     FutureExt, SinkExt, Stream, StreamExt,
 };
 
+use leptos::ev::MouseEvent;
 use leptos::task::spawn_local;
 
 stylance::import_style!(style, "./dialog.module.scss");

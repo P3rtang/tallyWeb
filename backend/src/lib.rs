@@ -34,12 +34,14 @@ pub enum BackendError {
     UserExists,
     #[error("Invalid Username or Password")]
     InvalidSecrets,
-    #[error("Invalid Password provided")]
+    #[error("Invalid credentials provided")]
     InvalidPassword,
-    #[error("Invalid Username provided")]
+    #[error("Invalid credentials provided")]
     InvalidUsername,
     #[error("Could not find {0} data for user")]
     DataNotFound(String),
+    #[error("Could not find a token")]
+    MissingToken,
 }
 
 pub trait DatabaseError: Error {}
@@ -72,12 +74,16 @@ impl DatabaseError for ChangeUserError {}
 pub enum LoginError {
     #[error("Account does not exist")]
     InvalidUsername,
-    #[error("User provided the wrong password")]
+    #[error("The passwords do not match")]
     InvalidPassword,
     #[error("Provided username or password was incorrect")]
     InvalidSecrets,
     #[error("Internal Server error when logging in user\nGot Error: {0}")]
     Internal(String),
+    #[error("`{0}` is a reserved username")]
+    ReservedUsername(String),
+    #[error("Provided password is too short.\nIt should be at least 8 characters.")]
+    PasswordTooShort,
 }
 
 impl DatabaseError for LoginError {}
@@ -112,62 +118,62 @@ pub async fn create_pool() -> Result<PgPool, sqlx::error::Error> {
     Ok(pool)
 }
 
-pub async fn get_counter_by_id(
-    pool: &PgPool,
-    username: &str,
-    token: uuid::Uuid,
-    uuid: uuid::Uuid,
-) -> Result<DbCounter, BackendError> {
-    let user = auth::get_user(pool, username, token).await?;
-
-    let counter = match sqlx::query_as!(
-        DbCounter,
-        r#"
-        SELECT * FROM counters
-        WHERE uuid = $1 AND owner_uuid = $2
-        "#,
-        uuid,
-        user.uuid,
-    )
-    .fetch_one(pool)
-    .await
-    {
-        Ok(counter) => counter,
-        Err(sqlx::Error::RowNotFound) => Err(BackendError::CounterNotFound)?,
-        Err(err) => Err(err)?,
-    };
-
-    if counter.owner_uuid != user.uuid {
-        Err(BackendError::Unauthorized)?;
-    }
-
-    Ok(counter)
-}
-
-pub async fn get_phase_by_id(
-    pool: &PgPool,
-    username: &str,
-    token: uuid::Uuid,
-    phase_id: uuid::Uuid,
-) -> Result<DbPhase, BackendError> {
-    let user = auth::get_user(pool, username, token).await?;
-
-    let phase: DbPhase = sqlx::query_as("SELECT * FROM phases WHERE uuid = $1 AND owner_uuid = $2")
-        .bind(phase_id)
-        .bind(user.uuid)
-        .fetch_one(pool)
-        .await?;
-
-    Ok(phase)
-}
+// pub async fn get_counter_by_id(
+//     tx: &mut PgTx,
+//     username: &str,
+//     token: uuid::Uuid,
+//     uuid: uuid::Uuid,
+// ) -> Result<DbCounter, BackendError> {
+//     let user = auth::get_user(tx, username, token).await?;
+//
+//     let counter = match sqlx::query_as!(
+//         DbCounter,
+//         r#"
+//         SELECT * FROM counters
+//         WHERE uuid = $1 AND owner_uuid = $2
+//         "#,
+//         uuid,
+//         user.uuid,
+//     )
+//     .fetch_one(pool)
+//     .await
+//     {
+//         Ok(counter) => counter,
+//         Err(sqlx::Error::RowNotFound) => Err(BackendError::CounterNotFound)?,
+//         Err(err) => Err(err)?,
+//     };
+//
+//     if counter.owner_uuid != user.uuid {
+//         Err(BackendError::Unauthorized)?;
+//     }
+//
+//     Ok(counter)
+// }
+//
+// pub async fn get_phase_by_id(
+//     tx: &mut PgTx,
+//     username: &str,
+//     token: uuid::Uuid,
+//     phase_id: uuid::Uuid,
+// ) -> Result<DbPhase, BackendError> {
+//     let user = auth::get_user(tx, username, token).await?;
+//
+//     let phase: DbPhase = sqlx::query_as("SELECT * FROM phases WHERE uuid = $1 AND owner_uuid = $2")
+//         .bind(phase_id)
+//         .bind(user.uuid)
+//         .fetch_one(&mut **tx)
+//         .await?;
+//
+//     Ok(phase)
+// }
 
 pub async fn update_phase(
-    pool: &PgPool,
+    tx: &mut PgTx,
     username: &str,
     token: uuid::Uuid,
     phase: DbPhase,
 ) -> Result<(), BackendError> {
-    let _ = auth::get_user(pool, username, token).await?;
+    let _ = auth::get_user(tx, username, token).await?;
     let _ = sqlx::query(
         r#"
         INSERT INTO phases (uuid, owner_uuid, parent_uuid, name, count, time, hunt_type, has_charm, success)
@@ -191,19 +197,19 @@ pub async fn update_phase(
     .bind(phase.hunt_type)
     .bind(phase.has_charm)
     .bind(phase.success)
-    .execute(pool)
+    .execute(&mut **tx)
     .await?;
 
     Ok(())
 }
 
 pub async fn update_counter(
-    pool: &PgPool,
+    tx: &mut PgTx,
     username: &str,
     token: uuid::Uuid,
     counter: DbCounter,
 ) -> Result<(), BackendError> {
-    let _ = auth::get_user(pool, username, token).await?;
+    let _ = auth::get_user(tx, username, token).await?;
     sqlx::query!(
         r#"
         INSERT INTO counters (uuid, owner_uuid, name)
@@ -216,7 +222,7 @@ pub async fn update_counter(
         counter.owner_uuid,
         counter.name,
     )
-    .execute(pool)
+    .execute(&mut **tx)
     .await?;
 
     Ok(())

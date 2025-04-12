@@ -134,7 +134,7 @@ pub struct DbPreferences {
 }
 
 impl DbPreferences {
-    pub async fn db_get(pool: &PgPool, user_uuid: uuid::Uuid) -> Result<Self, BackendError> {
+    pub async fn db_get(tx: &mut PgTx, user_uuid: uuid::Uuid) -> Result<Self, BackendError> {
         let data = match query_as!(
             DbPreferences,
             r#"
@@ -143,7 +143,7 @@ impl DbPreferences {
             "#,
             user_uuid,
         )
-        .fetch_one(pool)
+        .fetch_one(&mut **tx)
         .await
         {
             Ok(data) => data,
@@ -158,11 +158,11 @@ impl DbPreferences {
 
     pub async fn db_set(
         self,
-        pool: &PgPool,
+        tx: &mut PgTx,
         username: &str,
         token: uuid::Uuid,
     ) -> Result<(), BackendError> {
-        let user = auth::get_user(pool, username, token).await?;
+        let user = auth::get_user(tx, username, token).await?;
         query!(
             r#"
             INSERT INTO preferences (
@@ -191,7 +191,7 @@ impl DbPreferences {
             self.save_on_pause,
             self.show_body_border,
         )
-        .execute(pool)
+        .execute(&mut **tx)
         .await?;
 
         Ok(())
