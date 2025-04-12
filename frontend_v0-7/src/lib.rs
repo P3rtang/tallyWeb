@@ -42,6 +42,8 @@ use saving::*;
 mod tests;
 
 use cfg_if::cfg_if;
+use components::xstyle;
+use components::xstyle::*;
 use components::IntoAttributeFn;
 
 stylance::import_style!(main, "../style/_main.module.scss");
@@ -101,9 +103,9 @@ pub enum AppError {
     ExpiredToken,
     #[error("Invalid Username or Password")]
     InvalidSecrets,
-    #[error("Invalid Password provided")]
+    #[error("Invalid credentials provided")]
     InvalidPassword,
-    #[error("Invalid Username provided")]
+    #[error("Invalid credentials provided")]
     InvalidUsername,
     #[error("User data not found")]
     UserNotFound,

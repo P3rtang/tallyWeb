@@ -12,6 +12,7 @@ use super::*;
  *   - `Ok(())` - The new value is accepted
  *   - `Err(`[AppError]`)` - The old value will be reinstated and the error logged
  */
+#[allow(dead_code)]
 pub struct OnChange(Arc<dyn Fn(TimeDelta) -> AppResult<()>>);
 
 impl Default for OnChange {
@@ -56,8 +57,8 @@ pub fn TimeDeltaField(
     #[prop(into, optional)] name: Signal<String>,
     #[prop(into, optional)] id: Signal<String>,
     #[prop(into, optional)] value: Option<Signal<TimeDelta>>,
-    #[prop(optional)] default_value: Option<TimeDelta>,
     #[prop(into, optional)] on_change: OnChange,
+    #[prop(optional)] default_value: Option<TimeDelta>,
 
     #[prop(optional)] delta_hour: Option<DeltaHour>,
     #[prop(optional)] delta_minute: Option<DeltaMinute>,
@@ -113,7 +114,6 @@ pub fn TimeDeltaField(
     let pad_millis = move || format!("{:03}", value().num_milliseconds() % 1000);
 
     let handle_change_hour = move |ev| {
-        let ev_value = event_target_value(&ev);
         if let Ok(ev) = event_target_value(&ev).parse::<i64>() {
             let diff = ev - value.get().num_hours();
             set_default_value(value.get() + TimeDelta::hours(diff))

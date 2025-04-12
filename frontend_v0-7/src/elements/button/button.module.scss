@@ -11,39 +11,15 @@
     justify-content: center;
   }
 
-  &.default>div {
-    padding: 10px 20px;
-  }
-
-  &.icon>div {
-    padding: 8px;
-  }
-
-  &.big>div {
-    padding: 16px;
-  }
-
-  &.small>div {
-    padding: 4px;
-  }
-
-  &.no-rounded {
-    border-radius: 0px;
-  }
-
-  &.full-rounded {
-    border-radius: 10000px;
-
-    >div {
-      border-radius: 10000px;
-    }
-  }
-
-  &.darken:hover>div, &.darken:focus-visible>div {
+  &.darken:hover > div,
+  &.darken:focus-visible > div,
+  &.darken:focus-within > div {
     background: rgba(black, 0.15);
   }
 
-  &.lighten:hover>div, &.lighten:focus-visible>div {
+  &.lighten:hover > div,
+  &.lighten:focus-visible > div,
+  &.lighten:focus-within > div {
     background: rgba(white, 0.08);
   }
 }

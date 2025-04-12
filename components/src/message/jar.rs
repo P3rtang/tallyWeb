@@ -246,12 +246,8 @@ impl MessageJar<WithHandle> {
         key
     }
 
-    pub fn set_success_view(&self, msg: impl IntoView + Sync + Clone + 'static) -> MessageKey {
-        let msg = StoredValue::new(msg);
-        let key = self.add_msg(NotificationKind::Success(
-            self.as_modal,
-            ViewFn::from(move || msg.get_value()),
-        ));
+    pub fn set_success_view(&self, msg: ViewFn) -> MessageKey {
+        let key = self.add_msg(NotificationKind::Success(self.as_modal, msg));
         self.msg_timeout_effect(key);
         key
     }

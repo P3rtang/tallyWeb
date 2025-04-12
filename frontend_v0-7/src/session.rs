@@ -55,13 +55,18 @@ pub fn SessionFormInput(#[prop(into)] session: Signal<UserSession>) -> impl Into
     }
 }
 
-pub fn provide_session() -> Resource<UserSession> {
+pub fn provide_session(signal: Option<RwSignal<UserSession>>) -> Resource<UserSession> {
     let user_resc = Resource::new_blocking(
         || (),
         move |_| async move {
             let user = get_user_signal().await;
             // TODO: regenerate token when expired error
             let _ = api::check_user(user.clone()).await;
+
+            if let Some(signal) = signal {
+                signal.set(user.clone());
+            }
+
             user
         },
     );

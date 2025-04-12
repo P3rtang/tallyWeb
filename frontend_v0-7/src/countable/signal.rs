@@ -12,7 +12,7 @@ pub fn provide_store() -> (
     let store_resource = Resource::new_blocking(
         move || session.get(),
         move |user| async move {
-            server::get_countable_store(user.unwrap_or_default().user_uuid)
+            server::get_countable_store(user.unwrap_or_default())
                 .await
                 .ok()
         },
@@ -42,7 +42,7 @@ pub fn WithStore(owner: Owner, children: ChildrenFn) -> impl IntoView {
     let session = expect_context::<RwSignal<UserSession>>();
 
     let store_resource = Resource::new_blocking(session, move |user| async move {
-        server::get_countable_store(user.user_uuid).await.ok()
+        server::get_countable_store(user).await.ok()
     });
     owner.with(|| provide_context(store_resource));
 

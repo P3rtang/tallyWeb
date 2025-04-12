@@ -94,7 +94,7 @@ pub fn Menu(children: ChildrenFn, #[prop(optional)] menu_button: MenuButton) -> 
     view! {
         <Button
             node_ref=node_ref
-            size=ButtonSize::Icon
+            xstyle=xstyle!("padding": XPadding::Medium)
 
             on:click={handle_click}
             {..menu_button.attrs.call()}

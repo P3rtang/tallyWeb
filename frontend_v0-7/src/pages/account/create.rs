@@ -1,7 +1,3 @@
-use leptos::{form::ActionForm, html::Input, prelude::*};
-use leptos_router::hooks::use_navigate;
-use web_sys::SubmitEvent;
-
 use super::*;
 
 stylance::import_style!(style, "../login/login.module.scss");
@@ -9,39 +5,37 @@ stylance::import_style!(style, "../login/login.module.scss");
 #[component]
 pub fn CreateAccount() -> impl IntoView {
     let action = ServerAction::<api::CreateAccount>::new();
-    // let message_jar = expect_context::<components::MessageJar>();
+    let message = use_message();
 
     let password_input = NodeRef::<Input>::new();
     let password_repeat = NodeRef::<Input>::new();
 
-    let on_submit = move |ev: SubmitEvent| {
-        if password_input.get().unwrap().value().len() < 8 {
-            // message.set(Some(String::from(
-            //     "Password should be longer than 8 characters",
-            // )));
-            ev.prevent_default()
+    Effect::new(move |_| match action.value().get() {
+        Some(Ok(_)) => use_navigate()("/", Default::default()),
+        Some(Err(err)) => {
+            message.server_err(err);
+            action.value().update_untracked(|v| {
+                v.take();
+            });
         }
-        if password_input.get().unwrap().value() != password_repeat.get().unwrap().value() {
-            // message.set(Some(String::from("passwords do not match")));
-            ev.prevent_default();
-        }
-        Effect::new(move |_| match action.value().get() {
-            Some(Ok(_)) => use_navigate()("/", Default::default()),
-            Some(Err(err)) => warn!("{}", err),
-            None => {}
-        });
-    };
+        None => {}
+    });
 
     view! {
-        <ActionForm action on:submit=on_submit>
+        <ActionForm action>
             <div class=style::login_form>
                 <h1>Sign Up</h1>
-
                 <label for="username">
                     <b>Username</b>
                 </label>
-                <input type="text" placeholder="Enter Username" name="username" required />
-
+                <input
+                    type="text"
+                    placeholder="Enter Username"
+                    name="username"
+                    id="username"
+                    autocomplete="off"
+                    required
+                />
                 <label for="password">
                     <b>Password</b>
                 </label>
@@ -49,6 +43,7 @@ pub fn CreateAccount() -> impl IntoView {
                     type="password"
                     placeholder="Enter Password"
                     name="password"
+                    id="password"
                     node_ref=password_input
                     required
                 />
@@ -60,26 +55,34 @@ pub fn CreateAccount() -> impl IntoView {
                     type="password"
                     placeholder="Repeat Password"
                     name="password_repeat"
+                    id="password_repeat"
                     node_ref=password_repeat
                     required
                 />
 
                 <action-buttons>
-                    <Button class=style::remember rounding=ButtonRounding::Full attr:r#type="button">
+                    <Button
+                        xstyle=xstyle!("border-radius": XBorderRadius::Full)
+                        class=style::remember
+                        attr:tabindex=-1
+                        attr:r#type="button"
+                    >
                         <input required type="checkbox" name="accept-tc" id="accept-tc" />
-                        <label for="accept-tc" style:font-size="16px">{"I have read the Terms&Conditions"}</label>
+                        <label for="accept-tc" style:font-size="16px">
+                            <a href="/terms">
+                            {"I have read the Terms&Conditions"}
+                            </a>
+                        </label>
                     </Button>
                     <Button
                         href="/login"
-                        rounding=ButtonRounding::Full
-                        size=ButtonSize::Big
+                        xstyle=xstyle!("padding": XPadding::Big, "border-radius": XBorderRadius::Full)
                         attr:r#type="button"
                     >
                         <Icon color=IconColor::Black kind=IconKind::Cross />
                     </Button>
                     <Button
-                        rounding=ButtonRounding::Full
-                        size=ButtonSize::Big
+                        xstyle=xstyle!("padding": XPadding::Big, "border-radius": XBorderRadius::Full)
                         attr:r#type="submit"
                         attr:aria-label="sign up button"
                     >

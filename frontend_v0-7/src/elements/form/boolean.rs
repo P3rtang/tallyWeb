@@ -1,5 +1,4 @@
 use super::*;
-use leptos::attr::NextAttribute;
 
 #[component]
 pub fn BoolField(
@@ -9,13 +8,17 @@ pub fn BoolField(
     let screen = hooks::use_screen();
 
     view! {
-        <Show when=move || label.is_some()>
-            <label class=style::form_label for=id style:grid-column="1">
-                {label.unwrap()()}
-            </label>
-        </Show>
-        <div style:grid-column=move || { if screen.get().viewport() > ViewPort::Small { "2" } else { "1" } }>
-            <Slider />
-        </div>
+        <AttributeInterceptor children=move |attrs| {
+            view! {
+                <Show when=move || label.is_some()>
+                    <label class=style::form_label for=id style:grid-column="1">
+                        {label.unwrap()()}
+                    </label>
+                </Show>
+                <div style:grid-column=move || { if screen.get().viewport() > ViewPort::Small { "2" } else { "1" } }>
+                    <Slider {..attrs} prop:id=id />
+                </div>
+            }
+        }/>
     }
 }

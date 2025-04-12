@@ -5,12 +5,12 @@ pub enum Severity {
     Info,
     Warning,
     Error,
+    Success,
 }
 
 #[derive(Debug, Clone)]
 pub struct MessageConfig {
     severity: Severity,
-    fade: Option<chrono::Duration>,
     config: NotificationConfig,
 }
 
@@ -18,7 +18,6 @@ impl Default for MessageConfig {
     fn default() -> Self {
         Self {
             severity: Severity::Info,
-            fade: Some(chrono::TimeDelta::milliseconds(5000)),
             config: Default::default(),
         }
     }
@@ -33,29 +32,10 @@ impl From<Severity> for MessageConfig {
     }
 }
 
-impl From<Option<chrono::TimeDelta>> for MessageConfig {
-    fn from(value: Option<chrono::TimeDelta>) -> Self {
-        Self {
-            fade: value,
-            ..Default::default()
-        }
-    }
-}
-
 impl From<NotificationConfig> for MessageConfig {
     fn from(value: NotificationConfig) -> Self {
         Self {
             config: value,
-            ..Default::default()
-        }
-    }
-}
-
-impl From<(Severity, Option<chrono::TimeDelta>)> for MessageConfig {
-    fn from(value: (Severity, Option<chrono::TimeDelta>)) -> Self {
-        Self {
-            severity: value.0,
-            fade: value.1,
             ..Default::default()
         }
     }
@@ -71,28 +51,26 @@ impl From<(Severity, NotificationConfig)> for MessageConfig {
     }
 }
 
-impl From<(Option<chrono::TimeDelta>, NotificationConfig)> for MessageConfig {
-    fn from(value: (Option<chrono::TimeDelta>, NotificationConfig)) -> Self {
-        Self {
-            fade: value.0,
-            config: value.1,
-            ..Default::default()
-        }
-    }
-}
-
-impl From<(Severity, Option<chrono::TimeDelta>, NotificationConfig)> for MessageConfig {
-    fn from(value: (Severity, Option<chrono::TimeDelta>, NotificationConfig)) -> Self {
-        Self {
-            severity: value.0,
-            fade: value.1,
-            config: value.2,
-        }
-    }
-}
-
 pub type DynMessageFn = Arc<dyn Fn(ViewFn, MessageConfig) -> usize + Send + Sync>;
 
+/**
+   # usage
+   ```rust
+   let view_fn = move || view!{<div>Hello, world!</div>};
+
+   let notification_config = NotificationConfig::new(
+       fade: None // disable the fade timeout
+       attrs: view!{<{..} attr:id="notification" />} // add any attribute/style to the notification
+   )
+
+   let config = (
+       Severity::Error, // set the severity to error (red border and text)
+       NotificationConfig // object with styling and fading for the notification itself
+   )
+
+   MessageFn(view_fn, config.into())
+   ```
+*/
 #[derive(Clone, Copy)]
 pub struct MessageFn(Option<StoredValue<DynMessageFn>>);
 
@@ -102,9 +80,21 @@ impl MessageFn {
             let msg = match error {
                 ServerFnError::WrappedServerError(_) => todo!(),
                 ServerFnError::Registration(_) => todo!(),
-                ServerFnError::Request(_) => "Failed to connect to the server".to_string(),
-                ServerFnError::Response(_) => "The server failed to respond".to_string(),
-                ServerFnError::ServerError(_) => "An error occured".to_string(),
+                ServerFnError::Request(_) => {
+                    EitherOf3::A(view! {<div>Failed to connect to the server</div>})
+                }
+                ServerFnError::Response(_) => {
+                    EitherOf3::B(view! {<div>The server failed to respond</div>})
+                }
+                ServerFnError::ServerError(err) => {
+                    let msg = err
+                        .to_string()
+                        .split('\n')
+                        .map(|line| view! {<div>{line.to_string()}</div>})
+                        .collect_view();
+
+                    EitherOf3::C(msg)
+                }
                 ServerFnError::Deserialization(_) => todo!(),
                 ServerFnError::Serialization(_) => todo!(),
                 ServerFnError::Args(_) => todo!(),
@@ -208,7 +198,7 @@ pub fn use_message() -> MessageFn {
         .map(
             |jar| -> Arc<dyn Fn(ViewFn, MessageConfig) -> usize + Send + Sync> {
                 Arc::new(move |msg: ViewFn, config: MessageConfig| {
-                    let jar = if let Some(timeout) = config.fade {
+                    let jar = if let Some(timeout) = config.config.fade {
                         jar.with_config(config.config)
                             .with_handle()
                             .with_timeout(timeout)
@@ -222,6 +212,7 @@ pub fn use_message() -> MessageFn {
                         Severity::Error => jar.set_err_view(msg),
                         Severity::Warning => todo!(),
                         Severity::Info => jar.set_msg_view(msg),
+                        Severity::Success => jar.set_success_view(msg),
                     }
                 })
             },

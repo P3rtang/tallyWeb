@@ -1,3 +1,7 @@
+mod session_v2;
+
+pub use session_v2::CheckSessionV2;
+
 use std::future::{ready, Ready};
 
 use actix_web::{
@@ -89,18 +93,30 @@ where
         let fut = self.service.call(req);
 
         Box::pin(async move {
-            match backend::auth::check_user(&pool, &session.username, session.token).await {
-                Ok(backend::auth::SessionState::Valid) => fut.await,
-                Ok(backend::auth::SessionState::Expired) => {
-                    let (req, resp) = fut.await?.into_parts();
-                    let resp = HttpResponse::Ok()
-                        .insert_header(("serverfnredirect", "/login"))
-                        .insert_header((header::LOCATION, "/login"))
-                        .message_body(resp.into_body())?;
-                    Ok(ServiceResponse::new(req, resp))
-                }
-                Err(err) => Err(actix_web::error::ErrorUnauthorized(err)),
-            }
+            let mut tx = pool
+                .begin()
+                .await
+                .map_err(|err| actix_web::error::ErrorInternalServerError(err.to_string()))?;
+
+            let ret =
+                match backend::auth::check_user(&mut tx, &session.username, session.token).await {
+                    Ok(backend::auth::SessionState::Valid) => fut.await,
+                    Ok(backend::auth::SessionState::Expired) => {
+                        let (req, resp) = fut.await?.into_parts();
+                        let resp = HttpResponse::Ok()
+                            .insert_header(("serverfnredirect", "/login"))
+                            .insert_header((header::LOCATION, "/login"))
+                            .message_body(resp.into_body())?;
+                        Ok(ServiceResponse::new(req, resp))
+                    }
+                    Err(err) => Err(actix_web::error::ErrorUnauthorized(err)),
+                };
+
+            tx.commit()
+                .await
+                .map_err(|err| actix_web::error::ErrorInternalServerError(err.to_string()))?;
+
+            ret
         })
     }
 }

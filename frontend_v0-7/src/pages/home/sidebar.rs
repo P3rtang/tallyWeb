@@ -246,7 +246,13 @@ pub(crate) fn SidebarContent() -> impl IntoView {
                 </List>
                 <ActionForm action style:padding="0px 16px">
                     <input type="hidden" name="kind" value=CountableKind::Counter.to_string() />
-                    <Button class:hover-darken=true style:width="100%" attr:r#type="submit" attr:aria_label="new counter">
+                    <Button
+                        xstyle=xstyle!("padding": XPadding::Rect(8, 16))
+                        class:hover-darken=true
+                        style:width="100%"
+                        attr:r#type="submit"
+                        attr:aria_label="new counter"
+                    >
                         <div>New Counter</div>
                     </Button>
                 </ActionForm>
@@ -269,31 +275,30 @@ fn SortInputs(
     };
 
     view! {
-        // <div
-        //     class=move || stylance::classes!(style::sort_box, show_sort.get().then_some(style::shown))
-        //     style:max-height=sort_height
-        // >
-        //     <div>
-        //         <Button
-        //             size=ButtonSize::Icon
-        //             rounding=ButtonRounding::Full
-        //             on:click=move |_| sort.update(|s| s.reverse())
-        //             attr:aria_label=move || if sort.get().is_reversed() { "sort ascending" } else { "sort descending" }
-        //         >
-        //             <Icon
-        //                 kind=IconKind::Arrow
-        //                 style:transform=move || if sort.get().is_reversed() { "rotate(90deg)" } else { "rotate(-90deg)" }
-        //                 color=IconColor::Black
-        //             />
-        //         </Button>
-        //         <SelectField
-        //             id="filter-countable"
-        //             options=options
-        //             value=sort
-        //             on_change=handle_sort_change
-        //         />
-        //     </div>
-        // </div>
+        <div
+            class=move || stylance::classes!(style::sort_box, show_sort.get().then_some(style::shown))
+            style:max-height=sort_height
+        >
+            <div>
+                <Button
+                    xstyle=xstyle!("border-radius": XBorderRadius::Percentage(100))
+                    on:click=move |_| sort.update(|s| s.reverse())
+                    attr:aria_label=move || if sort.get().is_reversed() { "sort ascending" } else { "sort descending" }
+                >
+                    <Icon
+                        kind=IconKind::Arrow
+                        style:transform=move || if sort.get().is_reversed() { "rotate(90deg)" } else { "rotate(-90deg)" }
+                        color=IconColor::Black
+                    />
+                </Button>
+                <SelectField
+                    id="filter-countable"
+                    options=options
+                    value=sort
+                    on_change=handle_sort_change
+                />
+            </div>
+        </div>
     }
 }
 
@@ -337,8 +342,7 @@ fn TreeRow(countable: CountableId) -> impl IntoView {
                 <input type="hidden" name="kind" value="Phase" />
                 <input type="hidden" name="parent" value=countable.0.to_string() />
                 <Button
-                    size=ButtonSize::Small
-                    rounding=ButtonRounding::Full
+                    xstyle=xstyle!("padding": XPadding::Small, "border-radius": XBorderRadius::Percentage(100))
                     hover=ButtonHover::Darken
                     attr:r#type="submit"
                     attr:aria-label="add phase"
@@ -368,7 +372,7 @@ fn Navbar(
                 </Show>
                 <Button
                     hover=ButtonHover::Lighten
-                    size=ButtonSize::Icon
+                    xstyle=xstyle!("padding": XPadding::Medium)
                     class=style::icon
 
                     style:background="transparent"
@@ -380,7 +384,7 @@ fn Navbar(
             </div>
             <Button
                 hover=ButtonHover::Lighten
-                size=ButtonSize::Icon
+                xstyle=xstyle!("padding": XPadding::Medium)
                 class=style::icon
 
                 style:background="transparent"

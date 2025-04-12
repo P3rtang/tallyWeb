@@ -12,11 +12,15 @@ $border-color-dark: #FFFFFF80;
 
 :root {
   --element-bg: #AAAAAA;
+  --element-focus: #999999;
   --text-color: black;
+  --label-color: #CCCCCC;
 
   @media (prefers-color-scheme: dark) {
     --element-bg: #444444;
+    --element-focus: #3A3A3A;
     --text-color: white;
+    --label-color: lightgray;
   }
 }
 
@@ -47,7 +51,8 @@ button {
     height: 40px;
     width: 40px;
 
-    >div, >a {
+    >div,
+    >a {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -64,7 +69,8 @@ button {
       background: rgba(black, 0.136)
     }
 
-    &:focus-visible>div, &:focus-visible>a {
+    &:focus-visible>div,
+    &:focus-visible>a {
       background: rgba(black, 0.136)
     }
   }
@@ -76,7 +82,8 @@ button {
       background: rgba(white, 0.05)
     }
 
-    &:focus-visible>div, &:focus-visible>a {
+    &:focus-visible>div,
+    &:focus-visible>a {
       background: rgba(white, 0.05)
     }
   }
@@ -110,13 +117,14 @@ img:global(.hidden) {
   display: none;
 }
 
-input:not([type=color]) {
+input:not([type=color], [type=checkbox]) {
   background: unset;
   border: unset;
   font-size: unset;
   padding: unset;
   all: unset;
   font-size: 21px;
+  box-sizing: border-box;
 }
 
 input::-webkit-outer-spin-button,

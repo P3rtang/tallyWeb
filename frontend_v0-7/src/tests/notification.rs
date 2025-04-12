@@ -20,14 +20,14 @@ pub fn TestNotifications() -> impl IntoView {
 
         message(
             move || view! { <div>{msg.clone()}</div> },
-            (fade.get(), config()).into(),
+            (config()).into(),
         )
     };
 
     let handle_error = move |_| {
         message(
             move || view! { <div>An Error Occured</div> },
-            (Severity::Error, fade.get()).into(),
+            (Severity::Error, config()).into(),
         )
     };
 

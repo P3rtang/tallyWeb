@@ -12,10 +12,6 @@
     flex-wrap: wrap;
     container-type: inline-size;
 
-    @media (min-width: 1200px) {
-      max-width: calc(100vw - 410px);
-    }
-
     margin-left: auto;
     margin-right: auto;
 

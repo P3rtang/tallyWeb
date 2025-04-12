@@ -1,9 +1,7 @@
-use leptos::{server, server_fn::ServerFnError};
-
 use super::*;
 
-#[server(GetCountableStore, "/api/session")]
-pub async fn get_countable_store(user: uuid::Uuid) -> Result<CountableStore, ServerFnError> {
+#[server(GetCountableStore, "/api/session_v2")]
+pub async fn get_countable_store(session: UserSession) -> Result<CountableStore, ServerFnError> {
     use super::{super::api, Countable, CountableId};
     use std::collections::{HashMap, VecDeque};
 
@@ -11,8 +9,10 @@ pub async fn get_countable_store(user: uuid::Uuid) -> Result<CountableStore, Ser
 
     let mut store: HashMap<CountableId, Countable> = HashMap::new();
     let mut counters: VecDeque<backend::DbCounter> =
-        backend::counter::all_by_user(&mut conn, user).await?.into();
-    let phases = backend::phase::all_by_user(&mut conn, user).await?;
+        backend::counter::all_by_user(&mut conn, session.user_uuid)
+            .await?
+            .into();
+    let phases = backend::phase::all_by_user(&mut conn, session.user_uuid).await?;
 
     while let Some(c) = counters.pop_front() {
         // TODO: allow parent field on counters
@@ -25,5 +25,5 @@ pub async fn get_countable_store(user: uuid::Uuid) -> Result<CountableStore, Ser
 
     conn.commit().await?;
 
-    Ok(CountableStore::new(user, store))
+    Ok(CountableStore::new(session.user_uuid, store))
 }

@@ -1,24 +1,8 @@
+#![allow(unused_variables)]
 #![allow(clippy::module_inception)]
-#![allow(unused)]
-
 use super::*;
 
-use chrono::TimeDelta;
-use components::*;
-use leptos::{
-    attr::{
-        any_attribute::{AnyAttribute, IntoAnyAttribute},
-        Attribute,
-    },
-    attribute_interceptor::AttributeInterceptor,
-    either::Either,
-    ev, html,
-    prelude::*,
-    tachys::html::style::IntoStyle,
-};
-use leptos_router::components::A;
-use std::sync::Arc;
-
+// modules
 mod account;
 pub mod button;
 mod form;
@@ -26,16 +10,30 @@ pub mod icon;
 mod infobox;
 pub mod list;
 pub mod menu;
+mod message;
 mod navbar;
 pub mod page;
 
+// imports
+use chrono::TimeDelta;
+use components::*;
+use leptos::{
+    attr::any_attribute::{AnyAttribute, IntoAnyAttribute},
+    attribute_interceptor::AttributeInterceptor,
+    either::Either,
+    ev, html,
+};
+use leptos_router::components::A;
+use std::sync::Arc;
+
+// internal
+use icon::*;
+
+// re-exports
 pub use account::icon::AccountIcon;
 pub use button::*;
 pub use form::*;
 pub use fuzzy_sort::Sortable;
-use icon::*;
 pub use infobox::InfoBox;
-pub use navbar::{Navbar, OnClose};
-
-mod message;
 pub use message::Message;
+pub use navbar::Navbar;

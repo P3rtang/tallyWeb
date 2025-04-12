@@ -9,8 +9,8 @@ pub fn Form<ServFn>(
     action: ServerAction<ServFn>,
     children: ChildrenFn,
     #[prop(into, optional)] on_undo: EventCallback<ev::MouseEvent>,
-    #[prop(into, optional)] on_submit: EventCallback<ev::SubmitEvent>,
     #[prop(into, optional)] id: Option<String>,
+    #[prop(into, optional)] session: Option<Signal<UserSession>>,
 
     #[prop(optional)] header_slot: HeaderSlot,
 ) -> impl IntoView
@@ -25,6 +25,9 @@ where
         <div class=style::container>
             { header_slot }
             <ActionForm action attr:class=style::form attr:id=id>
+                <Show when=move || session.is_some()>
+                    <session::SessionFormInput session=session.unwrap() />
+                </Show>
                 <div class=style::body>
                     {children()}
                 </div>

@@ -41,11 +41,8 @@ cfg_if::cfg_if! {
                     .wrap(actix_web::middleware::Condition::new(conf.leptos_options.env == config::Env::PROD, middleware::Compress::default()))
                     .service(
                         web::scope("/api")
-                            .service(
-                                web::scope("/session")
-                                    .wrap(mw::CheckSession)
-                                    .route("/{tail:.*}", leptos_actix::handle_server_fns())
-                            )
+                            .service(web::scope("/session").wrap(mw::CheckSession).route("/{tail:.*}", leptos_actix::handle_server_fns()))
+                            .service(web::scope("/session_v2").wrap(mw::CheckSessionV2).route("/{tail:.*}", leptos_actix::handle_server_fns()))
                             .route("/{tail:.*}", leptos_actix::handle_server_fns())
                     )
                     .service(

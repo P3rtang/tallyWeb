@@ -64,7 +64,7 @@ pub fn Message(#[prop(name = "state")] MessageProp { key, jar, attrs }: MessageP
             {..attrs.call()}
         >
             <div class=style::content>
-                <Button size=ButtonSize::Small on:click=on_close>
+                <Button xstyle=xstyle!("padding": XPadding::Small) on:click=on_close>
                     <Icon kind=IconKind::Cross />
                 </Button>
                 {move || kind().get_view().unwrap_or(().into_any())}

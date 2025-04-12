@@ -1,6 +1,10 @@
 use super::*;
 
-stylance::import_style!(style, "./icon.module.scss");
+stylance::import_style!(
+    #[allow(dead_code)]
+    style,
+    "./icon.module.scss"
+);
 
 #[derive(Clone, Copy)]
 pub enum IconKind {
@@ -20,6 +24,10 @@ pub enum IconKind {
     LogOut,
     LogIn,
     AddAccount,
+    ArrowRight,
+    ArrowLeft,
+    ArrowUp,
+    ArrowDown,
 }
 
 impl IconKind {
@@ -42,12 +50,17 @@ impl IconKind {
                 IconKind::LogOut => style::log_out,
                 IconKind::LogIn => style::log_in,
                 IconKind::AddAccount => style::add_account,
+                IconKind::ArrowRight => style::arrow_right,
+                IconKind::ArrowLeft => style::arrow_left,
+                IconKind::ArrowUp => style::arrow_up,
+                IconKind::ArrowDown => style::arrow_down,
             },
             style::icon
         )
     }
 }
 
+#[allow(dead_code)]
 #[derive(Default, Clone, Copy)]
 pub enum IconColor {
     #[default]

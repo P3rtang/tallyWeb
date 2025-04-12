@@ -1,7 +1,5 @@
 use super::*;
 use components::ToolTip;
-use leptos::{html, prelude::*};
-use leptos_meta::Link;
 use leptos_router::components::A;
 
 stylance::import_style!(style, "./navbar.module.scss");
