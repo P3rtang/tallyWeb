@@ -1,9 +1,9 @@
 use super::*;
 
 pub enum Reason {
-    ClickBackground,
-    ClickCancelButton,
-    ClickOkButton,
+    Background,
+    CancelButton,
+    OkButton,
 }
 
 #[derive(Default, Clone)]
@@ -69,9 +69,9 @@ pub fn use_confirm() -> impl Fn(String) -> std::pin::Pin<Box<dyn Future<Output =
         let handler = StoredValue::new(ConfirmHandler::default());
 
         let on_event = move |_, reason: Reason| match reason {
-            Reason::ClickBackground => handler.get_value().cancel(),
-            Reason::ClickCancelButton => handler.get_value().cancel(),
-            Reason::ClickOkButton => handler.get_value().confirm(),
+            Reason::Background => handler.get_value().cancel(),
+            Reason::CancelButton => handler.get_value().cancel(),
+            Reason::OkButton => handler.get_value().confirm(),
         };
 
         page_context.dialog.show(
@@ -84,7 +84,7 @@ pub fn use_confirm() -> impl Fn(String) -> std::pin::Pin<Box<dyn Future<Output =
                     />
                 }
             },
-            move |ev: MouseEvent| on_event(ev, Reason::ClickBackground),
+            move |ev: MouseEvent| on_event(ev, Reason::Background),
         );
 
         handler
@@ -111,8 +111,8 @@ where
     });
 
     let handle_background = move |ev: leptos::ev::MouseEvent| ev.stop_propagation();
-    let handle_cancel = move |ev| on_event.get_value()(ev, Reason::ClickCancelButton);
-    let handle_confirm = move |ev| on_event.get_value()(ev, Reason::ClickOkButton);
+    let handle_cancel = move |ev| on_event.get_value()(ev, Reason::CancelButton);
+    let handle_confirm = move |ev| on_event.get_value()(ev, Reason::OkButton);
 
     hoc::with_accent_prefs(
         move || {

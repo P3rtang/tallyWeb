@@ -1,7 +1,7 @@
 use super::*;
 
 pub trait IntoAttributeFn<M: Marker> {
-    fn into_attr_fn(self: Self) -> AttributeFn;
+    fn into_attr_fn(self) -> AttributeFn;
 }
 
 pub trait Marker {}

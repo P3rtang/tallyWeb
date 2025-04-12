@@ -56,7 +56,7 @@ pub fn SessionFormInput(#[prop(into)] session: Signal<UserSession>) -> impl Into
 }
 
 pub fn provide_session(signal: Option<RwSignal<UserSession>>) -> Resource<UserSession> {
-    let user_resc = Resource::new_blocking(
+    Resource::new_blocking(
         || (),
         move |_| async move {
             let user = get_user_signal().await;
@@ -69,7 +69,5 @@ pub fn provide_session(signal: Option<RwSignal<UserSession>>) -> Resource<UserSe
 
             user
         },
-    );
-
-    user_resc
+    )
 }

@@ -48,7 +48,7 @@ impl XStyle {
 
     pub fn border_radius(self) -> AnyAttribute {
         if let Some(br) = self.0.get_value().get(&BorderRadius) {
-            view! { <{} style:border-radius=br.to_string() /> }.into_any_attr()
+            view! { <{..} style:border-radius=br.to_string() /> }.into_any_attr()
         } else {
             ().into_any_attr()
         }
@@ -67,7 +67,7 @@ impl IntoAttribute for XStyle {
                 .unwrap_or_default()
         };
 
-        view! { <{} style:padding=get_style(Padding) style:border-radius=get_style(BorderRadius) /> }
+        view! { <{..} style:padding=get_style(Padding) style:border-radius=get_style(BorderRadius) /> }
         .into_any_attr()
     }
 }

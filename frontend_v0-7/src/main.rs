@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 // TODO: prevent login, edit... as a username
 
-use dev::{Service, ServiceRequest};
 use dotenvy::var;
 use std::io::Write;
 use std::process::Command;
@@ -9,6 +8,7 @@ use std::thread;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "ssr")] {
+        use dev::{Service, ServiceRequest};
         use actix_files::Files;
         use tallyweb_frontend_v0_7::{app, AppError, middleware as mw};
         use actix_web::*;

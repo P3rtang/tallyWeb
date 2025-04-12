@@ -46,7 +46,6 @@ impl From<(Severity, NotificationConfig)> for MessageConfig {
         Self {
             severity: value.0,
             config: value.1,
-            ..Default::default()
         }
     }
 }
@@ -75,7 +74,7 @@ pub type DynMessageFn = Arc<dyn Fn(ViewFn, MessageConfig) -> usize + Send + Sync
 pub struct MessageFn(Option<StoredValue<DynMessageFn>>);
 
 impl MessageFn {
-    pub fn server_err(self: &Self, error: ServerFnError) -> Option<MessageKey> {
+    pub fn server_err(&self, error: ServerFnError) -> Option<MessageKey> {
         if let Some(func) = self.0 {
             let msg = match error {
                 ServerFnError::WrappedServerError(_) => todo!(),
@@ -88,7 +87,6 @@ impl MessageFn {
                 }
                 ServerFnError::ServerError(err) => {
                     let msg = err
-                        .to_string()
                         .split('\n')
                         .map(|line| view! {<div>{line.to_string()}</div>})
                         .collect_view();

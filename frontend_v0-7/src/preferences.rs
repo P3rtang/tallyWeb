@@ -4,7 +4,7 @@ use super::*;
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 
-const HEX_DIGITS: &'static str = "0123456789abcdef";
+const HEX_DIGITS: &str = "0123456789abcdef";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AccountAccentColor(pub String);
