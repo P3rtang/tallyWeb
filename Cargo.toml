@@ -1,5 +1,5 @@
 [workspace]
-members = [ "backend", "components" , "fuzzy_sort", "frontend_v0-7"]
+members = [ "backend", "components" , "fuzzy_sort", "frontend"]
 resolver = "2"
 
 # Defines a size-optimized profile for the WASM bundle in release mode
@@ -15,8 +15,8 @@ name = "tallyweb"
 
 # bin-package = "tallyweb-frontend"
 # lib-package = "tallyweb-frontend"
-bin-package = "tallyweb-frontend_v0-7"
-lib-package = "tallyweb-frontend_v0-7"
+bin-package = "tallyweb-frontend"
+lib-package = "tallyweb-frontend"
 # bin-package = "temp"
 # lib-package = "temp"
 

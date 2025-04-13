@@ -2,3 +2,13 @@
 IDB_TALLYWEB_VERSION="2"
 LEPTOS_OUTPUT_NAME="debug"
 TALLYWEB_VERSION="0.3.8"
+
+# [target.x86_64-unknown-linux-gnu]
+# rustflags = [
+#     '--cfg', 'erase_components'
+# ]
+#
+# [target.wasm32-unknown-unknown]
+# rustflags = [
+#     '--cfg', 'erase_components'
+# ]
