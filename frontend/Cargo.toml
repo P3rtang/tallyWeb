@@ -1,0 +1,80 @@
+[package]
+name = "tallyweb-frontend"
+version = "0.3.8"
+edition = "2021"
+description = "leptos frontend for the tallyweb site"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+actix-files = { version = "0.6", optional = true }
+actix-web = { version = "4", optional = true, features = ["macros"] }
+console_error_panic_hook = "0.1"
+cfg-if = "1"
+http = { version = "0.2", optional = true }
+leptos = { version = "0.8.0-rc1", features = ["nightly", "csr"] }
+leptos_meta = "0.8.0-rc1"
+leptos_actix = { version = "0.8.0-rc1", optional = true }
+leptos_router = "0.8.0-rc1"
+wasm-bindgen = "0.2.95"
+js-sys = "0.3.64"
+web-sys = { version = "0.3.69" }
+serde = { version = "1.0.188", features = ["derive", "rc"] }
+erased-serde = "0.3.31"
+backend = { path = "../backend", version = "0.3", optional = true, package = "tallyweb-backend" }
+components = { version = "0.3", path = "../components", package = "tallyweb-components" }
+serde_json = "1.0.105"
+gloo-storage = "0.3.0"
+rand = "0.8.5"
+chrono = { version = "0.4.31", features = ["serde"] }
+serde_with = { version = "3.3.0", features = ["chrono"] }
+leptos-use = "0.15"
+thiserror = "1.0.50"
+dyn-clone = "1.0.16"
+tokio = { version = "1.36.0", features = ["macros", "rt", "rt-multi-thread"], optional = true }
+uuid = { version = "1.7.0", features = ["fast-rng", "v4", "serde", "js"] }
+futures = "0.3.30"
+itertools = "0.12.1"
+stylance = { version = "0.5.0", features = ["nightly"] }
+cookie = { version = "0.18.1", features = ["percent-encode"] }
+serde_qs = "0.13.0"
+futures-util = "0.3.30"
+typetag = "0.2.16"
+indexed-db = "0.4.1"
+dotenvy = "0.15.7"
+dotenvy_macro = "0.15.7"
+sqlx = { version = "0.7.1", features = ["postgres", "chrono", "runtime-tokio-rustls", "macros", "uuid"], optional = true }
+fuzzy-sort = { version = "0.1", package = "tallyweb-fuzzy-sort", path="../fuzzy_sort/" }
+codee = { version = "0.3.0", features = ["json_serde", "json_serde_wasm"] }
+leptos_reactive = { version = "0.6.15", features = ["csr", "serde", "ssr"] }
+getrandom = {version = "0.2", features = ["js"]}
+reactive_graph = "0.1.8"
+
+[features]
+csr = ["leptos/csr"]
+hydrate = ["leptos/hydrate"]
+ssr = [
+    "dep:sqlx",
+    "dep:actix-files",
+    "dep:actix-web",
+    "dep:leptos_actix",
+    "dep:backend",
+    "dep:tokio",
+    "leptos/ssr",
+    "leptos_meta/ssr",
+    "leptos_router/ssr",
+    "leptos-use/actix",
+    "leptos-use/ssr"
+]
+
+[package.metadata.stylance]
+output_dir = "./style/"
+folders = ["./src/", "./style/"]
+extensions = [".module.scss", ".module.css"]
+class_name_pattern = "tallyweb-[name]-[hash]"
+
+[package.metadata.docs.rs]
+features = ["ssr", "csr", "hydrate"]
+rustdoc-args = ["--document-private-items"]

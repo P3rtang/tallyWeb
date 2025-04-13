@@ -1,3 +1,5 @@
+use leptos::tachys::html::style::{IntoStyle, IntoStyleValue};
+
 use super::*;
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -42,7 +44,7 @@ pub fn Block(
             view! {
                 <div
                     style:display="flex"
-                    style:flex-direction=direction
+                    style:flex-direction=move || direction.get().to_string()
                     style:gap=format!("{}px", spacing)
                 >
                     {children()}

@@ -191,20 +191,6 @@ impl MessageJar<NoHandle> {
         ));
         self.msg_timeout_effect(key)
     }
-
-    pub fn set_server_err(&self, err: &ServerFnError) {
-        match err {
-            ServerFnError::WrappedServerError(e) => self.set_err(e),
-            ServerFnError::Registration(e) => self.set_err(e),
-            ServerFnError::Request(e) => self.set_err(e),
-            ServerFnError::Response(e) => self.set_err(e),
-            ServerFnError::ServerError(e) => self.set_err(e),
-            ServerFnError::Deserialization(e) => self.set_err(e),
-            ServerFnError::Serialization(e) => self.set_err(e),
-            ServerFnError::Args(e) => self.set_err(e),
-            ServerFnError::MissingArg(e) => self.set_err(e),
-        }
-    }
 }
 
 impl MessageJar<WithHandle> {
@@ -271,19 +257,5 @@ impl MessageJar<WithHandle> {
         let key = self.add_msg(NotificationKind::Error(self.as_modal, err));
         self.msg_timeout_effect(key);
         key
-    }
-
-    pub fn set_server_err(&self, err: &ServerFnError) -> MessageKey {
-        match err {
-            ServerFnError::WrappedServerError(e) => self.set_err(e),
-            ServerFnError::Registration(e) => self.set_err(e),
-            ServerFnError::Request(e) => self.set_err(e),
-            ServerFnError::Response(e) => self.set_err(e),
-            ServerFnError::ServerError(e) => self.set_err(e),
-            ServerFnError::Deserialization(e) => self.set_err(e),
-            ServerFnError::Serialization(e) => self.set_err(e),
-            ServerFnError::Args(e) => self.set_err(e),
-            ServerFnError::MissingArg(e) => self.set_err(e),
-        }
     }
 }

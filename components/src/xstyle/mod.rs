@@ -55,10 +55,8 @@ impl XStyle {
     }
 }
 
-impl IntoAttribute for XStyle {
-    type Output = AnyAttribute;
-
-    fn into_attr(self) -> Self::Output {
+impl IntoAnyAttribute for XStyle {
+    fn into_any_attr(self) -> AnyAttribute {
         let get_style = |style: CssStyleKind| {
             self.0
                 .get_value()

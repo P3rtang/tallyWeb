@@ -43,7 +43,3 @@ style/bundle.scss
 style/_main.scss
 *stylance*
 postgresql/
-
-
-# Temp ignore old version
-frontend/
