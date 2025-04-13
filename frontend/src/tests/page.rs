@@ -1,13 +1,22 @@
+use crate::hooks::use_breakpoint;
+
 use super::*;
 
 #[component]
 pub fn TestPage() -> impl IntoView {
     let page_context = expect_context::<page_context::PageContext>();
-    let sidebar_width = page_context.sidebar.width();
-    let set_width = move |w| page_context.sidebar.set_width().set(w);
+    let is_small = use_breakpoint(ViewPort::Small, true);
 
     let params = use_query::<SearchParams>();
     let topic: Memo<Topic> = Memo::new(move |_| params.get().unwrap_or_default().topic.into());
+
+    let sidebar_width = page_context.sidebar.width();
+    let set_width = move |w| page_context.sidebar.set_width().set(w);
+
+    page_context
+        .sidebar
+        .set_shown()
+        .set(!is_small.get_untracked() || topic.get_untracked() != Topic::None);
 
     view! {
         <Page>
@@ -26,7 +35,9 @@ pub fn TestPage() -> impl IntoView {
                 on_resize=set_width
                 slot
             >
-                <nav />
+                <nav>
+                    <Show when=is_small>{page_context.sidebar.toggle_button()}</Show>
+                </nav>
                 <Sidebar topic />
             </PageSidebar>
             <PageNavbar slot>

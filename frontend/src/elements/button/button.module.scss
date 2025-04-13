@@ -5,6 +5,9 @@
   outline: none;
 
   >div {
+    padding: 8px 16px;
+    /*  TODO: add blur for normal text buttons */
+    /* box-shadow: 0 0 6px -2px black; */
     border-radius: 8px;
     display: flex;
     align-items: center;
