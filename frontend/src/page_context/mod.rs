@@ -145,6 +145,10 @@ impl Sidebar {
         self.is_shown.read_only()
     }
 
+    pub fn set_shown(&self) -> WriteSignal<bool> {
+        self.is_shown.write_only()
+    }
+
     pub fn toggle_button(&self) -> impl IntoView {
         let is_open = self.is_shown;
         let icon = Signal::derive(move || {

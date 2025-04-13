@@ -34,7 +34,7 @@ dump-db:
 	podman exec -t $(POSTGRES_CONTAINER) pg_dump --data-only -U p3rtang -d tally_web > "db-backup/dbdump.sql"
 
 watch-style:
-	stylance -w ./frontend_v0-7/ --output-file ./style/bundle.scss
+	stylance -w ./frontend --output-file ./style/bundle.scss
 
 test: recreate-db check-fmt
 	podman-compose up -d postgres
