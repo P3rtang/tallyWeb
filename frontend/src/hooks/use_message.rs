@@ -50,6 +50,8 @@ impl From<(Severity, NotificationConfig)> for MessageConfig {
     }
 }
 
+pub type DynMessageFn = Arc<dyn Fn(ViewFn, MessageConfig) -> usize + Send + Sync>;
+
 /**
    # usage
    ```rust,ignore
@@ -71,9 +73,7 @@ impl From<(Severity, NotificationConfig)> for MessageConfig {
    ```
 */
 #[derive(Clone, Copy)]
-pub struct MessageFn(
-    Option<StoredValue<Arc<dyn Fn(ViewFn, MessageConfig) -> usize + Send + Sync>>>,
-);
+pub struct MessageFn(Option<StoredValue<DynMessageFn>>);
 
 impl MessageFn {
     pub fn server_err(&self, error: ServerFnError) -> Option<MessageKey> {

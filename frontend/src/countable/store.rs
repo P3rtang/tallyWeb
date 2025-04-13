@@ -2079,7 +2079,7 @@ impl CountableStore<Level, UnChecked> {
         # Returns
           * `f64`: The odds of the `Countable` for the given `CountableId`
           * `0.0`: The odds of `countable` is dependant on descendants use recursive instead
-          or the `countable` was not available in `CountableStore`
+            or the `countable` was not available in `CountableStore`
 
         # Panics
           * lock on a `Mutex` fails
@@ -2103,7 +2103,7 @@ impl CountableStore<Level, UnChecked> {
         # Returns
           * `bool`: Returns a whether the `countable` has the completed status
           * `false`: The `countable` was not found in `CountableStore` or
-          the completed status is dependant on its descendants
+            the completed status is dependant on its descendants
 
         # Panics
           * lock on a `Mutex` fails
