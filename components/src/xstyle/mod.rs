@@ -3,15 +3,23 @@ use super::*;
 // modules
 mod border;
 mod padding;
+mod size;
 
 // imports
 // internal
 // re-exports
 pub use border::XBorderRadius;
 pub use padding::XPadding;
+pub use size::XSize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CssStyleKind {
+    Height,
+    MinHeight,
+    MaxHeight,
+    Width,
+    MinWidth,
+    MaxWidth,
     Padding,
     BorderRadius,
 }
@@ -20,6 +28,12 @@ use CssStyleKind::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CssStyle {
+    Height(XSize),
+    MinHeight(XSize),
+    MaxHeight(XSize),
+    Width(XSize),
+    MinWidth(XSize),
+    MaxWidth(XSize),
     Padding(XPadding),
     BorderRadius(XBorderRadius),
 }
@@ -32,6 +46,12 @@ impl std::fmt::Display for CssStyle {
             match self {
                 CssStyle::Padding(padding) => padding.to_string(),
                 CssStyle::BorderRadius(br) => br.to_string(),
+                CssStyle::Height(xsize) => xsize.to_string(),
+                CssStyle::MinHeight(xsize) => xsize.to_string(),
+                CssStyle::MaxHeight(xsize) => xsize.to_string(),
+                CssStyle::Width(xsize) => xsize.to_string(),
+                CssStyle::MinWidth(xsize) => xsize.to_string(),
+                CssStyle::MaxWidth(xsize) => xsize.to_string(),
             }
         )
     }
@@ -65,7 +85,18 @@ impl IntoAnyAttribute for XStyle {
                 .unwrap_or_default()
         };
 
-        view! { <{..} style:padding=get_style(Padding) style:border-radius=get_style(BorderRadius) /> }
+        view! {
+            <{..}
+                style:padding=get_style(Padding)
+                style:border-radius=get_style(BorderRadius)
+                style:height=get_style(Height)
+                style:min-height=get_style(MinHeight)
+                style:max-height=get_style(MaxHeight)
+                style:width=get_style(Width)
+                style:min-width=get_style(MinWidth)
+                style:max-width=get_style(MaxWidth)
+            />
+        }
         .into_any_attr()
     }
 }
@@ -74,24 +105,102 @@ impl IntoAnyAttribute for XStyle {
 macro_rules! xstyle {
     () => { XStyle(StoredValue::new(std::collections::HashMap::new())) };
 
+    ($type:tt: $val:expr) => {
+        xstyle!($type: $val,)
+    };
+
     (
-        "padding": $pad:expr
-        $(,$type:tt: $val:expr),*
+        "width": $w:expr,
+        $($type:tt: $val:expr),*
+        $(,)?
     ) => {{
         let mut map = xstyle!($($type: $val),*);
         map.update(|m| {
-            m.insert(CssStyleKind::Padding, CssStyle::Padding($pad));
+            m.insert(CssStyleKind::Width, CssStyle::Width($w.into()));
         });
         map
     }};
 
     (
-        "border-radius": $br:expr
-        $(,[$type:tt: $val:expr]),*
+        "min-width": $w:expr,
+        $($type:tt: $val:expr),*
+        $(,)?
     ) => {{
         let mut map = xstyle!($($type: $val),*);
         map.update(|m| {
-            m.insert(CssStyleKind::BorderRadius, CssStyle::BorderRadius($br));
+            m.insert(CssStyleKind::MinWidth, CssStyle::MinWidth($w.into()));
+        });
+        map
+    }};
+
+    (
+        "max-width": $w:expr,
+        $($type:tt: $val:expr),*
+        $(,)?
+    ) => {{
+        let mut map = xstyle!($($type: $val),*);
+        map.update(|m| {
+            m.insert(CssStyleKind::MaxWidth, CssStyle::MaxWidth($w.into()));
+        });
+        map
+    }};
+
+    (
+        "height": $h:expr,
+        $($type:tt: $val:expr),*
+        $(,)?
+    ) => {{
+        let mut map = xstyle!($($type: $val),*);
+        map.update(|m| {
+            m.insert(CssStyleKind::Height, CssStyle::Height($h.into()));
+        });
+        map
+    }};
+
+    (
+        "min-height": $h:expr,
+        $($type:tt: $val:expr),*
+        $(,)?
+    ) => {{
+        let mut map = xstyle!($($type: $val),*);
+        map.update(|m| {
+            m.insert(CssStyleKind::MinHeight, CssStyle::MinHeight($h.into()));
+        });
+        map
+    }};
+
+    (
+        "max-height": $h:expr,
+        $($type:tt: $val:expr),*
+        $(,)?
+    ) => {{
+        let mut map = xstyle!($($type: $val),*);
+        map.update(|m| {
+            m.insert(CssStyleKind::MaxHeight, CssStyle::MaxHeight($h.into()));
+        });
+        map
+    }};
+
+    (
+        "padding": $pad:expr,
+        $($type:tt: $val:expr),*
+        $(,)?
+    ) => {{
+        let mut map = xstyle!($($type: $val),*);
+        map.update(|m| {
+            m.insert(CssStyleKind::Padding, CssStyle::Padding($pad.into()));
+        });
+        map
+    }};
+
+    (
+        "border-radius": $br:expr,
+        $($type:tt: $val:expr),*
+        $(,)?
+    ) => {{
+        let mut map = xstyle!($($type: $val),*);
+        map.update(|m| {
+            m.insert(CssStyleKind::BorderRadius, CssStyle::BorderRadius($br.into()));
         });
         map
     }}
