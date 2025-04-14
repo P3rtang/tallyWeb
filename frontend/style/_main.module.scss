@@ -47,6 +47,8 @@ button {
   padding: 0px;
   cursor: pointer;
 
+  outline: none;
+
   &:global(.icon) {
     height: 40px;
     width: 40px;

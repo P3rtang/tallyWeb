@@ -69,7 +69,6 @@ cfg_if::cfg_if! {
                     )
                     .service(privacy_policy)
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
-                    .service(Files::new("/fa", format!("{site_root}/font_awesome")))
                     .service(Files::new("/icons", format!("{site_root}/icons")))
                     // // serve the favicon from /favicon.ico
                     .service(favicon)
