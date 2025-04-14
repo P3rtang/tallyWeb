@@ -3,135 +3,104 @@
   mask-repeat: no-repeat;
   mask-size: 100%;
 
+  min-height: 24px;
+  min-width: 24px;
+
   background: white;
 }
 
 .cross {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-cross.svg");
 }
 
 .edit {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-edit.svg");
 }
 
 .sidebar-left-open {
-  height: 32px;
-  width: 32px;
+  min-height: 32px;
+  min-width: 32px;
   mask-image: url("/icons/svgrepo-sidebar-left-open.svg");
 }
 
 .sidebar-left-closed {
-  height: 32px;
-  width: 32px;
+  min-height: 32px;
+  min-width: 32px;
   mask-image: url("/icons/svgrepo-sidebar-left-closed.svg");
 }
 
 .trash-can {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/svgrepo-trash.svg");
 }
 
 .caret-right {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/svgrepo-caret-right.svg");
 }
 
 .arrow_head_down {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-arrow-head.svg");
 }
 
 .favicon {
-  height: 40px;
-  width: 40px;
+  min-height: 40px;
+  min-width: 40px;
   content: url("/icons/tallyweb-favicon.svg");
   background: transparent !important;
 }
 
 .search {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-search.svg");
 }
 
 .sort {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-sort.svg");
 }
 
 .arrow {
-  height: 20px;
-  width: 20px;
+  min-height: 20px;
+  min-width: 20px;
   mask-image: url("/icons/tallyweb-arrow.svg");
 }
 
 .settings {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/svgrepo-settings.svg");
 }
 
 .ellipsis {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-ellipsis.svg");
 }
 
 .log-out {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-log-out.svg");
 }
 
 .log-in {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-log-in.svg");
 }
 
 .account {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-account.svg");
 }
 
 .add-account {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-add-account.svg");
 }
 
 .arrow-right {
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-arrow.svg");
 }
 
 .arrow-left {
   transform: rotate(180deg);
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-arrow.svg");
 }
 
 .arrow-up {
   transform: rotate(-90deg);
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-arrow.svg");
 }
 
 .arrow-down {
   transform: rotate(90deg);
-  height: 24px;
-  width: 24px;
   mask-image: url("/icons/tallyweb-arrow.svg");
 }

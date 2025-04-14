@@ -237,7 +237,7 @@ pub(crate) fn SidebarContent() -> impl IntoView {
                 </div>
             </div>
             <SortInputs show_sort options sort sort_height />
-            <div>
+            <div class=style::content>
                 <List each key=|c| *c children>
                     <RowSlot is_selected children=row_children slot />
                     <Separator slot>

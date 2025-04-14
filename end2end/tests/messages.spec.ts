@@ -34,11 +34,7 @@ test('show messages', async ({ page, isMobile }) => {
 })
 
 const closeMessage = async (notification: Locator, config) => {
-    if (config.isMobile) {
-        await notification.click();
-    } else {
-        await notification.hover();
-    }
-
-    return notification.getByRole("button").click()
+    (config.isMobile ? notification.click() : notification.hover()).then(
+        () => notification.getByRole("button").click()
+    )
 }

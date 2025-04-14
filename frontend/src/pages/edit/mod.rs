@@ -2,10 +2,10 @@
 #![allow(clippy::module_inception)]
 use super::*;
 
+// modules
 mod edit;
 
-pub use edit::EditWindow;
-
+// imports
 use crate::{
     app::UserName, hooks::use_history, nodes::Masuda, session, session::SessionFormInput,
     CountableId, CountableStore, Hunttype, UserSession,
@@ -16,3 +16,11 @@ use leptos_router::{
     hooks::{use_navigate, use_params, use_query},
     params::Params,
 };
+
+// internal
+
+// re-exports
+pub use edit::EditWindow;
+
+// stylance css classes
+stylance::import_style!(style, "./edit.module.scss");
