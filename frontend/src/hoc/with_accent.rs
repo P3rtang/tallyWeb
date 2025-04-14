@@ -12,29 +12,11 @@ where
         .unwrap();
 
     let component = StoredValue::new(component);
+    let accent = move || prefs.get().accent_color.to_string();
 
-    view! {
-        <Transition fallback=move || {
-            component
-                .get_value()
-                .add_any_attr(
-                    view! {
-                        <{..} style:--accent="#8BE9FD" />
-                    },
-                )
-        }>
-            {
-                let accent = move || prefs.get().accent_color.to_string();
-                component
-                    .get_value()
-                    .add_any_attr(
-                        view! {
-                            <{..} style:--accent=accent />
-                        },
-                    )
-            }
-        </Transition>
-    }
+    component.get_value().add_any_attr(view! {
+        <{..} style:--accent=accent />
+    })
 }
 
 pub fn with_accent_prefs(component: impl IntoView, prefs: RwSignal<Preferences>) -> impl IntoView {

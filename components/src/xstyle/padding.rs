@@ -28,3 +28,9 @@ impl std::fmt::Display for XPadding {
         )
     }
 }
+
+impl From<usize> for XPadding {
+    fn from(value: usize) -> Self {
+        Self::Square(value)
+    }
+}

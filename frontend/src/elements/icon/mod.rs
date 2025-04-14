@@ -28,6 +28,7 @@ pub enum IconKind {
     ArrowLeft,
     ArrowUp,
     ArrowDown,
+    Plus,
 }
 
 impl IconKind {
@@ -54,6 +55,7 @@ impl IconKind {
                 IconKind::ArrowLeft => style::arrow_left,
                 IconKind::ArrowUp => style::arrow_up,
                 IconKind::ArrowDown => style::arrow_down,
+                IconKind::Plus => style::plus,
             },
             style::icon
         )
@@ -84,11 +86,14 @@ impl std::fmt::Display for IconColor {
 pub fn Icon(
     #[prop(into)] kind: Signal<IconKind>,
     #[prop(into, optional)] color: Signal<IconColor>,
+    #[prop(optional)] xstyle: XStyle,
 ) -> impl IntoView {
     view! {
         <div
             class=move || kind.get().into_class()
             style:background=move || color.get().to_string()
+
+            {..xstyle.into_any_attr()}
         />
     }
 }

@@ -94,22 +94,22 @@ pub fn Redirect() -> impl IntoView {
     provide_context(session_rsc);
 
     #[cfg(not(feature = "ssr"))]
-    let navigate = leptos_router::hooks::use_navigate();
+    let navigate = StoredValue::new(leptos_router::hooks::use_navigate());
 
     view! {
         <Transition fallback=|| ()>
-            {
+            {move || {
                 session_rsc.track();
                 #[cfg(not(feature = "ssr"))]
                 Effect::new(move |_| {
                     let user = session_rsc.get();
                     if let Some(user) = user {
-                        navigate(&format!("/{}", user.username), Default::default());
+                        navigate.get_value()(&format!("/{}", user.username), Default::default());
                     } else {
-                        navigate("/login", Default::default());
+                        navigate.get_value()("/login", Default::default());
                     }
                 });
-            }
+            }}
         </Transition>
     }
 }

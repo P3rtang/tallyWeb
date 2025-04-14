@@ -13,7 +13,7 @@
     padding-bottom: 16px;
     background: $body-background;
 
-    >div {
+    & > div {
       display: flex;
       gap: 8px;
     }
@@ -40,7 +40,7 @@
 
     transition: max-height 0.32s ease-out, padding 0.28s ease-out; 
 
-    >div {
+    & > div {
       width: 100%;
       padding: 12px 0px;
 
@@ -72,21 +72,21 @@
       z-index: 10;
     }
 
-    >div {
+    & > div {
       display: flex;
       align-items: center;
       width: 100%;
 
-      >*:first-child {
+      & > *:first-child {
         margin-right: 12px;
       }
     }
 
-    >div>button>div {
+    & > div > button > div {
       width: 44px;
       height: 44px;
 
-      >div {
+      & > div {
         transition: transform 0.32s;
       }
     }
@@ -103,13 +103,13 @@
     border-radius: 12px;
   }
 
-  .add-phase {
-    min-width: 28px;
-    min-height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 21px;
-    color: black;
-  }
+  // .add-phase {
+  //   min-width: 28px;
+  //   min-height: 28px;
+  //   display: flex;
+  //   align-items: center;
+  //   justify-content: center;
+  //   font-size: 21px;
+  //   color: black;
+  // }
 }
