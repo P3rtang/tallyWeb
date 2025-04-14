@@ -50,20 +50,22 @@ fn SidebarContent() -> impl IntoView {
     let is_selected = move |key: CountableId| selection.get().slct == key;
 
     view! {
-        <div style:width=sidebar.width_attr() style:max-width="100vw">
+        <div style:width=sidebar.width_attr() class=style::sidebar>
             <nav class=main::navbar>
                 <Show when=move || {
                     screen.get().viewport() <= ViewPort::Small
                 }>{sidebar.toggle_button()}</Show>
             </nav>
-            <List each key=|c| *c children=move |c| store.get().children(&c)>
-                <RowSlot is_selected let:child slot>
-                    <TreeRow countable=child />
-                </RowSlot>
-                <Separator slot>
-                    <hr />
-                </Separator>
-            </List>
+            <div class=style::content>
+                <List each key=|c| *c children=move |c| store.get().children(&c)>
+                    <RowSlot is_selected let:child slot>
+                        <TreeRow countable=child />
+                    </RowSlot>
+                    <Separator slot>
+                        <hr />
+                    </Separator>
+                </List>
+            </div>
         </div>
     }
 }

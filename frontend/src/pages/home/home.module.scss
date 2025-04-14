@@ -1,4 +1,8 @@
 .sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+
   .sidebar-navbar {
     display: flex;
     justify-content: space-between;
@@ -87,6 +91,13 @@
       }
     }
   }
+
+  .content {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-bottom: 16px;
+  }
+
 
   button {
     border-radius: 12px;
