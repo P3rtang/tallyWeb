@@ -354,10 +354,7 @@ fn TreeRow(countable: CountableId) -> impl IntoView {
                 <input type="hidden" name="kind" value="Phase" />
                 <input type="hidden" name="parent" value=countable.0.to_string() />
                 <Button
-                    xstyle=xstyle!(
-                        "padding": 11,
-                        "border-radius": XBorderRadius::Percentage(100),
-                    )
+                    xstyle=xstyle!("padding": 11, "border-radius": XBorderRadius::Percentage(100))
                     hover=ButtonHover::Darken
                     attr:r#type="submit"
                     attr:aria-label="add phase"

@@ -22,6 +22,7 @@ pub enum CssStyleKind {
     MaxWidth,
     Padding,
     BorderRadius,
+    FontSize,
 }
 
 use CssStyleKind::*;
@@ -36,6 +37,7 @@ pub enum CssStyle {
     MaxWidth(XSize),
     Padding(XPadding),
     BorderRadius(XBorderRadius),
+    FontSize(XSize),
 }
 
 impl std::fmt::Display for CssStyle {
@@ -52,6 +54,7 @@ impl std::fmt::Display for CssStyle {
                 CssStyle::Width(xsize) => xsize.to_string(),
                 CssStyle::MinWidth(xsize) => xsize.to_string(),
                 CssStyle::MaxWidth(xsize) => xsize.to_string(),
+                CssStyle::FontSize(xsize) => xsize.to_string(),
             }
         )
     }
@@ -95,6 +98,7 @@ impl IntoAnyAttribute for XStyle {
                 style:width=get_style(Width)
                 style:min-width=get_style(MinWidth)
                 style:max-width=get_style(MaxWidth)
+                style:font-size=get_style(FontSize)
             />
         }
         .into_any_attr()
@@ -201,6 +205,18 @@ macro_rules! xstyle {
         let mut map = xstyle!($($type: $val),*);
         map.update(|m| {
             m.insert(CssStyleKind::BorderRadius, CssStyle::BorderRadius($br.into()));
+        });
+        map
+    }};
+
+    (
+        "font-size": $br:expr,
+        $($type:tt: $val:expr),*
+        $(,)?
+    ) => {{
+        let mut map = xstyle!($($type: $val),*);
+        map.update(|m| {
+            m.insert(CssStyleKind::FontSize, CssStyle::FontSize($br.into()));
         });
         map
     }}

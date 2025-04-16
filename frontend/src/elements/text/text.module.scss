@@ -1,0 +1,26 @@
+.text {
+  position: relative;
+
+  &.fade {
+    overflow: hidden;
+    width: 100%;
+
+    &::after {
+      display: block;
+      position: absolute;
+      top: 0px;
+      right: 0px;
+      content: "";
+      background: linear-gradient(
+        to right,
+        transparent,
+        color-mix(in srgb, var(--element-bg) 50%, transparent),
+        color-mix(in srgb, var(--element-bg) 75%, transparent),
+        color-mix(in srgb, var(--element-bg) 90%, transparent),
+        var(--element-bg)
+      );
+      width: 32px;
+      height: 100%;
+    }
+  }
+}

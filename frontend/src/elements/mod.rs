@@ -13,6 +13,7 @@ pub mod menu;
 mod message;
 mod navbar;
 pub mod page;
+pub mod text;
 
 // imports
 use chrono::TimeDelta;

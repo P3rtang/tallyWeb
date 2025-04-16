@@ -8,7 +8,7 @@ mod infobox;
 use app::UserName;
 use chrono::Duration;
 use components::Progressbar;
-use elements::icon::*;
+use elements::{icon::*, text::Text};
 use home::Selection;
 use hooks::use_saving;
 use hooks::{use_breakpoint, use_history};
