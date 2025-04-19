@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg1"
+   inkscape:export-filename="default.svg"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   inkscape:version="1.4.1 (93de688d07, 2025-03-30)"
+   sodipodi:docname="tallyweb-not-visible.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#303030"
+     inkscape:document-units="px"
+     inkscape:zoom="2.1558643"
+     inkscape:cx="247.92841"
+     inkscape:cy="260.68431"
+     inkscape:window-width="2552"
+     inkscape:window-height="1396"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="g13">
+    <inkscape:page
+       x="0"
+       y="0"
+       width="512"
+       height="512"
+       id="page2"
+       margin="0"
+       bleed="0" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1">
+    <inkscape:path-effect
+       effect="bool_op"
+       operand-path=""
+       id="path-effect9"
+       is_visible="true"
+       lpeversion="1"
+       operation="diff"
+       swap-operands="false"
+       filltype-this="from-curve"
+       filter=""
+       filltype-operand="from-curve" />
+    <filter
+       id="selectable_hidder_filter"
+       width="1"
+       height="1"
+       x="0"
+       y="0"
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="LPE boolean visibility">
+      <feComposite
+         id="boolops_hidder_primitive"
+         result="composite1"
+         operator="arithmetic"
+         in2="SourceGraphic"
+         in="BackgroundImage" />
+    </filter>
+    <inkscape:path-effect
+       effect="bool_op"
+       operand-path=""
+       id="path-effect1"
+       is_visible="true"
+       lpeversion="1"
+       operation="diff"
+       swap-operands="false"
+       filltype-this="from-curve"
+       filter=""
+       filltype-operand="from-curve" />
+    <filter
+       style="color-interpolation-filters:sRGB"
+       id="filter7"
+       inkscape:label="filter1">
+      <feComposite
+         id="feComposite7"
+         operator="out" />
+    </filter>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath2">
+      <g
+         inkscape:label="Clip"
+         id="use2" />
+    </clipPath>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     inkscape:path-effect="#path-effect9">
+    <g
+       id="g9"
+       inkscape:label="eyewhite"
+       style="display:none">
+      <path
+         style="display:inline;fill:#000000;fill-rule:evenodd;stroke-width:6.43602"
+         id="ellipse8"
+         sodipodi:type="arc"
+         sodipodi:cx="256"
+         sodipodi:cy="256"
+         sodipodi:rx="256"
+         sodipodi:ry="192"
+         d="M 512,256 A 256,192 0 0 1 256,448 256,192 0 0 1 0,256 256,192 0 0 1 256,64 256,192 0 0 1 512,256 Z" />
+    </g>
+    <g
+       id="g8"
+       style="display:none;opacity:1;mix-blend-mode:difference"
+       inkscape:label="eyeball"
+       transform="translate(101.89533,-82.77968)">
+      <path
+         id="path7"
+         d="m 290.10467,338.77968 a 136,136 0 0 1 -136,136 136,136 0 0 1 -136,-136 136,136 0 0 1 136,-136 136,136 0 0 1 136,136 z"
+         style="display:inline;mix-blend-mode:normal;fill:#ffffff;fill-rule:evenodd;stroke-width:4.01575"
+         inkscape:original-d="m 290.10467,338.77968 a 136,136 0 0 1 -136,136 136,136 0 0 1 -136,-136 136,136 0 0 1 136,-136 136,136 0 0 1 136,136 z" />
+      <path
+         id="path8"
+         d="m 218.10467,338.77968 a 64,64 0 0 1 -64,64 64,64 0 0 1 -64,-64 64,64 0 0 1 64,-64 64,64 0 0 1 64,64 z"
+         style="display:inline;opacity:1;mix-blend-mode:difference;fill:#ffffff;fill-rule:evenodd;stroke-width:3.77953"
+         inkscape:original-d="m 218.10467,338.77968 a 64,64 0 0 1 -64,64 64,64 0 0 1 -64,-64 64,64 0 0 1 64,-64 64,64 0 0 1 64,64 z" />
+      <path
+         id="circle9"
+         style="display:inline;opacity:1;mix-blend-mode:normal;fill:#ffffff;fill-rule:evenodd;stroke-width:4.01575"
+         d="m 154.10467,202.77968 a 136,136 0 0 0 -136,136 136,136 0 0 0 136,136 136,136 0 0 0 136,-136 136,136 0 0 0 -136,-136 z m 0,72 a 64,64 0 0 1 64,64 64,64 0 0 1 -64,64 64,64 0 0 1 -64,-64 64,64 0 0 1 64,-64 z"
+         inkscape:label="difference"
+         sodipodi:insensitive="true"
+         inkscape:original-d="m 154.10467,202.77968 a 136,136 0 0 0 -136,136 136,136 0 0 0 136,136 136,136 0 0 0 136,-136 136,136 0 0 0 -136,-136 z m 0,72 a 64,64 0 0 1 64,64 64,64 0 0 1 -64,64 64,64 0 0 1 -64,-64 64,64 0 0 1 64,-64 z" />
+    </g>
+    <g
+       id="g12"
+       inkscape:label="remove line"
+       style="display:none">
+      <path
+         id="path9"
+         style="display:inline;fill:#000000;fill-rule:evenodd;stroke-width:6.43602"
+         d="M 256,64 A 256,192 0 0 0 0,256 256,192 0 0 0 256,448 256,192 0 0 0 512,256 256,192 0 0 0 256,64 Z m 0,56 A 136,136 0 0 1 392,256 136,136 0 0 1 256,392 136,136 0 0 1 120,256 136,136 0 0 1 256,120 Z m 0,72 a 64,64 0 0 0 -64,64 64,64 0 0 0 64,64 64,64 0 0 0 64,-64 64,64 0 0 0 -64,-64 z"
+         inkscape:original-d="M 256,64 A 256,192 0 0 0 0,256 256,192 0 0 0 256,448 256,192 0 0 0 512,256 256,192 0 0 0 256,64 Z m 0,56 A 136,136 0 0 1 392,256 136,136 0 0 1 256,392 136,136 0 0 1 120,256 136,136 0 0 1 256,120 Z m 0,72 a 64,64 0 0 0 -64,64 64,64 0 0 0 64,64 64,64 0 0 0 64,-64 64,64 0 0 0 -64,-64 z" />
+      <path
+         style="fill:#ffffff;fill-rule:evenodd;stroke-width:3.77953"
+         id="rect12-3"
+         sodipodi:type="rect"
+         width="640"
+         height="48"
+         x="42.03867"
+         y="-48"
+         ry="24"
+         d="m 66.03867,-48 h 592 c 13.296,0 24,10.704 24,24 0,13.296 -10.704,24 -24,24 h -592 c -13.296,0 -24,-10.704 -24,-24 0,-13.296 10.704,-24 24,-24 z"
+         transform="rotate(45)" />
+    </g>
+    <g
+       id="g13"
+       style="display:inline">
+      <path
+         id="path13"
+         style="display:inline;fill:#000000;fill-rule:evenodd;stroke-width:6.43602"
+         d="M 256,64 A 256,192 0 0 0 149.33984,81.458984 l 50.62305,50.623046 A 136,136 0 0 1 256,120 136,136 0 0 1 392,256 136,136 0 0 1 379.91797,312.03711 l 69.62891,69.62891 h 0.002 A 256,192 0 0 0 512,256 256,192 0 0 0 256,64 Z M 102.40039,102.40039 A 256,192 0 0 0 0,256 256,192 0 0 0 256,448 256,192 0 0 0 409.59961,409.59961 L 352.16602,352.16602 A 136,136 0 0 1 256,392 136,136 0 0 1 120,256 136,136 0 0 1 159.83398,159.83398 Z M 260.00781,192.125 319.875,251.99219 A 64,64 0 0 0 260.00781,192.125 Z m -49.26172,18.62109 A 64,64 0 0 0 192,256 a 64,64 0 0 0 64,64 64,64 0 0 0 45.25391,-18.74609 z"
+         inkscape:original-d="M 256,64 A 256,192 0 0 0 149.33984,81.458984 l 50.62305,50.623046 A 136,136 0 0 1 256,120 136,136 0 0 1 392,256 136,136 0 0 1 379.91797,312.03711 l 69.62891,69.62891 h 0.002 A 256,192 0 0 0 512,256 256,192 0 0 0 256,64 Z M 102.40039,102.40039 A 256,192 0 0 0 0,256 256,192 0 0 0 256,448 256,192 0 0 0 409.59961,409.59961 L 352.16602,352.16602 A 136,136 0 0 1 256,392 136,136 0 0 1 120,256 136,136 0 0 1 159.83398,159.83398 Z M 260.00781,192.125 319.875,251.99219 A 64,64 0 0 0 260.00781,192.125 Z m -49.26172,18.62109 A 64,64 0 0 0 192,256 a 64,64 0 0 0 64,64 64,64 0 0 0 45.25391,-18.74609 z" />
+      <path
+         style="display:inline;fill:#000000;fill-rule:evenodd;stroke-width:3.77953"
+         id="rect12"
+         sodipodi:type="rect"
+         width="640"
+         height="48"
+         x="42.038685"
+         y="1.4210855e-14"
+         ry="24"
+         d="M 66.038685,0 658.03868,0 c 13.296,0 24,10.704 24,24 0,13.296 -10.704,24 -24,24 L 66.038685,48 c -13.296,0 -24,-10.704 -24,-24 0,-13.296 10.704,-24 24,-24 z"
+         transform="rotate(45)" />
+    </g>
+  </g>
+</svg>
