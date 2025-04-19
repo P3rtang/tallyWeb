@@ -6,7 +6,7 @@ stylance::import_style!(style, "./text.module.scss");
 pub fn Text(
     children: ChildrenFn,
     #[prop(optional)] fade: bool,
-    #[prop(optional, into)] xstyle: Signal<XStyle>,
+    #[prop(optional)] xstyle: Signal<XStyle>,
 ) -> impl IntoView {
     view! {
         <span

@@ -8,7 +8,6 @@ mod infobox;
 use app::UserName;
 use chrono::Duration;
 use components::Progressbar;
-use elements::{icon::*, text::Text};
 use home::Selection;
 use hooks::use_saving;
 use hooks::{use_breakpoint, use_history};
@@ -18,6 +17,9 @@ use web_sys::MouseEvent;
 
 // internal
 use header::InfoHeader;
+use icon::*;
+use menu::{Menu, MenuButton, MenuEntry};
+use text::Text;
 
 // re-exports
 pub use infobox::InfoBox;

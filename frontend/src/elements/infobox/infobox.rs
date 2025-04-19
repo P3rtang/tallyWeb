@@ -92,15 +92,25 @@ pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 
     on_cleanup(move || is_active.set(false));
 
+    let visible_info = RwSignal::new(header::VisibleInfo::new());
+
     view! {
         <Show when=move || key.try_get().is_some_and(|key| store.get().contains(&key))>
             <div class=style::row>
-                <InfoHeader key />
-                <Count key show_title />
-                <Time key show_title />
-                <Show when=move || !on_mobile.get()>
+                <InfoHeader key visible_info />
+                <Show when=move || visible_info.get().count()>
+                    <Count key show_title />
+                </Show>
+                <Show when=move || visible_info.get().time()>
+                    <Time key show_title />
+                </Show>
+                <Show when=move || visible_info.get().progress()>
                     <Progress expand=true key show_title />
+                </Show>
+                <Show when=move || visible_info.get().last_step()>
                     <LastStep key show_title />
+                </Show>
+                <Show when=move || visible_info.get().avg_step()>
                     <AverageStep key show_title />
                 </Show>
             </div>
@@ -330,7 +340,7 @@ fn LastStep(
     let time = create_read_slice(store, move |s| s.recursive_ref().time(&key.get()));
 
     let time_value = Memo::new(move |_| {
-        on_count.track();
+        on_count.get();
         let val = last_interaction
             .get_untracked()
             .map(|t| time.get_untracked() - Duration::milliseconds(t));
@@ -367,14 +377,16 @@ fn LastStep(
                 Last Step
             </span>
             <Show
-                when=move || { time_value().is_some() }
+                when=move || { time_value.get().is_some() }
                 fallback=move || {
                     view! { <span class=time_style>---</span> }
                 }
             >
                 <components::Timer
                     attr:class=time_style
-                    value=time_value().unwrap_or_default().to_std().unwrap_or_default()
+                    value=Signal::derive(move || {
+                        time_value().unwrap_or_default().to_std().unwrap_or_default()
+                    })
                     format
                 />
             </Show>

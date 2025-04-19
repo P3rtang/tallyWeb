@@ -30,6 +30,8 @@ impl IntoRender for HeaderSlot {
     type Output = AnyView;
 
     fn into_render(self) -> Self::Output {
+        let is_small = use_breakpoint(ViewPort::Small, true);
+
         let children = move || {
             if let Some(children) = self.children {
                 children()
@@ -42,7 +44,9 @@ impl IntoRender for HeaderSlot {
 
         view! {
             <div class=style::header>
-                <span>{self.title}</span>
+                <Text style:font-size=move || {
+                    if is_small.get() { "24px" } else { "28px" }
+                }>{self.title}</Text>
                 <div style:display="flex" class=style::actions>
                     {children()}
                     <Show when=move || self.close_href.is_some()>

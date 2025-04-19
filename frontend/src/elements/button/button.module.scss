@@ -15,14 +15,12 @@
   }
 
   &.darken:hover > div,
-  &.darken:focus-visible > div,
-  &.darken:focus-within > div {
+  &.darken:focus-visible > div {
     background: rgba(black, 0.15);
   }
 
   &.lighten:hover > div,
-  &.lighten:focus-visible > div,
-  &.lighten:focus-within > div {
+  &.lighten:focus-visible > div {
     background: rgba(white, 0.08);
   }
 }

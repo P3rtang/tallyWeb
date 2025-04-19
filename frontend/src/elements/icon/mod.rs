@@ -29,6 +29,9 @@ pub enum IconKind {
     ArrowUp,
     ArrowDown,
     Plus,
+    HamburgerMenu,
+    Visible,
+    NotVisible,
 }
 
 impl IconKind {
@@ -56,6 +59,9 @@ impl IconKind {
                 IconKind::ArrowUp => style::arrow_up,
                 IconKind::ArrowDown => style::arrow_down,
                 IconKind::Plus => style::plus,
+                IconKind::HamburgerMenu => style::hamburger,
+                IconKind::Visible => style::visible,
+                IconKind::NotVisible => style::not_visible,
             },
             style::icon
         )

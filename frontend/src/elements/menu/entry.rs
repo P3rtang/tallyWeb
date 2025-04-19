@@ -18,52 +18,45 @@ pub fn MenuEntry(
     #[prop(into, optional)] href: Option<Signal<String>>,
     #[prop(into, optional)] attrs: AttributeFn,
 
-    #[prop(into, optional)] children: Option<ChildrenFn>,
+    #[prop(optional)] children: Option<ChildrenFn>,
     #[prop(optional)] menu_entry_slot: MenuEntrySlot,
 ) -> impl IntoView {
     let menu_entry = StoredValue::new(menu_entry_slot);
 
-    let children = StoredValue::new(children.unwrap_or(Arc::new(move || {
-        {
-            view! {
+    if let Some(children) = children {
+        EitherOf3::A(view! {
+            <div {..attrs.call()} class=style::entry>
+                {children()}
+            </div>
+        })
+    } else if let Some(href) = href {
+        EitherOf3::B(view! {
+            <Button
+                class=style::entry
+                href=href
+                xstyle=xstyle!("padding": XPadding::Medium)
+                {..attrs.call()}
+            >
                 <div class=style::label>
                     <Show when=move || menu_entry.get_value().icon.is_some()>
                         <Icon kind=menu_entry.get_value().icon.unwrap() />
                         <span>{menu_entry.get_value().label}</span>
                     </Show>
                 </div>
-            }
-        }
-        .into_any()
-    })));
-
-    let button_element = move || {
-        if let Some(href) = href.get() {
-            Either::Left(view! {
-                <A href=href.clone()>
-                    <Button
-                        {..attrs.call()}
-                        class=style::entry
-                        xstyle=xstyle!("padding": XPadding::Medium)
-                    >
-                        {children.get_value()()}
-                    </Button>
-                </A>
-            })
-        } else {
-            Either::Right(view! {
-                <Button
-                    {..attrs.call()}
-                    class=style::entry
-                    xstyle=xstyle!("padding": XPadding::Medium)
-                >
-                    {children.get_value()()}
-                </Button>
-            })
-        }
-    };
-
-    button_element()
+            </Button>
+        })
+    } else {
+        EitherOf3::C(view! {
+            <Button class=style::entry xstyle=xstyle!("padding": XPadding::Medium) {..attrs.call()}>
+                <div class=style::label>
+                    <Show when=move || menu_entry.get_value().icon.is_some()>
+                        <Icon kind=menu_entry.get_value().icon.unwrap() />
+                        <span>{menu_entry.get_value().label}</span>
+                    </Show>
+                </div>
+            </Button>
+        })
+    }
 }
 
 #[component]

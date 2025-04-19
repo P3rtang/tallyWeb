@@ -2,7 +2,11 @@ use super::*;
 
 // TODO: think about allowing custom offsets from the base menu position
 #[component]
-pub fn Menu(children: ChildrenFn, #[prop(optional)] menu_button: MenuButton) -> impl IntoView {
+pub fn Menu(
+    children: ChildrenFn,
+    #[prop(into, optional)] menu_attrs: AttributeFn,
+    #[prop(optional)] menu_button: MenuButton,
+) -> impl IntoView {
     let (overlay, _) = hooks::use_overlay().unwrap();
     let screen = hooks::use_screen();
 
@@ -63,23 +67,20 @@ pub fn Menu(children: ChildrenFn, #[prop(optional)] menu_button: MenuButton) -> 
                     format!("{}px", screen.width - horz_offset.get() - width.get()),
                 )
             } else {
-                (
-                    format!("{}px", horz_offset.get() + width.get()),
-                    String::new(),
-                )
+                (format!("{}px", horz_offset.get()), String::new())
             }
         };
 
         hoc::with_accent_prefs(
             view! {
                 <div
+                    class=style::menu
                     style:top=move || vert().0
                     style:bottom=move || vert().1
                     style:left=move || horz().0
                     style:right=move || horz().1
-                    class=style::menu
                 >
-                    {children()}
+                    <div {..menu_attrs.call()}>{children()}</div>
                 </div>
             },
             prefs,

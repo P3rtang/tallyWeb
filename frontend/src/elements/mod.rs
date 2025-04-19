@@ -21,7 +21,7 @@ use components::*;
 use leptos::{
     attr::any_attribute::{AnyAttribute, IntoAnyAttribute},
     attribute_interceptor::AttributeInterceptor,
-    either::Either,
+    either::{Either, EitherOf3},
     ev, html,
 };
 use leptos_router::components::A;

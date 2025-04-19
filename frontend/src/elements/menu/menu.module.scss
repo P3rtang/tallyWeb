@@ -18,18 +18,20 @@
 }
 
 .entry {
-  display: block;
+  &:not(button) {
+    display: flex;
+  }
+  
   min-width: 14rem;
   color: white;
   border-radius: 8px;
-  cursor: pointer;
 
   background: transparent;
 
   .label {
     display: flex;
+    justify-content: flex-start;
     align-items: center;
-    width: 100%;
     padding: 4px;
 
     >*:not(:first-child) {

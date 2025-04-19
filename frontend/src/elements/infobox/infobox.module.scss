@@ -21,7 +21,7 @@
       align-items: center;
       background: $element-bg-color-dark;
       flex-grow: 1;
-      min-width: 6em;
+      min-width: 9em;
       min-height: 3.6em;
       position: relative;
 
@@ -111,6 +111,11 @@
     padding: 8px;
     font-size: 28px;
 
+    span {
+      margin-left: 12px;
+      flex-grow: 1;
+    }
+
     >div {
       display: flex;
       align-items: center;
@@ -123,6 +128,7 @@
       button {
         width: 40px;
         height: 40px;
+        background: transparent;
 
         a {
           height: 100%;
@@ -139,6 +145,26 @@
       >button:not(:last-child) {
         margin: 0px 8px;
       }
+    }
+  }
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+
+    label {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      flex-grow: 1;
     }
   }
 }
