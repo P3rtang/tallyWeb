@@ -37,7 +37,7 @@ tokio = { version = "1.36.0", features = ["macros", "rt", "rt-multi-thread"], op
 uuid = { version = "1.7.0", features = ["fast-rng", "v4", "serde", "js"] }
 futures = "0.3.30"
 itertools = "0.12.1"
-stylance = { version = "0.5.0", features = ["nightly"] }
+stylance = { version = "0.6.0", features = ["nightly"] }
 cookie = { version = "0.18.1", features = ["percent-encode"] }
 serde_qs = "0.13.0"
 futures-util = "0.3.30"
