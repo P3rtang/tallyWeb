@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        insert into auth_tokens (uuid, user_uuid)\n        values ($1, $2)\n\n        returning *\n        ",
+  "query": "\n            select * from auth_tokens\n            where uuid = $1 AND user_uuid = $2\n            ",
   "describe": {
     "columns": [
       {
@@ -31,5 +31,5 @@
       false
     ]
   },
-  "hash": "fa5ac79c57f568439e2fb97b56f81c2e8c6cdba0097a585e207572d0dbd0a837"
+  "hash": "55959be084cbfecef0db47bfb50283f3fa99a36f733a72f578c98ef896d4d2cb"
 }

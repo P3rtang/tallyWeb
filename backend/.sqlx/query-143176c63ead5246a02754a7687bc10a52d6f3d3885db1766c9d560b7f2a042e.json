@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            select * from counters\n            where owner_uuid = $1\n            ",
+  "query": "\n        UPDATE\n            counters\n        SET\n            is_deleted = true,\n            last_edit = $2\n        WHERE\n            uuid = $1\n        RETURNING\n            *\n        ",
   "describe": {
     "columns": [
       {
@@ -36,7 +36,8 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Timestamp"
       ]
     },
     "nullable": [
@@ -48,5 +49,5 @@
       false
     ]
   },
-  "hash": "0c24ae10dc5f9ac4eac06c2c6b52658fee9754ede339ee411bdffaed131374e0"
+  "hash": "143176c63ead5246a02754a7687bc10a52d6f3d3885db1766c9d560b7f2a042e"
 }

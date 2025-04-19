@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            select * from counters\n            where owner_uuid = $1\n            ",
+  "query": "\n        INSERT INTO counters\n            (owner_uuid, name)\n        VALUES \n            ($1, $2)\n        RETURNING\n            *\n        ",
   "describe": {
     "columns": [
       {
@@ -36,7 +36,8 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Varchar"
       ]
     },
     "nullable": [
@@ -48,5 +49,5 @@
       false
     ]
   },
-  "hash": "0c24ae10dc5f9ac4eac06c2c6b52658fee9754ede339ee411bdffaed131374e0"
+  "hash": "1357592c987e8894dfccd9919e7b7a9b20cf0aa5830dd549b10027af67ce5a02"
 }
