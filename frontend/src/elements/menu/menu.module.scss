@@ -21,6 +21,10 @@
   &:not(button) {
     display: flex;
   }
+
+  & > div {
+    justify-content: flex-start;
+  }
   
   min-width: 14rem;
   color: white;
