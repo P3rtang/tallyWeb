@@ -21,7 +21,7 @@
       align-items: center;
       background: $element-bg-color-dark;
       flex-grow: 1;
-      min-width: 9em;
+      min-width: min(9em, 80%);
       min-height: 3.6em;
       position: relative;
 
