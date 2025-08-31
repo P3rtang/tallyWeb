@@ -30,11 +30,7 @@ where
 
     let button_children = move |s: SelectState<_>| {
         let transform = move || {
-            if s.is_expanded {
-                "rotate(180deg)"
-            } else {
-                ""
-            }
+            if s.is_expanded { "rotate(180deg)" } else { "" }
         };
 
         view! { <Icon kind=IconKind::ArrowHeadDown color=IconColor::White style:transform=transform /> }

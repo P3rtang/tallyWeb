@@ -3,8 +3,8 @@ use std::{hash::Hash, sync::Arc};
 
 use leptos::{
     attr::{
-        any_attribute::{AnyAttribute, IntoAnyAttribute},
         Attribute,
+        any_attribute::{AnyAttribute, IntoAnyAttribute},
     },
     prelude::*,
 };
@@ -34,11 +34,7 @@ where
 {
     fn default() -> Self {
         let caret_transform = move |is_expanded: bool| {
-            if !is_expanded {
-                "rotate(-90deg)"
-            } else {
-                ""
-            }
+            if !is_expanded { "rotate(-90deg)" } else { "" }
         };
 
         Self {

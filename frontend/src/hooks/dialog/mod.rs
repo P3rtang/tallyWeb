@@ -12,10 +12,10 @@ use std::{
 };
 
 use futures::{
-    channel::mpsc::{channel, Receiver, Sender},
+    FutureExt, SinkExt, Stream, StreamExt,
+    channel::mpsc::{Receiver, Sender, channel},
     future::{ok, poll_fn},
     stream::StreamFuture,
-    FutureExt, SinkExt, Stream, StreamExt,
 };
 
 use leptos::ev::MouseEvent;

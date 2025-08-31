@@ -2,7 +2,7 @@ use leptos::{
     either::Either,
     ev, html,
     prelude::*,
-    tachys::renderer::{dom::Element, RemoveEventHandler},
+    tachys::renderer::{RemoveEventHandler, dom::Element},
 };
 use wasm_bindgen::JsCast;
 

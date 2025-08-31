@@ -2,12 +2,12 @@ mod session_v2;
 
 pub use session_v2::CheckSessionV2;
 
-use std::future::{ready, Ready};
+use std::future::{Ready, ready};
 
 use actix_web::{
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    http::header,
     Error, HttpResponse,
+    dev::{Service, ServiceRequest, ServiceResponse, Transform, forward_ready},
+    http::header,
 };
 use futures_util::future::LocalBoxFuture;
 
