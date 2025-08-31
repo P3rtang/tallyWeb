@@ -24,6 +24,6 @@ use hooks::*;
 use serde::{Deserialize, Serialize};
 
 use elements::{
-    button::*, icon::*, list::*, page::*, BoolField, ColorField, Form, HeaderSlot, Navbar,
-    SelectField, TextField, TimeDeltaField,
+    BoolField, ColorField, Form, HeaderSlot, Navbar, SelectField, TextField, TimeDeltaField,
+    button::*, icon::*, list::*, page::*,
 };

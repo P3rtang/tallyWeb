@@ -2,8 +2,8 @@ use std::error::Error;
 use thiserror::Error;
 
 use dotenvy::dotenv;
-use sqlx::postgres::PgPoolOptions;
 pub use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 
 pub mod auth;
 mod types;

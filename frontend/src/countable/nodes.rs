@@ -748,10 +748,6 @@ impl std::ops::BitOr<Hunttype> for Hunttype {
     type Output = Hunttype;
 
     fn bitor(self, rhs: Hunttype) -> Self::Output {
-        if self != rhs {
-            Hunttype::Mixed
-        } else {
-            self
-        }
+        if self != rhs { Hunttype::Mixed } else { self }
     }
 }

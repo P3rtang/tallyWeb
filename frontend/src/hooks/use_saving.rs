@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn use_saving<T: ServerSavable + LocalSavable + Clone + 'static>(
-) -> std::sync::Arc<dyn Fn(T) + Send + Sync + 'static> {
+pub fn use_saving<T: ServerSavable + LocalSavable + Clone + 'static>()
+-> std::sync::Arc<dyn Fn(T) + Send + Sync + 'static> {
     let server_handler = ServerSaveHandler::new();
 
     #[cfg(not(feature = "ssr"))]
@@ -24,8 +24,8 @@ pub fn use_saving<T: ServerSavable + LocalSavable + Clone + 'static>(
      - [None]: When running on the server
      - [impl Fn(LocalSavable)]: The callback returned taking a Savable as parameter to save into indexedDB
 */
-pub fn use_local_saving<T: LocalSavable + Clone + 'static>(
-) -> Option<std::sync::Arc<dyn Fn(T) + Send + Sync + 'static>> {
+pub fn use_local_saving<T: LocalSavable + Clone + 'static>()
+-> Option<std::sync::Arc<dyn Fn(T) + Send + Sync + 'static>> {
     #[cfg(feature = "ssr")]
     return None;
 

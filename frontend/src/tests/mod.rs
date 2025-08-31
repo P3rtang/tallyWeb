@@ -11,13 +11,13 @@ pub use page::TestPage;
 use notification::TestNotifications;
 
 // imports
-use components::{block, Block, Slider};
+use components::{Block, Slider, block};
 use elements::{
+    Button, Navbar, TextField,
     list::{List, RowSlot},
     page::*,
-    Button, Navbar, TextField,
 };
-use hooks::{use_message, Severity};
+use hooks::{Severity, use_message};
 
 use leptos::either::either;
 use leptos_router::{components::*, hooks::*, params::*};

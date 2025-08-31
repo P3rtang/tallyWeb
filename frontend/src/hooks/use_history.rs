@@ -1,4 +1,4 @@
-use leptos_router::{hooks::use_navigate, location::Location, NavigateOptions};
+use leptos_router::{NavigateOptions, hooks::use_navigate, location::Location};
 
 use super::*;
 
