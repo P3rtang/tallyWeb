@@ -2,8 +2,8 @@ use super::*;
 use fuzzy_sort::*;
 use leptos::{
     attr::{
-        any_attribute::{AnyAttribute, IntoAnyAttribute},
         Attribute,
+        any_attribute::{AnyAttribute, IntoAnyAttribute},
     },
     ev,
     prelude::*,
@@ -156,7 +156,7 @@ where
             style:display=move || if show_custom() { "none" } else { "block" }
             disabled=show_custom
         >
-            {options_view.clone()}
+            {options_view}
         </select>
         <input
             {..select_input.attrs.call()}

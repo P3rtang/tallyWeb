@@ -1,7 +1,7 @@
 [package]
 name = "tallyweb-fuzzy-sort"
-version = "0.1.0"
-edition = "2021"
+version = "0.1.1"
+edition = "2024"
 description = "A fuzzy sort library for use with the tallyweb site package"
 license = "MIT"
 

@@ -350,7 +350,7 @@ where
     .into_any()
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct TreeNode<T, SelectionKey>
 where
     SelectionKey: Clone + Debug + Send + Sync + PartialEq + Eq + Hash + 'static,
@@ -360,6 +360,18 @@ where
     pub row: T,
     pub depth: usize,
     pub is_expanded: bool,
+}
+
+impl<T, SelectionKey> PartialEq for TreeNode<T, SelectionKey>
+where
+    SelectionKey: Clone + Debug + Send + Sync + PartialEq + Eq + Hash + 'static,
+    T: Debug + Clone + PartialEq + Send + Sync + 'static,
+{
+    fn eq(&self, other: &Self) -> bool {
+        (self.key)(&self.row) == (other.key)(&other.row)
+            && self.depth == other.depth
+            && self.is_expanded == other.is_expanded
+    }
 }
 
 impl<T, SelectionKey> TreeNode<T, SelectionKey>

@@ -1,15 +1,13 @@
-#![feature(let_chains)]
 #![feature(half_open_range_patterns_in_slices)]
 #![feature(fn_traits)]
 #![feature(unboxed_closures)]
-#![feature(result_flattening)]
 #![feature(lock_value_accessors)]
 #![feature(type_alias_impl_trait)]
 #![recursion_limit = "512"]
 
 use leptos::logging::*;
 use leptos::prelude::*;
-use wasm_bindgen::{prelude::Closure, JsCast};
+use wasm_bindgen::{JsCast, prelude::Closure};
 
 // pub(crate) use session::SessionFormInput;
 // mod screen;
@@ -33,7 +31,7 @@ pub(crate) mod api;
 
 mod countable;
 mod preferences;
-pub(crate) use preferences::{provide_prefs, Preferences};
+pub(crate) use preferences::{Preferences, provide_prefs};
 mod session;
 pub(crate) use countable::*;
 pub(crate) use session::UserSession;
@@ -42,9 +40,9 @@ use saving::*;
 mod tests;
 
 use cfg_if::cfg_if;
+use components::IntoAttributeFn;
 use components::xstyle;
 use components::xstyle::*;
-use components::IntoAttributeFn;
 
 stylance::import_style!(main, "../style/_main.module.scss");
 

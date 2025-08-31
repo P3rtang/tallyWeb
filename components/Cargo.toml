@@ -1,7 +1,7 @@
 [package]
 name = "tallyweb-components"
-version = "0.3.8"
-edition = "2021"
+version = "0.3.9"
+edition = "2024"
 description = "The leptos components for the tallyweb site"
 license = "MIT"
 
