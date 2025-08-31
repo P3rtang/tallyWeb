@@ -1,6 +1,5 @@
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
-#![feature(let_chains)]
 #![allow(unused)]
 
 mod attribute_fn;
@@ -42,8 +41,8 @@ pub type MessageJar = message::jar::MessageJar<message::jar::NoHandle>;
 
 use leptos::{
     attr::{
-        any_attribute::{AnyAttribute, IntoAnyAttribute},
         Attribute,
+        any_attribute::{AnyAttribute, IntoAnyAttribute},
     },
     either::*,
     ev,
