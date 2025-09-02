@@ -295,12 +295,27 @@ fn EditStepSize(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 #[component]
 fn EditTime(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
-    let time = Signal::derive(move || store.get().recursive_ref().time(&key.get()));
+
+    let (time, set_time) = signal(
+        store
+            .get_untracked()
+            .recursive_ref()
+            .time(&key.get_untracked()),
+    );
+
+    let time_memo = Memo::new(move |prev| {
+        if prev.is_some_and(|(k, t)| *k != key.get()) {
+            set_time(store.get().recursive_ref().time(&key.get()));
+        }
+
+        (key.get(), time.get())
+    });
 
     view! {
         <TimeDeltaField
             label="Elapsed Time"
-            value=time
+            value=Signal::derive(move || time_memo.get().1)
+            on_change=move |t| set_time.set(t)
             name="countable[time]"
             id="change-time"
             use_single_form_value=true
