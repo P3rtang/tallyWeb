@@ -19,8 +19,8 @@ reset: recreate-docker recreate-user recreate-db
 recreate-docker:
 	podman-compose down
 	podman-compose up -d postgres
-	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "DROP DATABASE IF EXISTS tally_web"
 	timeout 10s bash -c "until podman exec $(POSTGRES_CONTAINER) pg_isready ; do sleep .5 ; done"
+	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "DROP DATABASE IF EXISTS tally_web"
 
 recreate-user:
 	psql -U postgres -d postgres -h localhost -p $(POSTGRES_PORT) -w -c "DROP USER IF EXISTS $(POSTGRES_USERNAME)"

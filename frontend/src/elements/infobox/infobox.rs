@@ -75,12 +75,18 @@ pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 
     let descendants = Memo::new(move |_| {
         let store = store.get();
-        store
+        let mut children = store
             .recursive_ref()
             .children(&key.get())
             .iter()
             .filter_map(|d| store.get(d))
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+
+        if let Some(parent) = store.get(&key.get()) {
+            children.push(parent);
+        }
+
+        return children;
     });
 
     Effect::new(move |_| {

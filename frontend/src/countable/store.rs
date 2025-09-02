@@ -1531,7 +1531,8 @@ impl CountableStore<Recursive, Checked> {
         match self.get(countable).ok_or(AppError::CountableNotFound)? {
             Countable::Counter(_) => {
                 let children = self.children(countable)?;
-                for child in children.into_iter().rev() {
+
+                for child in children.into_iter() {
                     diff += self.time(&child)?;
                     if diff < TimeDelta::zero() {
                         self.set_time(&child, TimeDelta::zero())?
@@ -1581,7 +1582,7 @@ impl CountableStore<Recursive, Checked> {
         match self.get(countable).ok_or(AppError::CountableNotFound)? {
             Countable::Counter(_) => {
                 let children = self.children(countable)?;
-                for child in children.into_iter().rev() {
+                for child in children.into_iter() {
                     diff += self.time(&child)?;
                     if diff < TimeDelta::zero() {
                         self.set_time(&child, TimeDelta::zero())?

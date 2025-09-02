@@ -12,16 +12,23 @@ use super::*;
  *   - `Ok(())` - The new value is accepted
  *   - `Err(`[AppError]`)` - The old value will be reinstated and the error logged
  */
+#[derive(Clone)]
 #[allow(dead_code)]
-pub struct OnChange(Arc<dyn Fn(TimeDelta) -> AppResult<()>>);
+pub struct OnChange(Arc<dyn Fn(TimeDelta)>);
 
-impl Default for OnChange {
-    fn default() -> Self {
-        Self(Arc::new(move |_| Ok(())))
+impl OnChange {
+    pub fn call(&self, val: TimeDelta) {
+        (self.0)(val)
     }
 }
 
-impl<F: Fn(TimeDelta) -> AppResult<()> + 'static> From<F> for OnChange {
+impl Default for OnChange {
+    fn default() -> Self {
+        Self(Arc::new(move |_| ()))
+    }
+}
+
+impl<F: Fn(TimeDelta) + 'static> From<F> for OnChange {
     fn from(value: F) -> Self {
         Self(Arc::new(value))
     }
@@ -51,6 +58,13 @@ pub struct DeltaMilli {
     attrs: Arc<dyn Fn() -> AnyAttribute + Send + Sync + 'static>,
 }
 
+pub enum TimeDeltaSubField {
+    Hour,
+    Minute,
+    Second,
+    Milli,
+}
+
 #[component]
 pub fn TimeDeltaField(
     #[prop(into, optional)] label: Option<Signal<String>>,
@@ -58,7 +72,7 @@ pub fn TimeDeltaField(
     #[prop(into, optional)] id: Signal<String>,
     #[prop(into, optional)] value: Option<Signal<TimeDelta>>,
     #[prop(into, optional)] on_change: OnChange,
-    #[prop(optional)] default_value: Option<TimeDelta>,
+    #[prop(optional)] default_value: TimeDelta,
 
     #[prop(optional)] delta_hour: Option<DeltaHour>,
     #[prop(optional)] delta_minute: Option<DeltaMinute>,
@@ -68,13 +82,21 @@ pub fn TimeDeltaField(
     #[prop(default=false.into(), into)] use_single_form_value: Signal<bool>,
 ) -> impl IntoView {
     let screen = hooks::use_screen();
-    let (default_value, set_default_value) = signal(default_value.unwrap_or_default());
+
+    let (interal_value, set_interal_value) = signal(default_value);
+
+    let on_change = move |val| {
+        // TODO: handle the error???
+        let _ = on_change.call(val);
+
+        set_interal_value(val);
+    };
 
     let value = Memo::new(move |_| {
         if let Some(v) = value {
             v.get()
         } else {
-            default_value.get()
+            default_value
         }
     });
 
@@ -113,10 +135,34 @@ pub fn TimeDeltaField(
     let pad_secs = move || format!("{:02}", value().num_seconds() % 60);
     let pad_millis = move || format!("{:03}", value().num_milliseconds() % 1000);
 
-    let handle_change_hour = move |ev| {
-        if let Ok(ev) = event_target_value(&ev).parse::<i64>() {
-            let diff = ev - value.get().num_hours();
-            set_default_value(value.get() + TimeDelta::hours(diff))
+    let handle_change_time = move |mode: TimeDeltaSubField| {
+        let on_change = on_change.clone();
+
+        move |ev| match mode {
+            TimeDeltaSubField::Hour => {
+                if let Ok(ev) = event_target_value(&ev).parse::<i64>() {
+                    let diff = ev - value.get().num_hours();
+                    on_change(value.get() + TimeDelta::hours(diff))
+                }
+            }
+            TimeDeltaSubField::Minute => {
+                if let Ok(ev) = event_target_value(&ev).parse::<i64>() {
+                    let diff = ev - value.get().num_minutes() % 60;
+                    on_change(value.get() + TimeDelta::minutes(diff))
+                }
+            }
+            TimeDeltaSubField::Second => {
+                if let Ok(ev) = event_target_value(&ev).parse::<i64>() {
+                    let diff = ev - value.get().num_seconds() % 60;
+                    on_change(value.get() + TimeDelta::seconds(diff))
+                }
+            }
+            TimeDeltaSubField::Milli => {
+                if let Ok(ev) = event_target_value(&ev).parse::<i64>() {
+                    let diff = ev - value.get().num_milliseconds() % 1000;
+                    on_change(value.get() + TimeDelta::milliseconds(diff))
+                }
+            }
         }
     };
 
@@ -155,7 +201,7 @@ pub fn TimeDeltaField(
                 prop:value=pad_hours
                 style:width="4ch"
                 style:text-align="end"
-                on:change=handle_change_hour
+                on:change=handle_change_time(TimeDeltaSubField::Hour)
                 on:focusout=move |_| pad_input(hour_ref, 2)
                 {..delta_hour.clone().map(|d| (d.attrs)()).unwrap_or(().into_any_attr())}
                 name=move || create_name("hour")
@@ -170,6 +216,7 @@ pub fn TimeDeltaField(
                 prop:value=pad_mins
                 style:width="2ch"
                 style:text-align="end"
+                on:change=handle_change_time(TimeDeltaSubField::Minute)
                 on:input=move |ev| limit_num(ev, min_ref, 0, 59)
                 on:focusout=move |_| pad_input(min_ref, 2)
                 {..delta_minute.clone().map(|d| (d.attrs)()).unwrap_or(().into_any_attr())}
@@ -185,6 +232,7 @@ pub fn TimeDeltaField(
                 prop:value=pad_secs
                 style:width="2ch"
                 style:text-align="end"
+                on:change=handle_change_time(TimeDeltaSubField::Second)
                 on:input=move |ev| limit_num(ev, sec_ref, 0, 59)
                 on:focusout=move |_| pad_input(sec_ref, 2)
                 {..delta_second.clone().map(|d| (d.attrs)()).unwrap_or(().into_any_attr())}
@@ -200,6 +248,7 @@ pub fn TimeDeltaField(
                 prop:value=pad_millis
                 style:width="3ch"
                 style:text-align="end"
+                on:change=handle_change_time(TimeDeltaSubField::Milli)
                 on:input=move |ev| limit_num(ev, millis_ref, 0, 999)
                 on:focusout=move |_| pad_input(millis_ref, 3)
                 {..delta_milli.clone().map(|d| (d.attrs)()).unwrap_or(().into_any_attr())}
