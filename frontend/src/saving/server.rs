@@ -25,11 +25,11 @@ impl<S: ServerSavable + 'static> SaveHandler<S> for ServerSaveHandler {
 
         Effect::new(move |_| {
             if let Some(Err(err)) = action.value().get() {
-                if !is_offline(&err) {
-                    // TODO: reimplement these
-                    // msg.without_timeout().set_server_err(&err);
-                    // on_error(&err)
-                }
+                // if !is_offline(&err) {
+                //     // TODO: reimplement these
+                //     // msg.without_timeout().set_server_err(&err);
+                //     // on_error(&err)
+                // }
             };
         });
     }

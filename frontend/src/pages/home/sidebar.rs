@@ -170,10 +170,10 @@ pub(crate) fn SidebarContent() -> impl IntoView {
     };
 
     Effect::new(move |_| {
-        if let Some(input_ref) = input_ref.get_untracked() {
-            if show_search.get() {
-                request_animation_frame(move || _ = input_ref.focus());
-            }
+        if let Some(input_ref) = input_ref.get_untracked()
+            && show_search.get()
+        {
+            request_animation_frame(move || _ = input_ref.focus());
         }
     });
 

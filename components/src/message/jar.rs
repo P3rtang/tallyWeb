@@ -37,7 +37,7 @@ impl<T: Handle + 'static> MessageJar<T> {
 
     pub fn get_ordered(&self) -> Signal<Vec<MessageKey>> {
         create_read_slice(self.messages, |msgs| {
-            let mut entries = msgs.iter().map(|(key, _)| *key).collect::<Vec<_>>();
+            let mut entries = msgs.keys().copied().collect::<Vec<_>>();
             entries.sort();
             entries
         })
