@@ -86,7 +86,7 @@ pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             children.push(parent);
         }
 
-        return children;
+        children
     });
 
     Effect::new(move |_| {

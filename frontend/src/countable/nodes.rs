@@ -225,10 +225,9 @@ impl LocalSavable for Vec<Countable> {
                     .get(&key)
                     .await?
                     .and_then(|v| Countable::from_js(v).ok())
+                    && old_val.last_edit() > c.last_edit()
                 {
-                    if old_val.last_edit() > c.last_edit() {
-                        continue;
-                    }
+                    continue;
                 }
 
                 let _ = self.iter().try_for_each(|c| c.set_edit());

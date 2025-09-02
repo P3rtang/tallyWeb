@@ -87,7 +87,7 @@ pub fn TimeDeltaField(
 
     let on_change = move |val| {
         // TODO: handle the error???
-        let _ = on_change.call(val);
+        on_change.call(val);
 
         set_interal_value(val);
     };
