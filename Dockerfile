@@ -1,5 +1,5 @@
 # Get started with a build env with Rust nightly
-FROM rustlang/rust:nightly-bullseye as builder
+FROM rustlang/rust:nightly-bookworm as builder
 
 # If you’re using stable, use this instead
 # FROM rust:1.74-bullseye as builder
@@ -31,7 +31,7 @@ ENV LEPTOS_OUTPUT_NAME=${OUT_NAME}
 # Build the app
 RUN cargo leptos build -r -P -vv
 
-FROM rustlang/rust:nightly-bullseye as runner
+FROM rustlang/rust:nightly-bookworm as runner
 # Copy the server binary to the /app directory
 COPY --from=builder /app/target/release/tallyweb-frontend /app/frontend
 # /target/site contains our JS/WASM/CSS, etc.
