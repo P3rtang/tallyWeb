@@ -7,7 +7,7 @@ on:
 jobs:
   test:
     environment: end2end
-    runs-on: ubuntu-latest
+    runs-on: rustlang/rust:nightly-bookworm
     
     services:
       postgres:
@@ -24,7 +24,6 @@ jobs:
           
     steps:
     - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@nightly
     - uses: actions/setup-node@v3
       with:
         node-version: 18
