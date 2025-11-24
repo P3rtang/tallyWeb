@@ -28,6 +28,7 @@ RUN stylance ./frontend/ --output-file ./style/bundle.scss
 
 ARG OUT_NAME
 ENV LEPTOS_OUTPUT_NAME=${OUT_NAME}
+ENV LEPTOS_WASM_BINDGEN_VERSION=0.2.105
 # Build the app
 RUN cargo leptos build -r -P -vv
 
