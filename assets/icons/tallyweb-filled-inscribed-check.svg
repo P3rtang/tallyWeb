@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="512"
+   height="512"
+   viewBox="0 0 512 512"
+   version="1.1"
+   id="svg1"
+   inkscape:export-filename="default.svg"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   sodipodi:docname="tallyweb-filled-inscribed-check.svg"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#303030"
+     inkscape:document-units="px"
+     inkscape:zoom="1.5244263"
+     inkscape:cx="256.16195"
+     inkscape:cy="256.16195"
+     inkscape:window-width="2552"
+     inkscape:window-height="1396"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg1"
+     showgrid="true">
+    <inkscape:page
+       x="0"
+       y="0"
+       width="512"
+       height="512"
+       id="page2"
+       margin="0"
+       bleed="0" />
+    <inkscape:grid
+       id="grid1"
+       units="px"
+       originx="0"
+       originy="0"
+       spacingx="1"
+       spacingy="1"
+       empcolor="#0099e5"
+       empopacity="0.30196078"
+       color="#0099e5"
+       opacity="0.14901961"
+       empspacing="5"
+       enabled="false"
+       visible="true" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1">
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath4">
+      <g
+         inkscape:label="Clip"
+         id="use4" />
+    </clipPath>
+  </defs>
+  <path
+     id="path1"
+     style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:52.9656;stroke-linecap:butt;stroke-dasharray:none;stroke-opacity:1;paint-order:markers fill stroke"
+     d="M 256 0 A 256 256 0 0 0 0 256 A 256 256 0 0 0 256 512 A 256 256 0 0 0 512 256 A 256 256 0 0 0 256 0 z M 369.13672 174.11719 A 24 24 0 0 1 386.10742 181.14844 A 24 24 0 0 1 386.10742 215.08984 L 250.47656 350.7207 A 24 24 0 0 1 250.34375 350.85352 A 24 24 0 0 1 245.37305 354.66797 A 24 24 0 0 1 239.58398 357.06445 A 24 24 0 0 1 227.16211 357.06445 A 24 24 0 0 1 227.16016 357.06445 A 24 24 0 0 1 226.15234 356.72266 A 24 24 0 0 1 224.1875 356.05469 A 24 24 0 0 1 216.40234 350.85352 L 125.89258 260.34375 A 24 24 0 0 1 125.89258 226.40234 A 24 24 0 0 1 136.65234 220.19141 A 24 24 0 0 1 142.86328 219.37305 A 24 24 0 0 1 159.83398 226.40234 L 233.37305 299.94141 L 352.16602 181.14844 A 24 24 0 0 1 362.92578 174.93555 A 24 24 0 0 1 369.13672 174.11719 z " />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g2"
+       inkscape:label="checkmark"
+       transform="translate(-22.62742,-10.11775)" />
+  </g>
+</svg>

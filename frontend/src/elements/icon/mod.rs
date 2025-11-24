@@ -32,6 +32,8 @@ pub enum IconKind {
     HamburgerMenu,
     Visible,
     NotVisible,
+    InscribedCheck,
+    FilledInscribedCheck,
 }
 
 impl IconKind {
@@ -62,6 +64,8 @@ impl IconKind {
                 IconKind::HamburgerMenu => style::hamburger,
                 IconKind::Visible => style::visible,
                 IconKind::NotVisible => style::not_visible,
+                IconKind::InscribedCheck => style::inscribed_check,
+                IconKind::FilledInscribedCheck => style::filled_inscribed_check,
             },
             style::icon
         )
@@ -74,6 +78,7 @@ pub enum IconColor {
     #[default]
     White,
     Black,
+    Accent,
     #[allow(clippy::upper_case_acronyms)]
     RGB(u8, u8, u8),
 }
@@ -83,6 +88,7 @@ impl std::fmt::Display for IconColor {
         match self {
             IconColor::White => write!(f, "white"),
             IconColor::Black => write!(f, "black"),
+            IconColor::Accent => write!(f, "var(--accent)"),
             IconColor::RGB(r, g, b) => write!(f, "#{r:x}{g:x}{b:x}"),
         }
     }
