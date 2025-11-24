@@ -152,7 +152,7 @@ pub fn InfoHeader(
     view! {
         <div class=style::header>
             <div>
-                <InfoPickMenu visible_info />
+                <InfoPickMenu key visible_info />
                 <Text style:font-size=move || {
                     if is_small.get() { "24px" } else { "28px" }
                 }>{countable_name}</Text>
@@ -167,7 +167,11 @@ pub fn InfoHeader(
 }
 
 #[component]
-pub fn InfoPickMenu(visible_info: RwSignal<VisibleInfo>) -> impl IntoView {
+pub fn InfoPickMenu(
+    #[prop(into)] key: Signal<CountableId>,
+    visible_info: RwSignal<VisibleInfo>,
+) -> impl IntoView {
+    let store = expect_context::<RwSignal<CountableStore>>();
     let menu_attrs = view! { <{..} attr:class=style::menu /> }.into_attr_fn();
 
     view! {
@@ -175,6 +179,13 @@ pub fn InfoPickMenu(visible_info: RwSignal<VisibleInfo>) -> impl IntoView {
             <MenuButton slot>
                 <Icon kind=IconKind::HamburgerMenu />
             </MenuButton>
+            <Show when=move || {
+                matches!(store.get().get(&key.get()), Some(nodes::Countable::Phase(_)))
+            }>
+                <MenuEntry>
+                    <ToggleCompleteMenuEntry store key />
+                </MenuEntry>
+            </Show>
             <MenuEntry>
                 <InfoPickMenuEntry field=VisibleField::Count visible_info />
             </MenuEntry>
@@ -213,10 +224,57 @@ fn InfoPickMenuEntry(field: VisibleField, visible_info: RwSignal<VisibleInfo>) -
                 xstyle=xstyle!("padding": XPadding::Medium)
             >
                 <Icon kind=icon_kind />
+                <label for=field.to_string().to_lowercase()>{field.to_string()}</label>
             </Button>
-            <label on:click=move |ev| ev.stop_propagation() for=field.to_string().to_lowercase()>
-                {field.to_string()}
-            </label>
+        </div>
+    }
+}
+
+#[component]
+fn ToggleCompleteMenuEntry(
+    #[prop(into)] store: RwSignal<CountableStore>,
+    #[prop(into)] key: Signal<CountableId>,
+) -> impl IntoView {
+    let (is_success, set_is_success) = create_slice(
+        store,
+        move |s| s.is_success(&key.get()),
+        move |s, _: ()| {
+            s.toggle_success(&key.get());
+        },
+    );
+
+    let on_click = move |ev: MouseEvent| {
+        ev.stop_propagation();
+        set_is_success.set(());
+    };
+
+    let icon = Signal::derive(move || {
+        if is_success.get() {
+            IconKind::FilledInscribedCheck
+        } else {
+            IconKind::InscribedCheck
+        }
+    });
+
+    let color = Signal::derive(move || {
+        if is_success.get() {
+            IconColor::Accent
+        } else {
+            IconColor::White
+        }
+    });
+
+    view! {
+        <div class=style::entry>
+            <Button
+                style:background="transparent"
+                attr:id="toggle-complete"
+                on:click=on_click
+                xstyle=xstyle!("padding": XPadding::Medium)
+            >
+                <Icon kind=icon color />
+                <label for="toggle-complete">"Toggle Success"</label>
+            </Button>
         </div>
     }
 }

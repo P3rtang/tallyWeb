@@ -13,7 +13,7 @@
     padding-bottom: 16px;
     background: $body-background;
 
-    & > div {
+    &>div {
       display: flex;
       gap: 8px;
     }
@@ -38,9 +38,9 @@
     position: relative;
     z-index: 19;
 
-    transition: max-height 0.32s ease-out, padding 0.28s ease-out; 
+    transition: max-height 0.32s ease-out, padding 0.28s ease-out;
 
-    & > div {
+    &>div {
       width: 100%;
       padding: 12px 0px;
 
@@ -58,7 +58,7 @@
     padding: 0px 16px;
     background: $body-background;
 
-    transition: max-height 0.32s ease-out, padding 0.28s ease-out; 
+    transition: max-height 0.32s ease-out, padding 0.28s ease-out;
 
     &.shown {
       padding: 16px;
@@ -72,21 +72,21 @@
       z-index: 10;
     }
 
-    & > div {
+    &>div {
       display: flex;
       align-items: center;
       width: 100%;
 
-      & > *:first-child {
+      &>*:first-child {
         margin-right: 12px;
       }
     }
 
-    & > div > button > div {
+    &>div>button>div {
       width: 44px;
       height: 44px;
 
-      & > div {
+      &>div {
         transition: transform 0.32s;
       }
     }

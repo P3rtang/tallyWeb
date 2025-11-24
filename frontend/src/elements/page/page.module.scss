@@ -41,7 +41,7 @@
     overflow: hidden;
     background: $body-background;
 
-    @media (max-width: 800px) {
+    @media (max-width: 900px) {
       background: $panel-background;
       height: 100%;
       position: absolute;
@@ -65,7 +65,7 @@
   }
 }
 
-@container wide (min-width: 800px) {
+@container wide (min-width: 900px) {
   .content {
     padding: 2px;
     padding-right: 12px;
