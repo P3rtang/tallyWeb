@@ -1,21 +1,28 @@
 use super::*;
 
-#[derive(Default, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct NotificationConfig {
     pub do_fade: bool,
     pub fade: Option<chrono::TimeDelta>,
-    pub attrs: StoredValue<AttributeFn>,
+    pub attrs: StoredValue<AnyAttribute, LocalStorage>,
 }
 
 impl NotificationConfig {
-    pub fn new<M: attribute_fn::Marker>(
-        fade: Option<chrono::TimeDelta>,
-        attrs: impl IntoAttributeFn<M>,
-    ) -> Self {
+    pub fn new(fade: Option<chrono::TimeDelta>, attrs: impl Attribute) -> Self {
         Self {
             do_fade: false,
             fade,
-            attrs: StoredValue::new(attrs.into_attr_fn()),
+            attrs: StoredValue::new_local(attrs.into_any_attr()),
+        }
+    }
+}
+
+impl Default for NotificationConfig {
+    fn default() -> Self {
+        Self {
+            do_fade: false,
+            fade: None,
+            attrs: StoredValue::new_local(().into_any_attr()),
         }
     }
 }

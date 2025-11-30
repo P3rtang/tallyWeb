@@ -4,7 +4,7 @@ use super::*;
 pub struct MessageProp {
     pub key: MessageKey,
     pub jar: MessageJar,
-    pub attrs: AttributeFn,
+    pub attrs: AnyAttribute,
 }
 
 #[derive(Clone)]
@@ -26,7 +26,7 @@ impl Default for MessageSlot {
 }
 
 #[component]
-pub fn Message(key: MessageKey, jar: MessageJar, attrs: AttributeFn) -> AnyView {
+pub fn Message(key: MessageKey, jar: MessageJar, attrs: AnyAttribute) -> AnyView {
     if !jar.messages().get_untracked().contains_key(&key) {
         return ().into_view().into_any();
     }
@@ -121,9 +121,8 @@ pub fn ProvideMessageJar(
                         .messages()
                         .get()
                         .get(&key)
-                        .map(|m| m.config.attrs)
-                        .unwrap_or_default()
-                        .get_value();
+                        .map(|m| m.config.attrs.get_value())
+                        .unwrap_or(().into_any_attr());
                     msg_view_fn
                         .clone()(MessageProp {
                         key,

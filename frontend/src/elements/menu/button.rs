@@ -4,8 +4,8 @@ use super::*;
 pub struct MenuButton {
     children: ChildrenFn,
 
-    #[prop(into, optional)]
-    attrs: AttributeFn,
+    #[prop(into)]
+    attrs: AnyAttribute,
 }
 
 impl Default for MenuButton {
@@ -14,7 +14,7 @@ impl Default for MenuButton {
 
         Self {
             children,
-            attrs: Default::default(),
+            attrs: ().into_any_attr(),
         }
     }
 }

@@ -11,7 +11,7 @@ RUN tar -xvf cargo-binstall-x86_64-unknown-linux-musl.tgz
 RUN cp cargo-binstall /usr/local/cargo/bin
 
 # Install cargo-leptos
-RUN cargo binstall cargo-leptos -y
+RUN cargo install cargo-leptos --locked --version 0.2.45
 # Install stylance
 RUN cargo install stylance-cli
 
@@ -28,7 +28,9 @@ RUN stylance ./frontend/ --output-file ./style/bundle.scss
 
 ARG OUT_NAME
 ENV LEPTOS_OUTPUT_NAME=${OUT_NAME}
-ENV LEPTOS_WASM_BINDGEN_VERSION=0.2.105
+ENV LEPTOS_WASM_BINDGEN_VERSION=0.2.104
+# Update wasm-bindgen to a specific version to avoid compatibility issues
+RUN cargo update -p wasm-bindgen --precise 0.2.104
 # Build the app
 RUN cargo leptos build -r -P -vv
 

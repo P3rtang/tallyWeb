@@ -172,33 +172,33 @@ pub fn InfoPickMenu(
     visible_info: RwSignal<VisibleInfo>,
 ) -> impl IntoView {
     let store = expect_context::<RwSignal<CountableStore>>();
-    let menu_attrs = view! { <{..} attr:class=style::menu /> }.into_attr_fn();
+    let menu_attrs = view! { <{..} attr:class=style::menu /> }.into_any_attr();
 
     view! {
         <Menu menu_attrs>
-            <MenuButton slot>
+            <MenuButton attrs=().into_any_attr() slot>
                 <Icon kind=IconKind::HamburgerMenu />
             </MenuButton>
             <Show when=move || {
                 matches!(store.get().get(&key.get()), Some(nodes::Countable::Phase(_)))
             }>
-                <MenuEntry>
+                <MenuEntry attrs=().into_any_attr()>
                     <ToggleCompleteMenuEntry store key />
                 </MenuEntry>
             </Show>
-            <MenuEntry>
+            <MenuEntry attrs=().into_any_attr()>
                 <InfoPickMenuEntry field=VisibleField::Count visible_info />
             </MenuEntry>
-            <MenuEntry>
+            <MenuEntry attrs=().into_any_attr()>
                 <InfoPickMenuEntry field=VisibleField::Time visible_info />
             </MenuEntry>
-            <MenuEntry>
+            <MenuEntry attrs=().into_any_attr()>
                 <InfoPickMenuEntry field=VisibleField::Progress visible_info />
             </MenuEntry>
-            <MenuEntry>
+            <MenuEntry attrs=().into_any_attr()>
                 <InfoPickMenuEntry field=VisibleField::LastStep visible_info />
             </MenuEntry>
-            <MenuEntry>
+            <MenuEntry attrs=().into_any_attr()>
                 <InfoPickMenuEntry field=VisibleField::AvgStep visible_info />
             </MenuEntry>
         </Menu>

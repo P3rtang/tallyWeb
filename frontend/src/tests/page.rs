@@ -1,5 +1,3 @@
-use crate::hooks::use_breakpoint;
-
 use super::*;
 
 #[component]
@@ -20,7 +18,7 @@ pub fn TestPage() -> impl IntoView {
 
     view! {
         <Page>
-            <PageContent hide_border=true slot>
+            <PageContent attrs=().into_any_attr() hide_border=true slot>
                 {move || {
                     either!(
                         topic.get(),

@@ -14,20 +14,12 @@ pub fn TestNotifications() -> impl IntoView {
     };
 
     let handle_click = move |_| {
-        let msg = message_content.get_untracked();
+        let view: ViewFn = (move || view! { <div>{message_content.get_untracked()}</div> }).into();
 
-        message(
-            move || view! { <div>{msg.clone()}</div> },
-            (config()).into(),
-        )
+        message(view, (config()).into())
     };
 
-    let handle_error = move |_| {
-        message(
-            move || view! { <div>An Error Occured</div> },
-            (Severity::Error, config()).into(),
-        )
-    };
+    let handle_error = move |_| {};
 
     let handle_change_text = move |ev| set_message_content.set(event_target_value(&ev));
 

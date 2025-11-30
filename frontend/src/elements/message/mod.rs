@@ -61,7 +61,7 @@ pub fn Message(#[prop(name = "state")] MessageProp { key, jar, attrs }: MessageP
             on:animationend=on_fade_out
             on:click=|ev| ev.stop_propagation()
 
-            {..attrs.call()}
+            {..attrs}
         >
             <div class=style::content>
                 <Button xstyle=xstyle!("padding": XPadding::Small) on:click=on_close>

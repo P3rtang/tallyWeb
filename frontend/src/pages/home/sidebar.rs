@@ -125,7 +125,7 @@ pub(crate) fn SidebarContent() -> impl IntoView {
 
     let action = ServerAction::<api::CreateCountable>::new();
 
-    Effect::new(move |_| match action.value().get() {
+    Effect::new_sync(move |_| match action.value().get() {
         Some(Ok(countables)) => store.update(|s| countables.into_iter().for_each(|c| s.insert(c))),
         Some(Err(err)) => {
             message.server_err(err);
@@ -169,7 +169,7 @@ pub(crate) fn SidebarContent() -> impl IntoView {
         }
     };
 
-    Effect::new(move |_| {
+    Effect::new_sync(move |_| {
         if let Some(input_ref) = input_ref.get_untracked()
             && show_search.get()
         {
@@ -215,6 +215,13 @@ pub(crate) fn SidebarContent() -> impl IntoView {
 
         format!("{}px", sidebar.width().get())
     };
+
+    // Effect::new_isomorphic(move || {
+    //     log!("----------------------");
+    //     log!("{:?}", store.get());
+    //     log!("{:?}", each());
+    //     log!("----------------------");
+    // });
 
     view! {
         <div class=style::sidebar style:width=width>
@@ -302,6 +309,7 @@ fn SortInputs(
                     />
                 </Button>
                 <SelectField
+                    attrs=().into_any_attr()
                     id="filter-countable"
                     options=options
                     value=sort

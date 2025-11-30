@@ -17,7 +17,7 @@ pub fn EditWindow() -> impl IntoView {
 
     let content_attr =
         view! { <{..} style:max-width="1200px" style:width="100%" style:margin="auto" /> }
-            .into_attr_fn();
+            .into_any_attr();
 
     view! {
         <Page>
@@ -347,7 +347,7 @@ fn EditHunttype(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
         <SelectField
             label="Hunt method"
             id="change-hunttype"
-            attrs=move || view! { <{..} attr:name="countable[hunttype]" /> }
+            attrs=view! { <{..} attr:name="countable[hunttype]" /> }.into_any_attr()
             value=hunttype
             on_change=move |ht| {
                 if let Some(ht) = ht {

@@ -40,7 +40,7 @@ pub fn PrefsWindow() -> impl IntoView {
 
     let content_attr =
         view! { <{..} style:max-width="1200px" style:width="100%" style:margin="auto" /> }
-            .into_attr_fn();
+            .into_any_attr();
 
     view! {
         <Page>
@@ -113,7 +113,7 @@ fn PrefsContent() -> impl IntoView {
             move || "success",
             (
                 Severity::Success,
-                NotificationConfig::new(Some(TimeDelta::seconds(2)), ()),
+                NotificationConfig::new(Some(TimeDelta::seconds(2)), ().into_any_attr()),
             )
                 .into(),
         ),

@@ -8,7 +8,7 @@ pub fn SelectField<T>(
     #[prop(into, optional)] value: Option<Signal<T>>,
     #[prop(into, optional)] default_value: Option<T>,
     #[prop(into, optional)] on_change: EventCallback<Option<T>>,
-    #[prop(into, optional)] attrs: AttributeFn,
+    #[prop(into)] attrs: AnyAttribute,
 ) -> impl IntoView
 where
     T: Sortable + ToString + PartialEq + Default + Clone + Send + Sync + 'static,
@@ -59,7 +59,7 @@ where
                 <SelectInput attrs slot />
                 <SelectButton
                     let:child
-                    attrs=move || view! { <{..} class="hover-darken icon" /> }
+                    attrs=view! { <{..} class="hover-darken icon" /> }.into_any_attr()
                     slot
                 >
                     {button_children(child)}

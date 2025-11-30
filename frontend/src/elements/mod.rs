@@ -18,6 +18,7 @@ pub mod text;
 // imports
 use chrono::TimeDelta;
 use components::*;
+use hooks::use_accent;
 use leptos::{
     attr::any_attribute::{AnyAttribute, IntoAnyAttribute},
     attribute_interceptor::AttributeInterceptor,

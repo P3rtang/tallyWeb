@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 #[slot]
 pub struct MenuEntrySlot {
     #[prop(optional)]
@@ -9,23 +9,33 @@ pub struct MenuEntrySlot {
     #[prop(into)]
     label: String,
 
-    #[prop(into, optional)]
-    attrs: AttributeFn,
+    #[prop(into)]
+    attrs: AnyAttribute,
+}
+
+impl Default for MenuEntrySlot {
+    fn default() -> Self {
+        Self {
+            icon: None,
+            label: "".into(),
+            attrs: ().into_any_attr(),
+        }
+    }
 }
 
 #[component]
 pub fn MenuEntry(
     #[prop(into, optional)] href: Option<Signal<String>>,
-    #[prop(into, optional)] attrs: AttributeFn,
+    #[prop(into)] attrs: AnyAttribute,
 
     #[prop(optional)] children: Option<ChildrenFn>,
     #[prop(optional)] menu_entry_slot: MenuEntrySlot,
 ) -> impl IntoView {
-    let menu_entry = StoredValue::new(menu_entry_slot);
+    let menu_entry = StoredValue::new_local(menu_entry_slot);
 
     if let Some(children) = children {
         EitherOf3::A(view! {
-            <div {..attrs.call()} class=style::entry>
+            <div {..attrs} class=style::entry>
                 {children()}
             </div>
         })
@@ -35,7 +45,7 @@ pub fn MenuEntry(
                 class=style::entry
                 href=href
                 xstyle=xstyle!("padding": XPadding::Medium)
-                {..attrs.call()}
+                {..attrs}
             >
                 <div class=style::label>
                     <Show when=move || menu_entry.get_value().icon.is_some()>
@@ -47,7 +57,7 @@ pub fn MenuEntry(
         })
     } else {
         EitherOf3::C(view! {
-            <Button class=style::entry xstyle=xstyle!("padding": XPadding::Medium) {..attrs.call()}>
+            <Button class=style::entry xstyle=xstyle!("padding": XPadding::Medium) {..attrs}>
                 <div class=style::label>
                     <Show when=move || menu_entry.get_value().icon.is_some()>
                         <Icon kind=menu_entry.get_value().icon.unwrap() />

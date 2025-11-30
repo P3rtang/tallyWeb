@@ -20,7 +20,6 @@ pub mod app;
 mod pages;
 pub use pages::*;
 pub(crate) mod elements;
-pub(crate) mod hoc;
 pub mod hooks;
 pub(crate) mod page_context;
 mod screen;
@@ -37,10 +36,10 @@ pub(crate) use countable::*;
 pub(crate) use session::UserSession;
 pub(crate) mod saving;
 use saving::*;
+
 mod tests;
 
 use cfg_if::cfg_if;
-use components::IntoAttributeFn;
 use components::xstyle;
 use components::xstyle::*;
 

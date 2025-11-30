@@ -4,4 +4,4 @@ use super::*;
 pub mod icon;
 
 use elements::menu::*;
-use hooks::use_history;
+use hooks::{use_accent, use_history};

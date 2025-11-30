@@ -10,8 +10,8 @@ pub struct PageContent {
     #[prop(default = false.into(), into)]
     hide_border: Signal<bool>,
 
-    #[prop(optional, into)]
-    attrs: AttributeFn,
+    #[prop(into)]
+    attrs: AnyAttribute,
 
     children: ChildrenFn,
 }
@@ -113,43 +113,39 @@ pub fn Page(
         )
     };
 
-    hoc::with_accent(move || {
-        view! {
-            <div class=page_classes style=css_vars>
-                <Show when=has_sidebar>
-                    <div style:width=width_style class=sidebar_classes>
-                        {(sidebar.get_value().unwrap().children)()}
-                    </div>
-                    <ResizeBar
-                        direction=Direction::Vertical
-                        position=Signal::derive(move || sidebar_width().unwrap_or_default())
-                        on:drag=handle_resize
-                    />
-                </Show>
-                <div class=style::body>
-                    <Show when=has_navbar>{(navbar.get_value().unwrap().children)()}</Show>
-                    <div class=classes>
-                        <div
-                            style:border=move || {
-                                if (page_content.hide_border)() { "none" } else { "" }
-                            }
-                            style:box-shadow=move || {
-                                if (page_content.hide_border)() {
-                                    "0px 0px 2px 0px black"
-                                } else {
-                                    ""
-                                }
-                            }
-                        >
-                            <div style:height="100%" {..page_content.attrs.call()}>
-                                {(page_content.children)()}
-                            </div>
+    let accent = use_accent();
+
+    view! {
+        <div {..accent} class=page_classes style=css_vars>
+            <Show when=has_sidebar>
+                <div style:width=width_style class=sidebar_classes>
+                    {(sidebar.get_value().unwrap().children)()}
+                </div>
+                <ResizeBar
+                    direction=Direction::Vertical
+                    position=Signal::derive(move || sidebar_width().unwrap_or_default())
+                    on:drag=handle_resize
+                />
+            </Show>
+            <div class=style::body>
+                <Show when=has_navbar>{(navbar.get_value().unwrap().children)()}</Show>
+                <div class=classes>
+                    <div
+                        style:border=move || {
+                            if (page_content.hide_border)() { "none" } else { "" }
+                        }
+                        style:box-shadow=move || {
+                            if (page_content.hide_border)() { "0px 0px 2px 0px black" } else { "" }
+                        }
+                    >
+                        <div style:height="100%" {..page_content.attrs}>
+                            {(page_content.children)()}
                         </div>
                     </div>
                 </div>
             </div>
-        }
-    })
+        </div>
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

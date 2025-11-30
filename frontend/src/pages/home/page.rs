@@ -19,7 +19,7 @@ pub fn HomePage() -> impl IntoView {
 
     view! {
         <Page>
-            <PageContent hide_border=true slot>
+            <PageContent attrs=().into_any_attr() hide_border=true slot>
                 <InfoBox countable_list />
             </PageContent>
             <PageSidebar

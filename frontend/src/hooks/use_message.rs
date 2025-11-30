@@ -78,24 +78,22 @@ pub struct MessageFn(Option<StoredValue<DynMessageFn>>);
 impl MessageFn {
     pub fn server_err(&self, error: ServerFnError) -> Option<MessageKey> {
         if let Some(func) = self.0 {
-            let msg = match error {
+            let msg: ViewFn = match error {
                 #[allow(deprecated)]
                 ServerFnError::WrappedServerError(_) => todo!(),
                 ServerFnError::Registration(_) => todo!(),
                 ServerFnError::Request(_) => {
-                    EitherOf3::A(view! { <div>Failed to connect to the server</div> })
+                    (move || view! { <div>Failed to connect to the server</div> }).into()
                 }
                 ServerFnError::Response(_) => {
-                    EitherOf3::B(view! { <div>The server failed to respond</div> })
+                    (move || view! { <div>The server failed to respond</div> }).into()
                 }
-                ServerFnError::ServerError(err) => {
-                    let msg = err
-                        .split('\n')
+                ServerFnError::ServerError(err) => (move || {
+                    err.split('\n')
                         .map(|line| view! { <div>{line.to_string()}</div> })
-                        .collect_view();
-
-                    EitherOf3::C(msg)
-                }
+                        .collect_view()
+                })
+                .into(),
                 ServerFnError::Deserialization(_) => todo!(),
                 ServerFnError::Serialization(_) => todo!(),
                 ServerFnError::Args(_) => todo!(),
@@ -103,10 +101,7 @@ impl MessageFn {
                 ServerFnError::MiddlewareError(_) => todo!(),
             };
 
-            Some(func.get_value()(
-                (move || msg.clone()).into(),
-                (Severity::Error).into(),
-            ))
+            Some(func.get_value()(msg, (Severity::Error).into()))
         } else {
             None
         }

@@ -108,21 +108,18 @@ where
     let handle_cancel = move |ev| on_event.get_value()(ev, Reason::CancelButton);
     let handle_confirm = move |ev| on_event.get_value()(ev, Reason::OkButton);
 
-    hoc::with_accent_prefs(
-        move || {
-            view! {
-                <div class=style::container on:click=handle_background>
-                    <h2>{title.clone()}</h2>
-                    <div class=style::content></div>
-                    <div class=style::actions>
-                        <Button on:click=handle_cancel>Cancel</Button>
-                        <Button class=style::main on:click=handle_confirm>
-                            Ok
-                        </Button>
-                    </div>
-                </div>
-            }
-        },
-        prefs,
-    )
+    let accent = use_accent_prefs(prefs);
+
+    view! {
+        <div class=style::container on:click=handle_background>
+            <h2>{title.clone()}</h2>
+            <div class=style::content></div>
+            <div class=style::actions>
+                <Button on:click=handle_cancel>Cancel</Button>
+                <Button class=style::main on:click=handle_confirm>
+                    Ok
+                </Button>
+            </div>
+        </div>
+    }
 }

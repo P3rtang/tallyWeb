@@ -4,7 +4,7 @@ use super::*;
 #[component]
 pub fn Menu(
     children: ChildrenFn,
-    #[prop(into, optional)] menu_attrs: AttributeFn,
+    #[prop(into)] menu_attrs: AnyAttribute,
     #[prop(optional)] menu_button: MenuButton,
 ) -> impl IntoView {
     let (overlay, _) = hooks::use_overlay().unwrap();
@@ -17,7 +17,7 @@ pub fn Menu(
     let (height, set_height) = signal(0.0);
     let (width, set_width) = signal(0.0);
 
-    Effect::new(move || {
+    Effect::new_sync(move || {
         screen.track();
 
         if let Some(node) = node_ref.get() {
@@ -31,8 +31,10 @@ pub fn Menu(
     });
 
     let prefs = expect_context::<RwSignal<Preferences>>();
+    let accent = StoredValue::new_local(use_accent_prefs(prefs));
+    let menu_attrs = StoredValue::new_local(menu_attrs);
 
-    let menu = move || {
+    let menu: ViewFn = (move || {
         let vert = move || {
             let screen = screen.get();
 
@@ -71,25 +73,24 @@ pub fn Menu(
             }
         };
 
-        hoc::with_accent_prefs(
-            view! {
-                <div
-                    class=style::menu
-                    style:top=move || vert().0
-                    style:bottom=move || vert().1
-                    style:left=move || horz().0
-                    style:right=move || horz().1
-                >
-                    <div {..menu_attrs.call()}>{children()}</div>
-                </div>
-            },
-            prefs,
-        )
-    };
+        view! {
+            <div
+                {..accent.get_value()}
+                class=style::menu
+                style:top=move || vert().0
+                style:bottom=move || vert().1
+                style:left=move || horz().0
+                style:right=move || horz().1
+            >
+                <div {..menu_attrs.get_value()}>{children()}</div>
+            </div>
+        }
+    })
+    .into();
 
     let handle_click = move |ev: web_sys::MouseEvent| {
         ev.stop_propagation();
-        overlay(menu.clone().into())
+        overlay(menu.clone())
     };
 
     view! {
@@ -98,7 +99,7 @@ pub fn Menu(
             node_ref=node_ref
             xstyle=xstyle!("padding": XPadding::Medium)
 
-            {..menu_button.attrs.call()}
+            {..menu_button.attrs}
         >
             {(menu_button.children)()}
         </Button>

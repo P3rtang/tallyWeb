@@ -2,7 +2,6 @@
 #![feature(fn_traits)]
 #![allow(unused)]
 
-mod attribute_fn;
 pub mod block;
 mod loading_screen;
 mod message;
@@ -20,7 +19,6 @@ mod treeview;
 mod types;
 pub mod xstyle;
 
-pub use attribute_fn::{AttributeFn, IntoAttributeFn};
 pub use block::Block;
 pub use loading_screen::*;
 pub use message::*;

@@ -29,30 +29,41 @@ where
             .unwrap_or_default()
     });
 
-    let attrs = move || view! { <{..} class=style::icon data-testid="test-account-icon" aria_label="account overlay" /> };
+    let attrs = view! { <{..} class=style::icon data-testid="test-account-icon" aria_label="account overlay" /> };
 
     let handle_pref_click = move |_| {
         history.save_location();
     };
 
-    hoc::with_accent(move || {
-        view! {
-            <Menu>
-                <MenuButton attrs slot>
-                    <b>{move || { initial.get_value()() }}</b>
-                </MenuButton>
-                <MenuEntry
-                    on:click=handle_pref_click
-                    href="/preferences?topic=styling"
-                    attr:aria_label="settings"
-                >
-                    <MenuEntrySlot icon=IconKind::Settings label="Preferences" slot />
-                </MenuEntry>
-                <MenuBreak />
-                <MenuEntry attr:rel="external" href="/login">
-                    <MenuEntrySlot icon=IconKind::LogOut label="Log out" slot />
-                </MenuEntry>
-            </Menu>
-        }
-    })
+    let accent = use_accent();
+
+    view! {
+        <Menu menu_attrs=accent.into_any_attr()>
+            <MenuButton attrs=attrs.into_any_attr() slot>
+                <b>{move || { initial.get_value()() }}</b>
+            </MenuButton>
+            <MenuEntry
+                attrs=().into_any_attr()
+                on:click=handle_pref_click
+                href="/preferences?topic=styling"
+                attr:aria_label="settings"
+            >
+                <MenuEntrySlot
+                    attrs=().into_any_attr()
+                    icon=IconKind::Settings
+                    label="Preferences"
+                    slot
+                />
+            </MenuEntry>
+            <MenuBreak />
+            <MenuEntry attrs=().into_any_attr() attr:rel="external" href="/login">
+                <MenuEntrySlot
+                    attrs=().into_any_attr()
+                    icon=IconKind::LogOut
+                    label="Log out"
+                    slot
+                />
+            </MenuEntry>
+        </Menu>
+    }
 }

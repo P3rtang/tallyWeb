@@ -9,11 +9,19 @@ use leptos::{
     prelude::*,
 };
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 #[slot]
 pub struct SelectInput {
-    #[prop(into, optional)]
-    attrs: AttributeFn,
+    #[prop(into)]
+    attrs: AnyAttribute,
+}
+
+impl Default for SelectInput {
+    fn default() -> Self {
+        Self {
+            attrs: ().into_any_attr(),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -22,8 +30,8 @@ pub struct SelectButton<T>
 where
     T: ToString + Clone + Send + Sync + 'static,
 {
-    #[prop(into, optional)]
-    attrs: AttributeFn,
+    #[prop(into)]
+    attrs: AnyAttribute,
 
     #[prop(into, optional)]
     children: SelectButtonChild<T>,
@@ -35,7 +43,7 @@ where
 {
     fn default() -> Self {
         Self {
-            attrs: AttributeFn::default(),
+            attrs: ().into_any_attr(),
             children: SelectButtonChild::<T>::default(),
         }
     }
@@ -109,7 +117,7 @@ where
     let hidden_select_ref = NodeRef::<leptos::html::Input>::new();
     let show_custom = RwSignal::new(false);
     let view = StoredValue::new(view);
-    let select_button = StoredValue::new(select_button);
+    let select_button = StoredValue::new_local(select_button);
 
     let default_value = RwSignal::new(None::<T>);
 
@@ -143,9 +151,9 @@ where
         })
         .collect_view();
 
-    Effect::new(move |_| show_custom.set(true));
+    Effect::new_sync(move |_| show_custom.set(true));
 
-    Effect::new(move |_| {
+    Effect::new_sync(move |_| {
         if let Some(node) = hidden_select_ref.get() {
             node.set_value(&selection.get().map(|s| s.to_string()).unwrap_or_default())
         }
@@ -159,7 +167,7 @@ where
             {options_view}
         </select>
         <input
-            {..select_input.attrs.call()}
+            {..select_input.attrs}
             prop:value=move || selection.get().map(|s| s.to_string()).unwrap_or_default()
             type="hidden"
         />
@@ -207,7 +215,7 @@ where
 
     // TODO: recalculate this on opening the options
     // TODO: create another view for mobile
-    Effect::new(move |_| {
+    Effect::new_sync(move |_| {
         if let Some(node) = options_list_ref.get() {
             request_animation_frame(move || {
                 let y = node.get_bounding_client_rect().top();

@@ -2,6 +2,7 @@ use super::*;
 
 use crate::EditWindow;
 use components::{MessageSlot, ProvideMessageJar};
+use leptos::either::Either;
 use leptos_meta::{Link, Meta, MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
     components::{Outlet, ParentRoute, Route, Router, Routes},
@@ -90,7 +91,7 @@ pub fn App() -> impl IntoView {
 
 #[component]
 pub fn Redirect() -> impl IntoView {
-    let session_rsc = session::provide_session(None);
+    let session_rsc = session::provide_session();
     provide_context(session_rsc);
 
     #[cfg(not(feature = "ssr"))]
@@ -120,42 +121,57 @@ pub struct UserName {
 }
 
 #[component]
-pub fn RouteUser() -> impl IntoView {
-    let session = RwSignal::<UserSession>::default();
+fn WithSession(
+    session: UserSession,
+    prefs: Preferences,
+    screen: Screen,
+    children: ChildrenFn,
+) -> impl IntoView {
+    let session = RwSignal::<UserSession>::new(session);
     provide_context(session);
 
-    let session_rsc = session::provide_session(Some(session));
+    let prefs = RwSignal::new(prefs);
+    provide_context(prefs);
+
+    let screen_signal = RwSignal::new(screen);
+    provide_context(screen_signal);
+
+    children()
+}
+
+#[component]
+pub fn RouteUser() -> impl IntoView {
+    let session_rsc = session::provide_session();
     provide_context(session_rsc);
 
-    let pref_rsc = provide_prefs(session.into());
-    let prefs = RwSignal::new(Preferences::default());
-    provide_context(prefs);
+    let pref_rsc = provide_prefs(session_rsc);
 
     let screen_rsc = Resource::new_blocking(
         || (),
         async move |_| screen::server::get_screen().await.unwrap_or_default(),
     );
-    // TODO: put this in the page_context
-    let screen_signal = RwSignal::new(Screen::default());
-    provide_context(screen_signal);
-
-    let owner = Owner::current().unwrap();
 
     view! {
         <Transition fallback=|| ()>
             {move || {
-                if let Some(s) = session_rsc.get() {
-                    session.set(s)
+                let s = session_rsc.get();
+                let p = pref_rsc.get();
+                let sc = screen_rsc.get();
+                if let (Some(session), Some(prefs), Some(screen)) = (s, p, sc) {
+                    Either::Left(
+
+                        view! {
+                            <WithSession session prefs screen>
+                                <WithStore>
+                                    <Outlet />
+                                </WithStore>
+                            </WithSession>
+                        },
+                    )
+                } else {
+                    Either::Right(())
                 }
-                if let Some(s) = screen_rsc.get() {
-                    screen_signal.set(s)
-                }
-                if let Some(p) = pref_rsc.get() {
-                    prefs.set(p)
-                }
-            }} <WithStore owner>
-                <Outlet />
-            </WithStore>
+            }}
         </Transition>
     }
 }
