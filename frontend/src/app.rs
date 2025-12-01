@@ -2,7 +2,6 @@ use super::*;
 
 use crate::EditWindow;
 use components::{MessageSlot, ProvideMessageJar};
-use leptos::either::Either;
 use leptos_meta::{Link, Meta, MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
     components::{Outlet, ParentRoute, Route, Router, Routes},
@@ -121,56 +120,62 @@ pub struct UserName {
 }
 
 #[component]
-fn WithSession(
-    session: UserSession,
-    prefs: Preferences,
-    screen: Screen,
-    children: ChildrenFn,
-) -> impl IntoView {
-    let session = RwSignal::<UserSession>::new(session);
-    provide_context(session);
-
-    let prefs = RwSignal::new(prefs);
-    provide_context(prefs);
-
-    let screen_signal = RwSignal::new(screen);
-    provide_context(screen_signal);
-
-    children()
-}
-
-#[component]
 pub fn RouteUser() -> impl IntoView {
     let session_rsc = session::provide_session();
     provide_context(session_rsc);
 
-    let pref_rsc = provide_prefs(session_rsc);
+    let session = RwSignal::<UserSession>::default();
+    provide_context(session);
+
+    let screen_signal = RwSignal::<Screen>::default();
+    provide_context(screen_signal);
+
+    let prefs_rsc = provide_prefs(session);
+
+    let pref_signal = RwSignal::<Preferences>::default();
+    provide_context(pref_signal);
 
     let screen_rsc = Resource::new_blocking(
         || (),
         async move |_| screen::server::get_screen().await.unwrap_or_default(),
     );
 
-    view! {
-        <Transition fallback=|| ()>
-            {move || {
-                let s = session_rsc.get();
-                let p = pref_rsc.get();
-                let sc = screen_rsc.get();
-                if let (Some(session), Some(prefs), Some(screen)) = (s, p, sc) {
-                    Either::Left(
+    let session_signal = expect_context::<RwSignal<UserSession>>();
 
-                        view! {
-                            <WithSession session prefs screen>
-                                <WithStore>
-                                    <Outlet />
-                                </WithStore>
-                            </WithSession>
-                        },
-                    )
-                } else {
-                    Either::Right(())
+    let store_resource = Resource::new_blocking(session_signal, move |user| async move {
+        server::get_countable_store(user.clone()).await.ok()
+    });
+
+    provide_context(store_resource);
+
+    let store_signal = Signal::derive(move || store_resource.get().flatten().unwrap_or_default());
+    provide_context(store_signal);
+
+    let store_setter: SignalSetter<CountableStore> =
+        (move |v: CountableStore| store_resource.set(Some(Some(v)))).into_signal_setter();
+
+    provide_context(store_setter);
+
+    let store_signal = RwSignal::<CountableStore>::default();
+    provide_context(store_signal);
+
+    view! {
+        <Transition>
+            {move || {
+                if let Some(s) = session_rsc.get() {
+                    session_signal.set(s)
                 }
+                if let Some(s) = screen_rsc.get() {
+                    screen_signal.set(s)
+                }
+                if let Some(p) = prefs_rsc.get() {
+                    pref_signal.set(p)
+                }
+                if let Some(s) = store_resource.get().flatten() {
+                    store_signal.set(s);
+                }
+
+                view! { <Outlet /> }
             }}
         </Transition>
     }

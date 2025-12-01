@@ -92,11 +92,12 @@ struct Selection {
 
 #[component]
 pub fn EditCountableWindow() -> impl IntoView {
+    let store = expect_context::<RwSignal<CountableStore>>();
     let params = use_query::<Selection>();
     let key = Memo::new(move |_| params.get().map(|s| s.slct));
 
     view! {
-        <Show when=move || key.get().is_ok()>
+        <Show when=move || key.get().is_ok_and(|k| store.get().contains(&k))>
             <EditCounterBox key=Signal::derive(move || key.get().unwrap_or_default()) />
         </Show>
     }
@@ -131,7 +132,7 @@ fn EditCounterBox(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let close_href = StoredValue::new(history.back().get_untracked().map(|url| url.to_string()));
 
     // TODO: use a server side redirection instead, passed as a form argument
-    Effect::new(move |_| match action.value().get() {
+    Effect::new_sync(move |_| match action.value().get() {
         Some(Ok(_)) => {
             // TODO: maybe instead of refetching I could have the return set the store state
             store_resc.refetch();
@@ -185,7 +186,7 @@ fn DeleteButton(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 
     let delete_action = ServerAction::<api::ArchiveCountable>::new();
 
-    Effect::new(move |_| match delete_action.value().get() {
+    Effect::new_sync(move |_| match delete_action.value().get() {
         Some(Ok(())) => store.update(|s| {
             s.archive(&key.get());
 
@@ -249,11 +250,9 @@ fn EditName(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
         <TextField
             id="change-name"
             label="Name"
-            prop:value=name
-            attr:value=name
-            attr:name="countable[name]"
-            attr:placeholder="Name"
-            on:input=on_input
+            input_attrs=view! {
+                <{..} value=name name="countable[name]" placeholder="Name" on:input=on_input />
+            }
         />
     }
 }
@@ -268,9 +267,7 @@ fn EditCount(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             id="change-count"
             label="Count"
             type_="number"
-            prop:value=count
-            attr:value=count
-            attr:name="countable[count]"
+            input_attrs=view! { <{..} value=count name="countable[count]" /> }
         />
     }
 }
@@ -285,9 +282,7 @@ fn EditStepSize(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             id="change-step"
             label="Step size"
             type_="number"
-            prop:value=step
-            attr:value=step
-            attr:name="countable[step]"
+            input_attrs=view! { <{..} value=step name="countable[step]" /> }
         />
     }
 }
@@ -368,9 +363,7 @@ fn EditCharm(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
         <BoolField
             id="has-charm"
             label="Has Charm"
-            prop:checked=checked
-            attr:checked=checked
-            attr:name="countable[charm]"
+            input_attrs=view! { <{..} checked=checked name="countable[charm]" /> }.into_any_attr()
         />
     }
 }

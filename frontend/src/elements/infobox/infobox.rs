@@ -62,7 +62,7 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<CountableId>>) -> impl I
 
 #[component]
 pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
-    let store = expect_context::<RwSignal<CountableStore>>();
+    let store = expect_context::<Signal<CountableStore>>();
     let show_title = true;
     let on_mobile = use_breakpoint(ViewPort::Medium, true);
 
@@ -130,15 +130,23 @@ fn Count(
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {
-    let store = expect_context::<RwSignal<CountableStore>>();
+    let store = expect_context::<Signal<CountableStore>>();
+    let store_setter = expect_context::<SignalSetter<CountableStore>>();
     let is_active = expect_context::<IsActive>();
     let has_change = expect_context::<HasChange>();
 
-    let get_count = create_read_slice(store, move |s| s.recursive_ref().count(&key.get()));
-    let inc_count = create_write_slice(store, move |s, _| s.recursive_ref().increase(&key.get()));
-    let add_count = create_write_slice(store, move |s, count| {
-        s.recursive_ref().add_count(&key.get(), count)
-    });
+    let get_count = Signal::derive(move || store.get().recursive_ref().count(&key.get()));
+    let inc_count = move || {
+        let s = store.get();
+        s.recursive_ref().increase(&key.get());
+        store_setter.set(s);
+    };
+
+    let add_count = move |add: i32| {
+        let s = store.get();
+        s.recursive_ref().add_count(&key.get(), add);
+        store_setter.set(s);
+    };
 
     let key_listener = window_event_listener(ev::keydown, move |ev| {
         if !document()
@@ -152,7 +160,7 @@ fn Count(
             match ev.code().as_str() {
                 "Equal" => {
                     is_active.set(true);
-                    inc_count(());
+                    inc_count();
                 }
                 "Minus" => {
                     add_count(-1);
@@ -168,7 +176,7 @@ fn Count(
     let on_count_click = move |_| {
         is_active.set(true);
         has_change.set(true);
-        inc_count(());
+        inc_count();
     };
 
     let on_minus_click = move |ev: MouseEvent| {
@@ -218,19 +226,23 @@ fn Time(
 ) -> impl IntoView {
     let is_active = expect_context::<IsActive>();
     let has_change = expect_context::<HasChange>();
-    let store = expect_context::<RwSignal<CountableStore>>();
+    let store = expect_context::<Signal<CountableStore>>();
+    let store_setter = expect_context::<SignalSetter<CountableStore>>();
 
-    #[allow(unused_variables)]
-    let (time, add_time) = create_slice(
-        store,
-        move |s| {
-            s.recursive_ref()
-                .time(&key.get())
-                .to_std()
-                .unwrap_or_default()
-        },
-        move |s, add| s.recursive_ref().add_time(&key.get(), add),
-    );
+    let time = Signal::derive(move || {
+        store
+            .get()
+            .recursive_ref()
+            .time(&key.get())
+            .to_std()
+            .unwrap()
+    });
+
+    let add_time = move |add: TimeDelta| {
+        let s = store.get();
+        s.recursive_ref().add_time(&key.get(), add);
+        store_setter.set(s);
+    };
 
     #[cfg(not(feature = "ssr"))] // run timer only on client
     {
@@ -292,15 +304,11 @@ fn Progress(
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {
-    let store = expect_context::<RwSignal<CountableStore>>();
+    let store = expect_context::<Signal<CountableStore>>();
 
-    let progress = create_read_slice(store, move |s| {
-        s.recursive_ref().progress(&key.get_untracked())
-    });
-    let rolls = create_read_slice(store, move |s| {
-        s.recursive_ref().rolls(&key.get_untracked())
-    });
-    let odds = create_read_slice(store, move |s| s.recursive_ref().odds(&key.get()));
+    let progress = Signal::derive(move || store.get().recursive_ref().progress(&key.get()));
+    let rolls = Signal::derive(move || store.get().recursive_ref().rolls(&key.get()));
+    let odds = Signal::derive(move || store.get().recursive_ref().odds(&key.get()));
 
     let color = move || match progress() {
         num if num < 0.5 => "#50fa7b",
@@ -339,11 +347,11 @@ fn LastStep(
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {
-    let store = expect_context::<RwSignal<CountableStore>>();
+    let store = expect_context::<Signal<CountableStore>>();
 
     let last_interaction = RwSignal::new(None::<i64>);
-    let on_count = create_read_slice(store, move |s| s.recursive_ref().count(&key.get()));
-    let time = create_read_slice(store, move |s| s.recursive_ref().time(&key.get()));
+    let on_count = Signal::derive(move || store.get().recursive_ref().count(&key.get()));
+    let time = Signal::derive(move || store.get().recursive_ref().time(&key.get()));
 
     let time_value = Memo::new(move |_| {
         on_count.get();
@@ -406,10 +414,10 @@ fn AverageStep(
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {
-    let store = expect_context::<RwSignal<CountableStore>>();
+    let store = expect_context::<Signal<CountableStore>>();
 
-    let count = create_read_slice(store, move |s| s.recursive_ref().count(&key.get()));
-    let time = create_read_slice(store, move |s| s.recursive_ref().time(&key.get()));
+    let count = Signal::derive(move || store.get().recursive_ref().count(&key.get()));
+    let time = Signal::derive(move || store.get().recursive_ref().time(&key.get()));
 
     let step = Memo::new(move |_| {
         Duration::milliseconds(time().num_milliseconds() / count().max(1) as i64)

@@ -83,21 +83,13 @@ impl Preferences {
     }
 }
 
-pub fn provide_prefs(session: Resource<UserSession>) -> Resource<Preferences> {
+pub fn provide_prefs(session: RwSignal<UserSession>) -> Resource<Preferences> {
     let prefs_resource = Resource::new_blocking(
         move || session.get(),
-        move |user| async move {
-            if let Some(user) = user {
-                api::get_user_preferences(user).await.ok()
-            } else {
-                None
-            }
-            .unwrap_or_default()
-        },
+        move |user| async move { api::get_user_preferences(user).await.unwrap_or_default() },
     );
 
-    let owner = Owner::current().unwrap();
-    owner.with(move || provide_context(prefs_resource));
+    provide_context(prefs_resource);
 
     prefs_resource
 }

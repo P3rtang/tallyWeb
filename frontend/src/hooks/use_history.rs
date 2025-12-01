@@ -6,14 +6,14 @@ pub trait Navigate {
     fn navigate(self, options: NavigateOptions);
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Url {
-    url: StoredValue<String>,
+    url: String,
 }
 
 impl std::fmt::Display for Url {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.url.get_value())
+        write!(f, "{}", self.url)
     }
 }
 
@@ -22,7 +22,7 @@ impl Navigate for Memo<Option<Url>> {
         let navigate = use_navigate();
 
         if let Some(Url { url }) = self.get_untracked() {
-            navigate(&url.get_value(), options)
+            navigate(&url, options)
         }
     }
 }
@@ -54,11 +54,7 @@ impl History {
             url.push_str(&loc.hash.get().to_string());
         }
 
-        self.history.update(|h| {
-            h.push(Url {
-                url: StoredValue::new(url),
-            })
-        });
+        self.history.update(|h| h.push(Url { url }));
     }
 }
 

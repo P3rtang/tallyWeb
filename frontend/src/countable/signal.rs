@@ -36,24 +36,25 @@ pub fn provide_store() -> (
 }
 
 #[component]
-pub fn WithStoreAssign(store: CountableStore, children: ChildrenFn) -> impl IntoView {
+pub fn WithStoreAssign<Chil>(
+    store: CountableStore,
+    children: TypedChildrenFn<Chil>,
+) -> impl IntoView
+where
+    Chil: IntoView + Send + 'static,
+{
     let store = RwSignal::<CountableStore>::new(store);
     provide_context(store);
 
-    children()
+    children.into_inner()()
 }
 
 #[component]
-pub fn WithStore(children: ChildrenFn) -> impl IntoView {
+pub fn WithStore<Chil>(children: TypedChildrenFn<Chil>) -> impl IntoView
+where
+    Chil: IntoView + Send + 'static,
+{
     // TODO: add a loader/spinner as fallback
-
-    let session = expect_context::<RwSignal<UserSession>>();
-
-    let store_resource = Resource::new_blocking(session, move |user| async move {
-        server::get_countable_store(user).await.ok()
-    });
-
-    provide_context(store_resource);
 
     // let _store_indexed_resource = LocalResource::new(move || async move {
     //     let save_handler = indexed::IndexedSaveHandler::new().await;
@@ -65,18 +66,11 @@ pub fn WithStore(children: ChildrenFn) -> impl IntoView {
     // });
     // owner.with(|| provide_context(_store_indexed_resource));
 
-    let children = StoredValue::new(children);
+    // Effect::new_sync(move || {
+    //     store_resource.get().flatten().map(move |s| {
+    //         store.set(s);
+    //     });
+    // });
 
-    view! {
-        <Transition>
-            {move || {
-                store_resource
-                    .get()
-                    .flatten()
-                    .map(move |store| {
-                        view! { <WithStoreAssign store>{children.get_value()()}</WithStoreAssign> }
-                    })
-            }}
-        </Transition>
-    }
+    children.into_inner()()
 }

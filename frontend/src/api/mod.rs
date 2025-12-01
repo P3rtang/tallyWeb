@@ -338,7 +338,7 @@ pub struct FormPrefs {
     pub save_on_pause: Option<String>,
 }
 
-#[server(SavePreferences, "/api/session")]
+#[server(SavePreferences, "/api/session_v2")]
 pub async fn save_preferences(
     session: UserSession,
     preferences: FormPrefs,
@@ -361,9 +361,12 @@ pub async fn save_preferences(
         save_on_pause: preferences.save_on_pause.is_some(),
         show_body_border: preferences.show_body_border.is_some(),
     };
+
     db_prefs
         .db_set(&mut tx, &session.username, session.token)
         .await?;
+
+    tx.commit().await?;
 
     Ok(())
 }

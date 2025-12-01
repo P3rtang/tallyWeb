@@ -20,7 +20,10 @@ use chrono::TimeDelta;
 use components::*;
 use hooks::use_accent;
 use leptos::{
-    attr::any_attribute::{AnyAttribute, IntoAnyAttribute},
+    attr::{
+        Attribute,
+        any_attribute::{AnyAttribute, IntoAnyAttribute},
+    },
     attribute_interceptor::AttributeInterceptor,
     either::{Either, EitherOf3},
     ev, html,

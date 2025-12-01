@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO preferences (\n                user_uuid,\n                use_default_accent_color,\n                accent_color,\n                show_separator,\n                multi_select,\n                save_on_pause,\n                show_body_border\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7)\n            ON CONFLICT (user_uuid) DO UPDATE\n                SET use_default_accent_color = $2,\n                    accent_color = $3,\n                    show_separator = $4,\n                    multi_select = $5,\n                    save_on_pause = $6,\n                    show_body_border = $7\n            RETURNING *\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "use_default_accent_color",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 1,
+        "name": "accent_color",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "show_separator",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "multi_select",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "save_on_pause",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "show_body_border",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Varchar",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "80e13252a98a412f2f9c79dd455146cbf139e49f5927c129acc432730cd06847"
+}

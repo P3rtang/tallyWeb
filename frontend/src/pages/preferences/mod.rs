@@ -108,7 +108,7 @@ fn PrefsContent() -> impl IntoView {
             .unwrap_or_default()
     });
 
-    Effect::new(move |_| match action.value().get() {
+    Effect::new_sync(move |_| match action.value().get() {
         Some(Ok(_)) => message(
             move || "success",
             (
@@ -147,10 +147,10 @@ fn PrefsContent() -> impl IntoView {
 #[component]
 fn AccentColor() -> impl IntoView {
     let prefs = expect_context::<RwSignal<Preferences>>();
-
     let topic = expect_context::<Memo<Topic>>();
 
     let accent_color = move || prefs.get().accent_color.to_string();
+    let disabled = move || prefs.get().use_default_accent_color;
 
     let on_change = move |ev: ev::Event| {
         let color = event_target_value(&ev);
@@ -173,11 +173,15 @@ fn AccentColor() -> impl IntoView {
             <ColorField
                 id="accent-color"
                 label="Accent colour"
-                on:input=on_change
-                prop:value=accent_color
-                attr:value=accent_color
-                attr:name="preferences[accent_color]"
-                attr:disabled=move || prefs.get().use_default_accent_color
+                input_attrs=view! {
+                    <{..}
+                        value=accent_color
+                        name="preferences[accent_color]"
+                        disabled=disabled
+                        on:input=on_change
+                    />
+                }
+                    .into_any_attr()
             />
         </Show>
     }
@@ -211,10 +215,14 @@ fn UseDefaultAccentColor() -> impl IntoView {
             <BoolField
                 id="accent-color"
                 label="Use default accent color"
-                on:change=handle_change
-                prop:checked=use_default
-                attr:checked=use_default
-                attr:name="preferences[use_default_accent_color]"
+                input_attrs=view! {
+                    <{..}
+                        name="preferences[use_default_accent_color]"
+                        on:change=handle_change
+                        checked=use_default
+                    />
+                }
+                    .into_any_attr()
             />
         </Show>
     }
@@ -241,10 +249,14 @@ fn ShowBodyBorder() -> impl IntoView {
             <BoolField
                 id="show-body-border"
                 label="Show body border"
-                on:change=handle_change
-                prop:checked=show_border
-                attr:checked=show_border
-                attr:name="preferences[show_body_border]"
+                input_attrs=view! {
+                    <{..}
+                        name="preferences[show_body_border]"
+                        on:change=handle_change
+                        checked=show_border
+                    />
+                }
+                    .into_any_attr()
             />
         </Show>
     }
@@ -271,10 +283,14 @@ fn ShowSeparator() -> impl IntoView {
             <BoolField
                 id="show-separator"
                 label="Show treeview separator"
-                on:change=handle_change
-                prop:checked=show_separator
-                attr:checked=show_separator
-                attr:name="preferences[show_separator]"
+                input_attrs=view! {
+                    <{..}
+                        name="preferences[show_separator]"
+                        on:change=handle_change
+                        checked=show_separator
+                    />
+                }
+                    .into_any_attr()
             />
         </Show>
     }
@@ -302,10 +318,14 @@ fn SaveOnPause() -> impl IntoView {
             <BoolField
                 id="save-on-pause"
                 label="Autosave on pause"
-                on:change=handle_change
-                prop:checked=save_on_pause
-                attr:checked=save_on_pause
-                attr:name="preferences[save_on_pause]"
+                input_attrs=view! {
+                    <{..}
+                        name="preferences[save_on_pause]"
+                        on:change=handle_change
+                        checked=save_on_pause
+                    />
+                }
+                    .into_any_attr()
             />
         </Show>
     }

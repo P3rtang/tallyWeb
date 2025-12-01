@@ -1,5 +1,5 @@
 use super::*;
-use sqlx::{PgPool, query, query_as};
+use sqlx::{PgPool, query_as};
 
 #[derive(Debug, Clone, sqlx::Type)]
 #[sqlx(type_name = "hunttype")]
@@ -123,6 +123,7 @@ pub enum TokenStatus {
     Expired,
 }
 
+#[derive(Debug)]
 pub struct DbPreferences {
     pub user_uuid: uuid::Uuid,
     pub use_default_accent_color: bool,
@@ -161,9 +162,10 @@ impl DbPreferences {
         tx: &mut PgTx,
         username: &str,
         token: uuid::Uuid,
-    ) -> Result<(), BackendError> {
+    ) -> Result<Self, BackendError> {
         let user = auth::get_user(tx, username, token).await?;
-        query!(
+        let p = query_as!(
+            DbPreferences,
             r#"
             INSERT INTO preferences (
                 user_uuid,
@@ -182,6 +184,7 @@ impl DbPreferences {
                     multi_select = $5,
                     save_on_pause = $6,
                     show_body_border = $7
+            RETURNING *
             "#,
             user.uuid,
             self.use_default_accent_color,
@@ -191,9 +194,9 @@ impl DbPreferences {
             self.save_on_pause,
             self.show_body_border,
         )
-        .execute(&mut **tx)
+        .fetch_one(&mut **tx)
         .await?;
 
-        Ok(())
+        Ok(p)
     }
 }

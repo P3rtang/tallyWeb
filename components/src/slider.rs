@@ -2,15 +2,18 @@ use super::*;
 use leptos::{attribute_interceptor::AttributeInterceptor, prelude::*};
 
 #[component]
-pub fn Slider(#[prop(optional, into)] tooltip: Signal<Option<String>>) -> impl IntoView {
+pub fn Slider(
+    #[prop(optional, into)] tooltip: Signal<Option<String>>,
+    #[prop(optional_no_strip)] input_attrs: Option<AnyAttribute>,
+) -> impl IntoView {
+    let input_attrs = StoredValue::new_local(input_attrs.unwrap_or(().into_any_attr()));
+
     with_tooltip(
         move || {
             view! {
-                <AttributeInterceptor children=move |attr| {
-                    view! {
-                        <label style:display="flex">
-                            <style>
-                                r#"
+                <label style:display="flex">
+                    <style>
+                        r#"
                                 switch-el {
                                 position: relative;
                                 display: inline-block;
@@ -70,14 +73,12 @@ pub fn Slider(#[prop(optional, into)] tooltip: Signal<Option<String>>) -> impl I
                                 }
                                 }
                                 "#
-                            </style>
-                            <switch-el>
-                                <input type="checkbox" {..attr} style:display="none" />
-                                <slider-el class="slider"></slider-el>
-                            </switch-el>
-                        </label>
-                    }
-                } />
+                    </style>
+                    <switch-el>
+                        <input type="checkbox" {..input_attrs.get_value()} style:display="none" />
+                        <slider-el class="slider"></slider-el>
+                    </switch-el>
+                </label>
             }
         },
         tooltip,
