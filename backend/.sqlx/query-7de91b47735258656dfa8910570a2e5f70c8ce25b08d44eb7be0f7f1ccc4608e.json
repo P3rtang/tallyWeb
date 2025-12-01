@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            uuid,\n            owner_uuid,\n            parent_uuid,\n            name,\n            count,\n            time,\n            has_charm,\n            hunt_type as \"hunt_type: Hunttype\",\n            dexnav_encounters,\n            success,\n            last_edit,\n            created_at,\n            is_deleted,\n            step_size\n            FROM phases\n        WHERE parent_uuid = $1\n        ORDER BY created_at;\n        ",
+  "query": "\n        SELECT\n            uuid,\n            owner_uuid,\n            parent_uuid,\n            name,\n            count,\n            time,\n            has_charm,\n            hunt_type as \"hunt_type: Hunttype\",\n            dexnav_encounters,\n            success,\n            last_edit,\n            created_at,\n            is_deleted,\n            step_size\n            FROM phases\n        WHERE parent_uuid = $1\n        ORDER BY created_at;\n        ",
   "describe": {
     "columns": [
       {
@@ -111,5 +111,5 @@
       false
     ]
   },
-  "hash": "9917699eebbc5858a97a8a2c23bcc56a94b97d23d723a9202ba8e3dca9805735"
+  "hash": "7de91b47735258656dfa8910570a2e5f70c8ce25b08d44eb7be0f7f1ccc4608e"
 }

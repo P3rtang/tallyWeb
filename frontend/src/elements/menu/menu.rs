@@ -30,8 +30,7 @@ pub fn Menu(
         }
     });
 
-    let prefs = expect_context::<RwSignal<Preferences>>();
-    let accent = StoredValue::new_local(use_accent_prefs(prefs));
+    let accent = StoredValue::new_local(use_accent());
     let menu_attrs = StoredValue::new_local(menu_attrs);
 
     let menu: ViewFn = (move || {

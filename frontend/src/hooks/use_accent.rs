@@ -11,8 +11,8 @@ pub fn use_accent() -> impl Attribute + Clone {
     use_accent_prefs(prefs)
 }
 
-pub fn use_accent_prefs(prefs: RwSignal<Preferences>) -> impl Attribute + Clone {
-    let accent = create_read_slice(prefs, |p| p.accent_color.to_string());
+pub fn use_accent_prefs(prefs: RwSignal<Preferences>) -> impl Attribute + Clone + std::fmt::Debug {
+    let accent = Signal::derive(move || prefs.get().accent_color.to_string());
 
     view! {
         <{..} style:--accent=accent />

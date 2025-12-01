@@ -19,7 +19,7 @@ pub async fn get_children(tx: &mut PgTx, key: uuid::Uuid) -> Result<Vec<DbPhase>
     let last_child = sqlx::query_as!(
         DbPhase,
         r#"
-        SELECT 
+        SELECT
             uuid,
             owner_uuid,
             parent_uuid,

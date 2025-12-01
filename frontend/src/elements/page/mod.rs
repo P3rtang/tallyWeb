@@ -45,7 +45,6 @@ pub fn Page(
     page_content: PageContent,
     #[prop(optional)] page_sidebar: Option<PageSidebar>,
     #[prop(optional)] page_navbar: Option<PageNavbar>,
-    #[prop(optional, into, default=Color::default().into())] accent: Signal<Color>,
 ) -> impl IntoView {
     let screen = hooks::use_screen();
     let sidebar = StoredValue::new(page_sidebar);
@@ -77,8 +76,6 @@ pub fn Page(
             set_has_transition(true);
         }
     };
-
-    let css_vars = move || format!("--accent: {}", accent.get_untracked());
 
     let page_classes = move || {
         stylance::classes!(
@@ -116,7 +113,7 @@ pub fn Page(
     let accent = use_accent();
 
     view! {
-        <div {..accent} class=page_classes style=css_vars>
+        <div {..accent} class=page_classes>
             <Show when=has_sidebar>
                 <div style:width=width_style class=sidebar_classes>
                     {(sidebar.get_value().unwrap().children)()}
@@ -145,43 +142,5 @@ pub fn Page(
                 </div>
             </div>
         </div>
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Color {
-    #[allow(clippy::upper_case_acronyms)]
-    RGB(u8, u8, u8),
-}
-
-impl Default for Color {
-    fn default() -> Self {
-        Self::RGB(139, 233, 253)
-    }
-}
-
-impl TryFrom<&str> for Color {
-    type Error = super::AppError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let parse_string = move || {
-            let r = u8::from_str_radix(&value[1..=2], 16).ok()?;
-            let g = u8::from_str_radix(&value[3..=4], 16).ok()?;
-            let b = u8::from_str_radix(&value[5..=6], 16).ok()?;
-
-            Some(Self::RGB(r, g, b))
-        };
-
-        (value.starts_with('#') && value.len() == 7)
-            .then(parse_string)
-            .flatten()
-            .ok_or(super::AppError::InvalidColor(value.to_string()))
-    }
-}
-
-impl std::fmt::Display for Color {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        let Self::RGB(r, g, b) = self;
-        write!(f, "#{r:x}{g:x}{b:x}")
     }
 }

@@ -65,3 +65,57 @@ where
         (self.0)(args.0)
     }
 }
+
+#[derive(Clone)]
+pub struct TypedChildrenPropFn<T, IV>(Arc<dyn Fn(T) -> View<IV> + Send + Sync + 'static>)
+where
+    T: Clone + 'static,
+    IV: Sized;
+
+impl<T, F, IV> From<F> for TypedChildrenPropFn<T, IV>
+where
+    F: Fn(T) -> View<IV> + Send + Sync + 'static,
+    T: Clone + 'static,
+{
+    fn from(value: F) -> Self {
+        Self(Arc::new(value))
+    }
+}
+
+impl<T, IV> FnOnce<(T,)> for TypedChildrenPropFn<T, IV>
+where
+    T: Clone + 'static,
+{
+    type Output = View<IV>;
+
+    extern "rust-call" fn call_once(self, args: (T,)) -> Self::Output {
+        (self.0)(args.0)
+    }
+}
+
+impl<F, T, IV> ToChildren<F> for TypedChildrenPropFn<T, IV>
+where
+    F: Fn(T) -> IV + Send + Sync + 'static,
+    IV: IntoView,
+    IV::AsyncOutput: Send,
+    T: Clone + 'static,
+{
+    #[inline]
+    fn to_children(f: F) -> Self {
+        Self(Arc::new(move |c| f(c).into_view()))
+    }
+}
+
+impl<F, T, IV> ToChildren<ChildrenOptContainer<(F, T)>> for TypedChildrenPropFn<T, IV>
+where
+    F: Fn(T) -> IV + Send + Sync + 'static,
+    IV: IntoView,
+    IV::AsyncOutput: Send,
+    T: Clone + 'static,
+{
+    #[inline]
+    fn to_children(f: ChildrenOptContainer<(F, T)>) -> Self {
+        let (f, t) = f.0;
+        Self(Arc::new(move |c| f(c).into_view()))
+    }
+}

@@ -77,6 +77,9 @@ pub type SelectionSignal =
 pub type StateResource =
     leptos::prelude::Resource<Result<CountableStore, leptos::prelude::ServerFnError>>;
 
+#[derive(Clone)]
+pub struct CountableStoreUpdate(pub std::sync::Arc<dyn Fn(&mut CountableStore) -> CountableStore>);
+
 pub(crate) type AppResult<T> = Result<T, AppError>;
 
 #[derive(
