@@ -62,7 +62,7 @@ pub fn InfoBox(#[prop(into)] countable_list: Signal<Vec<CountableId>>) -> impl I
 
 #[component]
 pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
-    let store = expect_context::<Signal<CountableStore>>();
+    let store = expect_context::<RwSignal<CountableStore>>();
     let show_title = true;
     let on_mobile = use_breakpoint(ViewPort::Medium, true);
 
@@ -75,6 +75,7 @@ pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 
     let descendants = Memo::new(move |_| {
         let store = store.get();
+
         let mut children = store
             .recursive_ref()
             .children(&key.get())
@@ -130,23 +131,13 @@ fn Count(
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {
-    let store = expect_context::<Signal<CountableStore>>();
-    let store_setter = expect_context::<SignalSetter<CountableStore>>();
+    let store = expect_context::<RwSignal<CountableStore>>();
     let is_active = expect_context::<IsActive>();
     let has_change = expect_context::<HasChange>();
 
     let get_count = Signal::derive(move || store.get().recursive_ref().count(&key.get()));
-    let inc_count = move || {
-        let s = store.get();
-        s.recursive_ref().increase(&key.get());
-        store_setter.set(s);
-    };
-
-    let add_count = move |add: i32| {
-        let s = store.get();
-        s.recursive_ref().add_count(&key.get(), add);
-        store_setter.set(s);
-    };
+    let inc_count = move || store.update(|s| s.recursive_ref().increase(&key.get()));
+    let add_count = move |add| store.update(|s| s.recursive_ref().add_count(&key.get(), add));
 
     let key_listener = window_event_listener(ev::keydown, move |ev| {
         if !document()
@@ -226,8 +217,7 @@ fn Time(
 ) -> impl IntoView {
     let is_active = expect_context::<IsActive>();
     let has_change = expect_context::<HasChange>();
-    let store = expect_context::<Signal<CountableStore>>();
-    let store_setter = expect_context::<SignalSetter<CountableStore>>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
     let time = Signal::derive(move || {
         store
@@ -238,11 +228,8 @@ fn Time(
             .unwrap()
     });
 
-    let add_time = move |add: TimeDelta| {
-        let s = store.get();
-        s.recursive_ref().add_time(&key.get(), add);
-        store_setter.set(s);
-    };
+    let add_time =
+        move |add: TimeDelta| store.update(|s| s.recursive_ref().add_time(&key.get(), add));
 
     #[cfg(not(feature = "ssr"))] // run timer only on client
     {
@@ -304,7 +291,7 @@ fn Progress(
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {
-    let store = expect_context::<Signal<CountableStore>>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
     let progress = Signal::derive(move || store.get().recursive_ref().progress(&key.get()));
     let rolls = Signal::derive(move || store.get().recursive_ref().rolls(&key.get()));
@@ -347,10 +334,10 @@ fn LastStep(
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {
-    let store = expect_context::<Signal<CountableStore>>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
     let last_interaction = RwSignal::new(None::<i64>);
-    let on_count = Signal::derive(move || store.get().recursive_ref().count(&key.get()));
+    let on_count = Memo::new(move |_| store.get().recursive_ref().count(&key.get()));
     let time = Signal::derive(move || store.get().recursive_ref().time(&key.get()));
 
     let time_value = Memo::new(move |_| {
@@ -358,7 +345,9 @@ fn LastStep(
         let val = last_interaction
             .get_untracked()
             .map(|t| time.get_untracked() - Duration::milliseconds(t));
+
         last_interaction.set(Some(time.get_untracked().num_milliseconds()));
+
         val
     });
 
@@ -414,7 +403,7 @@ fn AverageStep(
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {
-    let store = expect_context::<Signal<CountableStore>>();
+    let store = expect_context::<RwSignal<CountableStore>>();
 
     let count = Signal::derive(move || store.get().recursive_ref().count(&key.get()));
     let time = Signal::derive(move || store.get().recursive_ref().time(&key.get()));
