@@ -7,7 +7,7 @@ on:
 jobs:
   test:
     environment: end2end
-    runs-on: rustlang/rust:nightly-bookworm
+    runs-on: ubuntu-latest
     
     services:
       postgres:
@@ -30,7 +30,8 @@ jobs:
 
     - name: Get cargo leptos version
       id: cargo-leptos-version
-      run: echo "CARGO_LEPTOS_VERSION=$(cargo search cargo-leptos --limit 1 | sed -n "s/.*\"\(.*\)\".*/\1/gp")" >> $GITHUB_ENV
+      # INFO: update the CARGO_LEPTOS_VERSION
+      run: echo "CARGO_LEPTOS_VERSION=0.2.45" >> $GITHUB_ENV
     - name: cache cargo leptos installation
       uses: actions/cache@v3
       env:
@@ -41,7 +42,7 @@ jobs:
     - if: ${{ steps.cache-cargo-leptos.outputs.cache-hit != 'true' }}
       name: Install Cargo dependencies
       run: |
-        cargo install cargo-leptos --version ${{ env.CARGO_LEPTOS_VERSION }}
+        cargo install cargo-leptos --locked --version ${{ env.CARGO_LEPTOS_VERSION }}
         cargo install stylance-cli
         cargo install sqlx-cli
 

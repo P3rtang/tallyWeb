@@ -1,4 +1,5 @@
-import { test, expect, Locator } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import type { Locator } from '@playwright/test';
 
 const CUSTOM_MESSAGE = 'custom message text'
 
@@ -17,10 +18,10 @@ test('show messages', async ({ page, isMobile }) => {
         const notification = page.getByTestId('notification');
         await expect(notification).toBeVisible();
         await expect(notification).toContainText('Message');
-        return closeMessage(notification, {isMobile});
+        return closeMessage(notification, { isMobile });
     })
 
-    const messageInput = page.getByTestId('message-input')
+    const messageInput = page.getByTestId('message-input').locator("input")
 
     await messageInput
         .fill(CUSTOM_MESSAGE)
