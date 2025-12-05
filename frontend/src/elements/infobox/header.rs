@@ -224,7 +224,7 @@ fn InfoPickMenuEntry(field: VisibleField, visible_info: RwSignal<VisibleInfo>) -
                 xstyle=xstyle!("padding": XPadding::Medium)
             >
                 <Icon kind=icon_kind />
-                <label for=field.to_string().to_lowercase()>{field.to_string()}</label>
+                <label>{field.to_string()}</label>
             </Button>
         </div>
     }

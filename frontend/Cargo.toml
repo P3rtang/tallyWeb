@@ -14,7 +14,7 @@ actix-web = { version = "4", optional = true, features = ["macros"] }
 console_error_panic_hook = "0.1"
 cfg-if = "1"
 http = { version = "0.2", optional = true }
-leptos = { version = "0.8", features = ["nightly", "csr"] }
+leptos = { version = "0.8", features = ["nightly"] }
 leptos_meta = "0.8"
 leptos_actix = { version = "0.8", optional = true }
 leptos_router = "0.8"
@@ -48,12 +48,11 @@ dotenvy_macro = "0.15.7"
 sqlx = { version = "0.7.1", features = ["postgres", "chrono", "runtime-tokio-rustls", "macros", "uuid"], optional = true }
 fuzzy-sort = { version = "0.1", package = "tallyweb-fuzzy-sort", path="../fuzzy_sort/" }
 codee = { version = "0.3.0", features = ["json_serde", "json_serde_wasm"] }
-leptos_reactive = { version = "0.6.15", features = ["csr", "serde", "ssr"] }
+leptos_reactive = { version = "0.6.15", features = ["serde", "ssr"] }
 getrandom = {version = "0.2", features = ["js"]}
 reactive_graph = "0.1.8"
 
 [features]
-csr = ["leptos/csr"]
 hydrate = ["leptos/hydrate"]
 ssr = [
     "dep:sqlx",
@@ -76,5 +75,5 @@ extensions = [".module.scss", ".module.css"]
 class_name_pattern = "tallyweb-[name]-[hash]"
 
 [package.metadata.docs.rs]
-features = ["ssr", "csr", "hydrate"]
+features = ["ssr", "hydrate"]
 rustdoc-args = ["--document-private-items"]
