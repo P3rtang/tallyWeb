@@ -1,4 +1,5 @@
 #![allow(unused)]
+mod diff;
 pub(crate) mod indexed;
 pub(crate) mod nodes;
 pub(crate) mod server;
@@ -13,6 +14,7 @@ use super::*;
 use leptos::server_fn::ServerFnError;
 
 // internal
+use diff::CountableDiff;
 
 // re-exports
 pub use nodes::{Countable, CountableId, CountableKind, Counter, Hunttype};

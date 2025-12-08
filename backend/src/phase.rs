@@ -1,5 +1,35 @@
 use super::*;
 
+pub async fn get(tx: &mut PgTx, uuid: uuid::Uuid) -> Result<DbPhase, BackendError> {
+    let phase = sqlx::query_as!(
+        DbPhase,
+        r#"
+        SELECT
+            uuid,
+            owner_uuid,
+            parent_uuid,
+            name,
+            count,
+            time,
+            has_charm,
+            hunt_type as "hunt_type: Hunttype",
+            dexnav_encounters,
+            success,
+            last_edit,
+            created_at,
+            is_deleted,
+            step_size
+        FROM phases
+        WHERE uuid = $1;
+        "#,
+        uuid
+    )
+    .fetch_one(&mut **tx)
+    .await?;
+
+    Ok(phase)
+}
+
 pub async fn edited(tx: &mut PgTx, key: uuid::Uuid) -> Result<(), BackendError> {
     sqlx::query!(
         r#"

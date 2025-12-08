@@ -98,6 +98,14 @@ impl Countable {
         self.name_checked().unwrap()
     }
 
+    pub fn kind(&self) -> CountableKind {
+        match self {
+            Countable::Counter(_) => CountableKind::Counter,
+            Countable::Phase(_) => CountableKind::Phase,
+            Countable::Chain(_) => CountableKind::Chain,
+        }
+    }
+
     pub fn created_at_checked(&self) -> AppResult<chrono::NaiveDateTime> {
         Ok(match self {
             Countable::Counter(c) => c.lock()?.created_at,
@@ -182,6 +190,14 @@ impl Countable {
             Countable::Chain(_) => todo!(),
         })
     }
+
+    pub fn parent(&self) -> AppResult<Option<CountableId>> {
+        Ok(match self {
+            Countable::Counter(c) => c.lock()?.parent,
+            Countable::Phase(p) => Some(p.lock()?.parent),
+            Countable::Chain(_) => todo!(),
+        })
+    }
 }
 
 impl Savable for Vec<Countable> {
@@ -237,6 +253,78 @@ impl LocalSavable for Vec<Countable> {
             Ok(())
         })
     }
+}
+
+impl ToJsValue for Countable {
+    const OBJECT_STORE: &'static str = "Countable";
+
+    fn to_js_value(&self) -> AppResult<wasm_bindgen::JsValue> {
+        self.as_js()
+    }
+}
+
+impl OfflineSavableWithData for Countable {
+    type Data = UserSession;
+    type Diff = AppResult<CountableDiff>;
+    type Endpoint = UpdateCountable;
+
+    fn full(&self, session: UserSession) -> Self::Endpoint {
+        UpdateCountable {
+            session,
+            countable: self.clone(),
+        }
+    }
+
+    fn diff(&self, other: &Self, session: UserSession) -> AppResult<CountableDiff> {
+        Ok(match (self, other) {
+            (Countable::Counter(mutex), Countable::Counter(other)) => CountableDiff::Counter {
+                uuid: self.uuid(),
+                owner_uuid: self.owner_uuid()?,
+                parent: self.parent()?,
+                name: self.name(),
+                last_edit: self.last_edit(),
+                is_deleted: self.is_archived(),
+            },
+            (Countable::Phase(mutex), Countable::Phase(other)) => todo!(),
+            (Countable::Chain(mutex), Countable::Chain(other)) => todo!(),
+            _ => {
+                return Err(AppError::MismatchedCountableTypes(
+                    self.kind(),
+                    other.kind(),
+                ));
+            }
+        })
+    }
+}
+
+#[server(UpdateCountable, "/api/session_v2")]
+pub async fn update_countable(
+    session: UserSession,
+    countable: Countable,
+) -> Result<(), ServerFnError> {
+    let pool = api::extract_pool().await?;
+
+    let mut tx = pool.begin().await?;
+
+    match countable {
+        countable::Countable::Counter(c) => {
+            if c.lock()?.owner_uuid() != session.user_uuid {
+                Err(AppError::Unauthorized)?
+            }
+            backend::counter::update(&mut tx, c.lock()?.clone().into()).await?
+        }
+        countable::Countable::Phase(p) => {
+            if p.lock()?.owner_uuid() != session.user_uuid {
+                Err(AppError::Unauthorized)?
+            }
+            backend::phase::update(&mut tx, p.lock()?.clone().into()).await?
+        }
+        countable::Countable::Chain(_) => todo!(),
+    }
+
+    tx.commit().await?;
+
+    Ok(())
 }
 
 impl Savable for Countable {
@@ -342,7 +430,7 @@ impl From<backend::DbPhase> for Countable {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CountableKind {
     #[default]
     Counter,

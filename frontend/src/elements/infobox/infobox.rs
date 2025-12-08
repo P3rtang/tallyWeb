@@ -73,6 +73,8 @@ pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 
     let saving = use_saving();
 
+    let saving_signal = saving::SavingSignal::new(store, session);
+
     let descendants = Memo::new(move |_| {
         let store = store.get();
 

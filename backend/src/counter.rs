@@ -1,5 +1,20 @@
 use super::*;
 
+pub async fn get(tx: &mut PgTx, uuid: uuid::Uuid) -> Result<DbCounter, BackendError> {
+    let counter = sqlx::query_as!(
+        DbCounter,
+        r#"
+        SELECT * FROM counters
+        WHERE uuid = $1;
+        "#,
+        uuid
+    )
+    .fetch_one(&mut **tx)
+    .await?;
+
+    Ok(counter)
+}
+
 pub async fn all_by_user(tx: &mut PgTx, user: uuid::Uuid) -> Result<Vec<DbCounter>, BackendError> {
     let counters = sqlx::query_as!(
         DbCounter,

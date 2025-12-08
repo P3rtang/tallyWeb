@@ -3,10 +3,12 @@
 #![feature(unboxed_closures)]
 #![feature(lock_value_accessors)]
 #![feature(type_alias_impl_trait)]
+#![feature(associated_type_defaults)]
 #![recursion_limit = "512"]
 
 use leptos::logging::*;
 use leptos::prelude::*;
+use leptos::server_fn::codec::JsonEncoding;
 use wasm_bindgen::{JsCast, prelude::Closure};
 
 // pub(crate) use session::SessionFormInput;
@@ -159,6 +161,51 @@ pub enum AppError {
     MissingPreferences(String, String),
     #[error("To use {0}, a screen signal need to be available {1}")]
     MissingScreenSignal(String, String),
+    #[error("There was no input provided when trying to save.")]
+    MissingSaveValue,
+    #[error(
+        "There was a mismatch between the countable types when trying to save. Expected {0:?}, got {1:?}"
+    )]
+    MismatchedCountableTypes(CountableKind, CountableKind),
+}
+
+impl FromServerFnError for AppError {
+    type Encoder = JsonEncoding;
+
+    fn from_server_fn_error(value: ServerFnErrorErr) -> Self {
+        match value {
+            ServerFnErrorErr::Registration(_) => todo!(),
+            ServerFnErrorErr::UnsupportedRequestMethod(_) => todo!(),
+            ServerFnErrorErr::Request(_) => todo!(),
+            ServerFnErrorErr::ServerError(_) => todo!(),
+            ServerFnErrorErr::MiddlewareError(_) => todo!(),
+            ServerFnErrorErr::Deserialization(_) => todo!(),
+            ServerFnErrorErr::Serialization(_) => todo!(),
+            ServerFnErrorErr::Args(_) => todo!(),
+            ServerFnErrorErr::MissingArg(_) => todo!(),
+            ServerFnErrorErr::Response(_) => todo!(),
+        }
+    }
+}
+
+#[cfg(feature = "ssr")]
+impl From<backend::BackendError> for AppError {
+    fn from(value: backend::BackendError) -> Self {
+        match value {
+            backend::BackendError::InvalidToken => todo!(),
+            backend::BackendError::DatabaseError(_) => todo!(),
+            backend::BackendError::CounterNotFound => todo!(),
+            backend::BackendError::Unauthorized => todo!(),
+            backend::BackendError::UserNotFound => todo!(),
+            backend::BackendError::Internal(_) => todo!(),
+            backend::BackendError::UserExists => todo!(),
+            backend::BackendError::InvalidSecrets => todo!(),
+            backend::BackendError::InvalidPassword => todo!(),
+            backend::BackendError::InvalidUsername => todo!(),
+            backend::BackendError::DataNotFound(_) => todo!(),
+            backend::BackendError::MissingToken => todo!(),
+        }
+    }
 }
 
 impl From<AppError> for ViewFn {
