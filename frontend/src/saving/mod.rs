@@ -19,7 +19,8 @@ pub trait ServerSavable: Savable {
 }
 
 pub trait LocalSavable: Savable {
-    fn indexed_db_name(&self) -> String;
+    const INDEXED_DB_NAME: &str;
+
     fn save_indexed<'a>(
         &'a self,
         obj: indexed_db::ObjectStore<AppError>,

@@ -206,9 +206,7 @@ impl ServerSavable for Vec<Countable> {
 }
 
 impl LocalSavable for Vec<Countable> {
-    fn indexed_db_name(&self) -> String {
-        "Countable".into()
-    }
+    const INDEXED_DB_NAME: &str = "Countable";
 
     fn save_indexed<'a>(
         &'a self,
@@ -264,9 +262,7 @@ impl ServerSavable for Countable {
 }
 
 impl LocalSavable for Countable {
-    fn indexed_db_name(&self) -> String {
-        "Countable".into()
-    }
+    const INDEXED_DB_NAME: &str = "Countable";
 
     fn save_indexed<'a>(
         &'a self,

@@ -245,9 +245,7 @@ where
 }
 
 impl LocalSavable for CountableStore<Level, UnChecked> {
-    fn indexed_db_name(&self) -> String {
-        "Countable".into()
-    }
+    const INDEXED_DB_NAME: &str = "Countable";
 
     fn save_indexed<'a>(
         &'a self,

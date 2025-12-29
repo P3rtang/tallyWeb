@@ -76,19 +76,17 @@ impl IndexedSaveHandler {
 
 impl<S: LocalSavable + Clone + 'static> SaveHandler<S> for IndexedSaveHandler {
     fn save(&self, value: S, on_error: ErrorFn) {
-        #[allow(clippy::borrowed_box)]
         let action = leptos::prelude::Action::new_local(move |value: &S| {
             let value = value.clone();
             async move {
-                let store_name = value.indexed_db_name();
                 let factory = indexed_db::Factory::<AppError>::get()?;
                 let db = factory.open_latest_version("TallyWeb").await?;
 
                 let value = value.clone();
-                db.transaction(&[store_name.as_str()])
+                db.transaction(&[S::INDEXED_DB_NAME])
                     .rw()
                     .run(move |tr| {
-                        let obj = tr.object_store(&store_name);
+                        let obj = tr.object_store(S::INDEXED_DB_NAME);
                         async move {
                             value.save_indexed(obj?).await?;
                             Ok(())
