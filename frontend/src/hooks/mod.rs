@@ -20,7 +20,10 @@ pub use use_accent::{use_accent, use_accent_prefs};
 pub use use_history::{History, use_history};
 pub use use_message::{Severity, use_message};
 pub use use_overlay::use_overlay;
-pub use use_saving::{use_local_saving, use_saving};
+pub use use_saving::{
+    use_local_saving, use_local_saving_rw_signal, use_local_saving_signal,
+    use_local_saving_with_signal, use_saving, use_saving_signal,
+};
 pub use use_screen::use_screen;
 
 // imports

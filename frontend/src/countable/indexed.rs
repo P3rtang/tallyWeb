@@ -24,8 +24,16 @@ impl IndexedSaveHandler {
         factory
             .open("TallyWeb", version, |evt| async move {
                 let _ = evt.database().delete_object_store("Countable");
+
+                // TODO: move this somewhere scalable
                 let obj_builder = evt.database().build_object_store("Countable");
                 obj_builder.create()?;
+
+                let _ = evt.database().delete_object_store("CountableDiff");
+
+                let obj_builder = evt.database().build_object_store("CountableDiff");
+                let store = obj_builder.create()?;
+
                 Ok(())
             })
             .await?;

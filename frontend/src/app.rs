@@ -38,6 +38,11 @@ pub fn App() -> impl IntoView {
     let page_context = page_context::PageContext::new();
     provide_context(page_context.clone());
 
+    #[cfg(feature = "hydrate")]
+    leptos::task::spawn_local(async {
+        let _ = indexed::IndexedSaveHandler::new().await;
+    });
+
     let owner = Owner::current().unwrap();
 
     let close_overlay = {

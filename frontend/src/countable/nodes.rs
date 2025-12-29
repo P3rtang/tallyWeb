@@ -142,10 +142,6 @@ impl Countable {
         }
     }
 
-    pub fn as_js(&self) -> AppResult<wasm_bindgen::JsValue> {
-        Ok(js_sys::JSON::parse(&serde_json::to_string(&self)?)?)
-    }
-
     pub fn from_js(val: wasm_bindgen::JsValue) -> AppResult<Self> {
         let this = serde_json::from_str(
             &js_sys::JSON::stringify(&val)?
@@ -208,6 +204,10 @@ impl ServerSavable for Vec<Countable> {
 impl LocalSavable for Vec<Countable> {
     const INDEXED_DB_NAME: &str = "Countable";
 
+    fn as_js(&self) -> AppResult<wasm_bindgen::JsValue> {
+        Ok(js_sys::JSON::parse(&serde_json::to_string(self)?)?)
+    }
+
     fn save_indexed<'a>(
         &'a self,
         obj: indexed_db::ObjectStore<AppError>,
@@ -263,6 +263,10 @@ impl ServerSavable for Countable {
 
 impl LocalSavable for Countable {
     const INDEXED_DB_NAME: &str = "Countable";
+
+    fn as_js(&self) -> AppResult<wasm_bindgen::JsValue> {
+        Ok(js_sys::JSON::parse(&serde_json::to_string(&self)?)?)
+    }
 
     fn save_indexed<'a>(
         &'a self,

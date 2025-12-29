@@ -71,6 +71,13 @@ pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
     let has_change = HasChange::default();
     provide_context(has_change);
 
+    let diff = RwSignal::new(CountableDiff::new(key.get_untracked()));
+    use_local_saving_with_signal(diff);
+
+    Effect::new(move || {
+        diff.set(CountableDiff::new(key.get()));
+    });
+
     let saving = use_saving();
 
     let descendants = Memo::new(move |_| {
@@ -106,19 +113,19 @@ pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
             <div class=style::row>
                 <InfoHeader key visible_info />
                 <Show when=move || visible_info.get().count()>
-                    <Count key show_title />
+                    <Count diff key show_title />
                 </Show>
                 <Show when=move || visible_info.get().time()>
-                    <Time key show_title />
+                    <Time diff key show_title />
                 </Show>
                 <Show when=move || visible_info.get().progress()>
-                    <Progress expand=true key show_title />
+                    <Progress diff expand=true key show_title />
                 </Show>
                 <Show when=move || visible_info.get().last_step()>
-                    <LastStep key show_title />
+                    <LastStep diff key show_title />
                 </Show>
                 <Show when=move || visible_info.get().avg_step()>
-                    <AverageStep key show_title />
+                    <AverageStep diff key show_title />
                 </Show>
             </div>
         </Show>
@@ -128,6 +135,7 @@ pub fn InfoBoxPart(#[prop(into)] key: Signal<CountableId>) -> impl IntoView {
 #[component]
 fn Count(
     #[prop(into)] key: Signal<CountableId>,
+    #[prop(into)] diff: RwSignal<CountableDiff>,
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {
@@ -135,8 +143,12 @@ fn Count(
     let is_active = expect_context::<IsActive>();
     let has_change = expect_context::<HasChange>();
 
+    let step_size = Signal::derive(move || store.get().recursive_ref().step_size(&key.get()));
     let get_count = Signal::derive(move || store.get().recursive_ref().count(&key.get()));
-    let inc_count = move || store.update(|s| s.recursive_ref().increase(&key.get()));
+    let inc_count = move || {
+        store.update(|s| s.recursive_ref().increase(&key.get()));
+        diff.set(diff.get().increase(step_size.get()));
+    };
     let add_count = move |add| store.update(|s| s.recursive_ref().add_count(&key.get(), add));
 
     let key_listener = window_event_listener(ev::keydown, move |ev| {
@@ -201,17 +213,18 @@ fn Count(
     }
 }
 
-#[cfg(not(feature = "ssr"))] // run timer only on client
+#[cfg(feature = "hydrate")] // run timer only on client
 struct Handle(IntervalHandle);
 // WARN: this is bad but there is no good solution for now
-#[cfg(not(feature = "ssr"))] // run timer only on client
+#[cfg(feature = "hydrate")] // run timer only on client
 unsafe impl Send for Handle {}
-#[cfg(not(feature = "ssr"))] // run timer only on client
+#[cfg(feature = "hydrate")] // run timer only on client
 unsafe impl Sync for Handle {}
 
 #[component]
 fn Time(
     #[prop(into)] key: Signal<CountableId>,
+    diff: RwSignal<CountableDiff>,
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {
@@ -231,7 +244,7 @@ fn Time(
     let add_time =
         move |add: TimeDelta| store.update(|s| s.recursive_ref().add_time(&key.get(), add));
 
-    #[cfg(not(feature = "ssr"))] // run timer only on client
+    #[cfg(feature = "hydrate")] // run timer only on client
     {
         let time = signal(0_u32);
         let calc_interval =
@@ -288,6 +301,7 @@ fn Time(
 #[component]
 fn Progress(
     #[prop(into)] key: Signal<CountableId>,
+    diff: RwSignal<CountableDiff>,
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {
@@ -331,6 +345,7 @@ fn Progress(
 #[component]
 fn LastStep(
     #[prop(into)] key: Signal<CountableId>,
+    diff: RwSignal<CountableDiff>,
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {
@@ -400,6 +415,7 @@ fn LastStep(
 #[component]
 fn AverageStep(
     #[prop(into)] key: Signal<CountableId>,
+    #[prop(into)] diff: Signal<CountableDiff>,
     #[prop(into, optional)] expand: Signal<bool>,
     #[prop(into)] show_title: Signal<bool>,
 ) -> impl IntoView {

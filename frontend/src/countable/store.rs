@@ -247,6 +247,10 @@ where
 impl LocalSavable for CountableStore<Level, UnChecked> {
     const INDEXED_DB_NAME: &str = "Countable";
 
+    fn as_js(&self) -> AppResult<wasm_bindgen::JsValue> {
+        todo!()
+    }
+
     fn save_indexed<'a>(
         &'a self,
         obj: indexed_db::ObjectStore<AppError>,
@@ -697,6 +701,44 @@ impl CountableStore<Level, Checked> {
             Some(Countable::Chain(_)) => todo!(),
             None => None,
         })
+    }
+
+    /**
+       `Apply Countable Diff Checked`
+
+       Since this function does not recurse
+       it will only change elements that hold a count or time value themselves not any descendants
+
+       # Arguments
+         * `countable`: &[CountableId]
+         * `diff`: [CountableDiff]; The diff to apply to the `Countable`
+
+       # Returns
+         * `Ok(())`
+         * `Err(AppError)`
+
+       # Errors
+         * [AppError::CountableNotFound]
+         * [AppError::LockMutex]
+
+       [Countable]\
+       [CountableDiff]\
+       [AppError]
+    */
+    pub fn apply_diff(&self, countable: &CountableId, diff: CountableDiff) -> AppResult<()> {
+        match self.get(countable).ok_or(AppError::CountableNotFound)? {
+            Countable::Counter(_) => {}
+            Countable::Phase(p) => {
+                let mut phase = p.lock()?;
+                phase.add_count(diff.count);
+                phase.add_time(diff.time);
+            }
+            Countable::Chain(_) => todo!(),
+        }
+
+        let _ = self.is_changed.replace(false);
+
+        Ok(())
     }
 
     /**
@@ -1248,6 +1290,32 @@ impl CountableStore<Recursive, Checked> {
         };
 
         Ok(list)
+    }
+
+    /**
+      `Apply Countable Diff Checked`
+
+      # Arguments
+        * `countable`: &[CountableId]
+        * `diff`: [CountableDiff]; The diff to apply to the `Countable`
+
+      # Returns
+        * `Ok(())`
+        * `Err(AppError)`
+
+      # Errors
+        * [AppError::CountableNotFound]
+        * [AppError::LockMutex]
+
+      [Countable]\
+      [CountableDiff]\
+      [AppError]
+    */
+    pub fn apply_diff(&self, countable: &CountableId, diff: CountableDiff) -> AppResult<()> {
+        self.add_count(countable, diff.count)?;
+        self.add_time(countable, diff.time)?;
+
+        Ok(())
     }
 
     /**
@@ -1851,6 +1919,20 @@ impl CountableStore<Level, UnChecked> {
     }
 
     /**
+       `Apply Countable Diff UnChecked`
+
+       # Arguments
+         * `countable`: &[CountableId]
+         * `diff`: CountableDiff
+
+       # Panics
+         * lock on a `Mutex` fails
+    */
+    pub fn apply_diff(&self, countable: &CountableId, diff: CountableDiff) {
+        self.checked_ref().apply_diff(countable, diff).unwrap()
+    }
+
+    /**
         `Countable Count UnChecked`
 
         # Arguments
@@ -2200,6 +2282,20 @@ impl CountableStore<Recursive, UnChecked> {
             Err(AppError::CountableNotFound) => Vec::new(),
             Err(err) => panic!("{}", err),
         }
+    }
+
+    /**
+        `Recursive Apply Countable Diff UnChecked`
+
+        # Arguments
+           * `countable`: &[CountableId]
+           * `diff`: CountableDiff
+
+        # Panics
+           * lock on a `Mutex` fails
+    */
+    pub fn apply_diff(&self, countable: &CountableId, diff: CountableDiff) {
+        self.checked_ref().apply_diff(countable, diff).unwrap()
     }
 
     /**

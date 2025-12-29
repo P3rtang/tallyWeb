@@ -67,11 +67,7 @@ check-fmt:
 	podman-compose down
 
 serve:
-	bash -c " \
-		trap 'podman-compose down' SIGINT; \
-		podman-compose up -d postgres; \
-		cargo leptos serve \
-	"
+	bash ./scripts/rerun.sh
 
 watch:
 	bash -c " \
